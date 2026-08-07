@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "BKR_HealthCareDiet"
+rootProject.name = "muyeon_aos"
 include(":app")

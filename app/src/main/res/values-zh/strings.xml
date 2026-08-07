@@ -35,7 +35,7 @@
     <string name="camera_permission_content">您需要授予相机权限才能使用此功能</string>
     <string name="gallery_permission_content">您需要授予图库权限才能使用此功能</string>
     <string name="perm_title">应用访问权限指南</string>
-    <string name="perm_subtitle">以下权限用于使用 WHONEED 服务。</string>
+    <string name="perm_subtitle">以下权限用于使用 MUYEON 服务。</string>
     <string name="perm_camera_name">相机</string>
     <string name="perm_camera_desc">记录用餐记录和读取二维码信息的权限。</string>
     <string name="perm_photo_name">照片</string>

@@ -33,7 +33,7 @@
     <string name="camera_permission_content">이 기능을 사용하려면 카메라 권한이 필요합니다.</string>
     <string name="gallery_permission_content">이 기능을 사용하려면 갤러리 접근권한이 필요합니다.</string>
     <string name="perm_title">앱 접근권한 안내</string>
-    <string name="perm_subtitle">후니드 서비스 이용을 위해\n다음 권한 들을 사용하고 있습니다.</string>
+    <string name="perm_subtitle">무용연 서비스 이용을 위해\n다음 권한 들을 사용하고 있습니다.</string>
     <string name="perm_camera_name">카메라</string>
     <string name="perm_camera_desc">식사기록 등록 및 QR코드 정보를 읽기 위한 권한입니다.</string>
     <string name="perm_photo_name">사진</string>

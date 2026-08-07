@@ -1,4 +1,4 @@
-package com.brycen.bkr_healthcarediet
+package com.muyeon.app
 
 import org.junit.Test
 

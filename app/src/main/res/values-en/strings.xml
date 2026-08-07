@@ -37,7 +37,7 @@
     <string name="new_gallery">Gallery</string>
     <string name="gallery_permission_content">Gallery access permission is required for this feature.</string>
     <string name="perm_title">App Access\n Permissions Guide</string>
-    <string name="perm_subtitle">The below permissions\n are required to use WHONEED service.</string>
+    <string name="perm_subtitle">The below permissions\n are required to use MUYEON service.</string>
     <string name="perm_camera_name">Camera</string>
     <string name="perm_camera_desc">Permission to register meal records and read QR code information.</string>
     <string name="perm_photo_name">Gallery</string>

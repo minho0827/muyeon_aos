@@ -100,7 +100,7 @@ brycensolution_aos
 │           │   └── images/                     # Image resources
 │           │   
 │           ├── java/                           # Contains the Java/Kotlin source code.
-│           │   └── com.bkr_healthcarediet/
+│           │   └── com.muyeon.app/
 │           │       ├── activity/               # Main application activities (e.g., SplashActivity, NotificationActivity).
 │           │       ├── common_components/      # Common, reusable UI components for the app.
 │           │       ├── data/                   # Data layer: handles data sources and repositories.
