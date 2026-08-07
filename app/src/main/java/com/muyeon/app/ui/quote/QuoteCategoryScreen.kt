@@ -53,26 +53,23 @@ private val TITLE_TOP = 8.dp
 private val SUBTITLE_TOP = 8.dp
 private val GRID_TOP = 20.dp
 private val GRID_BOTTOM = 24.dp
-private val ROW_GAP_MIN = 18.dp
+private val ROW_GAP = 24.dp         // 행 간격(고정) — 남는 높이는 위아래로 균등 분배
 private val RING = 2.dp             // 겉 띠 두께
 private val RING_INSET = 5.dp       // 띠 ~ 이미지 간격(이미지 지름 = D - 10)
-private val NAME_TOP = 10.dp
-private val CAPTION_TOP = 3.dp
+private val NAME_TOP = 8.dp
 private const val OVERLAY_ALPHA = 0.55f   // 선택 시 원 안쪽 오렌지 막 투명도
 private const val COLUMNS = 3
 private const val SELECT_DELAY_MS = 180L
 
-/** 카테고리 표시용 이미지·키워드 — 문진 계약(QuoteCategory)과 분리(서버 매핑 영향 없음). */
-private data class CategoryVisual(val imageRes: Int, val caption: String)
-
-private val categoryVisuals: Map<String, CategoryVisual> = mapOf(
-    "ballet" to CategoryVisual(R.drawable.img_genre_ballet, "취미·전공"),
-    "barre" to CategoryVisual(R.drawable.img_genre_barre, "체형교정·재활"),
-    "korean" to CategoryVisual(R.drawable.img_genre_korean, "취미·입시"),
-    "modern" to CategoryVisual(R.drawable.img_genre_modern, "컨템포러리"),
-    "practical" to CategoryVisual(R.drawable.img_genre_practical, "K-pop·힙합"),
-    "balletfit" to CategoryVisual(R.drawable.img_genre_balletfit, "다이어트·체형"),
-    "musical" to CategoryVisual(R.drawable.img_genre_musical, "입시·오디션"),
+/** 카테고리 썸네일 — 문진 계약(QuoteCategory)과 분리(서버 매핑 영향 없음). */
+private val categoryImages: Map<String, Int> = mapOf(
+    "ballet" to R.drawable.img_genre_ballet,
+    "barre" to R.drawable.img_genre_barre,
+    "korean" to R.drawable.img_genre_korean,
+    "modern" to R.drawable.img_genre_modern,
+    "practical" to R.drawable.img_genre_practical,
+    "balletfit" to R.drawable.img_genre_balletfit,
+    "musical" to R.drawable.img_genre_musical,
 )
 
 @Composable
@@ -124,29 +121,32 @@ fun QuoteCategoryScreen(
             modifier = Modifier.padding(horizontal = SIDE).padding(top = SUBTITLE_TOP),
         )
 
-        Column(
+        // 그리드 전체를 가운데 정렬 — 마지막 행(1칸)도 가운데로 온다.
+        BoxWithConstraints(
             Modifier
                 .fillMaxSize()
                 .padding(horizontal = SIDE)
                 .padding(top = GRID_TOP, bottom = GRID_BOTTOM),
         ) {
-            rows.forEachIndexed { index, row ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(H_GAP)) {
-                    // 원 지름 = 3열 균등 분할 폭(weight) — 인셋/폴더블에서도 마지막 열이 넘치지 않는다.
-                    row.forEach { category ->
-                        CategoryCell(
-                            category = category,
-                            isSelected = selectedId == category.id,
-                            modifier = Modifier.weight(1f),
-                            onSelect = { if (selectedId == null) selectedId = category.id },
-                        )
+            // 원 지름 = 3열 기준 열 너비(실제 가용 폭 기준이라 인셋/폴더블에서도 안 넘친다).
+            val diameter = ((maxWidth - H_GAP * (COLUMNS - 1)) / COLUMNS).coerceAtLeast(64.dp)
+            Column(
+                Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(ROW_GAP, Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                rows.forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(H_GAP)) {
+                        row.forEach { category ->
+                            CategoryCell(
+                                category = category,
+                                isSelected = selectedId == category.id,
+                                modifier = Modifier.width(diameter),
+                                onSelect = { if (selectedId == null) selectedId = category.id },
+                            )
+                        }
                     }
-                    // 마지막 행 빈 칸 — 열 정렬 유지용
-                    repeat(COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
                 }
-                // 행 간격 = 최소 18dp + 남는 높이 균등 분배
-                if (index < rows.lastIndex) Spacer(Modifier.height(ROW_GAP_MIN))
-                Spacer(Modifier.weight(1f))
             }
         }
     }
@@ -159,7 +159,7 @@ private fun CategoryCell(
     modifier: Modifier,
     onSelect: () -> Unit,
 ) {
-    val visual = categoryVisuals[category.id] ?: return
+    val imageRes = categoryImages[category.id] ?: return
     // 겉 띠·이름은 선택 순간 메인 오렌지로(두께 고정이라 레이아웃 흔들림 없음)
     val ringColor by animateColorAsState(
         if (isSelected) QuoteColors.f58232 else QuoteColors.cEAEAEA,
@@ -186,7 +186,7 @@ private fun CategoryCell(
             contentAlignment = Alignment.Center,
         ) {
             Image(
-                painter = painterResource(visual.imageRes),
+                painter = painterResource(imageRes),
                 contentDescription = category.name,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().clip(CircleShape),
@@ -208,13 +208,6 @@ private fun CategoryCell(
             lineHeight = 17.sp, color = nameColor, textAlign = TextAlign.Center,
             maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = NAME_TOP),
-        )
-        Text(
-            visual.caption,
-            fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 11.sp,
-            lineHeight = 13.sp, color = QuoteColors.c8E8E8E, textAlign = TextAlign.Center,
-            maxLines = 1, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = CAPTION_TOP),
         )
     }
 }
