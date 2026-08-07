@@ -58,10 +58,23 @@ class QuoteWizardActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val categoryId = intent.getStringExtra(EXTRA_CATEGORY).orEmpty()
         val targetTeacherId = intent.getStringExtra(EXTRA_TARGET_TEACHER).orEmpty()
-        val category = QuoteCategory.find(categoryId) ?: QuoteCategory.all[0]
 
         setContent {
-            val vm = remember { QuoteWizardViewModel(category) }
+            // 카테고리 미지정(웹 "새 견적 요청하기")이면 종류 선택부터 — iOS presentQuoteCategory 대응.
+            var selected by remember { mutableStateOf(QuoteCategory.find(categoryId)) }
+            val cat = selected
+            if (cat == null) {
+                QuoteCategoryScreen(onSelect = { selected = it }, onClose = { finish() })
+            } else {
+                WizardFlow(cat, targetTeacherId)
+            }
+        }
+    }
+
+    /** 종류가 정해진 뒤의 문진 → 로딩 → 완료 흐름. */
+    @Composable
+    private fun WizardFlow(category: QuoteCategory, targetTeacherId: String) {
+            val vm = remember(category.id) { QuoteWizardViewModel(category) }
             var showExit by remember { mutableStateOf(false) }
             // 단계: wizard → loading(매칭 로딩) → done(완료 안내). iOS 흐름 동일.
             var phase by remember { mutableStateOf("wizard") }
@@ -128,7 +141,6 @@ class QuoteWizardActivity : ComponentActivity() {
             }
               }
             }
-        }
     }
 
     /** 완료 화면 CTA — 웹 화면으로 이동하고 위저드 종료. */

@@ -45,6 +45,7 @@ object QuoteColors {
     val c8E8E8E = Color(0xFF8E8E8E)  // '수정' 링크, 타이핑 점, primaryLine 테두리
     val cFFE4D2 = Color(0xFFFFE4D2)  // 선택된 옵션 배경
     val cC5C4C4 = Color(0xFFC5C4C4)  // 미선택 인디케이터 테두리
+    val cFFCAA5 = Color(0xFFFFCAA5)  // 카테고리 원형 썸네일 겉 띠
     val white = Color(0xFFFFFFFF)
 }
 
