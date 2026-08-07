@@ -42,10 +42,12 @@ import kotlinx.coroutines.delay
 @Composable
 fun QuoteWizardScreen(
     vm: QuoteWizardViewModel,
+    token: String?,
     onClose: () -> Unit,
     onComplete: (Map<String, QuoteAnswer>) -> Unit,
 ) {
     var showTyping by remember { mutableStateOf(true) }
+    var showRegionPicker by remember { mutableStateOf(false) }
     val scroll = rememberScrollState()
 
     // 질문이 바뀔 때마다 '입력 중…' 0.9초 후 질문 노출 (iOS runTyping).
@@ -93,7 +95,11 @@ fun QuoteWizardScreen(
             }
 
             // 현재 질문
-            CurrentQuestion(vm = vm, showTyping = showTyping)
+            CurrentQuestion(
+                vm = vm,
+                showTyping = showTyping,
+                onOpenRegionPicker = { showRegionPicker = true },
+            )
         }
 
         BottomBar(
@@ -101,6 +107,20 @@ fun QuoteWizardScreen(
             enabled = vm.canProceed,
             onClick = { vm.goNextOrComplete { onComplete(vm.answers.toMap()) } },
         )
+    }
+
+    // 지역 선택 풀스크린 — iOS fullScreenCover(QuoteRegionPickerView) 대응.
+    if (showRegionPicker) {
+        Box(Modifier.fillMaxSize().background(QuoteColors.white)) {
+            QuoteRegionPicker(
+                token = token,
+                onSelect = { names, codes ->
+                    vm.setRegion(names, codes.ifEmpty { null })
+                    showRegionPicker = false
+                },
+                onClose = { showRegionPicker = false },
+            )
+        }
     }
 }
 
@@ -151,7 +171,11 @@ private fun InfoCard() {
 }
 
 @Composable
-private fun CurrentQuestion(vm: QuoteWizardViewModel, showTyping: Boolean) {
+private fun CurrentQuestion(
+    vm: QuoteWizardViewModel,
+    showTyping: Boolean,
+    onOpenRegionPicker: () -> Unit,
+) {
     val q = vm.currentQuestion
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         AnimatedVisibility(visible = showTyping, enter = fadeIn(), exit = fadeOut()) {
@@ -172,7 +196,8 @@ private fun CurrentQuestion(vm: QuoteWizardViewModel, showTyping: Boolean) {
                                 )
                             }
                         }
-                    QuoteAnswerType.TEXT, QuoteAnswerType.DATE, QuoteAnswerType.REGION ->
+                    QuoteAnswerType.REGION -> RegionSelector(vm = vm, q = q, onOpenPicker = onOpenRegionPicker)
+                    QuoteAnswerType.TEXT, QuoteAnswerType.DATE ->
                         FreeTextInput(vm = vm, q = q)
                 }
             }
@@ -188,13 +213,11 @@ private fun CurrentQuestion(vm: QuoteWizardViewModel, showTyping: Boolean) {
 private fun FreeTextInput(vm: QuoteWizardViewModel, q: QuoteQuestion) {
     val current = vm.answer(q)
     val initial = when (q.type) {
-        QuoteAnswerType.REGION -> current.region ?: ""
         QuoteAnswerType.DATE -> current.dateText ?: ""
         else -> current.text ?: ""
     }
     var value by remember(q.id) { mutableStateOf(initial) }
     val hint = when (q.type) {
-        QuoteAnswerType.REGION -> "예: 서울 강남구"
         QuoteAnswerType.DATE -> "예: 2026.08.20"
         else -> "내용을 입력해 주세요."
     }
@@ -219,7 +242,6 @@ private fun FreeTextInput(vm: QuoteWizardViewModel, q: QuoteQuestion) {
             onValueChange = {
                 value = it
                 when (q.type) {
-                    QuoteAnswerType.REGION -> vm.setRegion(it, null)
                     QuoteAnswerType.DATE -> vm.setDateText(it)
                     else -> vm.setText(it)
                 }
@@ -230,6 +252,32 @@ private fun FreeTextInput(vm: QuoteWizardViewModel, q: QuoteQuestion) {
                 color = QuoteColors.c101116,
             ),
             modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+/**
+ * 지역 질문 — iOS regionSelector: 선택값(16sp semiBold)을 위에 보여주고
+ *  아래 primaryLine 버튼("지역 선택하기"/"지역 다시 선택")으로 피커 진입. VStack spacing 8.
+ */
+@Composable
+private fun RegionSelector(vm: QuoteWizardViewModel, q: QuoteQuestion, onOpenPicker: () -> Unit) {
+    val region = vm.answer(q).region
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (!region.isNullOrEmpty()) {
+            Text(
+                text = region,
+                fontFamily = customFontFamily,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
+                color = QuoteColors.c101116,
+            )
+        }
+        QuotePrimaryButton(
+            text = if (!region.isNullOrEmpty()) "지역 다시 선택" else "지역 선택하기",
+            modifier = Modifier.fillMaxWidth(),
+            filled = false,
+            onClick = onOpenPicker,
         )
     }
 }

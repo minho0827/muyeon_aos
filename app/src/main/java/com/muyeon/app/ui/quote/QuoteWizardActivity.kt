@@ -68,6 +68,7 @@ class QuoteWizardActivity : ComponentActivity() {
             Box(Modifier.fillMaxSize()) {
                 QuoteWizardScreen(
                     vm = vm,
+                    token = TokenManager.getAccessToken(this@QuoteWizardActivity),
                     onClose = {
                         // 문진 진행 중이면 이탈 방지 시트, 첫 질문이면 바로 닫기(iOS 동일).
                         if (vm.currentIndex > 0) showExit = true else finish()
