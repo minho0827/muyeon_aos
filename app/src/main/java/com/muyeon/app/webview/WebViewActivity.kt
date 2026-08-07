@@ -220,6 +220,9 @@ class WebViewActivity : ComponentActivity() {
         webView.addJavascriptInterface(scanQRInterface, "AndroidQRInfo")
         webView.addJavascriptInterface(PushNotificationInterface(webView), "PushNotificationBridge")
         webView.addJavascriptInterface(QrPageWebViewInterface(webView), "qrPageBridge")
+        // 웹 → 네이티브 단방향 액션 채널(iOS callbackHandler 와 동일 계약).
+        //  액션명·데이터 키는 iOS 와 100% 동일. 미이식 화면은 웹 경로 폴백(죽은 버튼 방지).
+        webView.addJavascriptInterface(AppBridgeInterface(this, webView), "AppBridge")
 
         android.util.Log.d("QR_DEBUG", "🟢 WebViewActivity onCreate savedInstanceState=${savedInstanceState != null}, QrPageManager.value=${com.muyeon.app.utils.QrPageManager.getValue()}")
         // QR 식사평가(qrPage)가 있으면 복원하지 말고 홈을 새로 로드해 DefaultLayout 폴링이 처리하도록 함
