@@ -197,8 +197,8 @@ private fun CurrentQuestion(
                             }
                         }
                     QuoteAnswerType.REGION -> RegionSelector(vm = vm, q = q, onOpenPicker = onOpenRegionPicker)
-                    QuoteAnswerType.TEXT, QuoteAnswerType.DATE ->
-                        FreeTextInput(vm = vm, q = q)
+                    QuoteAnswerType.DATE -> DateSelector(vm = vm, q = q)
+                    QuoteAnswerType.TEXT -> FreeTextInput(vm = vm, q = q)
                 }
             }
         }
@@ -254,6 +254,30 @@ private fun FreeTextInput(vm: QuoteWizardViewModel, q: QuoteQuestion) {
             modifier = Modifier.fillMaxWidth(),
         )
     }
+}
+
+/**
+ * 날짜 질문 — iOS `DatePicker(.graphical)` 대응(인라인 캘린더).
+ *  선택 즉시 저장하며 표시 포맷은 iOS 와 동일한 `yyyy.MM.dd(E)`(ko_KR).
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun DateSelector(vm: QuoteWizardViewModel, q: QuoteQuestion) {
+    val state = androidx.compose.material3.rememberDatePickerState()
+    val millis = state.selectedDateMillis
+    LaunchedEffect(millis) {
+        millis?.let {
+            val fmt = java.text.SimpleDateFormat("yyyy.MM.dd(E)", java.util.Locale.KOREAN)
+            fmt.timeZone = java.util.TimeZone.getTimeZone("UTC") // DatePicker 는 UTC 자정 기준
+            vm.setDateText(fmt.format(java.util.Date(it)))
+        }
+    }
+    androidx.compose.material3.DatePicker(
+        state = state,
+        title = null,
+        headline = null,
+        showModeToggle = false,
+    )
 }
 
 /**

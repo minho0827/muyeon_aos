@@ -63,8 +63,46 @@ class QuoteWizardActivity : ComponentActivity() {
         setContent {
             val vm = remember { QuoteWizardViewModel(category) }
             var showExit by remember { mutableStateOf(false) }
-            var submitting by remember { mutableStateOf(false) }
+            // 단계: wizard → loading(매칭 로딩) → done(완료 안내). iOS 흐름 동일.
+            var phase by remember { mutableStateOf("wizard") }
+            var submitOk by remember { mutableStateOf<Boolean?>(null) }
 
+            // 이탈시트 추천 콘텐츠 — 시트가 뜨기 전에 미리 로드(iOS 프리페치와 동일: 통째로 한번에 노출).
+            var exitLessons by remember { mutableStateOf<List<LessonContentItem>>(emptyList()) }
+            val genre = category.title.replace(" 레슨", "")
+            val regionCode = vm.answers.values.firstOrNull { !it.regionCode.isNullOrEmpty() }?.regionCode
+            LaunchedEffect(genre, regionCode) {
+                exitLessons = LessonContentRepo.loadForExit(
+                    token = TokenManager.getAccessToken(this@QuoteWizardActivity),
+                    genre = genre,
+                    regionCode = regionCode,
+                )
+            }
+
+            when (phase) {
+              "loading" -> {
+                QuoteSubmitLoadingScreen(
+                    categoryTitle = category.title,
+                    isDirect = targetTeacherId.isNotEmpty(),
+                    onDone = {
+                        // 로딩(≈2.8s)과 제출을 병렬 진행 — 실패면 안내 후 위저드 복귀(iOS 는 완료로 마감).
+                        if (submitOk == false) {
+                            Toast.makeText(this@QuoteWizardActivity, "요청에 실패했어요. 잠시 후 다시 시도해 주세요.", Toast.LENGTH_SHORT).show()
+                            phase = "wizard"
+                        } else {
+                            phase = "done"
+                        }
+                    },
+                )
+              }
+              "done" -> {
+                QuoteSubmittedScreen(
+                    onViewQuotes = { openWebAndFinish("/myQuotes") },
+                    onGoHome = { openWebAndFinish("/home") },
+                    onClose = { finish() },
+                )
+              }
+              else -> {
             Box(Modifier.fillMaxSize()) {
                 QuoteWizardScreen(
                     vm = vm,
@@ -74,28 +112,32 @@ class QuoteWizardActivity : ComponentActivity() {
                         if (vm.currentIndex > 0) showExit = true else finish()
                     },
                     onComplete = { answers ->
-                        if (!submitting) {
-                            submitting = true
-                            submit(answers, category.id, targetTeacherId) { ok ->
-                                submitting = false
-                                Toast.makeText(
-                                    this@QuoteWizardActivity,
-                                    if (ok) "견적 요청이 전달되었어요!" else "요청에 실패했어요. 잠시 후 다시 시도해 주세요.",
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                                if (ok) finish()
-                            }
-                        }
+                        phase = "loading"
+                        submit(answers, category.id, targetTeacherId) { ok -> submitOk = ok }
                     },
                 )
                 if (showExit) {
                     QuoteExitSheet(
+                        lessons = exitLessons,
                         onStop = { finish() },
                         onContinue = { showExit = false },
+                        onSeeAll = { openWebAndFinish("/lessons") },
+                        onSelectLesson = { id -> openWebAndFinish("/lessons/$id") },
                     )
                 }
             }
+              }
+            }
         }
+    }
+
+    /** 완료 화면 CTA — 웹 화면으로 이동하고 위저드 종료. */
+    private fun openWebAndFinish(path: String) {
+        val i = packageManager.getLaunchIntentForPackage(packageName)
+        i?.putExtra("nativeGoPath", path)
+        i?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        if (i != null) startActivity(i)
+        finish()
     }
 
     /** POST /api/quotes — iOS QuoteService.createQuote 와 동일 페이로드. */
@@ -150,7 +192,13 @@ class QuoteWizardActivity : ComponentActivity() {
  *  딤 40% + 흰 시트(상단 라운드 24) / 제목 20sp bold / 부제 15sp regular 가운데 / 버튼 48 높이.
  */
 @Composable
-private fun QuoteExitSheet(onStop: () -> Unit, onContinue: () -> Unit) {
+private fun QuoteExitSheet(
+    lessons: List<LessonContentItem> = emptyList(),
+    onStop: () -> Unit,
+    onContinue: () -> Unit,
+    onSeeAll: () -> Unit = {},
+    onSelectLesson: (Int) -> Unit = {},
+) {
     Box(
         Modifier
             .fillMaxSize()
@@ -184,6 +232,12 @@ private fun QuoteExitSheet(onStop: () -> Unit, onContinue: () -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 QuotePrimaryButton("그만하기", Modifier.weight(1f), filled = false, onClick = onStop)
                 QuotePrimaryButton("계속 작성하기", Modifier.weight(1f), filled = true, onClick = onContinue)
+            }
+            if (lessons.isNotEmpty()) {
+                Spacer(Modifier.height(24.dp))
+                androidx.compose.material3.Divider(color = QuoteColors.cEAEAEA)
+                Spacer(Modifier.height(20.dp))
+                ExitRecommendSection(lessons = lessons, onSeeAll = onSeeAll, onSelectLesson = onSelectLesson)
             }
         }
     }
