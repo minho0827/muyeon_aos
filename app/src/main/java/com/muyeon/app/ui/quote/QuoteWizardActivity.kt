@@ -199,11 +199,14 @@ private fun QuoteExitSheet(
     onSeeAll: () -> Unit = {},
     onSelectLesson: (Int) -> Unit = {},
 ) {
+    val dimSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val sheetSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Box(
         Modifier
             .fillMaxSize()
-            .background(Color(0x66000000))   // iOS: 검정 0.4
-            .clickable { onContinue() },
+            .background(Color(0x66000000))   // iOS: 검정 0.4 (color000000 opacity 0.4)
+            // 딤 탭 → 계속 작성(iOS onTapGesture 동일). ripple 없음.
+            .clickable(interactionSource = dimSource, indication = null) { onContinue() },
         contentAlignment = Alignment.BottomCenter,
     ) {
         Column(
@@ -211,7 +214,7 @@ private fun QuoteExitSheet(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                 .background(QuoteColors.white)
-                .clickable(enabled = false) {}
+                .clickable(interactionSource = sheetSource, indication = null) { /* 시트 탭 소비 */ }
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -229,7 +232,7 @@ private fun QuoteExitSheet(
                 color = QuoteColors.c6D6E71, textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(28.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 QuotePrimaryButton("그만하기", Modifier.weight(1f), filled = false, onClick = onStop)
                 QuotePrimaryButton("계속 작성하기", Modifier.weight(1f), filled = true, onClick = onContinue)
             }

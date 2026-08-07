@@ -92,8 +92,8 @@ fun ExitRecommendSection(
     onSeeAll: () -> Unit,
     onSelectLesson: (Int) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(verticalAlignment = Alignment.Top) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
             Text(
                 "당장 강사가 필요하지 않다면?\n이렇게 해결해 보세요",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
