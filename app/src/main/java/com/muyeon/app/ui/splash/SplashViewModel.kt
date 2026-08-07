@@ -16,7 +16,8 @@ class SplashViewModel(
 
     fun checkTokenAndNavigate() {
         viewModelScope.launch(dispatcher) {
-            delay(2000)
+            // iOS SplashView: 0.5초 후 라우팅(로그인 상태면 즉시 진입). 동일 감각으로 맞춤.
+            delay(500)
 
             navigator.navigateToWebView()
             return@launch
