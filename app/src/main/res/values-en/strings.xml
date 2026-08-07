@@ -1,0 +1,51 @@
+<resources>
+    <string name="app_name">무용연</string>
+    <string name="cancel">Cancel</string>
+    <string name="select_photo">Selected photos</string>
+    <string name="add_more_photos">Add more photos</string>
+    <string name="photos_licensed">Allowed access photos: %1$d</string>
+
+    <string name="no_photos">No photos are available</string>
+    <string name="please_add_photo">Please add photos to enable attachment</string>
+    <string name="add_photo_button">Add more photos</string>
+
+    <string name="selected_photo">Selected photos</string>
+    <string name="confirm_send_photo">Are you sure you want to select this photo?</string>
+    <string name="confirm_button">Confirm</string>
+
+    <string name="enviroment_configuration">Environment configuration</string>">
+    <string name="ip_address_placdholder">Enter ip address (e.g. 192.168.1.100)</string>
+    <string name="ip_address_history">IP address history</string>">
+    <string name="no_history">No history available</string>">
+    <string name="use">Use</string>">
+    <string name="connecting">Connecting ...</string>">
+    <string name="connect">Connect</string>">
+
+    <string name="fail_scan_qr_dialog">QR code is incorrect</string>
+    <string name="ok">OK</string>
+    <string name="title_scan_qr">Scan QR result</string>
+    <string name="fail">Fail</string>
+    <string name="call_api">Call API</string>
+    <string name="notification">You have new notifications</string>
+    <string name="new_notification">Notification</string>
+    <string name="permission_notification_content">Notification permission is required to use this feature.</string>
+    <string name="setting">Setting</string>
+    <string name="new_location">Location</string>
+    <string name="permission_location_content">Location permission is required to use this feature.</string>
+    <string name="new_camera">Camera</string>
+    <string name="camera_permission_content">Camera permission is required to use this feature.</string>
+    <string name="new_gallery">Gallery</string>
+    <string name="gallery_permission_content">Gallery access permission is required for this feature.</string>
+    <string name="perm_title">App Access\n Permissions Guide</string>
+    <string name="perm_subtitle">The below permissions\n are required to use WHONEED service.</string>
+    <string name="perm_camera_name">Camera</string>
+    <string name="perm_camera_desc">Permission to register meal records and read QR code information.</string>
+    <string name="perm_photo_name">Gallery</string>
+    <string name="perm_photo_desc">Permission to attach photos.</string>
+    <string name="perm_notif_name">Notifications</string>
+    <string name="perm_notif_desc">Permission to receive reservation and benefit notifications.</string>
+    <string name="perm_location_name">Location</string>
+    <string name="perm_location_desc">This permission is used to provide customized services using location information.</string>
+    <string name="perm_optional_notice">You can use the service without agreeing to the optional permission, but some features are may be limited</string>
+    <string name="option">(Optional)</string>
+</resources>

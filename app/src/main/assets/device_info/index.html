@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Device Info App</title>
+    <style>
+        body {
+          margin: 0;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+          font-family: sans-serif;
+          background-color: #fafafa;
+        }
+        h1 {
+          color: #333;
+          font-size: 24px;
+          margin-bottom: 20px;
+        }
+        button {
+          padding: 10px 20px;
+          font-size: 16px;
+          background-color: #007bff;
+          color: white;
+          border: none;
+          border-radius: 5px;
+          cursor: pointer;
+        }
+        button:hover {
+          background-color: #0056b3;
+        }
+        #deviceInfo {
+          margin-top: 20px;
+          text-align: left;
+          color: #333;
+          font-size: 16px;
+          max-width: 400px;
+          width: 100%;
+        }
+        #deviceInfo p {
+          margin: 6px 0;
+        }
+        #deviceInfo strong {
+          width: 140px;
+          display: inline-block;
+        }
+    </style>
+</head>
+<body>
+<h1>Device Info App</h1>
+<button onclick="fetchDeviceInfo()">Get Device Info</button>
+<div id="deviceInfo"></div>
+
+<script>
+    window.receiveDeviceInfo = function(jsonData) {
+      const container = document.getElementById('deviceInfo');
+      try {
+        const info = JSON.parse(jsonData);
+        if (info.error) {
+          container.innerHTML = `<p style="color: #dc3545;"><strong>Error:</strong> ${info.error}</p>`;
+          return;
+        }
+        container.innerHTML = `
+          <p><strong>Device ID:</strong> ${info.deviceId}</p>
+          <p><strong>Device Name:</strong> ${info.deviceName}</p>
+          <p><strong>Device Model:</strong> ${info.deviceModel}</p>
+          <p><strong>Manufacturer:</strong> ${info.manufacturer}</p>
+          <p><strong>System Name:</strong> ${info.platform}</p>
+          <p><strong>System Version:</strong> ${info.systemVersion}</p>
+          <p><strong>SDK Int:</strong> ${info.sdkInt}</p>
+          <p><strong>Serial / IMEI:</strong> ${info.serialOrImei ?? 'N/A'}</p>
+        `;
+      } catch (e) {
+        console.error('Error parsing device info:', e);
+        container.innerHTML = `<p style="color: #dc3545;"><strong>Error:</strong> Failed to parse device info</p>`;
+      }
+    };
+
+    function fetchDeviceInfo() {
+      const container = document.getElementById('deviceInfo');
+      try {
+        if (window.AndroidBridge && typeof window.AndroidBridge.getDeviceInfo === 'function') {
+          container.innerHTML = `<p>Loading...</p>`;
+          window.AndroidBridge.getDeviceInfo();
+        } else {
+          container.innerHTML = `<p style="color: #dc3545;"><strong>Error:</strong> AndroidBridge not available</p>`;
+        }
+      } catch (e) {
+        console.error('Error calling AndroidBridge:', e);
+        container.innerHTML = `<p style="color: #dc3545;"><strong>Error:</strong> Failed to fetch device info</p>`;
+      }
+    }
+</script>
+</body>
+</html>

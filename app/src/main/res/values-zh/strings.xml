@@ -1,0 +1,49 @@
+<resources>
+    <string name="app_name">무용연</string>
+    <string name="cancel">取消</string>
+    <string name="select_photo">选择照片</string>
+    <string name="add_more_photos">添加更多照片</string>
+    <string name="photos_licensed">已授权照片：%1$d 张</string>
+
+    <string name="no_photos">没有获得许可的照片</string>
+    <string name="please_add_photo">请添加一张照片以便选择</string>
+    <string name="add_photo_button">添加照片</string>
+
+    <string name="selected_photo">已选照片</string>
+    <string name="confirm_send_photo">您确定要选择这张照片吗？</string>
+    <string name="confirm_button">确认</string>
+    <string name="enviroment_configuration">环境配置</string>
+    <string name="ip_address_placdholder">输入 IP 地址（例如：192.168.1.100）</string>
+    <string name="ip_address_history">IP 地址历史记录</string>
+    <string name="no_history">无历史记录</string>
+    <string name="use">使用</string>
+    <string name="connecting">正在连接...</string>
+    <string name="connect">连接</string>
+    <string name="fail_scan_qr_dialog">二维码不正确</string>
+    <string name="ok">好的</string>
+    <string name="title_scan_qr">扫描二维码结果</string>
+    <string name="fail">失败</string>
+    <string name="call_api">调用 API</string>
+    <string name="notification">您有新通知</string>
+    <string name="new_notification">通知</string>
+    <string name="permission_notification_content">您需要授予此功能用户通知权限</string>
+    <string name="setting">设置</string>
+    <string name="new_location">地點</string>
+    <string name="permission_location_content">您需要授予此功能使用者位置權限</string>
+    <string name="new_camera">相机</string>
+    <string name="new_gallery">画廊</string>
+    <string name="camera_permission_content">您需要授予相机权限才能使用此功能</string>
+    <string name="gallery_permission_content">您需要授予图库权限才能使用此功能</string>
+    <string name="perm_title">应用访问权限指南</string>
+    <string name="perm_subtitle">以下权限用于使用 WHONEED 服务。</string>
+    <string name="perm_camera_name">相机</string>
+    <string name="perm_camera_desc">记录用餐记录和读取二维码信息的权限。</string>
+    <string name="perm_photo_name">照片</string>
+    <string name="perm_photo_desc">添加照片的权限。</string>
+    <string name="perm_notif_name">通知</string>
+    <string name="perm_notif_desc">接收预订和优惠通知的权限。</string>
+    <string name="perm_location_name">位置</string>
+    <string name="perm_location_desc">此权限用于利用位置信息提供个性化服务。</string>
+    <string name="perm_optional_notice">即使不授予可选权限，您仍然可以使用该服务，但需要这些权限的功能可能会受到限制。</string>
+    <string name="option">(可选)</string>
+</resources>
