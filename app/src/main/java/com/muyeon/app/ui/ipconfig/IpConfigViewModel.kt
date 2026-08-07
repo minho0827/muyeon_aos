@@ -96,7 +96,8 @@ class IpConfigViewModel(application: Application) : AndroidViewModel(application
             val hasToken = authRepo.hasValidToken()
 
             if (hasToken) {
-                navigator.navigateToHome()
+                // 후니드 개발용 홈(MainActivity) 제거 → 실제 앱 진입점인 웹뷰로.
+                navigator.navigateToWebView()
             } else {
                 reachableResult.fold(onSuccess = { _ ->
                     repo.saveIpAddress(raw)

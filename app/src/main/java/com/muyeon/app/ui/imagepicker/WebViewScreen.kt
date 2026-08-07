@@ -8,7 +8,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
-import com.muyeon.app.theme.HealthCareDietTheme
+import com.muyeon.app.theme.MuyeonTheme
 import com.muyeon.app.ui.imagepicker.ImagePickerBottomSheet
 
 @Suppress("unused")
@@ -22,7 +22,7 @@ fun WebViewScreen(
     onAddImages: () -> Unit,
     requestPermissions: () -> Unit
 ) {
-    HealthCareDietTheme {
+    MuyeonTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = androidx.compose.material3.MaterialTheme.colorScheme.background

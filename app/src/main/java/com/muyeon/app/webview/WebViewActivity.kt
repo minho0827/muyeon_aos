@@ -25,7 +25,7 @@ import com.muyeon.app.common_components.dialog.ContentAlignment
 import com.muyeon.app.common_components.dialog.CustomDialog
 import com.muyeon.app.data.repository.LocationRepositoryImpl
 import com.muyeon.app.domain.use_cases.RequestNotificationPermissionUseCase
-import com.muyeon.app.theme.HealthCareDietTheme
+import com.muyeon.app.theme.MuyeonTheme
 import com.muyeon.app.ui.device_info.DeviceInfoViewModel
 import com.muyeon.app.ui.device_info.DeviceInfoViewModelFactory
 import com.muyeon.app.ui.imagepicker.FileViewModel
@@ -246,7 +246,7 @@ class WebViewActivity : ComponentActivity() {
             val showImagePicker by fileViewModel.showImagePicker.collectAsStateWithLifecycle()
             val allowedImages by fileViewModel.allowedImages.collectAsStateWithLifecycle()
 
-            HealthCareDietTheme {
+            MuyeonTheme {
                 if (showImagePicker) {
                     ImagePickerBottomSheet(
                         images = allowedImages,

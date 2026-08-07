@@ -13,13 +13,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.muyeon.app.theme.customFontFamily
 
 /**
  * 스플래시 — iOS `SplashView.swift` 1:1 이식.
  *  흰 배경 전체 + 세로 가운데 정렬, VStack spacing 12.
  *   1행 "무용연 (舞踊緣)" 32sp Bold 검정
  *   2행 "무용으로 맺어지는 모든 인연의 시작" 15sp Regular 회색(white 0.4 = #666666) 가운데
- *  (후니드 주황 배경 + 로고 이미지였던 것을 교체)
+ *  폰트는 앱 공용 Pretendard(iOS 도 동일하게 맞춤 — 시스템 폰트는 플랫폼별로 달라 1:1 불가).
  */
 @Composable
 fun SplashScreen() {
@@ -32,12 +33,14 @@ fun SplashScreen() {
     ) {
         Text(
             text = "무용연 (舞踊緣)",
+            fontFamily = customFontFamily,
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = Color.Black,
         )
         Text(
             text = "무용으로 맺어지는 모든 인연의 시작",
+            fontFamily = customFontFamily,
             fontSize = 15.sp,
             fontWeight = FontWeight.Normal,
             color = Color(0xFF666666), // iOS Color(white: 0.4)

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.HealthCareDiet" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.Muyeon" parent="android:Theme.Material.Light.NoActionBar">
             <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
             <item name="android:windowFullscreen">false</item>
             <item name="android:windowDrawsSystemBarBackgrounds">true</item>
