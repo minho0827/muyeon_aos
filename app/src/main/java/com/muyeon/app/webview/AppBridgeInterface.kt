@@ -45,13 +45,22 @@ class AppBridgeInterface(
             onSilentAction(action, data)
             return
         }
-        // 2) 웹 경로 폴백 — 네이티브 화면 이식 전까지 동등 웹 화면으로 이동.
+        // 2) 네이티브 이식 완료 화면 — 직접 띄운다.
+        if (action == "openQuoteWizard") {
+            com.muyeon.app.ui.quote.QuoteWizardActivity.start(
+                activity,
+                data.optString("category").ifEmpty { data.optString("categoryId") },
+                data.optString("targetTeacherId"),
+            )
+            return
+        }
+        // 3) 웹 경로 폴백 — 네이티브 화면 이식 전까지 동등 웹 화면으로 이동.
         val path = webPathFor(action, data)
         if (path != null) {
             navigateWeb(path)
             return
         }
-        // 3) 매핑 없음(네이티브 전용 기능) — 무반응 대신 안내.
+        // 4) 매핑 없음(네이티브 전용 기능) — 무반응 대신 안내.
         Toast.makeText(activity, "곧 제공될 기능이에요.", Toast.LENGTH_SHORT).show()
     }
 
@@ -74,9 +83,7 @@ class AppBridgeInterface(
         fun s(key: String): String = d.optString(key, "")
         return when (action) {
             // 견적
-            // 견적 문진은 웹에 화면이 없다(네이티브 전용 — 웹은 앱설치 게이트로 유도).
-            //  잘못된 곳으로 보내지 말고 안내만: Phase 2 에서 네이티브 위저드 이식.
-            "openQuoteWizard" -> null
+            // openQuoteWizard 는 위에서 네이티브 화면으로 처리(이식 완료).
             "openMyQuotes" -> "/myQuotes"
             "openReceivedQuotes" -> s("quoteId").let { if (it.isEmpty()) "/myQuotes" else "/myQuotes/$it" }
             "openQuoteBrowse" -> "/availableQuotes"
