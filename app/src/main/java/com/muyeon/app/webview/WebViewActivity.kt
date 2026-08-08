@@ -242,6 +242,9 @@ class WebViewActivity : ComponentActivity() {
             }
         }
 
+        // 네이티브 화면이 지정한 SPA 이동/콜백(있으면) — 최초 진입 시에도 처리.
+        consumeNativeRoute(intent)
+
         composeView.setContent {
             val showImagePicker by fileViewModel.showImagePicker.collectAsStateWithLifecycle()
             val allowedImages by fileViewModel.allowedImages.collectAsStateWithLifecycle()
@@ -280,12 +283,38 @@ class WebViewActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         val notificationUrl = intent.getStringExtra("notification_url")
         if (!notificationUrl.isNullOrEmpty()) {
             val baseUrl = com.muyeon.app.utils.Constants.getBaseUrl(this)
             val fullUrl = if (notificationUrl.startsWith("http")) notificationUrl else baseUrl + notificationUrl
             Log.d("WebViewActivity", "onNewIntent notification URL: $fullUrl")
             webView.loadUrl(fullUrl)
+        }
+        consumeNativeRoute(intent)
+    }
+
+    /**
+     * 네이티브 화면에서 돌아오며 요청한 SPA 이동/콜백 처리(NativeWebRoute).
+     *  웹이 아직 로드 전이면 __nativeGo 가 없으므로 짧게 재시도한다(최대 3초).
+     */
+    private fun consumeNativeRoute(intent: Intent) {
+        intent.getStringExtra(NativeWebRoute.EXTRA_GO_PATH)?.takeIf { it.isNotEmpty() }?.let { path ->
+            intent.removeExtra(NativeWebRoute.EXTRA_GO_PATH)
+            val safe = path.replace("'", "\\'")
+            evalWhenReady("(function(){ if(window.__nativeGo){ window.__nativeGo('$safe'); return 1; } return 0; })()")
+        }
+        intent.getStringExtra(NativeWebRoute.EXTRA_EVAL_JS)?.takeIf { it.isNotEmpty() }?.let { js ->
+            intent.removeExtra(NativeWebRoute.EXTRA_EVAL_JS)
+            evalWhenReady("(function(){ try { $js } catch(e) {} return 1; })()")
+        }
+    }
+
+    private fun evalWhenReady(script: String, attempt: Int = 0) {
+        webView.evaluateJavascript(script) { result ->
+            if (result != "1" && attempt < 10) {
+                webView.postDelayed({ evalWhenReady(script, attempt + 1) }, 300)
+            }
         }
     }
 

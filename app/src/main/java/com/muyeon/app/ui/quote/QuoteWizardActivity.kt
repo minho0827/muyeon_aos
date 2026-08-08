@@ -25,6 +25,7 @@ import com.muyeon.app.BuildConfig
 import com.muyeon.app.theme.customFontFamily
 import androidx.lifecycle.lifecycleScope
 import com.muyeon.app.utils.TokenManager
+import com.muyeon.app.webview.NativeWebRoute
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -44,6 +45,9 @@ class QuoteWizardActivity : ComponentActivity() {
     companion object {
         private const val EXTRA_CATEGORY = "categoryId"
         private const val EXTRA_TARGET_TEACHER = "targetTeacherId"
+        // 인트로 최초 1회 노출 기록(기기 기준) — iOS UserDefaults "muyeon.quoteIntroSeen" 대응.
+        private const val QUOTE_PREFS = "muyeon.quote"
+        private const val KEY_INTRO_SEEN = "muyeon.quoteIntroSeen"
 
         fun start(context: Context, categoryId: String?, targetTeacherId: String?) {
             val i = Intent(context, QuoteWizardActivity::class.java)
@@ -60,13 +64,23 @@ class QuoteWizardActivity : ComponentActivity() {
         val targetTeacherId = intent.getStringExtra(EXTRA_TARGET_TEACHER).orEmpty()
 
         setContent {
+            // 최초 1회 인트로("강사를 찾고 계신가요?") — 종류 선택으로 바로 떨어지는 갑작스러움 해소.
+            //  강사 지정(1:1) 요청은 프로필 맥락이 있어 스킵(iOS presentQuoteWizard 규칙 동일).
+            val prefs = remember { getSharedPreferences(QUOTE_PREFS, MODE_PRIVATE) }
+            var showIntro by remember {
+                mutableStateOf(targetTeacherId.isEmpty() && !prefs.getBoolean(KEY_INTRO_SEEN, false))
+            }
             // 카테고리 미지정(웹 "새 견적 요청하기")이면 종류 선택부터 — iOS presentQuoteCategory 대응.
             var selected by remember { mutableStateOf(QuoteCategory.find(categoryId)) }
             val cat = selected
-            if (cat == null) {
-                QuoteCategoryScreen(onSelect = { selected = it }, onClose = { finish() })
-            } else {
-                WizardFlow(cat, targetTeacherId)
+
+            when {
+                showIntro -> QuoteIntroScreen(
+                    onStart = { prefs.edit().putBoolean(KEY_INTRO_SEEN, true).apply(); showIntro = false },
+                    onClose = { finish() },
+                )
+                cat == null -> QuoteCategoryScreen(onSelect = { selected = it }, onClose = { finish() })
+                else -> WizardFlow(cat, targetTeacherId)
             }
         }
     }
@@ -144,13 +158,7 @@ class QuoteWizardActivity : ComponentActivity() {
     }
 
     /** 완료 화면 CTA — 웹 화면으로 이동하고 위저드 종료. */
-    private fun openWebAndFinish(path: String) {
-        val i = packageManager.getLaunchIntentForPackage(packageName)
-        i?.putExtra("nativeGoPath", path)
-        i?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        if (i != null) startActivity(i)
-        finish()
-    }
+    private fun openWebAndFinish(path: String) = NativeWebRoute.openWebAndFinish(this, path)
 
     /** POST /api/quotes — iOS QuoteService.createQuote 와 동일 페이로드. */
     private fun submit(
