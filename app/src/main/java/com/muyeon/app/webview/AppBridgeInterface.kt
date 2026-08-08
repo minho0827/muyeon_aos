@@ -97,6 +97,31 @@ class AppBridgeInterface(
             "openLessonQuoteHub" -> com.muyeon.app.ui.quote.QuoteDashboardActivity.start(activity, d.optString("role"))
             // 채팅 — 웹 대체 화면이 없어 유일하게 토스트로 막혀 있던 동선.
             "openChatList" -> com.muyeon.app.ui.chat.ChatActivity.startList(activity, d.optString("filter"))
+            // 이력서/공개프로필/리뷰 — C 이식 완료
+            "openResumeList" -> com.muyeon.app.ui.resume.ResumeActivity.startList(activity, d.optString("mode"))
+            "openResumeEdit" -> com.muyeon.app.ui.resume.ResumeActivity.startEdit(
+                activity, d.optString("resumeId").toIntOrNull(), d.optString("mode"),
+            )
+            "openFieldVisibility" -> com.muyeon.app.ui.resume.ResumeActivity.startVisibility(activity, d.optString("mode"))
+            "openPublicProfile", "openTeacherProfile" -> {
+                val uid = (d.optString("userId").ifEmpty { d.optString("teacherId") }).toIntOrNull() ?: return true
+                com.muyeon.app.ui.resume.ResumeActivity.startProfile(activity, uid, d.optString("src"))
+            }
+            "openReviewList" -> {
+                val tid = d.optString("teacherId").toIntOrNull() ?: return true
+                com.muyeon.app.ui.resume.ResumeActivity.startReviewList(activity, tid)
+            }
+            "openReviewWrite", "openReviewEdit" -> {
+                val tid = d.optString("teacherId").toIntOrNull() ?: return true
+                com.muyeon.app.ui.resume.ResumeActivity.startReviewWrite(
+                    activity, tid, d.optString("teacherName"), d.optString("lessonType"),
+                )
+            }
+            "openApplicantResume" -> {
+                val job = d.optString("jobId").toIntOrNull() ?: return true
+                val app = d.optString("applicationId").toIntOrNull() ?: return true
+                com.muyeon.app.ui.resume.ResumeActivity.startApplicant(activity, job, app)
+            }
             "openChatRoom" -> {
                 val roomId = d.optString("roomId").toIntOrNull() ?: return true
                 com.muyeon.app.ui.chat.ChatActivity.startRoom(activity, roomId, d.optString("title"))
@@ -134,21 +159,8 @@ class AppBridgeInterface(
             "openLessonBooking" -> s("lessonProductId").let { if (it.isEmpty()) "/lessons" else "/lessons/$it" }
             "openLessonReservationDetail" -> "/myReservations"
 
-            // 프로필/이력서
-            "openPublicProfile" -> s("userId").let { if (it.isEmpty()) "/mypage" else "/teachers/$it" }
-            "openTeacherProfile" -> s("teacherId").let { if (it.isEmpty()) "/teachers" else "/teachers/$it" }
+            // 프로필/이력서/리뷰 — openNative() 에서 처리(이식 완료). 학원 프로필만 웹 유지.
             "openAcademyProfile" -> s("academyId").let { if (it.isEmpty()) "/academyProfile" else "/academies/$it" }
-            "openResumeList" -> "/profileResume"
-            "openResumeEdit" -> "/resumeEdit"
-            "openFieldVisibility" -> "/profileManage"
-            "openApplicantResume" -> {
-                val job = s("jobId"); val app = s("applicationId")
-                if (job.isEmpty() || app.isEmpty()) "/receivedApplications" else "/jobs/$job/applicants/$app"
-            }
-
-            // 리뷰
-            "openReviewWrite", "openReviewEdit" -> s("teacherId").let { if (it.isEmpty()) "/mypage" else "/teachers/$it" }
-            "openReviewList" -> s("teacherId").let { if (it.isEmpty()) "/mypage" else "/teachers/$it" }
 
             // 스튜디오 운영 / 기타 MY
             "openStudioMembers", "openStudioSales", "openStudioSchedule", "openStudioOps" -> "/mypage"
