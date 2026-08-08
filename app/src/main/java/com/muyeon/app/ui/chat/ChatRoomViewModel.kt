@@ -67,6 +67,9 @@ class ChatRoomViewModel(
         token?.takeIf { it.isNotBlank() }?.let { JWT.decode(it).subject?.toIntOrNull() } ?: 0
     }.getOrDefault(0)
 
+    /** 제안 카드·신고 시트가 쓰는 토큰(뷰가 다시 만들지 않도록 VM 이 보관). */
+    val tokenForCards: String? = token
+
     private var totalCount = 0
     private var loadedPages = 1
     private val pageLimit = 50
@@ -276,6 +279,48 @@ class ChatRoomViewModel(
     }
 
     fun deleteMessage(m: ChatMessage) = ChatSocketManager.deleteMessage(roomId, m.id)
+
+    /** 약속 제안 수락/거절/취소 후 — 진행 카드·일정 배너가 바뀌므로 상세를 다시 읽는다. */
+    fun reloadContext() { viewModelScope.launch { loadDetail() } }
+
+    /**
+     * 사진 전송 — 업로드 후 imageUrl 을 콤마로 join 해 한 건으로 보낸다(iOS sendImage 규약).
+     *  여러 장을 개별 메시지로 쪼개면 상대 화면에서 도배가 된다.
+     */
+    fun sendImages(context: android.content.Context, uris: List<android.net.Uri>) {
+        if (uris.isEmpty()) return
+        isUploadingMedia = true
+        viewModelScope.launch {
+            val urls = uris.mapNotNull { uri ->
+                readBytes(context, uri)?.let { api.uploadImage(it).getOrNull() }
+            }
+            isUploadingMedia = false
+            if (urls.isEmpty()) { toast = "사진을 올리지 못했어요."; return@launch }
+            val joined = urls.joinToString(",")
+            val p = Pending(type = "IMAGE", content = "", imageUrl = joined, replyToId = null)
+            pending.add(p)
+            if (!ChatSocketManager.sendMessage(roomId, "IMAGE", "", joined)) markFailed(p)
+        }
+    }
+
+    /** 동영상 전송 — 업로드 후 imageUrl 에 동영상 URL(iOS sendVideo 와 동일 규약). */
+    fun sendVideo(context: android.content.Context, uri: android.net.Uri) {
+        isUploadingMedia = true
+        viewModelScope.launch {
+            val bytes = readBytes(context, uri)
+            val url = bytes?.let { api.uploadVideo(it).getOrNull() }
+            isUploadingMedia = false
+            if (url == null) { toast = "동영상을 올리지 못했어요."; return@launch }
+            val p = Pending(type = "VIDEO", content = "", imageUrl = url, replyToId = null)
+            pending.add(p)
+            if (!ChatSocketManager.sendMessage(roomId, "VIDEO", "", url)) markFailed(p)
+        }
+    }
+
+    private suspend fun readBytes(context: android.content.Context, uri: android.net.Uri): ByteArray? =
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
+        }
 
     fun toggleReaction(m: ChatMessage, emoji: String) {
         // 낙관적 갱신 후 서버 반영 — 소켓 에코(message-reaction)로 재조정.

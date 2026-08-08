@@ -112,10 +112,21 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         url: String?,
         customData: Map<String, String> = emptyMap()
     ) {
-        val intent = Intent(this, WebViewActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            if (!url.isNullOrEmpty()) putExtra("notification_url", url)
-            customData.forEach { (k, v) -> putExtra(k, v) }
+        // 채팅 푸시(chat.gateway 가 방 미접속자에게 발송: data.type=chat_message, roomId)는
+        //  웹뷰가 아니라 네이티브 채팅방으로 직행. 그 외는 기존 웹뷰 경로 유지.
+        val chatRoomId = customData["roomId"]?.toIntOrNull()
+        val intent = if (customData["type"] == "chat_message" && chatRoomId != null && chatRoomId > 0) {
+            Intent(this, com.muyeon.app.ui.chat.ChatActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("roomId", chatRoomId)
+                putExtra("title", title)
+            }
+        } else {
+            Intent(this, WebViewActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                if (!url.isNullOrEmpty()) putExtra("notification_url", url)
+                customData.forEach { (k, v) -> putExtra(k, v) }
+            }
         }
 
         val notificationId = System.currentTimeMillis().toInt()
