@@ -97,6 +97,15 @@ class AppBridgeInterface(
             "openLessonQuoteHub" -> com.muyeon.app.ui.quote.QuoteDashboardActivity.start(activity, d.optString("role"))
             // 채팅 — 웹 대체 화면이 없어 유일하게 토스트로 막혀 있던 동선.
             "openChatList" -> com.muyeon.app.ui.chat.ChatActivity.startList(activity, d.optString("filter"))
+            // 알림·회원유형 — E 이식 완료
+            "openNotifications" -> com.muyeon.app.ui.notification.NotificationActivity.start(activity)
+            "openRoleManage" -> com.muyeon.app.ui.onboarding.OnboardingActivity.startRoleManage(
+                activity, d.optJSONObject("payload")?.toString() ?: d.toString(), d.optString("heroImage"),
+            )
+            "openRoleVerification" -> com.muyeon.app.ui.onboarding.OnboardingActivity.startVerification(
+                activity, d.optString("role"),
+            )
+
             // 레슨 — D 이식 완료
             "openLessonCalendar" -> com.muyeon.app.ui.lesson.LessonActivity.startCalendar(activity)
             "openLessonCreate" -> com.muyeon.app.ui.lesson.LessonActivity.startCreate(activity)
@@ -172,13 +181,12 @@ class AppBridgeInterface(
 
             // 스튜디오 운영 / 기타 MY
             "openStudioMembers", "openStudioSales", "openStudioSchedule", "openStudioOps" -> "/mypage"
-            "openNotifications" -> "/notifications"
             "openMembership" -> s("featureType").let { if (it.isEmpty()) "/myMembership" else "/membership/$it" }
             "openMyJobPostings" -> "/myPostings"
 
             // 온보딩/계정 — 웹에도 화면 존재
             "openSignupTerms" -> "/signupTerms"
-            "openRoleOnboarding", "openRoleManage", "openRoleVerification" -> "/mypage"
+            "openRoleOnboarding" -> "/mypage"
             "openAddressSetup" -> "/myRegions"
 
             // 채팅 — openNative() 에서 네이티브 화면으로 처리(이식 완료).
