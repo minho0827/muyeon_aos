@@ -115,6 +115,19 @@ class AppBridgeInterface(
                 activity, d.optString("role"),
             )
 
+            // 온보딩·이용권·학원 프로필 — E 이식 완료
+            "openSignupTerms" -> com.muyeon.app.ui.onboarding.OnboardingActivity.startTerms(activity)
+            "openAddressSetup" -> com.muyeon.app.ui.onboarding.OnboardingActivity.startAddress(activity)
+            "openNotificationConsent" ->
+                com.muyeon.app.ui.onboarding.OnboardingActivity.startNotificationConsent(activity)
+            "openMembership" -> com.muyeon.app.ui.membership.MembershipActivity.start(
+                activity, d.optString("featureType").ifEmpty { null },
+            )
+            "openAcademyProfile" -> {
+                val aid = d.optString("academyId").toIntOrNull() ?: return true
+                com.muyeon.app.ui.academy.AcademyProfileActivity.start(activity, aid)
+            }
+
             // 레슨 — D 이식 완료
             "openLessonCalendar" -> com.muyeon.app.ui.lesson.LessonActivity.startCalendar(activity)
             "openLessonCreate" -> com.muyeon.app.ui.lesson.LessonActivity.startCreate(activity)
@@ -185,16 +198,12 @@ class AppBridgeInterface(
             // 레슨 — openNative() 에서 처리(이식 완료). 예약 내역만 웹 유지(목록 화면 미이식).
             "openLessonReservationDetail" -> "/myReservations"
 
-            // 프로필/이력서/리뷰 — openNative() 에서 처리(이식 완료). 학원 프로필만 웹 유지.
-            "openAcademyProfile" -> s("academyId").let { if (it.isEmpty()) "/academyProfile" else "/academies/$it" }
+            // 프로필/이력서/리뷰 · 이용권 · 학원 프로필 — openNative() 에서 처리(이식 완료).
+            //  단 academyId 가 없으면 학원 목록 웹으로.
+            "openAcademyProfile" -> "/academyProfile"
 
-            // 스튜디오 운영 / 기타 MY
-            "openMembership" -> s("featureType").let { if (it.isEmpty()) "/myMembership" else "/membership/$it" }
-
-            // 온보딩/계정 — 웹에도 화면 존재
-            "openSignupTerms" -> "/signupTerms"
+            // 온보딩/계정 — openSignupTerms/openAddressSetup 은 네이티브. 유형 온보딩만 웹 유지.
             "openRoleOnboarding" -> "/mypage"
-            "openAddressSetup" -> "/myRegions"
 
             // 채팅 — openNative() 에서 네이티브 화면으로 처리(이식 완료).
             // 이미지 뷰어 — 웹 대체 없음.
