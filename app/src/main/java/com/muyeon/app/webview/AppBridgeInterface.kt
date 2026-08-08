@@ -97,6 +97,18 @@ class AppBridgeInterface(
             "openLessonQuoteHub" -> com.muyeon.app.ui.quote.QuoteDashboardActivity.start(activity, d.optString("role"))
             // 채팅 — 웹 대체 화면이 없어 유일하게 토스트로 막혀 있던 동선.
             "openChatList" -> com.muyeon.app.ui.chat.ChatActivity.startList(activity, d.optString("filter"))
+            // 레슨 — D 이식 완료
+            "openLessonCalendar" -> com.muyeon.app.ui.lesson.LessonActivity.startCalendar(activity)
+            "openLessonCreate" -> com.muyeon.app.ui.lesson.LessonActivity.startCreate(activity)
+            "openLessonSlotManage" -> com.muyeon.app.ui.lesson.LessonActivity.startSlots(
+                activity, d.optString("lessonProductId").toIntOrNull(),
+            )
+            "openLessonBooking" -> {
+                val pid = d.optString("lessonProductId").toIntOrNull()
+                if (pid == null) com.muyeon.app.ui.lesson.LessonActivity.startManage(activity)
+                else com.muyeon.app.ui.lesson.LessonActivity.startBooking(activity, pid)
+            }
+
             // 이력서/공개프로필/리뷰 — C 이식 완료
             "openResumeList" -> com.muyeon.app.ui.resume.ResumeActivity.startList(activity, d.optString("mode"))
             "openResumeEdit" -> com.muyeon.app.ui.resume.ResumeActivity.startEdit(
@@ -152,11 +164,7 @@ class AppBridgeInterface(
             // 견적 — openQuoteWizard/openMyQuotes/openReceivedQuotes/openQuoteBrowse/
             //  openAutoQuoteTemplates/openLessonQuoteHub 는 openNative() 에서 처리(이식 완료).
 
-            // 레슨
-            "openLessonCalendar" -> "/lessonCalendar"
-            "openLessonCreate" -> "/lessons/create"
-            "openLessonSlotManage" -> "/myLessons"
-            "openLessonBooking" -> s("lessonProductId").let { if (it.isEmpty()) "/lessons" else "/lessons/$it" }
+            // 레슨 — openNative() 에서 처리(이식 완료). 예약 내역만 웹 유지(목록 화면 미이식).
             "openLessonReservationDetail" -> "/myReservations"
 
             // 프로필/이력서/리뷰 — openNative() 에서 처리(이식 완료). 학원 프로필만 웹 유지.

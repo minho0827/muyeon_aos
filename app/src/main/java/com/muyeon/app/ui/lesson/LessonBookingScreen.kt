@@ -1,0 +1,249 @@
+package com.muyeon.app.ui.lesson
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.muyeon.app.theme.customFontFamily
+import com.muyeon.app.ui.common.MuyeonColors
+import com.muyeon.app.ui.quote.QuoteDialog
+import com.muyeon.app.ui.quote.QuoteNavBar
+import kotlinx.coroutines.launch
+import java.util.Calendar
+import java.util.Date
+
+/**
+ * 레슨 예약 — iOS `LessonBookingSheet.swift` 이식.
+ *  회차(슬롯) 선택 + 인원 → 예약. reservationId 가 있으면 **변경 모드**(원자적 리스케줄).
+ */
+@Composable
+fun LessonBookingScreen(
+    api: LessonBookingApi,
+    productId: Int,
+    rescheduleReservationId: Int? = null,
+    onClose: () -> Unit,
+    onDone: () -> Unit,
+) {
+    var slots by remember { mutableStateOf<List<LessonSlot>>(emptyList()) }
+    var selected by remember { mutableStateOf<LessonSlot?>(null) }
+    var headcount by remember { mutableIntStateOf(1) }
+    var loading by remember { mutableStateOf(true) }
+    var busy by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(productId) {
+        val (from, to) = bookingRange()
+        api.availableSlots(productId, from, to).onSuccess { slots = it }
+        loading = false
+    }
+
+    val isReschedule = rescheduleReservationId != null
+    val byDate = remember(slots) { slots.filter { it.isOpen }.groupBy { it.date }.toSortedMap() }
+
+    Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
+        QuoteNavBar(title = if (isReschedule) "예약 변경" else "레슨 예약", onBack = onClose)
+
+        if (loading) {
+            Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
+                CircularProgressIndicator(color = MuyeonColors.primary)
+            }
+            return@Column
+        }
+
+        Column(
+            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            if (byDate.isEmpty()) {
+                Text(
+                    "예약 가능한 회차가 없어요.\n강사가 시간을 열면 여기에 보여요.",
+                    fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
+                    color = MuyeonColors.textSub, textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
+                )
+            }
+            byDate.forEach { (date, list) ->
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        date,
+                        fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                        lineHeight = 18.sp, color = MuyeonColors.textHead,
+                        modifier = Modifier.padding(top = 12.dp),
+                    )
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        list.forEach { s ->
+                            val on = selected?.id == s.id
+                            Column(
+                                Modifier.clip(RoundedCornerShape(10.dp))
+                                    .background(if (on) MuyeonColors.primary else Color(0xFFF2F2F7))
+                                    .clickable {
+                                        selected = s
+                                        // 남은 자리보다 많은 인원이 선택돼 있으면 줄인다.
+                                        if (headcount > s.remaining) headcount = s.remaining.coerceAtLeast(1)
+                                    }
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(2.dp),
+                            ) {
+                                Text(
+                                    s.timeLabel,
+                                    fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
+                                    lineHeight = 17.sp, color = if (on) Color.White else MuyeonColors.textHead,
+                                )
+                                Text(
+                                    "${s.remaining}자리",
+                                    fontFamily = customFontFamily, fontSize = 11.sp, lineHeight = 13.sp,
+                                    color = if (on) Color.White.copy(alpha = 0.9f) else MuyeonColors.textSub,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 인원 — 남은 자리 상한
+            selected?.let { s ->
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "인원",
+                        fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                        lineHeight = 18.sp, color = MuyeonColors.textHead,
+                    )
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                            .border(1.dp, MuyeonColors.border, RoundedCornerShape(10.dp)).padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Filled.Remove, "감소", tint = MuyeonColors.textSub,
+                            modifier = Modifier.size(24.dp).clickable(enabled = headcount > 1) { headcount -= 1 },
+                        )
+                        Text(
+                            "${headcount}명",
+                            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
+                            lineHeight = 18.sp, color = MuyeonColors.textHead, textAlign = TextAlign.Center,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Icon(
+                            Icons.Filled.Add, "증가", tint = MuyeonColors.textSub,
+                            modifier = Modifier.size(24.dp).clickable(enabled = headcount < s.remaining) { headcount += 1 },
+                        )
+                    }
+                    Text(
+                        "남은 자리 ${s.remaining}명",
+                        fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 14.sp, color = MuyeonColors.textSub,
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+
+        val canSubmit = selected != null && !busy
+        Text(
+            if (busy) "처리 중…" else if (isReschedule) "예약 변경하기" else "예약하기",
+            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+            lineHeight = 19.sp, color = Color.White, textAlign = TextAlign.Center,
+            modifier = Modifier
+                .padding(horizontal = 20.dp).padding(top = 8.dp, bottom = 12.dp)
+                .fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                .background(if (canSubmit) MuyeonColors.primary else Color.Gray.copy(alpha = 0.4f))
+                .clickable(enabled = canSubmit) {
+                    val s = selected ?: return@clickable
+                    busy = true
+                    scope.launch {
+                        val r = if (rescheduleReservationId != null) {
+                            api.reschedule(rescheduleReservationId, s.id, headcount)
+                        } else {
+                            api.reserve(s.id, headcount)
+                        }
+                        r.onSuccess { onDone() }.onFailure { errorMessage = it.message }
+                        busy = false
+                    }
+                }
+                .padding(vertical = 16.dp),
+        )
+    }
+
+    errorMessage?.let { msg ->
+        QuoteDialog("알림", msg, "확인", onConfirm = { errorMessage = null }, onDismiss = { errorMessage = null })
+    }
+}
+
+/** 예약 가능 조회 구간 — 오늘부터 8주. */
+private fun bookingRange(): Pair<String, String> {
+    val cal = kstCalendar()
+    val from = kstYmd.format(Date(cal.timeInMillis))
+    cal.add(Calendar.DAY_OF_MONTH, 56)
+    return from to kstYmd.format(Date(cal.timeInMillis))
+}
+
+/**
+ * 예약 취소 사유 시트 — iOS `LessonCancelReasonSheet.swift`.
+ *  ⚠️ 사유 코드는 서버·admin 과 3레포 계약이라 값을 바꾸면 관리자 통계가 깨진다.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LessonCancelReasonSheet(onDismiss: () -> Unit, onConfirm: (LessonCancelReason) -> Unit) {
+    var selected by remember { mutableStateOf<LessonCancelReason?>(null) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+            Text(
+                "취소 사유를 선택해주세요.",
+                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 19.sp,
+                lineHeight = 23.sp, color = MuyeonColors.textHead,
+                modifier = Modifier.padding(horizontal = 20.dp).padding(top = 4.dp, bottom = 18.dp),
+            )
+            LessonCancelReason.entries.forEach { r ->
+                val on = selected == r
+                Row(
+                    Modifier.fillMaxWidth().clickable { selected = r }.padding(horizontal = 20.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Box(
+                        Modifier.size(18.dp).clip(RoundedCornerShape(50))
+                            .border(if (on) 6.dp else 1.5.dp, if (on) MuyeonColors.primary else MuyeonColors.border, RoundedCornerShape(50)),
+                    )
+                    Text(
+                        r.label,
+                        fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 18.sp, color = MuyeonColors.textHead,
+                    )
+                }
+            }
+            Text(
+                "선택 완료",
+                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                lineHeight = 19.sp, color = Color.White, textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
+                    .fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                    .background(if (selected != null) MuyeonColors.primary else Color.Gray.copy(alpha = 0.4f))
+                    .clickable(enabled = selected != null) { selected?.let(onConfirm) }
+                    .padding(vertical = 15.dp),
+            )
+        }
+    }
+}
