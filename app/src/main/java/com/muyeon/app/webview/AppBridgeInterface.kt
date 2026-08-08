@@ -46,14 +46,7 @@ class AppBridgeInterface(
             return
         }
         // 2) 네이티브 이식 완료 화면 — 직접 띄운다.
-        if (action == "openQuoteWizard") {
-            com.muyeon.app.ui.quote.QuoteWizardActivity.start(
-                activity,
-                data.optString("category").ifEmpty { data.optString("categoryId") },
-                data.optString("targetTeacherId"),
-            )
-            return
-        }
+        if (openNative(action, data)) return
         // 3) 웹 경로 폴백 — 네이티브 화면 이식 전까지 동등 웹 화면으로 이동.
         val path = webPathFor(action, data)
         if (path != null) {
@@ -62,6 +55,49 @@ class AppBridgeInterface(
         }
         // 4) 매핑 없음(네이티브 전용 기능) — 무반응 대신 안내.
         Toast.makeText(activity, "곧 제공될 기능이에요.", Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * 네이티브 이식 완료 화면 라우팅 — 처리했으면 true.
+     *  iOS 대응: presentQuoteWizard / presentMyQuotes / presentReceivedQuotes /
+     *  presentQuoteBrowse / presentAutoQuoteTemplates / presentLessonQuoteHub.
+     */
+    private fun openNative(action: String, d: JSONObject): Boolean {
+        when (action) {
+            "openQuoteWizard" -> com.muyeon.app.ui.quote.QuoteWizardActivity.start(
+                activity,
+                d.optString("category").ifEmpty { d.optString("categoryId") },
+                d.optString("targetTeacherId"),
+            )
+            // 받은/보낸 견적. iOS presentMyQuotes 분기 그대로:
+            //  tab=sent → 강사이므로 isPro 강제 / 일반회원 기본 진입(탭 미지정)은 대시보드,
+            //  딥링크(tab 지정)·강사 경로만 허브 직행.
+            "openMyQuotes" -> {
+                val tab = d.optString("tab")
+                val initialTab = if (tab == "sent") 1 else 0
+                val isPro = d.optString("isPro") == "1" || initialTab == 1
+                if (!isPro && tab.isEmpty()) {
+                    com.muyeon.app.ui.quote.QuoteDashboardActivity.start(activity, null)
+                } else {
+                    com.muyeon.app.ui.quote.QuoteHubActivity.start(activity, isPro, initialTab)
+                }
+            }
+            // 특정 요청 상세 — quoteId 없으면 무시(iOS presentReceivedQuotes 의 guard 와 동일).
+            //  강조할 응답 id 키는 'r'(웹 딥링크 ?r=).
+            "openReceivedQuotes" -> {
+                val quoteId = d.optString("quoteId").toIntOrNull() ?: return true
+                if (quoteId <= 0) return true
+                com.muyeon.app.ui.quote.QuoteHubActivity.start(
+                    activity, isPro = false, initialTab = 0,
+                    quoteId = quoteId, responseId = d.optString("r").toIntOrNull(),
+                )
+            }
+            "openQuoteBrowse" -> com.muyeon.app.ui.quote.QuoteBrowseActivity.start(activity)
+            "openAutoQuoteTemplates" -> com.muyeon.app.ui.quote.QuoteAutoTemplatesActivity.start(activity)
+            "openLessonQuoteHub" -> com.muyeon.app.ui.quote.QuoteDashboardActivity.start(activity, d.optString("role"))
+            else -> return false
+        }
+        return true
     }
 
     /** 상태 통지류 처리(현재는 기록만 — 플로팅 버튼/활성유형은 네이티브 이식 시 연결). */
@@ -82,17 +118,12 @@ class AppBridgeInterface(
     private fun webPathFor(action: String, d: JSONObject): String? {
         fun s(key: String): String = d.optString(key, "")
         return when (action) {
-            // 견적
-            // openQuoteWizard 는 위에서 네이티브 화면으로 처리(이식 완료).
-            "openMyQuotes" -> "/myQuotes"
-            "openReceivedQuotes" -> s("quoteId").let { if (it.isEmpty()) "/myQuotes" else "/myQuotes/$it" }
-            "openQuoteBrowse" -> "/availableQuotes"
-            "openAutoQuoteTemplates" -> "/quoteSettings"
+            // 견적 — openQuoteWizard/openMyQuotes/openReceivedQuotes/openQuoteBrowse/
+            //  openAutoQuoteTemplates/openLessonQuoteHub 는 openNative() 에서 처리(이식 완료).
 
             // 레슨
             "openLessonCalendar" -> "/lessonCalendar"
             "openLessonCreate" -> "/lessons/create"
-            "openLessonQuoteHub" -> "/lessonHub"
             "openLessonSlotManage" -> "/myLessons"
             "openLessonBooking" -> s("lessonProductId").let { if (it.isEmpty()) "/lessons" else "/lessons/$it" }
             "openLessonReservationDetail" -> "/myReservations"

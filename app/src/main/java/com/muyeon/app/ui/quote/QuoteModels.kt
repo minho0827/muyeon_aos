@@ -115,4 +115,49 @@ object QuoteQuestions {
         listOf(
             QuoteQuestion("class", QuoteAnswerType.MULTI, "어떤 수업을 원하시나요?", category.classOptions)
         ) + common
+
+    /** 문진 짧은 라벨(웹 QUESTION_TITLES 와 동일 — 목록 표시용). */
+    private val shortLabels: Map<String, String> = mapOf(
+        "class" to "수업", "age" to "연령대", "format" to "레슨 형태", "days" to "선호 요일",
+        "time" to "시간대", "gender" to "성별", "teacherGender" to "선호 강사 성별",
+        "when" to "레슨 시기", "region" to "지역", "method" to "진행 방식",
+        "inquiry" to "문의", "detail" to "추가 요청",
+    )
+
+    /**
+     * 견적 답변을 (짧은 라벨, 값) 목록으로 복원 — iOS `QuoteQuestion.describe` 1:1.
+     *  정본 순서(class → 공통 문진 순)로 정렬한다. 서버 answers 는 클라 append 순서 그대로라
+     *  요청마다 순서가 들쑥날쑥하던 문제(모아보기 카드 등)를 여기서 정규화. 미정의 id 는 뒤에 원순서 유지.
+     */
+    fun describe(categoryId: String?, answers: List<QuoteAnswerRaw>): List<Pair<String, String>> {
+        val category = QuoteCategory.find(categoryId)
+        val canonical = listOf("class") + common.map { it.id }
+        val ordered = answers.withIndex().sortedWith(
+            compareBy(
+                { canonical.indexOf(it.value.questionId).let { i -> if (i < 0) Int.MAX_VALUE else i } },
+                { it.index },
+            )
+        ).map { it.value }
+
+        val out = mutableListOf<Pair<String, String>>()
+        for (a in ordered) {
+            val qid = a.questionId ?: continue
+            val question: QuoteQuestion? = if (qid == "class") {
+                category?.let { QuoteQuestion("class", QuoteAnswerType.MULTI, "수업", it.classOptions) }
+            } else {
+                common.firstOrNull { it.id == qid }
+            }
+            val q = question ?: continue
+            val value = when {
+                !a.optionIds.isNullOrEmpty() ->
+                    a.optionIds.joinToString(", ") { oid -> q.options.firstOrNull { it.id == oid }?.label ?: oid }
+                !a.region.isNullOrEmpty() -> a.region
+                !a.date.isNullOrEmpty() -> a.date
+                !a.text.isNullOrEmpty() -> a.text
+                else -> ""
+            }
+            if (value.isNotEmpty()) out.add((shortLabels[qid] ?: q.title) to value)
+        }
+        return out
+    }
 }
