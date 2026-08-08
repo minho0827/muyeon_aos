@@ -1,7 +1,9 @@
 package com.muyeon.app.ui.chat
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
@@ -12,11 +14,15 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -26,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -49,6 +56,10 @@ import kotlinx.coroutines.launch
 fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    var showAttach by remember { mutableStateOf(false) }
+    var showReport by remember { mutableStateOf(false) }
+    var reactionTarget by remember { mutableStateOf<ChatMessage?>(null) }
 
     LaunchedEffect(vm.roomId) { vm.start() }
 
@@ -65,7 +76,7 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        RoomNavBar(vm, onBack)
+        RoomNavBar(vm, onBack, onReport = { showReport = true })
 
         Box(Modifier.weight(1f).fillMaxWidth().background(Color(0xFFF7F7F8))) {
             if (vm.isLoading && vm.messages.isEmpty()) {
@@ -94,9 +105,14 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
                             isMine = m.senderId == vm.currentUserId,
                             opponentImage = vm.opponentImage,
                             read = isReadByOpponent(m, vm.opponentLastReadAt),
+                            isTeacherSide = vm.quoteContext?.isTeacher == true,
+                            token = vm.tokenForCards,
                             onReply = { vm.replyingTo = m },
-                            onDelete = { vm.deleteMessage(m) },
+                            onLongPress = { reactionTarget = m },
                             onEdit = { vm.editingMessage = m; vm.onInputChange(m.content) },
+                            onToggleReaction = { emoji -> vm.toggleReaction(m, emoji) },
+                            onOpenLink = { url -> openExternal(context, url) },
+                            onProposalChanged = { vm.reloadContext() },
                         )
                     }
                     items(vm.pending.size) { i -> PendingBubble(vm.pending[i]) { vm.retry(vm.pending[i]) } }
@@ -137,12 +153,61 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
         }
 
         ReplyOrEditBanner(vm)
-        ChatInputBar(vm)
+        ChatInputBar(vm, onAttach = { showAttach = true })
+    }
+
+    if (showAttach) {
+        ChatAttachSheet(
+            showSurvey = vm.quoteContext?.isTeacher == true,
+            showProposal = vm.quoteContext?.isTeacher == true,
+            onPickImages = { uris -> vm.sendImages(context, uris) },
+            onPickVideo = { uri -> vm.sendVideo(context, uri) },
+            onSurvey = { vm.toast = "설문지는 곧 제공될 기능이에요." },
+            onProposal = { vm.toast = "레슨 약속잡기는 곧 제공될 기능이에요." },
+            onDismiss = { showAttach = false },
+        )
+    }
+    if (showReport) {
+        ChatReportSheet(
+            roomId = vm.roomId,
+            opponentName = vm.title,
+            token = vm.tokenForCards,
+            onDone = { showReport = false; vm.toast = "신고가 접수되었어요." },
+            onDismiss = { showReport = false },
+        )
+    }
+    reactionTarget?.let { m ->
+        ReactionPicker(
+            onPick = { emoji -> vm.toggleReaction(m, emoji); reactionTarget = null },
+            onDismiss = { reactionTarget = null },
+        )
+    }
+    vm.toast?.let { msg ->
+        LaunchedEffect(msg) { kotlinx.coroutines.delay(2000); vm.toast = null }
+    }
+}
+
+/** 이모지 반응 피커 — 길게 눌러 선택(카톡식 6종). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReactionPicker(onPick: (String) -> Unit, onDismiss: () -> Unit) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            listOf("👍", "❤️", "😂", "😮", "😢", "🙏").forEach { e ->
+                Text(
+                    e, fontSize = 30.sp, lineHeight = 36.sp,
+                    modifier = Modifier.clip(RoundedCornerShape(50)).clickable { onPick(e) }.padding(6.dp),
+                )
+            }
+        }
     }
 }
 
 @Composable
-private fun RoomNavBar(vm: ChatRoomViewModel, onBack: () -> Unit) {
+private fun RoomNavBar(vm: ChatRoomViewModel, onBack: () -> Unit, onReport: () -> Unit) {
     Box(
         Modifier.fillMaxWidth().height(44.dp).background(MuyeonColors.surface),
         contentAlignment = Alignment.Center,
@@ -158,18 +223,20 @@ private fun RoomNavBar(vm: ChatRoomViewModel, onBack: () -> Unit) {
         ) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, "뒤로", tint = MuyeonColors.textHead, modifier = Modifier.size(18.dp))
         }
-        // 방별 알림 음소거 토글
-        Box(
-            Modifier.align(Alignment.CenterEnd).padding(end = 4.dp).size(44.dp)
-                .clickable { vm.toggleMute(!vm.muted) },
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                if (vm.muted) Icons.Filled.NotificationsOff else Icons.Filled.Notifications,
-                if (vm.muted) "알림 켜기" else "알림 끄기",
-                tint = if (vm.muted) MuyeonColors.secondary else MuyeonColors.textHead,
-                modifier = Modifier.size(18.dp),
-            )
+        Row(Modifier.align(Alignment.CenterEnd).padding(end = 4.dp)) {
+            // 방별 알림 음소거 토글
+            Box(Modifier.size(44.dp).clickable { vm.toggleMute(!vm.muted) }, contentAlignment = Alignment.Center) {
+                Icon(
+                    if (vm.muted) Icons.Filled.NotificationsOff else Icons.Filled.Notifications,
+                    if (vm.muted) "알림 켜기" else "알림 끄기",
+                    tint = if (vm.muted) MuyeonColors.secondary else MuyeonColors.textHead,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            // 신고 — iOS 우상단 ⋯ 메뉴
+            Box(Modifier.size(44.dp).clickable(onClick = onReport), contentAlignment = Alignment.Center) {
+                Icon(Icons.Filled.MoreVert, "더보기", tint = MuyeonColors.textHead, modifier = Modifier.size(18.dp))
+            }
         }
     }
 }
@@ -204,7 +271,7 @@ private fun ReplyOrEditBanner(vm: ChatRoomViewModel) {
 }
 
 @Composable
-private fun ChatInputBar(vm: ChatRoomViewModel) {
+private fun ChatInputBar(vm: ChatRoomViewModel, onAttach: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -213,6 +280,14 @@ private fun ChatInputBar(vm: ChatRoomViewModel) {
         verticalAlignment = Alignment.Bottom,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        // 첨부(+) — iOS 입력바 좌측 '+' 버튼.
+        Box(
+            Modifier.size(34.dp).clip(RoundedCornerShape(50)).background(Color(0xFFF2F2F7))
+                .clickable(onClick = onAttach),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Filled.Add, "첨부", tint = MuyeonColors.textSub, modifier = Modifier.size(18.dp))
+        }
         Box(
             Modifier
                 .weight(1f)
@@ -259,16 +334,29 @@ private fun isReadByOpponent(m: ChatMessage, opponentLastReadAt: Long?): Boolean
     return read >= sent
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MessageBubble(
     message: ChatMessage,
     isMine: Boolean,
     opponentImage: String?,
     read: Boolean,
+    isTeacherSide: Boolean,
+    token: String?,
     onReply: () -> Unit,
-    onDelete: () -> Unit,
+    onLongPress: () -> Unit,
     onEdit: () -> Unit,
+    onToggleReaction: (String) -> Unit,
+    onOpenLink: (String) -> Unit,
+    onProposalChanged: () -> Unit,
 ) {
+    // 레슨 약속 제안은 말풍선이 아니라 전용 카드로 렌더(iOS LessonProposalCardBubble).
+    if (message.type == "LESSON_PROPOSAL" && !message.isDeleted) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
+            LessonProposalBubble(message.content, isTeacherSide, token, onProposalChanged)
+        }
+        return
+    }
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start,
@@ -300,7 +388,10 @@ private fun MessageBubble(
                     .widthIn(max = 260.dp)
                     .clip(RoundedCornerShape(18.dp))
                     .background(if (isMine) MuyeonColors.primary else Color(0xFFF2F2F7))
-                    .clickable(onClick = if (isMine) onEdit else onReply)
+                    .combinedClickable(
+                        onClick = { if (isMine) onEdit() else onReply() },
+                        onLongClick = onLongPress,
+                    )
                     .padding(horizontal = 14.dp, vertical = 9.dp),
             ) {
                 when {
@@ -325,11 +416,38 @@ private fun MessageBubble(
                             )
                         }
                     }
+                    message.type == "VIDEO" -> ChatVideoBubble(message.imageUrl.orEmpty())
                     else -> Text(
                         message.content,
                         fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 20.sp,
                         color = if (isMine) Color.White else MuyeonColors.textHead,
                     )
+                }
+            }
+            // 텍스트 안 URL 미리보기(카톡식)
+            if (!message.isDeleted && message.type == "TEXT") {
+                ChatLinkDetector.firstUrl(message.content)?.let { url ->
+                    Spacer(Modifier.height(4.dp))
+                    LinkPreviewCard(url, onOpenLink)
+                }
+            }
+            // 이모지 반응 집계
+            message.reactions?.takeIf { it.isNotEmpty() }?.let { list ->
+                Row(Modifier.padding(top = 3.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    list.forEach { r ->
+                        Text(
+                            "${r.emoji} ${r.count}",
+                            fontFamily = customFontFamily, fontSize = 11.sp, lineHeight = 14.sp,
+                            color = if (r.mine) MuyeonColors.primary else MuyeonColors.textSub,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .background(
+                                    if (r.mine) MuyeonColors.primary.copy(alpha = 0.12f) else Color(0xFFF2F2F7)
+                                )
+                                .clickable { onToggleReaction(r.emoji) }
+                                .padding(horizontal = 7.dp, vertical = 3.dp),
+                        )
+                    }
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -373,5 +491,16 @@ private fun PendingBubble(p: ChatRoomViewModel.Pending, onRetry: () -> Unit) {
                 color = Color.White, textAlign = TextAlign.Start,
             )
         }
+    }
+}
+
+
+/** 링크 프리뷰/도메인 칩 탭 → 외부 브라우저. */
+private fun openExternal(context: android.content.Context, url: String) {
+    runCatching {
+        context.startActivity(
+            android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
     }
 }
