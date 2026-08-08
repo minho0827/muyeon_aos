@@ -107,9 +107,13 @@ class QuoteHubActivity : ComponentActivity() {
         openWebAndFinish("/teachers/$userId")
     }
 
-    /** 채팅방 — 네이티브·웹 모두 미이식. 무반응 금지 규약에 따라 안내만. */
-    private fun openChat(@Suppress("UNUSED_PARAMETER") roomId: Int) {
-        Toast.makeText(this, "채팅은 곧 제공될 기능이에요.", Toast.LENGTH_SHORT).show()
+    /** 채팅방 — 네이티브 이식 완료(B). 채택/바로채팅이 실제 방으로 이어진다. */
+    private fun openChat(roomId: Int) {
+        if (roomId <= 0) {
+            Toast.makeText(this, "채팅방을 여는 데 실패했어요.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        com.muyeon.app.ui.chat.ChatActivity.startRoom(this, roomId)
     }
 
     /** 웹 화면으로 이동하고 허브 종료. */

@@ -188,6 +188,17 @@ dependencies {
     implementation("com.android.volley:volley:1.2.1")
     implementation("org.json:json:20210307")
 
+    // 채팅 — Socket.IO(/chat 네임스페이스). PaceERA 와 동일 버전.
+    //  ⚠️ org.json 은 위에서 이미 들고 있으므로 socket.io 가 끌고 오는 중복 클래스를 제외한다.
+    implementation("io.socket:socket.io-client:2.1.2") {
+        exclude(group = "org.json", module = "json")
+    }
+    // 채팅 동영상 재생 — iOS AVKit VideoPlayer 대응.
+    implementation("androidx.media3:media3-exoplayer:1.4.1")
+    implementation("androidx.media3:media3-ui:1.4.1")
+    // 백그라운드 진입 시 소켓 pause (ProcessLifecycleOwner)
+    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

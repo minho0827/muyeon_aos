@@ -95,6 +95,12 @@ class AppBridgeInterface(
             "openQuoteBrowse" -> com.muyeon.app.ui.quote.QuoteBrowseActivity.start(activity)
             "openAutoQuoteTemplates" -> com.muyeon.app.ui.quote.QuoteAutoTemplatesActivity.start(activity)
             "openLessonQuoteHub" -> com.muyeon.app.ui.quote.QuoteDashboardActivity.start(activity, d.optString("role"))
+            // 채팅 — 웹 대체 화면이 없어 유일하게 토스트로 막혀 있던 동선.
+            "openChatList" -> com.muyeon.app.ui.chat.ChatActivity.startList(activity, d.optString("filter"))
+            "openChatRoom" -> {
+                val roomId = d.optString("roomId").toIntOrNull() ?: return true
+                com.muyeon.app.ui.chat.ChatActivity.startRoom(activity, roomId, d.optString("title"))
+            }
             else -> return false
         }
         return true
@@ -155,8 +161,7 @@ class AppBridgeInterface(
             "openRoleOnboarding", "openRoleManage", "openRoleVerification" -> "/mypage"
             "openAddressSetup" -> "/myRegions"
 
-            // 채팅 — 웹 대응 화면 없음(네이티브 전용). 이식 전까지 안내.
-            "openChatRoom", "openChatList" -> null
+            // 채팅 — openNative() 에서 네이티브 화면으로 처리(이식 완료).
             // 이미지 뷰어 — 웹 대체 없음.
             "openImageViewer" -> null
             // 애플 로그인 — iOS 전용.
