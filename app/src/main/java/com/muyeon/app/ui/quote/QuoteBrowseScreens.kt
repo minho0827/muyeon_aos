@@ -1,6 +1,7 @@
 package com.muyeon.app.ui.quote
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -26,6 +27,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.KeyboardType
@@ -136,6 +138,10 @@ class QuoteBrowseState(private val api: QuoteApi) {
 }
 
 /** 견적 카테고리 칩(웹 QUOTE_CATEGORIES 7종 — 취미무용은 위저드에서 제거됨). */
+// iOS 그림자 — 그리드 셀 .shadow(0.06, r6, y2) / 덱 카드 .shadow(0.1, r12, y6)
+private val gridInk = Color.Black.copy(alpha = 0.06f)
+private val deckInk = Color.Black.copy(alpha = 0.10f)
+
 private val BROWSE_CATEGORIES: List<Pair<String, String>> = listOf(
     "" to "전체", "ballet" to "발레", "barre" to "바레", "korean" to "한국무용",
     "modern" to "현대무용", "practical" to "실용무용", "balletfit" to "발레핏", "musical" to "뮤지컬",
@@ -356,6 +362,7 @@ private fun GridCell(quote: QuoteFull, isNew: Boolean, onClick: () -> Unit) {
         Column(
             Modifier
                 .fillMaxWidth()
+                .shadow(3.dp, RoundedCornerShape(14.dp), ambientColor = gridInk, spotColor = gridInk)
                 .clip(RoundedCornerShape(14.dp))
                 .background(MuyeonColors.surface)
                 .clickable(onClick = onClick)
@@ -518,8 +525,10 @@ fun QuoteRequestCard(quote: QuoteFull) {
     Column(
         Modifier
             .fillMaxSize()
+            .shadow(6.dp, RoundedCornerShape(20.dp), ambientColor = deckInk, spotColor = deckInk)
             .clip(RoundedCornerShape(20.dp))
-            .background(MuyeonColors.surface),
+            .background(MuyeonColors.surface)
+            .border(0.5.dp, Color(0xFFE5E5EA), RoundedCornerShape(20.dp)),
     ) {
         // 헤더 — 카테고리 pill + 등록시간 / 큰 제목 / 지역
         Column(

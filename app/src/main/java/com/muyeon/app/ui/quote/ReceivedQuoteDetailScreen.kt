@@ -24,11 +24,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -687,8 +689,19 @@ private fun QuoteCard(borderColor: Color? = null, content: @Composable ColumnSco
     )
 }
 
-private fun Modifier.shadowCard() = this
-    .clip(RoundedCornerShape(14.dp))
+/**
+ * iOS `.shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 2)` 대응.
+ *  Compose elevation 은 blur radius 의 약 1/2 이 iOS 와 비슷한 번짐을 낸다(8 → 4dp).
+ *  그림자 색은 ambient/spot 양쪽에 같은 알파를 줘야 iOS 처럼 옅게 깔린다.
+ */
+private fun Modifier.shadowCard(radius: Dp = 14.dp, elevation: Dp = 4.dp, alpha: Float = 0.06f) = this
+    .shadow(
+        elevation = elevation,
+        shape = RoundedCornerShape(radius),
+        ambientColor = Color.Black.copy(alpha = alpha),
+        spotColor = Color.Black.copy(alpha = alpha),
+    )
+    .clip(RoundedCornerShape(radius))
     .background(MuyeonColors.surface)
 
 /** 카드 액션 버튼 — iOS cardButtonLabel(13 semibold, r10, v10). */

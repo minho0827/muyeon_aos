@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -169,10 +170,12 @@ fun RequestedQuotesList(api: QuoteApi, onOpen: (Int) -> Unit) {
             modifier = Modifier.fillMaxSize(),
         ) {
             LazyColumn(Modifier.fillMaxSize()) {
-                items(quotes, key = { it.id }) { q ->
+                itemsIndexed(quotes, key = { _, q -> q.id }) { idx, q ->
                     SwipeToDeleteRow(onDelete = { scope.launch { delete(q) } }) {
                         MyQuoteRow(quote = q, onClick = { onOpen(q.id) })
                     }
+                    // iOS List(.plain) 기본 구분선 — 행 좌측 인셋(16 + 아바타 52 + 간격 12)에 맞춘다.
+                    if (idx != quotes.lastIndex) RowSeparator()
                 }
             }
         }
@@ -185,6 +188,15 @@ fun RequestedQuotesList(api: QuoteApi, onOpen: (Int) -> Unit) {
             confirmButton = { TextButton(onClick = { toast = null }) { Text("확인") } },
         )
     }
+}
+
+/** iOS List(.plain) 행 구분선 — 좌측 인셋 = 좌우여백 16 + 아바타 52 + 간격 12. */
+@Composable
+private fun RowSeparator() {
+    HorizontalDivider(
+        Modifier.background(MuyeonColors.surface).padding(start = 80.dp),
+        color = MuyeonColors.border,
+    )
 }
 
 /** iOS `.swipeActions(edge:.trailing)` 대응 — 좌측 스와이프로만 삭제(allowsFullSwipe: false). */
@@ -304,8 +316,9 @@ fun SentQuotesList(api: QuoteApi, onOpen: (SentQuoteItem) -> Unit) {
             modifier = Modifier.fillMaxSize(),
         ) {
             LazyColumn(Modifier.fillMaxSize()) {
-                items(items, key = { it.id }) { item ->
+                itemsIndexed(items, key = { _, it -> it.id }) { idx, item ->
                     SentQuoteRow(item = item, onClick = { onOpen(item) })
+                    if (idx != items.lastIndex) RowSeparator()
                 }
             }
         }

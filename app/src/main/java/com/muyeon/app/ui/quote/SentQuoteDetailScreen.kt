@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -165,13 +166,17 @@ private fun ChatSection(item: SentQuoteItem, onOpenChat: (Int) -> Unit) {
     }
 }
 
-/** 카드 컨테이너 — iOS: r14 + systemBackground + 좌우 16 + 패딩 16. */
+/** iOS `.shadow(color: .black.opacity(0.06), radius: 8, y: 2)` — Compose elevation 은 radius 의 약 1/2. */
+private val shadowInk = Color.Black.copy(alpha = 0.06f)
+
+/** 카드 컨테이너 — iOS: r14 + systemBackground + shadow(0.06, r8, y2) + 좌우 16 + 패딩 16. */
 @Composable
 private fun SentCard(content: @Composable ColumnScope.() -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
+            .shadow(4.dp, RoundedCornerShape(14.dp), ambientColor = shadowInk, spotColor = shadowInk)
             .clip(RoundedCornerShape(14.dp))
             .background(MuyeonColors.surface)
             .padding(16.dp),
