@@ -97,6 +97,9 @@ class AppBridgeInterface(
             "openLessonQuoteHub" -> com.muyeon.app.ui.quote.QuoteDashboardActivity.start(activity, d.optString("role"))
             // 채팅 — 웹 대체 화면이 없어 유일하게 토스트로 막혀 있던 동선.
             "openChatList" -> com.muyeon.app.ui.chat.ChatActivity.startList(activity, d.optString("filter"))
+            // 채용 — E 이식 완료
+            "openMyJobPostings" -> com.muyeon.app.ui.jobposting.JobPostingActivity.startList(activity)
+
             // 스튜디오 운영 — E 이식 완료
             "openStudioOps" -> com.muyeon.app.ui.studio.StudioActivity.start(activity, "hub")
             "openStudioMembers" -> com.muyeon.app.ui.studio.StudioActivity.start(activity, "members")
@@ -187,7 +190,6 @@ class AppBridgeInterface(
 
             // 스튜디오 운영 / 기타 MY
             "openMembership" -> s("featureType").let { if (it.isEmpty()) "/myMembership" else "/membership/$it" }
-            "openMyJobPostings" -> "/myPostings"
 
             // 온보딩/계정 — 웹에도 화면 존재
             "openSignupTerms" -> "/signupTerms"
