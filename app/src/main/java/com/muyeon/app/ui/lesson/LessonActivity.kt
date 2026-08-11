@@ -67,13 +67,18 @@ class LessonActivity : ComponentActivity() {
 
             NavHost(nav, startDestination = route) {
                 composable("calendar") {
-                    val state = viewModel { LessonCalendarState(lessonApi, calendarApi) }
+                    // 배지 상태(신규 예약·조율 중 확인)는 기기 저장 — iOS UserDefaults 대응.
+                    val calPrefs = remember {
+                        getSharedPreferences("muyeon.calendar", Context.MODE_PRIVATE)
+                    }
+                    val state = viewModel { LessonCalendarState(lessonApi, calendarApi, calPrefs) }
                     LessonCalendarScreen(
                         state = state,
                         onClose = { finish() },
                         onOpenLesson = { lid -> nav.navigate("detail/$lid") },
                         // 캘린더 관리 화면은 미이식 — 웹 폴백(스코프 E 이후).
                         onManageCalendars = { openWebAndFinish("/lessonCalendar") },
+                        onOpenChat = { rid -> ChatActivity.startRoom(this@LessonActivity, rid) },
                     )
                 }
                 composable("manage") {

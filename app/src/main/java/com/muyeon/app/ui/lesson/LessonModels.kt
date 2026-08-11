@@ -110,6 +110,12 @@ data class LessonSchedule(
     /** 'yyyy-MM-dd' (KST) — 캘린더 셀 매칭용. */
     val ymdKST: String? get() = startMillis?.let { kstYmd.format(Date(it)) }
 
+    /** 'yyyy-MM' (KST) — 월별 아젠다 섹션 매칭용. */
+    val ymKST: String? get() = startMillis?.let { ymKST(it) }
+
+    /** 생성 시각 — '신규 예약' 배지 기준선 비교용. */
+    val createdMillis: Long? get() = QuoteUi.parseDate(createdAt)
+
     companion object {
         fun from(o: JSONObject) = LessonSchedule(
             id = o.optInt("id"),
