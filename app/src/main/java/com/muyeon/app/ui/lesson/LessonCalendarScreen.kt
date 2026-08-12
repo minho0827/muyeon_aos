@@ -394,7 +394,7 @@ private fun StatusChipsRow(current: StatusTab, hasUnseenPending: Boolean, onSele
                 )
                 // 숫자 대신 파란 점 — 아직 상세를 안 열어본 조율 중 건이 있을 때만.
                 if (tab == StatusTab.PENDING && hasUnseenPending) {
-                    Box(Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF007AFF)))
+                    Box(Modifier.size(8.dp).clip(CircleShape).background(MuyeonColors.info))
                 }
             }
         }

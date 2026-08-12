@@ -31,6 +31,7 @@ object MuyeonColors {
     val danger = Color(0xFFE64747)           // 철회 버튼 — iOS Color(red:0.9 green:0.28 blue:0.28)
     val placeholder = Color(0xFFEBEBEB)      // Color(white: 0.92) 아바타 플레이스홀더
     val chevron = Color(0xFFBFBFBF)          // Color(white: 0.75)
+    val info = Color(0xFF007AFF)             // Color(.systemBlue) — 미확인 표시 점 등
     val body = Color(0xFF37383B)             // Asset.Colors.color37383B (견적 메시지 본문)
 }
 
