@@ -16,6 +16,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -55,8 +57,11 @@ import java.util.Date
  *  접히면: 그리드를 감추고 상태 필터 칩(전체/예정/조율 중/취소)이 뜨며 아젠다가 화면 전체를 쓴다.
  *  다시 펼치면 필터를 '전체'로 되돌린다 — 필터가 남으면 "일정이 사라졌다"는 오해가 생긴다(iOS 주석).
  *
- *  미이식(원본에 있음): 월간/리스트 뷰 전환, 날짜 재탭 시 그날 시트, 개인 일정 추가(+),
- *   딥링크 펄스, 미니맵. 사유는 docs/lesson-calendar-port.md.
+ *  상단 우측 아이콘으로 월간 ↔ 리스트 전환(iOS 드롭다운 메뉴 대응).
+ *   리스트 모드는 달력을 감추고 상태 탭(전체/예정/조율 중/취소)별 목록만 보여준다.
+ *
+ *  미이식(원본에 있음): 날짜 재탭 시 그날 시트, 개인 일정 추가(+), 딥링크 펄스, 미니맵.
+ *   사유는 docs/lesson-calendar-port.md.
  */
 private val WEEK_LABELS = listOf("일", "월", "화", "수", "목", "금", "토")
 
@@ -67,6 +72,9 @@ private enum class StatusTab(val label: String) {
 
 /** 드래그 판정 임계값 — iOS 25pt. */
 private val FOLD_THRESHOLD = 25.dp
+
+/** 보기 모드 — iOS `CalViewMode`. */
+private enum class CalViewMode { MONTH, LIST }
 
 @Composable
 fun LessonCalendarScreen(
@@ -80,16 +88,49 @@ fun LessonCalendarScreen(
 
     val days = remember(state.monthAnchor, state.schedules, state.blocks, state.hiddenCalendarIds) { state.days() }
     var statusTab by remember { mutableStateOf(StatusTab.ALL) }
+    var viewMode by remember { mutableStateOf(CalViewMode.MONTH) }
     val expanded = state.calendarExpanded
 
     // 다시 펼치면 필터 초기화 — 필터가 남은 채 칩이 숨으면 "일정이 사라졌다"는 오해가 생긴다.
-    LaunchedEffect(expanded) { if (expanded && statusTab != StatusTab.ALL) statusTab = StatusTab.ALL }
+    // 월간 모드에서만 초기화 — 리스트는 상태 탭이 상시 노출이라 유지한다(iOS 와 동일).
+    LaunchedEffect(expanded, viewMode) {
+        if (expanded && viewMode == CalViewMode.MONTH && statusTab != StatusTab.ALL) statusTab = StatusTab.ALL
+    }
 
     val density = LocalDensity.current
     val thresholdPx = with(density) { FOLD_THRESHOLD.toPx() }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(title = "레슨 일정", onBack = onClose)
+        QuoteNavBar(
+            title = "레슨 일정",
+            onBack = onClose,
+            trailing = {
+                Icon(
+                    if (viewMode == CalViewMode.MONTH) Icons.Filled.CalendarMonth else Icons.Filled.FormatListBulleted,
+                    if (viewMode == CalViewMode.MONTH) "리스트 보기로 전환" else "월간 보기로 전환",
+                    tint = MuyeonColors.textHead,
+                    modifier = Modifier.size(40.dp).clickable {
+                        viewMode = if (viewMode == CalViewMode.MONTH) CalViewMode.LIST else CalViewMode.MONTH
+                    }.padding(9.dp),
+                )
+            },
+        )
+
+        // 리스트 모드 — 달력 없이 상태 탭 + 목록만(iOS viewMode == .list).
+        if (viewMode == CalViewMode.LIST) {
+            HorizontalDivider(color = MuyeonColors.border)
+            StatusChipsRow(statusTab, state.hasUnseenPending) { statusTab = it }
+            HorizontalDivider(color = MuyeonColors.border)
+            Column(
+                Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(bottom = 24.dp),
+            ) {
+                when {
+                    state.loading && !state.didLoad -> LoadingAgenda()
+                    else -> ListBody(state, statusTab, onOpenLesson, onOpenChat) { statusTab = it }
+                }
+            }
+            return@Column
+        }
 
         // ── [오늘] + < 월 > ──
         Row(
@@ -220,33 +261,7 @@ fun LessonCalendarScreen(
 
         // ── 상태 필터 칩 — 달력이 접혀 아젠다가 전체를 쓸 때만(iOS 와 동일) ──
         if (!expanded) {
-            Row(
-                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                StatusTab.entries.forEach { tab ->
-                    val selected = statusTab == tab
-                    Row(
-                        Modifier.clip(RoundedCornerShape(50))
-                            .background(if (selected) MuyeonColors.primary else MuyeonColors.groupedBg)
-                            .clickable { statusTab = tab }
-                            .padding(horizontal = 12.dp, vertical = 7.dp),
-                        horizontalArrangement = Arrangement.spacedBy(5.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            tab.label,
-                            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                            lineHeight = 16.sp, color = if (selected) Color.White else MuyeonColors.textHead,
-                        )
-                        // 숫자 대신 파란 점 — 아직 상세를 안 열어본 조율 중 건이 있을 때만.
-                        if (tab == StatusTab.PENDING && state.hasUnseenPending) {
-                            Box(Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF007AFF)))
-                        }
-                    }
-                }
-            }
+            StatusChipsRow(statusTab, state.hasUnseenPending) { statusTab = it }
             HorizontalDivider(color = MuyeonColors.border)
         }
 
@@ -353,6 +368,114 @@ private fun MonthAgenda(
         }
     }
 }
+
+/** 상태 필터 칩 줄 — 접힘(월간) / 리스트 모드 공용. iOS `statusChipsRow`. */
+@Composable
+private fun StatusChipsRow(current: StatusTab, hasUnseenPending: Boolean, onSelect: (StatusTab) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        StatusTab.entries.forEach { tab ->
+            val selected = current == tab
+            Row(
+                Modifier.clip(RoundedCornerShape(50))
+                    .background(if (selected) MuyeonColors.primary else MuyeonColors.groupedBg)
+                    .clickable { onSelect(tab) }
+                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    tab.label,
+                    fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                    lineHeight = 16.sp, color = if (selected) Color.White else MuyeonColors.textHead,
+                )
+                // 숫자 대신 파란 점 — 아직 상세를 안 열어본 조율 중 건이 있을 때만.
+                if (tab == StatusTab.PENDING && hasUnseenPending) {
+                    Box(Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF007AFF)))
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 리스트 모드 본문 — iOS `listBody` 4종.
+ *  전체: 조율 중 최대 2건(+모두 보기) → 날짜별 예정. 취소는 소음 방지로 제외(취소 탭 전용).
+ *  예정: 오늘 이후 확정 일정을 날짜별로. 조율: 전량. 취소: 최근 취소가 위(날짜 내림차순).
+ */
+@Composable
+private fun ListBody(
+    state: LessonCalendarState,
+    tab: StatusTab,
+    onOpenLesson: (Int) -> Unit,
+    onOpenChat: (Int) -> Unit,
+    onSelectTab: (StatusTab) -> Unit,
+) {
+    val groups = remember(state.schedules, state.hiddenCalendarIds) { state.upcomingGroups() }
+    when (tab) {
+        StatusTab.ALL -> {
+            if (state.pending.isNotEmpty()) {
+                SectionHeader("일정 조율 중")
+                state.pending.take(2).forEach { LessonCard(it, state, true, onOpenLesson, onOpenChat) }
+                if (state.pending.size > 2) {
+                    Text(
+                        "${state.pending.size}건 모두 보기 →",
+                        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                        lineHeight = 16.sp, color = MuyeonColors.primary,
+                        modifier = Modifier.clickable { onSelectTab(StatusTab.PENDING) }
+                            .padding(horizontal = 20.dp, vertical = 8.dp),
+                    )
+                }
+            }
+            if (groups.isEmpty() && state.pending.isEmpty() && state.didLoad) {
+                ListEmpty("예정된 일정이 없습니다.")
+            }
+            groups.forEach { (ymd, lessons) ->
+                SectionHeader(listDateTitle(ymd))
+                lessons.forEach { LessonCard(it, state, false, onOpenLesson, onOpenChat) }
+            }
+        }
+        StatusTab.UPCOMING -> {
+            if (groups.isEmpty() && state.didLoad) ListEmpty("예정된 레슨이 없습니다.")
+            groups.forEach { (ymd, lessons) ->
+                SectionHeader(listDateTitle(ymd))
+                lessons.forEach { LessonCard(it, state, false, onOpenLesson, onOpenChat) }
+            }
+        }
+        StatusTab.PENDING -> {
+            if (state.pending.isEmpty() && state.didLoad) ListEmpty("조율 중인 레슨이 없습니다.")
+            else {
+                SectionHeader("일정 조율 중 ${state.pending.size}건")
+                state.pending.forEach { LessonCard(it, state, true, onOpenLesson, onOpenChat) }
+            }
+        }
+        StatusTab.CANCELED -> {
+            val items = state.canceledLessons
+            if (items.isEmpty() && state.didLoad) ListEmpty("취소된 레슨이 없습니다.")
+            else {
+                SectionHeader("취소된 레슨 ${items.size}건")
+                items.forEach { LessonCard(it, state, false, onOpenLesson, onOpenChat) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ListEmpty(t: String) {
+    Text(
+        t,
+        fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 18.sp, color = MuyeonColors.textSub,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp),
+    )
+}
+
+/** "2026-08-12" → "2026년 8월 12일 (화)" — iOS `listDateTitle`. */
+private fun listDateTitle(ymd: String): String =
+    runCatching { listTitleFormatter.format(Date(millisOf(ymd))) }.getOrDefault(ymd)
 
 @Composable
 private fun SectionHeader(t: String) {
@@ -619,6 +742,10 @@ private fun BlockRow(b: StudioBlock, cal: UserCalendar) {
         }
     }
 }
+
+private val listTitleFormatter: java.text.SimpleDateFormat =
+    java.text.SimpleDateFormat("yyyy년 M월 d일 (E)", java.util.Locale.KOREA)
+        .apply { timeZone = java.util.TimeZone.getTimeZone("Asia/Seoul") }
 
 private val cardDateFormatter: java.text.SimpleDateFormat =
     java.text.SimpleDateFormat("M월 d일 (E)", java.util.Locale.KOREA)

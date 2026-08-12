@@ -71,7 +71,13 @@ fun QuoteHubScreen(
 
 /** 상단 내비바 — iOS navigationBar(제목 17 bold, 좌측 X 16 semibold, 높이 44). */
 @Composable
-fun QuoteNavBar(title: String, onClose: (() -> Unit)? = null, onBack: (() -> Unit)? = null) {
+fun QuoteNavBar(
+    title: String,
+    onClose: (() -> Unit)? = null,
+    onBack: (() -> Unit)? = null,
+    /** 우측 액션 슬롯(선택) — 없으면 종전과 동일. */
+    trailing: (@Composable () -> Unit)? = null,
+) {
     Box(
         Modifier.fillMaxWidth().height(44.dp).background(MuyeonColors.surface),
         contentAlignment = Alignment.Center,
@@ -95,6 +101,9 @@ fun QuoteNavBar(title: String, onClose: (() -> Unit)? = null, onBack: (() -> Uni
                     modifier = Modifier.size(16.dp),
                 )
             }
+        }
+        if (trailing != null) {
+            Box(Modifier.align(Alignment.CenterEnd).padding(end = 4.dp)) { trailing() }
         }
     }
 }

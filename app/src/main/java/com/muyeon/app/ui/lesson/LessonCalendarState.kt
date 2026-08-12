@@ -99,6 +99,24 @@ class LessonCalendarState(
     val pending: List<LessonSchedule>
         get() = schedules.filter { it.isPending && it.status != "CANCELED" }
 
+    /**
+     * 리스트 모드 '예정' — (ymd, 일정들). 오늘 이후·비취소만, 날짜 오름차순.
+     * iOS `listGroups`.
+     */
+    fun upcomingGroups(): List<Pair<String, List<LessonSchedule>>> {
+        val today = todayYmdKST()
+        return visibleScheduled
+            .filter { it.status != "CANCELED" && (it.ymdKST ?: "") >= today }
+            .groupBy { it.ymdKST!! }
+            .toSortedMap()
+            .map { (ymd, list) -> ymd to list.sortedBy { it.startMillis ?: Long.MAX_VALUE } }
+    }
+
+    /** 리스트 모드 '취소' — 최근 취소가 위(날짜 내림차순). iOS `canceledLessons`. */
+    val canceledLessons: List<LessonSchedule>
+        get() = visibleScheduled.filter { it.status == "CANCELED" }
+            .sortedByDescending { it.ymdKST ?: "" }
+
     /** 아직 상세를 안 열어본 조율 중 건이 있는가(상태 탭 파란 점). */
     val hasUnseenPending: Boolean get() = pending.any { !seenPendingIds.contains(it.id) }
 

@@ -76,10 +76,13 @@ class LessonActivity : ComponentActivity() {
                         state = state,
                         onClose = { finish() },
                         onOpenLesson = { lid -> nav.navigate("detail/$lid") },
-                        // 캘린더 관리 화면은 미이식 — 웹 폴백(스코프 E 이후).
-                        onManageCalendars = { openWebAndFinish("/lessonCalendar") },
+                        onManageCalendars = { nav.navigate("calendars") },
                         onOpenChat = { rid -> ChatActivity.startRoom(this@LessonActivity, rid) },
                     )
+                }
+                composable("calendars") {
+                    // 내 캘린더(관리) — 생성/편집/삭제 후 캘린더 화면이 재로딩되도록 back 으로 복귀.
+                    CalendarManageScreen(api = calendarApi, onClose = { back() })
                 }
                 composable("manage") {
                     LessonManageScreen(
