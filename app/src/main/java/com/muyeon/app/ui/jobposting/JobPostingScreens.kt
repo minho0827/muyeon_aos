@@ -66,8 +66,13 @@ fun MyPostingsScreen(
     var toast by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
+    // 보관함 — 삭제가 소프트(ARCHIVED)라 되살릴 경로가 반드시 있어야 한다.
+    var archived by remember { mutableStateOf<List<MyPosting>>(emptyList()) }
+    var showArchived by remember { mutableStateOf(false) }
+
     suspend fun load() {
         postings = api.myPostings().getOrDefault(emptyList())
+        archived = api.archived().getOrDefault(emptyList())
         loading = false
     }
 
@@ -131,6 +136,55 @@ fun MyPostingsScreen(
                             }
                         },
                     )
+                }
+                if (archived.isNotEmpty()) {
+                    item(key = "archived-toggle") {
+                        Text(
+                            if (showArchived) "보관함 닫기" else "보관함 (${archived.size})",
+                            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                            lineHeight = 17.sp, color = MuyeonColors.textSub, textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .border(1.dp, MuyeonColors.border, RoundedCornerShape(20.dp))
+                                .clickable { showArchived = !showArchived }
+                                .padding(vertical = 10.dp),
+                        )
+                    }
+                    if (showArchived) {
+                        items(archived, key = { "arc-${it.uid}" }) { p ->
+                            Row(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                                    .background(MuyeonColors.groupedBg).padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                    Text(
+                                        p.title ?: "(제목 없음)",
+                                        fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                                        lineHeight = 17.sp, color = MuyeonColors.textHead,
+                                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                    )
+                                    Text(
+                                        "${JobPostingOptions.kindLabel[p.kind] ?: p.kind} · 삭제 전 상태로 되돌아갑니다",
+                                        fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp,
+                                        color = MuyeonColors.textSub,
+                                    )
+                                }
+                                Text(
+                                    "복원",
+                                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                                    lineHeight = 16.sp, color = MuyeonColors.primary,
+                                    modifier = Modifier.clickable {
+                                        scope.launch {
+                                            api.restore(p.kind, p.id).onSuccess { toast = "공고를 복원했어요." }
+                                                .onFailure { toast = it.message }
+                                            load()
+                                        }
+                                    }.padding(horizontal = 8.dp, vertical = 4.dp),
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

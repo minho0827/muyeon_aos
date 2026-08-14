@@ -240,6 +240,14 @@ class JobPostingApi(private val token: String?) {
     suspend fun remove(kind: String, id: Int): Result<Unit> =
         call("/me/postings/$kind/$id", "DELETE").map { }
 
+    /** 보관(삭제)한 공고 목록 — 보관함/복원 UI용. */
+    suspend fun archived(): Result<List<MyPosting>> =
+        call("/me/postings/archived").map { JSONArray(it.ifBlank { "[]" }).map(MyPosting::from) }
+
+    /** 보관 해제(복원) — 삭제 직전 상태로 되돌린다(무조건 공개되지 않는다). */
+    suspend fun restore(kind: String, id: Int): Result<Unit> =
+        call("/me/postings/$kind/$id/restore", "POST").map { }
+
     suspend fun loadJob(id: Int): Result<JobForm> = call("/jobs/$id").map { JobForm.from(JSONObject(it)) }
 
     suspend fun saveJob(id: Int?, form: JobForm): Result<Int> {
