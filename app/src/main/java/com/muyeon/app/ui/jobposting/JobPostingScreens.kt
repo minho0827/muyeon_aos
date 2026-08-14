@@ -57,8 +57,10 @@ fun MyPostingsScreen(
     onEdit: (Int) -> Unit,
     onCreate: () -> Unit,
     onApplicants: (Int) -> Unit,
+    onView: (String, Int) -> Unit,
 ) {
     var postings by remember { mutableStateOf<List<MyPosting>>(emptyList()) }
+    var deleteTarget by remember { mutableStateOf<MyPosting?>(null) }
     var tab by remember { mutableStateOf("ALL") }
     var loading by remember { mutableStateOf(true) }
     var toast by remember { mutableStateOf<String?>(null) }
@@ -112,6 +114,8 @@ fun MyPostingsScreen(
                         p = p,
                         onClick = { if (p.kind == "JOB") onEdit(p.id) },
                         onApplicants = { onApplicants(p.id) },
+                        onView = { onView(p.kind, p.id) },
+                        onEdit = { if (p.kind == "JOB") onEdit(p.id) else onView(p.kind, p.id) },
                         onDuplicate = {
                             scope.launch {
                                 api.duplicate(p.kind, p.id).onSuccess { toast = "임시저장으로 복사했어요." }
@@ -119,6 +123,7 @@ fun MyPostingsScreen(
                                 load()
                             }
                         },
+                        onDelete = { deleteTarget = p },
                         onStatus = { s ->
                             scope.launch {
                                 api.setStatus(p.kind, p.id, s).onFailure { toast = it.message }
@@ -140,6 +145,24 @@ fun MyPostingsScreen(
         )
     }
 
+    // 삭제 확인 — 되돌릴 수 없어 한 번 더 묻는다. 신고 확인창과 같은 QuoteDialog 재사용.
+    deleteTarget?.let { target ->
+        QuoteDialog(
+            title = "이 공고를 삭제할까요?",
+            message = "목록에서 사라집니다. 이미 받은 지원 내역은 그대로 남아요.",
+            confirmText = "삭제",
+            onConfirm = {
+                deleteTarget = null
+                scope.launch {
+                    api.remove(target.kind, target.id).onSuccess { toast = "공고를 삭제했어요." }
+                        .onFailure { toast = it.message }
+                    load()
+                }
+            },
+            onDismiss = { deleteTarget = null },
+        )
+    }
+
     toast?.let { msg ->
         QuoteDialog("알림", msg, "확인", onConfirm = { toast = null }, onDismiss = { toast = null })
     }
@@ -150,7 +173,10 @@ private fun PostingCard(
     p: MyPosting,
     onClick: () -> Unit,
     onApplicants: () -> Unit,
+    onView: () -> Unit,
+    onEdit: () -> Unit,
     onDuplicate: () -> Unit,
+    onDelete: () -> Unit,
     onStatus: (String) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -188,19 +214,24 @@ private fun PostingCard(
                     Icons.Filled.MoreVert, "더보기", tint = MuyeonColors.chevron,
                     modifier = Modifier.size(30.dp).clickable { menuOpen = true }.padding(7.dp),
                 )
+                // 순서 고정(iOS actionSheet 와 동일): 공고 보기 → 수정 → 보류/다시 열기 → 복사 → 삭제 → 마감하기.
+                //  ★ 삭제가 여기 없어서 종전엔 '공고 보기'로 상세까지 들어가야 지울 수 있었다.
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(
-                        text = { Text("복사", fontFamily = customFontFamily, fontSize = 14.sp) },
-                        onClick = { menuOpen = false; onDuplicate() },
-                    )
-                    listOf("OPEN" to "채용중으로", "HOLD" to "보류로", "CLOSED" to "마감으로")
-                        .filter { it.first != p.status }
-                        .forEach { (s, label) ->
-                            DropdownMenuItem(
-                                text = { Text(label, fontFamily = customFontFamily, fontSize = 14.sp) },
-                                onClick = { menuOpen = false; onStatus(s) },
-                            )
-                        }
+                    val menu = buildList<Pair<String, () -> Unit>> {
+                        add("공고 보기" to onView)
+                        add("수정" to onEdit)
+                        if (p.status == "OPEN") add("보류" to { onStatus("HOLD") })
+                        else add("다시 열기" to { onStatus("OPEN") })
+                        add("복사" to onDuplicate)
+                        add("삭제" to onDelete)
+                        if (p.status == "OPEN") add("마감하기" to { onStatus("CLOSED") })
+                    }
+                    menu.forEach { (label, action) ->
+                        DropdownMenuItem(
+                            text = { Text(label, fontFamily = customFontFamily, fontSize = 14.sp) },
+                            onClick = { menuOpen = false; action() },
+                        )
+                    }
                 }
             }
         }
@@ -289,7 +320,9 @@ fun JobPostingFormScreen(
             JobField("주소", form.address.orEmpty()) { form = form.copy(address = it) }
             JobField("가까운 역", form.subway.orEmpty()) { form = form.copy(subway = it) }
             JobField("근무 요일", form.days.orEmpty(), "예: 월·수·금") { form = form.copy(days = it) }
-            JobField("근무 시간", form.time.orEmpty(), "예: 19:00~21:00") { form = form.copy(time = it) }
+            // 수기 입력이면 학원마다 표기가 제각각이라(“19시~21시”, “7-9pm”) 검색·표시가 어긋난다.
+            //  웹 TimeRangeSelect·iOS JobTimeRangePicker 와 같은 규약: "HH:MM ~ HH:MM", 분은 5분 단위.
+            JobTimeRange("근무 시간", form.time.orEmpty()) { form = form.copy(time = it) }
             JobChips("고용 형태", JobFormOptions.employments, setOfNotNull(form.employment)) {
                 form = form.copy(employment = if (form.employment == it) null else it)
             }
@@ -300,7 +333,27 @@ fun JobPostingFormScreen(
                 val cur = form.careerLevels ?: emptyList()
                 form = form.copy(careerLevels = if (cur.contains(v)) cur - v else cur + v)
             }
-            JobField("마감일", form.deadline.orEmpty(), "yyyy-MM-dd (미정이면 -)") { form = form.copy(deadline = it) }
+            JobField("지원 마감일", form.deadline.orEmpty(), "yyyy-MM-dd (비워두면 무기한)") { form = form.copy(deadline = it) }
+
+            // 원하는 강사 조건 — 웹 JobCreate 에는 있는데 이 폼에만 없어서, 같은 공고인데
+            //  들어온 경로에 따라 항목이 달라 보였다(2026-08-14 보강).
+            JobChips("지도 가능 분야(우대)", ResumeOptions.teachingFields, (form.pref.fields ?: emptyList()).toSet()) { v ->
+                val cur = form.pref.fields ?: emptyList()
+                val next = if (cur.contains(v)) cur - v else cur + v
+                form = form.copy(pref = form.pref.copy(fields = next.ifEmpty { null }))
+            }
+            JobYesNo("예고 출신 우대", form.pref.artHigh) { form = form.copy(pref = form.pref.copy(artHigh = it)) }
+            JobYesNo("대학 졸업 우대", form.pref.university) { form = form.copy(pref = form.pref.copy(university = it)) }
+            JobField("우대 대학명", form.pref.universityName.orEmpty(), "예: 한예종, 세종대 (선택)") {
+                form = form.copy(pref = form.pref.copy(universityName = it.ifBlank { null }))
+            }
+            JobYesNo("무용단 출신 우대", form.pref.company) { form = form.copy(pref = form.pref.copy(company = it)) }
+            JobYesNo("자격증 필수", form.pref.certRequired) { form = form.copy(pref = form.pref.copy(certRequired = it)) }
+            JobYesNo("영상 포트폴리오 필수", form.pref.videoRequired) { form = form.copy(pref = form.pref.copy(videoRequired = it)) }
+            JobField("기타 우대 조건", form.pref.note.orEmpty(), "예: 성인반 경험자 우대") {
+                form = form.copy(pref = form.pref.copy(note = it.ifBlank { null }))
+            }
+
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("상세 설명", fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = MuyeonColors.textHead)
                 OutlinedTextField(
@@ -376,6 +429,82 @@ private fun JobChips(
     }
 }
 
+/** 예/아니오 2칩 — 웹 YESNO BaseSelector 와 같은 의미. 미선택(null) = 조건 없음. */
+@Composable
+private fun JobYesNo(label: String, value: Boolean?, onPick: (Boolean?) -> Unit) {
+    JobChips(
+        label = label,
+        options = listOf("Y" to "예", "N" to "아니오"),
+        selected = when (value) { true -> setOf("Y"); false -> setOf("N"); null -> emptySet() },
+    ) { v ->
+        val want = v == "Y"
+        onPick(if (value == want) null else want)   // 같은 걸 다시 누르면 해제
+    }
+}
+
+/**
+ * 시작~종료 시간 — 시·분을 따로 고른다(분 5분 단위). value = "HH:MM ~ HH:MM".
+ *  ⚠️ 레슨 개설에는 쓰지 않는다. 레슨은 30분 격자로 예약 회차를 만들어 5분 단위와 맞지 않는다.
+ */
+@Composable
+private fun JobTimeRange(label: String, value: String, onChange: (String) -> Unit) {
+    val hours = remember { (0..23).map { "%02d".format(it) } }
+    val minutes = remember { (0..55 step 5).map { "%02d".format(it) } }
+    val parts = value.split("~").map { it.trim() }
+    fun at(i: Int): String {
+        val t = parts.getOrNull(i).orEmpty()
+        return if (Regex("^\\d{2}:\\d{2}$").matches(t)) t else ""
+    }
+    val start = at(0)
+    val end = at(1)
+    // 시만 고르고 분을 안 고른 상태에서도 값이 남도록 분 기본값은 "00".
+    fun join(h: String, m: String) = if (h.isEmpty()) "" else "$h:${m.ifEmpty { "00" }}"
+    fun emit(s: String, e: String) = onChange(if (s.isEmpty() && e.isEmpty()) "" else "$s ~ $e".trim())
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(label, fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = MuyeonColors.textHead)
+        listOf("시작" to start, "종료" to end).forEach { (cap, t) ->
+            val h = t.take(2)
+            val m = if (t.length >= 5) t.takeLast(2) else ""
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(cap, fontFamily = customFontFamily, fontSize = 13.sp, color = MuyeonColors.textSub,
+                    modifier = Modifier.width(30.dp))
+                JobTimeMenu(h.ifEmpty { "시" }, hours) { v ->
+                    if (cap == "시작") emit(join(v, m), end) else emit(start, join(v, m))
+                }
+                Text(":", fontFamily = customFontFamily, fontSize = 13.sp, color = MuyeonColors.textSub)
+                JobTimeMenu(m.ifEmpty { "분" }, minutes) { v ->
+                    val hh = h.ifEmpty { "00" }
+                    if (cap == "시작") emit(join(hh, v), end) else emit(start, join(hh, v))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun JobTimeMenu(title: String, options: List<String>, onPick: (String) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        Text(
+            title,
+            fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
+            color = MuyeonColors.textHead,
+            modifier = Modifier.clip(RoundedCornerShape(10.dp))
+                .background(Color(0xFFF2F2F7)).clickable { open = true }
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+        )
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            options.forEach { o ->
+                DropdownMenuItem(
+                    text = { Text(o, fontFamily = customFontFamily, fontSize = 14.sp) },
+                    onClick = { open = false; onPick(o) },
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun JobButton(text: String, filled: Boolean, enabled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Text(
@@ -429,6 +558,11 @@ class JobPostingActivity : ComponentActivity() {
                         // 지원자 목록은 미이식 — 지원자 상세(C)로 바로 가려면 applicationId 가 필요해 웹 폴백.
                         onApplicants = {
                             com.muyeon.app.webview.NativeWebRoute.openWebAndFinish(this@JobPostingActivity, "/receivedApplications")
+                        },
+                        // 공고 상세는 네이티브 미이식 — 종류별 웹 경로로 보낸다(웹 KIND_PATH 와 같은 규약).
+                        onView = { kind, pid ->
+                            val seg = when (kind) { "SUB" -> "subs"; "CASTING" -> "casting"; else -> "jobs" }
+                            com.muyeon.app.webview.NativeWebRoute.openWebAndFinish(this@JobPostingActivity, "/$seg/$pid")
                         },
                     )
                 }

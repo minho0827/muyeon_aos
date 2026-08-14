@@ -108,8 +108,14 @@ class AppBridgeInterface(
 
             // 알림·회원유형 — E 이식 완료
             "openNotifications" -> com.muyeon.app.ui.notification.NotificationActivity.start(activity)
+            // ★ 웹은 data.roles 에 **JSON 문자열**로 넣어 보낸다(iOS presentRoleManage 와 동일 계약).
+            //   'payload' 키는 존재한 적이 없어 늘 data 전체로 폴백했고, 그 안에서 held/roles 배열을
+            //   못 찾아 보유·인증상태가 통째로 비었다 → 사업 역할이 전부 자물쇠로 잠겨 보였다.
             "openRoleManage" -> com.muyeon.app.ui.onboarding.OnboardingActivity.startRoleManage(
-                activity, d.optJSONObject("payload")?.toString() ?: d.toString(), d.optString("heroImage"),
+                activity,
+                d.optString("roles").ifEmpty { "{}" },
+                d.optString("heroImage"),
+                d.optString("activeType").ifEmpty { "GENERAL" },
             )
             "openRoleVerification" -> com.muyeon.app.ui.onboarding.OnboardingActivity.startVerification(
                 activity, d.optString("role"),
@@ -177,6 +183,9 @@ class AppBridgeInterface(
     /** 상태 통지류 처리(현재는 기록만 — 플로팅 버튼/활성유형은 네이티브 이식 시 연결). */
     private fun onSilentAction(action: String, data: JSONObject) {
         android.util.Log.d(TAG, "silent action=$action data=$data")
+        // 활성 회원유형은 로그만 찍고 버리면 안 된다 — 네이티브 화면이 "지금 학원인가 강사인가"를
+        //  판단할 유일한 근거다(iOS RoleGate.store 대응). UI 없음은 그대로 유지.
+        if (action == "syncActiveType") ActiveRole.store(activity, data.optString("type"))
     }
 
     /** SPA 이동 — 웹이 심어둔 window.__nativeGo(path) 사용(전체 리로드 없이 라우팅). */
@@ -204,6 +213,12 @@ class AppBridgeInterface(
 
             // 온보딩/계정 — openSignupTerms/openAddressSetup 은 네이티브. 유형 온보딩만 웹 유지.
             "openRoleOnboarding" -> "/mypage"
+
+            // 학원-강사 소속 — 네이티브 화면 미이식. 웹 폴백 화면이 완성돼 있으니 그쪽으로 보낸다.
+            //  ★ 웹은 2026-08-13 부터 이 액션을 아예 보내지 않지만(브릿지 호출 제거),
+            //    구버전 번들이 캐시된 기기가 있어 여기서도 받아준다. 없으면 죽은 버튼이 된다.
+            "openAcademyTeachers" -> "/my/academyTeachers"
+            "openAcademyInvites" -> "/my/academyInvites"
 
             // 채팅 — openNative() 에서 네이티브 화면으로 처리(이식 완료).
             // 이미지 뷰어 — 웹 대체 없음.

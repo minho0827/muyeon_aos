@@ -20,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
+import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.ui.quote.QuoteDialog
 import com.muyeon.app.ui.quote.QuoteNavBar
 import kotlinx.coroutines.launch
@@ -48,6 +50,9 @@ fun LessonSlotManageScreen(
 ) {
     var products by remember { mutableStateOf<List<MyLessonProduct>>(emptyList()) }
     var selected by remember { mutableStateOf<MyLessonProduct?>(null) }
+    // 시간표 편성 권한 판정 — 웹이 syncActiveType 으로 넘겨준 활성유형(ActiveRole).
+    val slotCtx = LocalContext.current
+    val isAcademy = remember { ActiveRole.isAcademy(slotCtx) }
     var templates by remember { mutableStateOf<List<LessonSlotTemplate>>(emptyList()) }
     var slots by remember { mutableStateOf<List<LessonSlot>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
@@ -144,6 +149,28 @@ fun LessonSlotManageScreen(
                 }
             }
 
+            // 학원이 관리하는 레슨은 시간 추가·삭제를 감춘다. 버튼을 남겨두면 눌러야만 403 을 보게 돼서,
+            //  왜 안 되는지 모른 채 반복해서 누르게 된다.
+            val readOnly = selected?.slotsReadOnly(isAcademy) == true
+            if (readOnly) {
+                Column(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                        .background(MuyeonColors.groupedBg).padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        "${selected?.academyName ?: "학원"}에서 관리하는 레슨이에요",
+                        fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                        lineHeight = 17.sp, color = MuyeonColors.textHead,
+                    )
+                    // '못 한다'로 끝내지 않는다 — 강사가 이 화면에 온 목적은 대개 출석 체크다.
+                    Text(
+                        "예약 시간 추가·삭제는 학원에서 합니다. 아래에서 예약자 명단 확인과 출석 체크는 그대로 하실 수 있어요.",
+                        fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp, color = MuyeonColors.textSub,
+                    )
+                }
+            }
+            if (!readOnly) {
             // 규칙 추가
             SectionHeader("요일·시간 규칙 추가")
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -187,6 +214,8 @@ fun LessonSlotManageScreen(
                     .padding(vertical = 13.dp),
             )
 
+            }
+
             // 등록된 규칙
             SectionHeader("등록된 규칙", "${templates.size}개")
             if (templates.isEmpty()) {
@@ -206,10 +235,13 @@ fun LessonSlotManageScreen(
                         fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
                         lineHeight = 17.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
                     )
-                    Icon(
-                        Icons.Filled.Close, "삭제", tint = MuyeonColors.secondary,
-                        modifier = Modifier.size(16.dp).clickable { deleteTarget = t },
-                    )
+                    // 학원 관리 레슨이면 삭제도 감춘다(서버가 403 을 낼 자리라 눌러도 소용없다).
+                    if (!readOnly) {
+                        Icon(
+                            Icons.Filled.Close, "삭제", tint = MuyeonColors.secondary,
+                            modifier = Modifier.size(16.dp).clickable { deleteTarget = t },
+                        )
+                    }
                 }
             }
 

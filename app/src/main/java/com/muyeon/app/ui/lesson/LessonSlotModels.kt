@@ -61,9 +61,29 @@ data class LessonSlotTemplate(
 }
 
 /** 내 레슨 상품(슬롯 관리 선택용). */
-data class MyLessonProduct(val id: Int, val title: String, val maxParticipants: Int?) {
+data class MyLessonProduct(
+    val id: Int,
+    val title: String,
+    val maxParticipants: Int?,
+    // 학원이 관리하는 레슨이면 학원 id·이름. 시간표 편성은 학원 몫이라 강사 화면은 읽기전용이 된다.
+    val ownerAcademyId: Int? = null,
+    val ownerAcademyName: String? = null,
+) {
+    /**
+     * 지금 보는 사람이 시간표를 고칠 수 없는 레슨인가.
+     * /lesson-products/mine 은 '내가 만든 것' 또는 '우리 학원이 관리하는 것'만 주므로,
+     * 학원 유형이 아닌데 ownerAcademyId 가 있으면 나는 소속 강사 쪽이다.
+     */
+    fun slotsReadOnly(isAcademy: Boolean): Boolean = ownerAcademyId != null && !isAcademy
+
+    val academyName: String get() = ownerAcademyName ?: "학원"
+
     companion object {
-        fun from(o: JSONObject) = MyLessonProduct(o.optInt("id"), o.optString("title"), o.intOrNull("maxParticipants"))
+        fun from(o: JSONObject) = MyLessonProduct(
+            o.optInt("id"), o.optString("title"), o.intOrNull("maxParticipants"),
+            ownerAcademyId = o.intOrNull("ownerAcademyId"),
+            ownerAcademyName = o.optJSONObject("ownerAcademy")?.stringOrNull("name"),
+        )
     }
 }
 

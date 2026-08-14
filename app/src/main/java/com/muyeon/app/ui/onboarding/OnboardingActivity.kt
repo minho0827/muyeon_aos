@@ -4,13 +4,16 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.addCallback
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.remember
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.muyeon.app.utils.TokenManager
+import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.webview.NativeWebRoute
 import org.json.JSONObject
 
@@ -28,14 +31,21 @@ class OnboardingActivity : ComponentActivity() {
         private const val EXTRA_PAYLOAD = "payload"     // 웹이 넘긴 역할 JSON
         private const val EXTRA_HERO = "hero"
         private const val EXTRA_ROLE = "role"
+        private const val EXTRA_ACTIVE_TYPE = "activeType"
 
-        fun startRoleManage(context: Context, payloadJson: String?, heroImageUrl: String?) =
-            context.go(
-                Intent(context, OnboardingActivity::class.java)
-                    .putExtra(EXTRA_ROUTE, "manage")
-                    .putExtra(EXTRA_PAYLOAD, payloadJson ?: "")
-                    .putExtra(EXTRA_HERO, heroImageUrl ?: ""),
-            )
+        /**
+         * @param rolesJson 웹 data.roles — `{"held":[...],"roles":[...]}` 형태의 **JSON 문자열**
+         * @param activeType 활동 유형. rolesJson 바깥(평평한 키)에 오므로 따로 받는다
+         */
+        fun startRoleManage(
+            context: Context, rolesJson: String?, heroImageUrl: String?, activeType: String?,
+        ) = context.go(
+            Intent(context, OnboardingActivity::class.java)
+                .putExtra(EXTRA_ROUTE, "manage")
+                .putExtra(EXTRA_PAYLOAD, rolesJson ?: "")
+                .putExtra(EXTRA_HERO, heroImageUrl ?: "")
+                .putExtra(EXTRA_ACTIVE_TYPE, activeType ?: "GENERAL"),
+        )
 
         fun startVerification(context: Context, role: String?) =
             context.go(
@@ -62,29 +72,37 @@ class OnboardingActivity : ComponentActivity() {
         }
     }
 
+    /** 인증 화면 결과(제출 여부)를 관리 화면에 돌려주는 콜백 — iOS onVerify completion 대응. */
+    private var verifyCompletion: ((Boolean) -> Unit)? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 시스템 뒤로가기도 닫기와 같은 경로로 — 쌓아둔 웹 콜백을 흘려보내고 나간다.
+        onBackPressedDispatcher.addCallback(this) { closeAndFlush() }
         val route = intent.getStringExtra(EXTRA_ROUTE) ?: "manage"
         val payloadJson = intent.getStringExtra(EXTRA_PAYLOAD)
         val hero = intent.getStringExtra(EXTRA_HERO)?.ifEmpty { null }
         val role = intent.getStringExtra(EXTRA_ROLE)?.ifEmpty { null }
+        val activeType = intent.getStringExtra(EXTRA_ACTIVE_TYPE)?.ifEmpty { null } ?: "GENERAL"
 
         setContent {
             val nav = rememberNavController()
             val token = remember { TokenManager.getAccessToken(this) }
             val api = remember { RoleVerificationApi(token) }
-            val payload = remember(payloadJson) { RoleManagePayload.parse(payloadJson) }
+            val payload = remember(payloadJson, activeType) { RoleManagePayload.parse(payloadJson, activeType) }
 
             NavHost(nav, startDestination = route) {
                 composable("manage") {
                     RoleManageScreen(
                         payload = payload,
                         heroImageUrl = hero,
-                        onClose = { finish() },
-                        onAdd = { r -> notifyWeb("if(window.__onRoleManageAdd){ window.__onRoleManageAdd('$r'); }") },
-                        onRemove = { r -> notifyWeb("if(window.__onRoleRemove){ window.__onRoleRemove('$r'); }") },
-                        onVerify = { r -> nav.navigate("verify/$r") },
-                        onSelectActive = { t -> notifyWeb("if(window.__onActiveTypeChanged){ window.__onActiveTypeChanged('$t'); }") },
+                        onClose = { closeAndFlush() },
+                        // ★ 여기서 화면을 닫지 않는다(iOS 동일) — 콜백은 쌓아뒀다가 나갈 때 한 번에 보낸다.
+                        //   매번 닫으면 유형을 하나 바꿀 때마다 화면이 튕겨 나가 연속 조작이 불가능하다.
+                        onAdd = { r -> queueWeb("if(window.__onRoleManageAdd){ window.__onRoleManageAdd('${esc(r)}'); }") },
+                        onRemove = { r -> queueWeb("if(window.__onRoleRemove){ window.__onRoleRemove('${esc(r)}'); }") },
+                        onVerify = { r, done -> verifyCompletion = done; nav.navigate("verify/$r") },
+                        onSelectActive = { t -> selectActiveType(t) },
                     )
                 }
                 composable("verify") {
@@ -93,7 +111,17 @@ class OnboardingActivity : ComponentActivity() {
                 composable("verify/{role}") { e ->
                     RoleVerificationScreen(
                         api, e.arguments?.getString("role").orEmpty(),
-                        onClose = { if (!nav.popBackStack()) finish() }, onDone = ::verifyDone,
+                        // 그냥 닫은 것 = 미제출. 심사중으로 바꾸면 사용자가 제출한 줄 알고 기다린다.
+                        onClose = {
+                            verifyCompletion?.invoke(false); verifyCompletion = null
+                            if (!nav.popBackStack()) closeAndFlush()
+                        },
+                        onDone = { role, urls ->
+                            verifyDone(role, urls)
+                            verifyCompletion?.invoke(urls.isNotEmpty()); verifyCompletion = null
+                            // iOS 는 인증 화면만 닫고 관리 화면은 열어둔 채 '심사중'으로 바뀐다.
+                            if (!nav.popBackStack()) closeAndFlush()
+                        },
                     )
                 }
                 composable("terms") {
@@ -130,8 +158,40 @@ class OnboardingActivity : ComponentActivity() {
 
     /** 서류 제출 완료 → 웹 콜백으로 심사중 상태 반영. */
     private fun verifyDone(role: String, urls: List<String>) {
-        val arr = urls.joinToString(",") { "'${it.replace("'", "\\'")}'" }
-        notifyWeb("if(window.__onRoleManageVerify){ window.__onRoleManageVerify('$role', [$arr]); }")
+        val arr = urls.joinToString(",") { "'${esc(it)}'" }
+        queueWeb("if(window.__onRoleManageVerify){ window.__onRoleManageVerify('${esc(role)}', [$arr]); }")
+    }
+
+    /**
+     * 활동 유형 선택 — iOS `notifyWebActiveType` 1:1.
+     *  ① 네이티브에 저장(X-Active-Type 이 옛값으로 남는 것 방지) ② 바뀌었으면 전환 토스트 ③ 웹 콜백.
+     *  ★ 저장이 빠지면 네이티브 화면들이 "지금 학원인가 강사인가"를 영영 알 수 없다.
+     */
+    private fun selectActiveType(type: String) {
+        val t = type.uppercase()
+        val changed = ActiveRole.current(this) != t
+        ActiveRole.store(this, t)
+        if (changed) {
+            Toast.makeText(this, "${ActiveRole.label(t)} 유형으로 전환됐어요", Toast.LENGTH_SHORT).show()
+        }
+        queueWeb("if(window.__onActiveTypeChanged){ window.__onActiveTypeChanged('${esc(t)}'); }")
+    }
+
+    // ── 웹 콜백 큐 ──
+    //  AOS 는 웹뷰가 다른 액티비티에 있어 즉시 evaluateJavaScript 를 할 수 없다.
+    //  그래서 콜백을 모아뒀다가 화면을 나갈 때 한 번에 실행한다(웹은 뒤에 가려져 있어 결과는 동일).
+    //  ⚠️ 시스템 뒤로가기로도 반드시 흘려보내야 한다 — 안 그러면 조작이 통째로 유실된다.
+    private val pendingJs = mutableListOf<String>()
+
+    private fun queueWeb(js: String) { pendingJs += js }
+
+    private fun esc(s: String) = s.replace("\\", "\\\\").replace("'", "\\'")
+
+    private fun closeAndFlush() {
+        if (pendingJs.isEmpty()) { finish(); return }
+        val js = pendingJs.joinToString("\n")
+        pendingJs.clear()
+        NativeWebRoute.notifyWebAndFinish(this, js)
     }
 
     private fun notifyWeb(js: String) = NativeWebRoute.notifyWebAndFinish(this, js)

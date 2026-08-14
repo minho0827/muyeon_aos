@@ -90,6 +90,9 @@ data class LessonWizardDraft(
     var homepage: String = "",
     var notice: String = "",
     var cancelPolicy: String = "",
+    // 명의(소속) — null = 본인 명의(학원은 학원 이름, 강사는 개인 레슨).
+    //  학원이면 이 강사 이름으로 노출(asTeacherId), 강사면 이 학원이 함께 관리(atAcademyId).
+    var bylinePartyId: Int? = null,
 ) {
     /** 서버 payload — 키 이름은 iOS/웹과 동일해야 한다(레슨 개설·수정 공용). */
     fun toPayload(): JSONObject = JSONObject().apply {
@@ -125,6 +128,26 @@ data class LessonWizardDraft(
         put("homepage", homepage)
         put("notice", notice)
         put("cancelPolicy", cancelPolicy)
+    }
+
+    /**
+     * 개설(POST)에만 붙이는 명의 키. 수정(PUT)은 서버가 명의를 바꾸지 않으므로 넣지 않는다.
+     *  넣어봐야 무시되고 "바꿨는데 안 바뀐다"는 오해만 만든다.
+     */
+    fun toCreatePayload(isAcademy: Boolean): JSONObject = toPayload().apply {
+        bylinePartyId?.let { put(if (isAcademy) "asTeacherId" else "atAcademyId", it) }
+    }
+}
+
+/** 명의 후보 — 학원이면 소속 강사, 강사면 소속 학원(GET /academy-teachers/{mine,invites}?status=ACTIVE). */
+data class LessonByline(val rowId: Int, val partyId: Int, val partyName: String) {
+    companion object {
+        fun from(o: JSONObject): LessonByline? {
+            val u = o.optJSONObject("user") ?: return null
+            val pid = u.optInt("id", 0)
+            if (pid == 0) return null
+            return LessonByline(o.optInt("id"), pid, u.stringOrNull("name") ?: "이름 없음")
+        }
     }
 }
 
@@ -208,6 +231,23 @@ class LessonWizardApi(private val token: String?) {
     /** 수정 — PUT /lesson-products/:id. */
     suspend fun updateProduct(id: Int, payload: JSONObject): Result<Int> =
         write("/lesson-products/$id", "PUT", payload, "레슨 수정에 실패했어요.")
+
+    /**
+     * 소속(ACTIVE) 목록 — 학원이면 소속 강사, 강사면 소속 학원.
+     *  명의는 선택 항목이라 실패해도 폼은 그대로 쓸 수 있어야 한다 → 빈 목록으로 흘린다.
+     */
+    suspend fun affiliations(isAcademy: Boolean): List<LessonByline> = withContext(Dispatchers.IO) {
+        val path = if (isAcademy) "/academy-teachers/mine" else "/academy-teachers/invites"
+        runCatching {
+            val req = Request.Builder().url("$apiBase$path?status=ACTIVE")
+                .apply { token?.let { header("Authorization", "Bearer $it") } }.build()
+            client.newCall(req).execute().use { res ->
+                if (!res.isSuccessful) return@use emptyList()
+                JSONArray(res.body?.string().orEmpty().ifBlank { "[]" })
+                    .map { it }.mapNotNull(LessonByline::from)
+            }
+        }.getOrDefault(emptyList())
+    }
 
     suspend fun getProduct(id: Int): Result<LessonProductDetail> = withContext(Dispatchers.IO) {
         runCatching {

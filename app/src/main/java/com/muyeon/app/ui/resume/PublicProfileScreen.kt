@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -65,13 +66,22 @@ fun PublicProfileScreen(
     var scrapped by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
     var reportOpen by remember { mutableStateOf(false) }
+    var deleteOpen by remember { mutableStateOf(false) }
+    // 이 화면은 사용자 단위라 이력서 id 가 없다. '구직'에 노출되는 건 기본 이력서이므로 그걸 관리 대상으로 삼는다.
+    var myResumeId by remember { mutableStateOf<Int?>(null) }
     var toast by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val ctx = LocalContext.current
 
     LaunchedEffect(userId, preview) {
         api.publicProfile(userId, preview, src).onSuccess {
             profile = it
             scrapped = it.scrapped == true
+            if (it.selfView == true) {
+                api.list().onSuccess { items ->
+                    myResumeId = (items.firstOrNull { r -> r.isDefault } ?: items.firstOrNull())?.id
+                }
+            }
         }
         reviewApi.list(userId).onSuccess { reviews = it }
         loading = false
@@ -119,11 +129,27 @@ fun PublicProfileScreen(
                             Spacer(Modifier.width(6.dp))
                             Box {
                                 CircleIconButton(Icons.Filled.MoreVert, "더보기") { menuOpen = true }
+                                // 본인 프로필이면 관리(수정/삭제), 남의 프로필이면 신고.
+                                //  자기 자신을 신고하는 메뉴는 의미가 없어 서로 배타로 둔다(iOS 동일).
                                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                                    DropdownMenuItem(
-                                        text = { Text("신고하기", fontFamily = customFontFamily, fontSize = 14.sp) },
-                                        onClick = { menuOpen = false; reportOpen = true },
-                                    )
+                                    if (p.selfView == true) {
+                                        DropdownMenuItem(
+                                            text = { Text("수정하기", fontFamily = customFontFamily, fontSize = 14.sp) },
+                                            onClick = {
+                                                menuOpen = false
+                                                ResumeActivity.startEdit(ctx, myResumeId, null)
+                                            },
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("삭제", fontFamily = customFontFamily, fontSize = 14.sp) },
+                                            onClick = { menuOpen = false; deleteOpen = true },
+                                        )
+                                    } else {
+                                        DropdownMenuItem(
+                                            text = { Text("신고하기", fontFamily = customFontFamily, fontSize = 14.sp) },
+                                            onClick = { menuOpen = false; reportOpen = true },
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -205,6 +231,24 @@ fun PublicProfileScreen(
                 }
             }
         }
+    }
+
+    // 삭제 확인 — 되돌릴 수 없어 한 번 더 묻는다. 지원 이력이 있으면 서버가 막고 사유를 돌려준다.
+    if (deleteOpen) {
+        QuoteDialog(
+            title = "이 이력서를 삭제할까요?",
+            message = "구직 목록에서 사라집니다. 되돌릴 수 없어요.",
+            confirmText = "삭제",
+            onConfirm = {
+                deleteOpen = false
+                val id = myResumeId
+                if (id == null) toast = "삭제할 이력서를 찾지 못했어요."
+                else scope.launch {
+                    api.remove(id).onSuccess { onClose() }.onFailure { toast = it.message }
+                }
+            },
+            onDismiss = { deleteOpen = false },
+        )
     }
 
     if (reportOpen) {

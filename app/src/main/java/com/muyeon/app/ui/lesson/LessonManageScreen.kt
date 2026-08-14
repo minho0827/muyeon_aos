@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -28,6 +29,7 @@ import coil3.compose.AsyncImage
 import com.muyeon.app.BuildConfig
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
+import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.ui.quote.QuoteDialog
 import com.muyeon.app.ui.quote.QuoteEmptyState
 import com.muyeon.app.ui.quote.QuoteNavBar
@@ -67,10 +69,21 @@ data class LessonProduct(
     val price: Int?,
     val region: String?,
     val status: String?,
+    // 학원↔강사 소속으로 만든 레슨 — 노출은 creator(강사), 관리는 ownerAcademy(학원).
+    val ownerAcademyId: Int? = null,
+    val creatorName: String? = null,
+    val ownerAcademyName: String? = null,
 ) {
     /** 홈 노출중이면 종료 시각(millis), 아니면 null. */
     val boostUntilMillis: Long?
         get() = QuoteUi.parseDate(promotedUntil)?.takeIf { it > System.currentTimeMillis() }
+
+    /** 명의 배지 문구. 본인 명의(대부분)는 null — 전부 달면 배지가 도배돼 구분이 안 된다. */
+    fun bylineText(isAcademy: Boolean): String? {
+        if (ownerAcademyId == null) return null
+        return if (isAcademy) "${creatorName ?: "강사"} 명의"      // 학원이 볼 때: 누구 이름으로 나가는가
+        else "${ownerAcademyName ?: "학원"} 관리"                  // 강사가 볼 때: 어느 학원이 함께 관리하는가
+    }
 
     companion object {
         fun from(o: JSONObject) = LessonProduct(
@@ -78,6 +91,9 @@ data class LessonProduct(
             o.optBoolean("isExperience", false), o.stringOrNull("promotedUntil"),
             o.stringList("images"), o.stringOrNull("scheduleText"),
             o.intOrNull("price"), o.stringOrNull("region"), o.stringOrNull("status"),
+            ownerAcademyId = o.intOrNull("ownerAcademyId"),
+            creatorName = o.optJSONObject("creator")?.stringOrNull("name"),
+            ownerAcademyName = o.optJSONObject("ownerAcademy")?.stringOrNull("name"),
         )
     }
 }
@@ -153,6 +169,9 @@ fun LessonManageScreen(
     var plans by remember { mutableStateOf<List<LessonPlan>>(emptyList()) }
     var toast by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    // 명의 배지 판정 — 웹이 syncActiveType 으로 넘겨준 활성유형(ActiveRole).
+    val ctx = LocalContext.current
+    val isAcademyViewer = remember { ActiveRole.isAcademy(ctx) }
 
     suspend fun load() {
         rows = api.myLessons().getOrDefault(emptyList())
@@ -193,6 +212,7 @@ fun LessonManageScreen(
                 items(list, key = { it.id }) { l ->
                     LessonCard(
                         l = l,
+                        isAcademyViewer = isAcademyViewer,
                         onEdit = { onEdit(l.id) },
                         onSlots = { onSlots(l.id) },
                         onBoost = {
@@ -320,6 +340,7 @@ fun LessonManageScreen(
 @Composable
 private fun LessonCard(
     l: LessonProduct,
+    isAcademyViewer: Boolean,
     onEdit: () -> Unit,
     onSlots: () -> Unit,
     onBoost: () -> Unit,
@@ -345,6 +366,7 @@ private fun LessonCard(
                         maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
                     )
                     if (l.isExperience == true) CardPill("체험", filled = false)
+                    l.bylineText(isAcademyViewer)?.let { CardPill(it, filled = false) }
                     l.boostUntilMillis?.let {
                         CardPill("홈 노출중 ~${SimpleDateFormat("M.d", Locale.KOREA).format(Date(it))}", filled = true)
                     }

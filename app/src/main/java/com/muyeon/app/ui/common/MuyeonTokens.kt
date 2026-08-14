@@ -33,6 +33,12 @@ object MuyeonColors {
     val chevron = Color(0xFFBFBFBF)          // Color(white: 0.75)
     val info = Color(0xFF007AFF)             // Color(.systemBlue) — 미확인 표시 점 등
     val body = Color(0xFF37383B)             // Asset.Colors.color37383B (견적 메시지 본문)
+
+    // 회원유형 관리(RoleManageScreen) 타일 — iOS Asset.Colors 와 같은 값
+    val tileHeld = Color(0xFFFFE4D2)         // colorFFE4D2 (보유 타일, 0.6 알파로 사용)
+    val tileLocked = Color(0xFFC5C4C4)       // colorC5C4C4 (잠금 타일 / '미보유' 텍스트)
+    val tileIdle = Color(0xFFF7F7F7)         // colorF7F7F7 (기본 타일)
+    val primaryDeep = Color(0xFFF4741A)      // colorF4741A — CTA 그라데이션 끝색
 }
 
 object MuyeonLayout {

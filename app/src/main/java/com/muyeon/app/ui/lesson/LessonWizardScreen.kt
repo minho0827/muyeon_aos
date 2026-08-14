@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
+import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.ui.quote.QuoteDialog
 import com.muyeon.app.ui.quote.QuoteNavBar
 import com.muyeon.app.ui.quote.QuoteUi
@@ -80,9 +81,13 @@ fun LessonWizardScreen(
     var showExit by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    // 명의 후보(소속) — 개설 모드에서만 채운다. 활성유형은 웹이 syncActiveType 으로 넘겨준 값.
+    var bylines by remember { mutableStateOf<List<LessonByline>>(emptyList()) }
+    val isAcademy = remember { ActiveRole.isAcademy(context) }
 
     LaunchedEffect(lessonId) {
         hasDetailImageEnt = api.hasDetailImage()
+        if (lessonId == null) bylines = api.affiliations(isAcademy)
         if (lessonId != null) {
             api.getProduct(lessonId).onSuccess { d ->
                 draft = d.toDraft().also {
@@ -163,7 +168,7 @@ fun LessonWizardScreen(
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             when (step) {
-                0 -> StepBasic(draft) { draft = it }
+                0 -> StepBasic(draft, bylines, isAcademy, lessonId != null) { draft = it }
                 1 -> StepIntro(draft, hasDetailImageEnt, uploading, { draft = it },
                     onPickPhotos = { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                     onPickDetail = { detailPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
@@ -190,8 +195,9 @@ fun LessonWizardScreen(
                 if (!isLast) { step += 1; return@WizardButton }
                 submitting = true
                 scope.launch {
-                    val payload = draft.toPayload()
-                    val result = if (lessonId != null) api.updateProduct(lessonId, payload) else api.createProduct(payload)
+                    // 명의 키는 개설에만 붙인다(수정은 서버가 명의를 바꾸지 않는다).
+                    val result = if (lessonId != null) api.updateProduct(lessonId, draft.toPayload())
+                    else api.createProduct(draft.toCreatePayload(isAcademy))
                     result.onSuccess { id -> onCreated(if (id > 0) id else (lessonId ?: 0)) }
                         .onFailure { errorMessage = it.message }
                     submitting = false
@@ -219,7 +225,34 @@ fun LessonWizardScreen(
 // ============================================================
 
 @Composable
-private fun StepBasic(d: LessonWizardDraft, onChange: (LessonWizardDraft) -> Unit) {
+private fun StepBasic(
+    d: LessonWizardDraft,
+    bylines: List<LessonByline>,
+    isAcademy: Boolean,
+    isEdit: Boolean,
+    onChange: (LessonWizardDraft) -> Unit,
+) {
+    // 명의 — 소속이 있을 때만, 그리고 개설 모드에서만.
+    //  수정에서는 서버가 명의를 바꾸지 않으므로 보이면 "바꿨는데 안 바뀌는" 칸이 된다.
+    if (!isEdit && bylines.isNotEmpty()) {
+        val selfLabel = if (isAcademy) "우리 학원 이름으로" else "개인 레슨"
+        val labels = listOf(selfLabel) + bylines.map { if (isAcademy) "${it.partyName} 강사" else it.partyName }
+        val current = d.bylinePartyId?.let { id ->
+            bylines.firstOrNull { it.partyId == id }
+                ?.let { if (isAcademy) "${it.partyName} 강사" else it.partyName }
+        } ?: selfLabel
+        WizardField(if (isAcademy) "누구 이름으로 낼까요?" else "어느 학원 수업인가요?") {
+            WizardMenu(current, selfLabel, labels) { picked ->
+                val idx = labels.indexOf(picked)
+                onChange(d.copy(bylinePartyId = if (idx <= 0) null else bylines[idx - 1].partyId))
+            }
+            Text(
+                if (isAcademy) "회원에게는 선택한 강사가 보이고, 후기도 그 강사에게 쌓여요. 관리는 학원이 합니다."
+                else "학원을 고르면 관리는 학원이 함께 해요. 레슨은 그대로 내 이름으로 보입니다.",
+                fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp, color = MuyeonColors.textSub,
+            )
+        }
+    }
     WizardField("레슨명", required = true) {
         WizardTextField(d.title, "예: 성인 취미 발레 (초급)") { onChange(d.copy(title = it)) }
     }

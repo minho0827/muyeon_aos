@@ -1,6 +1,7 @@
 package com.muyeon.app.ui.jobposting
 
 import com.muyeon.app.BuildConfig
+import com.muyeon.app.ui.quote.boolOrNull
 import com.muyeon.app.ui.quote.intOrNull
 import com.muyeon.app.ui.quote.map
 import com.muyeon.app.ui.quote.stringList
@@ -131,6 +132,9 @@ data class JobForm(
     var careerText: String? = null,
     var description: String? = null,
     var status: String? = null,     // DRAFT(임시저장) | OPEN
+    // 원하는 강사 조건 — 웹 JobCreate·iOS JobPreferences 와 **키 이름까지 동일**해야 한다.
+    //  한쪽만 바꾸면 저장은 되는데 다른 화면에서 안 보이는 형태로 조용히 어긋난다.
+    var pref: JobPref = JobPref(),
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("title", title)
@@ -147,6 +151,7 @@ data class JobForm(
         careerLevels?.let { put("careerLevels", JSONArray(it)) }
         putOpt("careerText", careerText); putOpt("description", description)
         putOpt("status", status)
+        pref.toJson()?.let { put("preferences", it) }
     }
 
     companion object {
@@ -170,6 +175,47 @@ data class JobForm(
                 target = d.stringOrNull("target"), address = d.stringOrNull("address"),
                 subway = d.stringOrNull("subway"), employment = d.stringOrNull("employment"),
                 headcount = d.intOrNull("headcount"), deadline = d.stringOrNull("deadline"),
+                // 서버는 preferences 를 details 안에 넣는다(웹과 동일 위치).
+                pref = JobPref.from(d.optJSONObject("preferences")),
+            )
+        }
+    }
+}
+
+/** 원하는 강사 조건 — null = 조건 없음(예/아니오 미선택). */
+data class JobPref(
+    val artHigh: Boolean? = null,        // 예고 출신 우대
+    val university: Boolean? = null,     // 대학 졸업 우대
+    val universityName: String? = null,  // 우대 대학명
+    val company: Boolean? = null,        // 무용단 출신 우대
+    val fields: List<String>? = null,    // 지도 가능 분야(우대)
+    val certRequired: Boolean? = null,   // 자격증 필수
+    val videoRequired: Boolean? = null,  // 영상 포트폴리오 필수
+    val note: String? = null,            // 기타 우대 조건
+) {
+    /** 아무것도 안 골랐으면 null — 빈 객체를 보내 details 를 지저분하게 만들지 않는다. */
+    fun toJson(): JSONObject? {
+        val o = JSONObject()
+        artHigh?.let { o.put("artHigh", it) }
+        university?.let { o.put("university", it) }
+        universityName?.takeIf { it.isNotBlank() }?.let { o.put("universityName", it) }
+        company?.let { o.put("company", it) }
+        fields?.takeIf { it.isNotEmpty() }?.let { o.put("fields", JSONArray(it)) }
+        certRequired?.let { o.put("certRequired", it) }
+        videoRequired?.let { o.put("videoRequired", it) }
+        note?.takeIf { it.isNotBlank() }?.let { o.put("note", it) }
+        return if (o.length() == 0) null else o
+    }
+
+    companion object {
+        fun from(o: JSONObject?): JobPref {
+            if (o == null) return JobPref()
+            return JobPref(
+                artHigh = o.boolOrNull("artHigh"), university = o.boolOrNull("university"),
+                universityName = o.stringOrNull("universityName"), company = o.boolOrNull("company"),
+                fields = o.stringList("fields"),
+                certRequired = o.boolOrNull("certRequired"), videoRequired = o.boolOrNull("videoRequired"),
+                note = o.stringOrNull("note"),
             )
         }
     }
@@ -189,6 +235,10 @@ class JobPostingApi(private val token: String?) {
 
     suspend fun setStatus(kind: String, id: Int, status: String): Result<Unit> =
         call("/me/postings/$kind/$id/status", "PATCH", JSONObject().put("status", status)).map { }
+
+    /** 삭제 = 보관(ARCHIVED) 소프트 처리. 지원 이력은 서버에 그대로 남는다. */
+    suspend fun remove(kind: String, id: Int): Result<Unit> =
+        call("/me/postings/$kind/$id", "DELETE").map { }
 
     suspend fun loadJob(id: Int): Result<JobForm> = call("/jobs/$id").map { JobForm.from(JSONObject(it)) }
 
