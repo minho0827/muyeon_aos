@@ -299,10 +299,20 @@ class WebViewActivity : ComponentActivity() {
         // 네이티브 화면이 쌓아둔 웹 콜백을 흘려보낸다(WebCallbackQueue).
         //  액티비티가 죽어 인텐트로 못 넘긴 것까지 여기서 회수된다 —
         //  안 하면 "화면엔 반영됐는데 서버는 모르는" 상태로 남는다.
-        WebCallbackQueue.drain(this)?.let { js ->
-            evalWhenReady("(function(){ try { $js } catch(e) {} return 1; })()")
+        //  ★ 실행 성공을 확인한 뒤에 비운다(콜드 스타트에서 웹이 아직 준비 안 됐을 수 있다).
+        WebCallbackQueue.peek(this)?.let { js ->
+            evalWhenReady(readyGuarded(js)) { WebCallbackQueue.clear(this) }
         }
     }
+
+    /**
+     * 웹이 콜백을 등록하기 전이면 0 을 돌려 재시도하게 만든다.
+     *  `window.__nativeGo` 는 콜백들과 **같은 AppRouter effect** 에서 심어지므로 준비 신호로 쓴다.
+     *  ★ 이 가드가 없으면 `try{...}catch{} return 1` 이 항상 성공으로 잡혀,
+     *    핸들러가 없던 순간의 통지가 조용히 사라진다.
+     */
+    private fun readyGuarded(js: String) =
+        "(function(){ if(!window.__nativeGo) return 0; try { $js } catch(e) {} return 1; })()"
 
     /**
      * 네이티브 화면에서 돌아오며 요청한 SPA 이동/콜백 처리(NativeWebRoute).
@@ -316,15 +326,15 @@ class WebViewActivity : ComponentActivity() {
         }
         intent.getStringExtra(NativeWebRoute.EXTRA_EVAL_JS)?.takeIf { it.isNotEmpty() }?.let { js ->
             intent.removeExtra(NativeWebRoute.EXTRA_EVAL_JS)
-            evalWhenReady("(function(){ try { $js } catch(e) {} return 1; })()")
+            // 같은 이유로 준비 가드를 씌운다 — 종전엔 항상 1 이라 재시도가 한 번도 안 걸렸다.
+            evalWhenReady(readyGuarded(js))
         }
     }
 
-    private fun evalWhenReady(script: String, attempt: Int = 0) {
+    private fun evalWhenReady(script: String, attempt: Int = 0, onDone: (() -> Unit)? = null) {
         webView.evaluateJavascript(script) { result ->
-            if (result != "1" && attempt < 10) {
-                webView.postDelayed({ evalWhenReady(script, attempt + 1) }, 300)
-            }
+            if (result == "1") onDone?.invoke()
+            else if (attempt < 10) webView.postDelayed({ evalWhenReady(script, attempt + 1, onDone) }, 300)
         }
     }
 

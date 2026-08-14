@@ -31,14 +31,17 @@ object WebCallbackQueue {
         write(context, cur)
     }
 
-    /** 대기열을 비우고 돌려준다. 비었으면 null. */
+    /**
+     * 대기열 내용만 본다(비우지 않는다). 비었으면 null.
+     *  ★ 실행에 성공한 뒤에 clear 해야 한다. 먼저 비우면 웹이 아직 콜백을 등록하기 전일 때
+     *    그대로 유실된다(콜드 스타트에서 실제로 발생 가능).
+     */
     @Synchronized
-    fun drain(context: Context): String? {
-        val cur = read(context)
-        if (cur.isEmpty()) return null
-        write(context, mutableListOf())
-        return cur.joinToString("\n")
-    }
+    fun peek(context: Context): String? =
+        read(context).takeIf { it.isNotEmpty() }?.joinToString("\n")
+
+    @Synchronized
+    fun clear(context: Context) = write(context, mutableListOf())
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
