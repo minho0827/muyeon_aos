@@ -294,6 +294,16 @@ class WebViewActivity : ComponentActivity() {
         consumeNativeRoute(intent)
     }
 
+    override fun onResume() {
+        super.onResume()
+        // 네이티브 화면이 쌓아둔 웹 콜백을 흘려보낸다(WebCallbackQueue).
+        //  액티비티가 죽어 인텐트로 못 넘긴 것까지 여기서 회수된다 —
+        //  안 하면 "화면엔 반영됐는데 서버는 모르는" 상태로 남는다.
+        WebCallbackQueue.drain(this)?.let { js ->
+            evalWhenReady("(function(){ try { $js } catch(e) {} return 1; })()")
+        }
+    }
+
     /**
      * 네이티브 화면에서 돌아오며 요청한 SPA 이동/콜백 처리(NativeWebRoute).
      *  웹이 아직 로드 전이면 __nativeGo 가 없으므로 짧게 재시도한다(최대 3초).

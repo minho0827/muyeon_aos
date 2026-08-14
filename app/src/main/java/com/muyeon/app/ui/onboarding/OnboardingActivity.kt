@@ -15,6 +15,7 @@ import androidx.navigation.compose.rememberNavController
 import com.muyeon.app.utils.TokenManager
 import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.webview.NativeWebRoute
+import com.muyeon.app.webview.WebCallbackQueue
 import org.json.JSONObject
 
 /**
@@ -179,20 +180,16 @@ class OnboardingActivity : ComponentActivity() {
 
     // ── 웹 콜백 큐 ──
     //  AOS 는 웹뷰가 다른 액티비티에 있어 즉시 evaluateJavaScript 를 할 수 없다.
-    //  그래서 콜백을 모아뒀다가 화면을 나갈 때 한 번에 실행한다(웹은 뒤에 가려져 있어 결과는 동일).
-    //  ⚠️ 시스템 뒤로가기로도 반드시 흘려보내야 한다 — 안 그러면 조작이 통째로 유실된다.
-    private val pendingJs = mutableListOf<String>()
-
-    private fun queueWeb(js: String) { pendingJs += js }
+    //  그래서 콜백을 모아뒀다가 화면을 나갈 때 실행한다(웹은 뒤에 가려져 있어 결과는 동일).
+    //  ★ 큐를 **디스크에 적는다**(WebCallbackQueue). 액티비티 메모리에만 두면 프로세스가
+    //    정리되는 순간 조작이 통째로 유실되고, 화면엔 반영됐는데 서버는 모르는 상태가 된다.
+    //    웹뷰가 다시 앞으로 나올 때(WebViewActivity.onResume) 남은 것을 흘려보낸다.
+    private fun queueWeb(js: String) = WebCallbackQueue.enqueue(this, js)
 
     private fun esc(s: String) = s.replace("\\", "\\\\").replace("'", "\\'")
 
-    private fun closeAndFlush() {
-        if (pendingJs.isEmpty()) { finish(); return }
-        val js = pendingJs.joinToString("\n")
-        pendingJs.clear()
-        NativeWebRoute.notifyWebAndFinish(this, js)
-    }
+    /** 닫기·시스템 뒤로가기 공통. 큐는 디스크에 있으므로 여기선 화면만 닫으면 된다. */
+    private fun closeAndFlush() = finish()
 
     private fun notifyWeb(js: String) = NativeWebRoute.notifyWebAndFinish(this, js)
 }
