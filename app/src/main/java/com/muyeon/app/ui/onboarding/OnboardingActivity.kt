@@ -16,6 +16,7 @@ import com.muyeon.app.utils.TokenManager
 import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.webview.NativeWebRoute
 import com.muyeon.app.webview.WebCallbackQueue
+import org.json.JSONArray
 import org.json.JSONObject
 
 /**
@@ -106,23 +107,37 @@ class OnboardingActivity : ComponentActivity() {
                         onSelectActive = { t -> selectActiveType(t) },
                     )
                 }
+                // 인증 유도 팝업(`openRoleVerification`) 직행 경로 — 관리 화면이 없으므로 제출 즉시 웹으로 돌아간다.
+                //  이 경로의 웹 콜백은 __onRoleVerify 다(제출 + 마이페이지 제출완료 안내까지 웹이 처리).
                 composable("verify") {
-                    RoleVerificationScreen(api, role.orEmpty(), onClose = { finish() }, onDone = ::verifyDone)
+                    RoleVerificationScreen(
+                        api, role.orEmpty(),
+                        onClose = { finish() },
+                        onDone = { r, urls, academyName ->
+                            notifyWeb(verifyJs("__onRoleVerify", r, urls, academyName))
+                        },
+                    )
                 }
                 composable("verify/{role}") { e ->
+                    val code = e.arguments?.getString("role").orEmpty()
                     RoleVerificationScreen(
-                        api, e.arguments?.getString("role").orEmpty(),
+                        api, code,
                         // 그냥 닫은 것 = 미제출. 심사중으로 바꾸면 사용자가 제출한 줄 알고 기다린다.
                         onClose = {
                             verifyCompletion?.invoke(false); verifyCompletion = null
                             if (!nav.popBackStack()) closeAndFlush()
                         },
-                        onDone = { role, urls ->
-                            verifyDone(role, urls)
-                            verifyCompletion?.invoke(urls.isNotEmpty()); verifyCompletion = null
-                            // iOS 는 인증 화면만 닫고 관리 화면은 열어둔 채 '심사중'으로 바뀐다.
-                            if (!nav.popBackStack()) closeAndFlush()
+                        onDone = { r, urls, academyName ->
+                            val submitted = urls.isNotEmpty()
+                            verifyDone(r, urls, academyName)
+                            verifyCompletion?.invoke(submitted); verifyCompletion = null
+                            // 제출을 마쳤으면 인증 화면만이 아니라 회원유형 관리 화면까지 함께 닫는다(iOS 동일).
+                            //  관리 화면이 남으면 방금 제출이 처리됐는지 알 수 없고, 웹의 제출완료 안내도
+                            //  화면 뒤에 가려진다. 큐에 쌓인 콜백은 웹뷰가 앞으로 나올 때 실행된다.
+                            if (submitted) closeAndFlush()
+                            else if (!nav.popBackStack()) closeAndFlush()
                         },
+                        initialImages = payload.documents[code].orEmpty(),
                     )
                 }
                 composable("terms") {
@@ -157,10 +172,18 @@ class OnboardingActivity : ComponentActivity() {
         }
     }
 
-    /** 서류 제출 완료 → 웹 콜백으로 심사중 상태 반영. */
-    private fun verifyDone(role: String, urls: List<String>) {
-        val arr = urls.joinToString(",") { "'${esc(it)}'" }
-        queueWeb("if(window.__onRoleManageVerify){ window.__onRoleManageVerify('${esc(role)}', [$arr]); }")
+    /** 서류 제출 완료 → 웹 콜백으로 제출 API 수행 + 심사중 반영. */
+    private fun verifyDone(role: String, urls: List<String>, academyName: String?) =
+        queueWeb(verifyJs("__onRoleManageVerify", role, urls, academyName))
+
+    /**
+     * 인증 콜백 JS 한 줄. (역할, 서류 URL **JSON 문자열**, 학원명)
+     *  ★ 웹은 2번째 인자를 `JSON.parse` 한다 — 배열 리터럴을 넘기면 파싱이 실패해
+     *    서류가 **한 장도 제출되지 않는다**(화면상으론 제출된 것처럼 보인다). iOS 와 같은 문자열 계약.
+     */
+    private fun verifyJs(fn: String, role: String, urls: List<String>, academyName: String?): String {
+        val json = JSONArray(urls).toString()
+        return "if(window.$fn){ window.$fn('${esc(role)}', '${esc(json)}', '${esc(academyName.orEmpty())}'); }"
     }
 
     /**

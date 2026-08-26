@@ -55,7 +55,8 @@ import org.json.JSONObject
  *
  * ⚠️ 실제 API 는 **웹 콜백**이 수행한다(`__onRoleManageAdd`/`__onRoleRemove`/
  *   `__onRoleManageVerify`/`__onActiveTypeChanged`). 이 화면은 UI + 낙관적 갱신만 담당한다.
- *   ★ 콜백을 보낸 뒤 화면을 닫으면 안 된다 — iOS 는 열어둔 채 계속 조작할 수 있다.
+ *   ★ 추가·해제·유형선택은 콜백을 보낸 뒤에도 화면을 닫지 않는다 — 연속으로 조작할 수 있어야 한다.
+ *     인증 서류 제출만 예외로, 제출 뒤 이 화면까지 함께 닫는다(OnboardingActivity 참고).
  */
 data class RoleOption(val code: String, val emoji: String, val title: String, val business: Boolean)
 
@@ -78,6 +79,8 @@ data class RoleManagePayload(
     val granted: Set<String>,
     val status: Map<String, String>,
     val activeType: String,
+    /** 역할 → 이미 제출한 서류 URL. 재제출 화면에서 미리보기로 다시 채워 준다. */
+    val documents: Map<String, List<String>> = emptyMap(),
 ) {
     companion object {
         /**
@@ -93,6 +96,7 @@ data class RoleManagePayload(
                 val o = JSONObject(json)
                 val granted = mutableSetOf<String>()
                 val status = mutableMapOf<String, String>()
+                val documents = mutableMapOf<String, List<String>>()
                 o.optJSONArray("held")?.let { arr -> (0 until arr.length()).forEach { granted.add(arr.optString(it)) } }
                 o.optJSONArray("roles")?.let { arr ->
                     (0 until arr.length()).forEach { i ->
@@ -100,9 +104,15 @@ data class RoleManagePayload(
                         val code = r.optString("role")
                         if (r.optBoolean("granted", false)) granted.add(code)
                         r.optString("status").takeIf { it.isNotEmpty() }?.let { status[code] = it }
+                        r.optJSONArray("documents")?.let { da ->
+                            val urls = (0 until da.length()).mapNotNull {
+                                da.optJSONObject(it)?.optString("url")?.ifEmpty { null }
+                            }
+                            if (urls.isNotEmpty()) documents[code] = urls
+                        }
                     }
                 }
-                RoleManagePayload(granted, status, activeType.ifEmpty { "GENERAL" })
+                RoleManagePayload(granted, status, activeType.ifEmpty { "GENERAL" }, documents)
             }.getOrDefault(RoleManagePayload(emptySet(), emptyMap(), activeType))
         }
     }
