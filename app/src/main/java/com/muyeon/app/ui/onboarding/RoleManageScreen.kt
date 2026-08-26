@@ -57,12 +57,17 @@ import org.json.JSONObject
  *   `__onRoleManageVerify`/`__onActiveTypeChanged`). 이 화면은 UI + 낙관적 갱신만 담당한다.
  *   ★ 추가·해제·유형선택은 콜백을 보낸 뒤에도 화면을 닫지 않는다 — 연속으로 조작할 수 있어야 한다.
  *     인증 서류 제출만 예외로, 제출 뒤 이 화면까지 함께 닫는다(OnboardingActivity 참고).
+ *
+ * @param business 인증(서류 제출 → 관리자 승인) 후에만 부여되는 유형인가.
+ *  ★ 일반회원(HOBBY)을 뺀 다섯 유형은 전부 인증 대상이다 — 강사·무용수도 예외가 아니다.
+ *    예전엔 이 둘이 false 라 "바로 추가할 수 있는 회원유형입니다" + [회원유형 추가] 가 떠서
+ *    서류 없이 보유로 표시됐다(iOS `RoleManageView.options` 와 같은 값이어야 한다).
  */
 data class RoleOption(val code: String, val emoji: String, val title: String, val business: Boolean)
 
 private val ROLE_OPTIONS = listOf(
-    RoleOption("TEACHER", "🩰", "강사", false),
-    RoleOption("DANCER", "💃", "무용수", false),
+    RoleOption("TEACHER", "🩰", "강사", true),
+    RoleOption("DANCER", "💃", "무용수", true),
     RoleOption("ACADEMY", "🏫", "학원·원장", true),
     RoleOption("TEAM", "🎭", "공연팀·기획자", true),
     RoleOption("SPACE", "🏢", "공간보유자", true),
@@ -86,6 +91,10 @@ data class RoleManagePayload(
         /**
          * @param json 웹 `data.roles` — `{"held":[...],"roles":[{role,granted,status,documents}]}` **문자열**
          * @param activeType `data.activeType` — roles JSON 안이 아니라 바깥 평평한 키로 온다
+         *
+         * 서버가 함께 주는 `needsVerification` 은 읽지 않는다 — 인증 대상을 '추가'만 할 수 있고
+         *   해제하지는 못하는데, 일반회원을 뺀 모든 유형이 이미 ROLE_OPTIONS 에서 인증 대상이라
+         *   합치면 결과가 같다. (iOS 는 서버가 새 유형을 늘릴 때를 대비해 합집합을 취한다)
          *
          * ★ 예전엔 data 객체 전체를 넘겨받아 여기서 held/roles 를 찾다 실패했다.
          *   그러면 보유·인증상태가 통째로 비어 사업 역할이 전부 자물쇠로 보인다(2026-08-13 수정).
@@ -300,7 +309,7 @@ private fun ProfilePanel(
         }
         Text(
             "카드를 탭하면 그 유형으로 활동이 전환돼요(하단 탭·홈이 바뀜).\n" +
-                "길게 누르면 추가·인증·해제. 학원·공간·공연팀은 승인 후 부여됩니다.",
+                "길게 누르면 추가·인증·해제. 일반회원을 제외한 유형은 승인 후 부여됩니다.",
             fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp,
             color = MuyeonColors.textSub, textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()

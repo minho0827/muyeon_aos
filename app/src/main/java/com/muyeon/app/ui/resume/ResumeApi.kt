@@ -46,9 +46,6 @@ class ResumeApi(private val token: String?) {
 
     suspend fun remove(id: Int): Result<Unit> = call("/resumes/$id", "DELETE").map { }
 
-    /** 개인 역할 부여(무용수 등록 시 DANCER) — 실패해도 저장은 유지(best-effort). */
-    suspend fun assignRole(role: String) { call("/me/roles", "POST", JSONObject().put("role", role)) }
-
     // ── 공개범위 ──
 
     /** GET /resumes/visibility → { flags, profileHidden }. */

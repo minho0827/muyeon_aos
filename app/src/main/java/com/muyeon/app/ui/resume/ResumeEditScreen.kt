@@ -376,8 +376,8 @@ fun ResumeEditScreen(
                             api.save(resumeId, title, d)
                                 .onSuccess { newId ->
                                     if (mode.isDancer) {
-                                        // DANCER 역할 부여 + 신규는 기본이력서로 → 서버 미러가 /dancers 노출 보장.
-                                        api.assignRole("DANCER")
+                                        // 유형은 인증 절차에서만 부여한다 — 이력서 저장이 유형 인증을 우회하면 안 된다.
+                                        //  (iOS `ResumeEditVM.save` 와 동일. 신규는 기본이력서 지정만 한다)
                                         if (resumeId == null) api.setDefault(newId)
                                     }
                                     onSaved()
