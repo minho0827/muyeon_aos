@@ -126,9 +126,8 @@ class AppBridgeInterface(
             "openAddressSetup" -> com.muyeon.app.ui.onboarding.OnboardingActivity.startAddress(activity)
             "openNotificationConsent" ->
                 com.muyeon.app.ui.onboarding.OnboardingActivity.startNotificationConsent(activity)
-            "openMembership" -> com.muyeon.app.ui.membership.MembershipActivity.start(
-                activity, d.optString("featureType").ifEmpty { null },
-            )
+            // 멤버십은 계정에 하나 — featureType·memberType 은 받기만 하고 쓰지 않는다.
+            "openMembership" -> com.muyeon.app.ui.membership.MembershipActivity.start(activity)
             "openAcademyProfile" -> {
                 val aid = d.optString("academyId").toIntOrNull() ?: return true
                 com.muyeon.app.ui.academy.AcademyProfileActivity.start(activity, aid)
