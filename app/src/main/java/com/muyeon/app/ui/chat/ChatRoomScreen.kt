@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -195,8 +196,18 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
         )
     }
     reactionTarget?.let { m ->
-        ReactionPicker(
-            onPick = { emoji -> vm.toggleReaction(m, emoji); reactionTarget = null },
+        MessageActionSheet(
+            message = m,
+            isMine = m.senderId == vm.currentUserId,
+            onPickEmoji = { emoji -> vm.toggleReaction(m, emoji); reactionTarget = null },
+            onCopy = {
+                copyToClipboard(context, m.content)
+                vm.toast = "메시지를 복사했어요."
+                reactionTarget = null
+            },
+            onReply = { vm.replyingTo = m; reactionTarget = null },
+            onEdit = { vm.editingMessage = m; vm.onInputChange(m.content); reactionTarget = null },
+            onDelete = { vm.deleteMessage(m); reactionTarget = null },
             onDismiss = { reactionTarget = null },
         )
     }
@@ -205,10 +216,28 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
     }
 }
 
-/** 이모지 반응 피커 — 길게 눌러 선택(카톡식 6종). */
+/**
+ * 메시지 길게 누르기 — 이모지 반응(카톡식 6종) + 동작 목록.
+ *
+ * ⚠️ 종전에는 이모지 반응만 있어서 **복사·삭제를 할 방법이 아예 없었다**
+ *   (deleteMessage 는 뷰모델에 있는데 호출부가 없었다).
+ *   iOS 컨텍스트 메뉴(복사/답장/수정/삭제)와 같은 구성으로 맞춘다.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ReactionPicker(onPick: (String) -> Unit, onDismiss: () -> Unit) {
+private fun MessageActionSheet(
+    message: ChatMessage,
+    isMine: Boolean,
+    onPickEmoji: (String) -> Unit,
+    onCopy: () -> Unit,
+    onReply: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    // 삭제된 메시지나 카드형에는 복사·수정이 의미가 없다.
+    val isText = message.type == "TEXT" && !message.isDeleted
+
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
@@ -217,11 +246,36 @@ private fun ReactionPicker(onPick: (String) -> Unit, onDismiss: () -> Unit) {
             listOf("👍", "❤️", "😂", "😮", "😢", "🙏").forEach { e ->
                 Text(
                     e, fontSize = 30.sp, lineHeight = 36.sp,
-                    modifier = Modifier.clip(RoundedCornerShape(50)).clickable { onPick(e) }.padding(6.dp),
+                    modifier = Modifier.clip(RoundedCornerShape(50)).clickable { onPickEmoji(e) }.padding(6.dp),
                 )
             }
         }
+        HorizontalDivider(color = MuyeonColors.border)
+        Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+            if (isText) MessageAction("복사", MuyeonColors.textHead, onCopy)
+            if (!message.isDeleted) MessageAction("답장", MuyeonColors.textHead, onReply)
+            if (isMine && isText) MessageAction("수정", MuyeonColors.textHead, onEdit)
+            if (isMine && !message.isDeleted) MessageAction("삭제", MuyeonColors.danger, onDelete)
+        }
     }
+}
+
+@Composable
+private fun MessageAction(text: String, color: Color, onClick: () -> Unit) {
+    Text(
+        text,
+        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
+        lineHeight = 18.sp, color = color,
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+    )
+}
+
+/** 메시지 복사 — iOS vm.copyToClipboard 대응. */
+private fun copyToClipboard(context: android.content.Context, text: String) {
+    val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+        as? android.content.ClipboardManager ?: return
+    cm.setPrimaryClip(android.content.ClipData.newPlainText("muyeon", text))
 }
 
 @Composable
@@ -450,16 +504,22 @@ private fun MessageBubble(
             Box(
                 Modifier
                     .widthIn(max = 260.dp)
-                    .clip(RoundedCornerShape(if (bare) 12.dp else 18.dp))
                     .then(
-                        if (bare) Modifier
+                        if (bare) Modifier.clip(RoundedCornerShape(12.dp))
                         else Modifier
+                            // 카톡식 꼬리 말풍선 — 수신은 좌상단, 발신은 우상단(iOS ChatBubbleShape).
+                            .clip(ChatBubbleShape(mine = isMine))
                             .background(if (isMine) MuyeonColors.primary else Color(0xFFF2F2F7))
                             .combinedClickable(
                                 onClick = { if (isMine) onEdit() else onReply() },
                                 onLongClick = onLongPress,
                             )
-                            .padding(horizontal = 14.dp, vertical = 9.dp),
+                            // 꼬리가 차지하는 폭만큼 그쪽 여백을 더해 글자가 붙지 않게 한다.
+                            .padding(
+                                start = if (isMine) 14.dp else 14.dp + BUBBLE_TAIL,
+                                end = if (isMine) 14.dp + BUBBLE_TAIL else 14.dp,
+                                top = 9.dp, bottom = 9.dp,
+                            ),
                     ),
             ) {
                 when {
