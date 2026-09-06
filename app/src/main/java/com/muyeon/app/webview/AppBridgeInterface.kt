@@ -117,6 +117,9 @@ class AppBridgeInterface(
                 d.optString("heroImage"),
                 d.optString("activeType").ifEmpty { "GENERAL" },
             )
+            // 회원유형 선택 온보딩 — 네이티브 이식 완료(iOS RoleOnboardingView).
+            "openRoleOnboarding" ->
+                com.muyeon.app.ui.onboarding.OnboardingActivity.startRoleOnboarding(activity)
             "openRoleVerification" -> com.muyeon.app.ui.onboarding.OnboardingActivity.startVerification(
                 activity, d.optString("role"),
             )
@@ -239,27 +242,21 @@ class AppBridgeInterface(
         )
     }
 
-    /** 액션 → 동등 웹 경로. null 이면 웹 대응 화면이 없는 네이티브 전용 기능. */
-    private fun webPathFor(action: String, d: JSONObject): String? {
-        fun s(key: String): String = d.optString(key, "")
-        return when (action) {
-            // 견적 — openQuoteWizard/openMyQuotes/openReceivedQuotes/openQuoteBrowse/
-            //  openAutoQuoteTemplates/openLessonQuoteHub 는 openNative() 에서 처리(이식 완료).
-
-            // 프로필/이력서/리뷰 · 이용권 · 학원 프로필 — openNative() 에서 처리(이식 완료).
-            //  단 academyId 가 없으면 학원 목록 웹으로.
+    /**
+     * 액션 → 동등 웹 경로. null 이면 웹 대응 화면이 없는 네이티브 전용 기능.
+     *
+     * ★ 2026-09-06 기준 웹 폴백이 남은 건 아래 하나뿐이다 — 나머지 액션은 전부
+     *   openNative() 에서 네이티브 화면으로 처리된다(견적·레슨·이력서·리뷰·채팅·이용권·
+     *   학원 소속·멤버십 성과·예약 상세·공간 상세·유형 온보딩·이미지 뷰어).
+     */
+    private fun webPathFor(action: String, @Suppress("UNUSED_PARAMETER") d: JSONObject): String? =
+        when (action) {
+            // 학원 프로필 자체는 네이티브지만, academyId 가 없으면 열 대상이 없어 학원 목록 웹으로 보낸다.
             "openAcademyProfile" -> "/academyProfile"
-
-            // 온보딩/계정 — openSignupTerms/openAddressSetup 은 네이티브. 유형 온보딩만 웹 유지.
-            "openRoleOnboarding" -> "/mypage"
-
-            // 채팅 · 이미지 뷰어 — openNative() 에서 처리(이식 완료).
-            // 애플 로그인 — iOS 전용.
+            // 애플 로그인 — iOS 전용(웹 대응 화면 없음).
             "getAppleLogin" -> null
-
             else -> null
         }
-    }
 
     companion object {
         private const val TAG = "AppBridge"

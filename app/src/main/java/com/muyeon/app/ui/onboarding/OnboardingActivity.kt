@@ -50,6 +50,13 @@ class OnboardingActivity : ComponentActivity() {
                 .putExtra(EXTRA_ACTIVE_TYPE, activeType ?: "GENERAL"),
         )
 
+        /**
+         * 회원유형 선택 온보딩(가입 완료 직후, 강제) — `openRoleOnboarding`.
+         *  선택 → (인증 필요 유형이면) 서류 첨부 → 웹 __onRoleComplete 통지.
+         */
+        fun startRoleOnboarding(context: Context) =
+            context.go(Intent(context, OnboardingActivity::class.java).putExtra(EXTRA_ROUTE, "roleOnboarding"))
+
         fun startVerification(context: Context, role: String?) =
             context.go(
                 Intent(context, OnboardingActivity::class.java)
@@ -139,6 +146,30 @@ class OnboardingActivity : ComponentActivity() {
                             else if (!nav.popBackStack()) closeAndFlush()
                         },
                         initialImages = payload.documents[code].orEmpty(),
+                    )
+                }
+                composable("roleOnboarding") {
+                    RoleOnboardingScreen(
+                        onSelect = { r ->
+                            if (roleRequiresVerification(r)) {
+                                // 온보딩 위에 인증 첨부화면 — 완료 시 온보딩까지 함께 닫고 웹 통지(iOS 와 동일).
+                                nav.navigate("roleOnboardingVerify/$r")
+                            } else {
+                                notifyWeb(verifyJs("__onRoleComplete", r, emptyList(), null))
+                            }
+                        },
+                    )
+                }
+                composable("roleOnboardingVerify/{role}") { e ->
+                    val code = e.arguments?.getString("role").orEmpty()
+                    RoleVerificationScreen(
+                        api, code,
+                        // 최초 가입 온보딩 — 여기서만 건너뛰기를 허용한다(닫을 다른 수단이 없다).
+                        //  ★ iOS allowSkip:true 와 같은 취지. 빈 목록으로 통지해 '미제출'을 그대로 알린다.
+                        onClose = { notifyWeb(verifyJs("__onRoleComplete", code, emptyList(), null)) },
+                        onDone = { r, urls, academyName ->
+                            notifyWeb(verifyJs("__onRoleComplete", r, urls, academyName))
+                        },
                     )
                 }
                 composable("terms") {
