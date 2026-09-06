@@ -26,6 +26,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -325,129 +327,14 @@ private fun PostingCard(
     }
 }
 
-/** 공고 등록/수정 — iOS JobPostingWizardView 를 단일 폼으로 압축(단계 대신 섹션). */
 @Composable
-fun JobPostingFormScreen(
-    api: JobPostingApi,
-    jobId: Int?,
-    onClose: () -> Unit,
-    onSaved: () -> Unit,
-) {
-    var form by remember { mutableStateOf(JobForm()) }
-    var loading by remember { mutableStateOf(jobId != null) }
-    var saving by remember { mutableStateOf(false) }
-    var toast by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
-
-    LaunchedEffect(jobId) {
-        jobId?.let { api.loadJob(it).onSuccess { f -> form = f } }
-        loading = false
-    }
-
-    fun save(asDraft: Boolean) {
-        if (form.title.isBlank()) { toast = "공고 제목을 입력해 주세요."; return }
-        saving = true
-        scope.launch {
-            api.saveJob(jobId, form.copy(status = if (asDraft) "DRAFT" else "OPEN"))
-                .onSuccess { onSaved() }.onFailure { toast = it.message }
-            saving = false
-        }
-    }
-
-    Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(title = if (jobId != null) "공고 수정" else "공고 등록", onBack = onClose)
-
-        if (loading) {
-            Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
-                CircularProgressIndicator(color = MuyeonColors.primary)
-            }
-            return@Column
-        }
-
-        Column(
-            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            JobField("공고 제목", form.title, required = true) { form = form.copy(title = it) }
-            JobField("학원·단체명", form.academy.orEmpty()) { form = form.copy(academy = it) }
-            JobChips("장르", JobFormOptions.genres.map { it to it }, setOfNotNull(form.genre)) {
-                form = form.copy(genre = if (form.genre == it) null else it)
-            }
-            JobChips("모집 분야", ResumeOptions.teachingFields, (form.fields ?: emptyList()).toSet()) { v ->
-                val cur = form.fields ?: emptyList()
-                form = form.copy(fields = if (cur.contains(v)) cur - v else cur + v)
-            }
-            JobChips("수업 대상", ResumeOptions.classTargets, setOfNotNull(form.target)) {
-                form = form.copy(target = if (form.target == it) null else it)
-            }
-            JobField("지역", form.region.orEmpty(), "예: 서울 강남구") { form = form.copy(region = it) }
-            JobField("주소", form.address.orEmpty()) { form = form.copy(address = it) }
-            JobField("가까운 역", form.subway.orEmpty()) { form = form.copy(subway = it) }
-            JobField("근무 요일", form.days.orEmpty(), "예: 월·수·금") { form = form.copy(days = it) }
-            // 수기 입력이면 학원마다 표기가 제각각이라(“19시~21시”, “7-9pm”) 검색·표시가 어긋난다.
-            //  웹 TimeRangeSelect·iOS JobTimeRangePicker 와 같은 규약: "HH:MM ~ HH:MM", 분은 5분 단위.
-            JobTimeRange("근무 시간", form.time.orEmpty()) { form = form.copy(time = it) }
-            JobChips("고용 형태", JobFormOptions.employments, setOfNotNull(form.employment)) {
-                form = form.copy(employment = if (form.employment == it) null else it)
-            }
-            JobChips("급여", JobFormOptions.salaryRanges, setOfNotNull(form.salary)) {
-                form = form.copy(salary = if (form.salary == it) null else it)
-            }
-            JobChips("요구 경력", JobFormOptions.careerLevels, (form.careerLevels ?: emptyList()).toSet()) { v ->
-                val cur = form.careerLevels ?: emptyList()
-                form = form.copy(careerLevels = if (cur.contains(v)) cur - v else cur + v)
-            }
-            JobField("지원 마감일", form.deadline.orEmpty(), "yyyy-MM-dd (비워두면 무기한)") { form = form.copy(deadline = it) }
-
-            // 원하는 강사 조건 — 웹 JobCreate 에는 있는데 이 폼에만 없어서, 같은 공고인데
-            //  들어온 경로에 따라 항목이 달라 보였다(2026-08-14 보강).
-            JobChips("지도 가능 분야(우대)", ResumeOptions.teachingFields, (form.pref.fields ?: emptyList()).toSet()) { v ->
-                val cur = form.pref.fields ?: emptyList()
-                val next = if (cur.contains(v)) cur - v else cur + v
-                form = form.copy(pref = form.pref.copy(fields = next.ifEmpty { null }))
-            }
-            JobYesNo("예고 출신 우대", form.pref.artHigh) { form = form.copy(pref = form.pref.copy(artHigh = it)) }
-            JobYesNo("대학 졸업 우대", form.pref.university) { form = form.copy(pref = form.pref.copy(university = it)) }
-            JobField("우대 대학명", form.pref.universityName.orEmpty(), "예: 한예종, 세종대 (선택)") {
-                form = form.copy(pref = form.pref.copy(universityName = it.ifBlank { null }))
-            }
-            JobYesNo("무용단 출신 우대", form.pref.company) { form = form.copy(pref = form.pref.copy(company = it)) }
-            JobYesNo("자격증 필수", form.pref.certRequired) { form = form.copy(pref = form.pref.copy(certRequired = it)) }
-            JobYesNo("영상 포트폴리오 필수", form.pref.videoRequired) { form = form.copy(pref = form.pref.copy(videoRequired = it)) }
-            JobField("기타 우대 조건", form.pref.note.orEmpty(), "예: 성인반 경험자 우대") {
-                form = form.copy(pref = form.pref.copy(note = it.ifBlank { null }))
-            }
-
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("상세 설명", fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = MuyeonColors.textHead)
-                OutlinedTextField(
-                    value = form.description.orEmpty(), onValueChange = { form = form.copy(description = it) },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 140.dp),
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-        }
-
-        Row(
-            Modifier.padding(horizontal = 20.dp).padding(top = 8.dp, bottom = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            JobButton("임시저장", filled = false, enabled = !saving, modifier = Modifier.weight(1f)) { save(true) }
-            JobButton(if (saving) "저장 중…" else "공고 게시", filled = true, enabled = !saving, modifier = Modifier.weight(1f)) { save(false) }
-        }
-    }
-
-    toast?.let { msg ->
-        QuoteDialog("알림", msg, "확인", onConfirm = { toast = null }, onDismiss = { toast = null })
-    }
-}
-
-@Composable
-private fun JobField(
+internal fun JobField(
     label: String,
     value: String,
     placeholder: String = "",
     required: Boolean = false,
+    // 모집 인원처럼 숫자만 받는 칸 — 기본은 일반 키보드.
+    keyboard: KeyboardType = KeyboardType.Text,
     onChange: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -456,7 +343,10 @@ private fun JobField(
             if (required) Text("*", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MuyeonColors.primary)
         }
         OutlinedTextField(
-            value = value, onValueChange = onChange, singleLine = true,
+            value = value,
+            onValueChange = { if (keyboard == KeyboardType.Number) onChange(it.filter { c -> c.isDigit() }) else onChange(it) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = keyboard),
             placeholder = { if (placeholder.isNotEmpty()) Text(placeholder, fontFamily = customFontFamily, fontSize = 14.sp) },
             modifier = Modifier.fillMaxWidth(),
         )
@@ -464,7 +354,7 @@ private fun JobField(
 }
 
 @Composable
-private fun JobChips(
+internal fun JobChips(
     label: String,
     options: List<Pair<String, String>>,
     selected: Set<String>,
@@ -495,7 +385,7 @@ private fun JobChips(
 
 /** 예/아니오 2칩 — 웹 YESNO BaseSelector 와 같은 의미. 미선택(null) = 조건 없음. */
 @Composable
-private fun JobYesNo(label: String, value: Boolean?, onPick: (Boolean?) -> Unit) {
+internal fun JobYesNo(label: String, value: Boolean?, onPick: (Boolean?) -> Unit) {
     JobChips(
         label = label,
         options = listOf("Y" to "예", "N" to "아니오"),
@@ -511,7 +401,7 @@ private fun JobYesNo(label: String, value: Boolean?, onPick: (Boolean?) -> Unit)
  *  ⚠️ 레슨 개설에는 쓰지 않는다. 레슨은 30분 격자로 예약 회차를 만들어 5분 단위와 맞지 않는다.
  */
 @Composable
-private fun JobTimeRange(label: String, value: String, onChange: (String) -> Unit) {
+internal fun JobTimeRange(label: String, value: String, onChange: (String) -> Unit) {
     val hours = remember { (0..23).map { "%02d".format(it) } }
     val minutes = remember { (0..55 step 5).map { "%02d".format(it) } }
     val parts = value.split("~").map { it.trim() }
@@ -570,7 +460,7 @@ private fun JobTimeMenu(title: String, options: List<String>, onPick: (String) -
 }
 
 @Composable
-private fun JobButton(text: String, filled: Boolean, enabled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+internal fun JobButton(text: String, filled: Boolean, enabled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Text(
         text,
         fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp, lineHeight = 19.sp,
@@ -631,11 +521,21 @@ class JobPostingActivity : ComponentActivity() {
                     )
                 }
                 composable("form") {
-                    JobPostingFormScreen(api, id.takeIf { it > 0 }, onClose = { back() }, onSaved = { back() })
+                    JobPostingWizardScreen(
+                        api, id.takeIf { it > 0 }, onClose = { back() }, onSaved = { back() },
+                        onOpenMembership = {
+                            com.muyeon.app.ui.membership.MembershipActivity.start(this@JobPostingActivity)
+                        },
+                    )
                 }
                 composable("form/{id}") { e ->
                     val jid = e.arguments?.getString("id")?.toIntOrNull()?.takeIf { it > 0 }
-                    JobPostingFormScreen(api, jid, onClose = { back() }, onSaved = { back() })
+                    JobPostingWizardScreen(
+                        api, jid, onClose = { back() }, onSaved = { back() },
+                        onOpenMembership = {
+                            com.muyeon.app.ui.membership.MembershipActivity.start(this@JobPostingActivity)
+                        },
+                    )
                 }
             }
         }

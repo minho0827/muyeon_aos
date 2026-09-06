@@ -10,6 +10,7 @@ import com.muyeon.app.ui.resume.ResumeOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -106,6 +107,19 @@ object JobFormOptions {
     )
     val weekDays = listOf("월", "화", "수", "목", "금", "토", "일")
     // 모집분야·수업대상은 ResumeOptions.teachingFields / classTargets 재사용
+
+    // ── 코드 → 표시 문구 (iOS JobFormOptions 와 같은 규칙) ──
+    fun salaryLabel(v: String?): String =
+        v?.let { code -> salaryRanges.firstOrNull { it.first == code }?.second } ?: ""
+
+    fun employmentLabel(v: String?): String =
+        v?.let { code -> employments.firstOrNull { it.first == code }?.second } ?: ""
+
+    fun careerLevelLabel(v: String): String =
+        careerLevels.firstOrNull { it.first == v }?.second ?: v
+
+    fun careerLevelsLabel(list: List<String>?): String =
+        (list ?: emptyList()).joinToString(", ") { careerLevelLabel(it) }
 }
 
 /** 등록 폼 — 서버 create/update payload 와 키 일치. */
@@ -249,6 +263,23 @@ class JobPostingApi(private val token: String?) {
         call("/me/postings/$kind/$id/restore", "POST").map { }
 
     suspend fun loadJob(id: Int): Result<JobForm> = call("/jobs/$id").map { JobForm.from(JSONObject(it)) }
+
+    /** 공고 대표·상세 이미지 업로드 — 이력서·견적과 같은 /uploads/image. */
+    suspend fun uploadImage(bytes: ByteArray): Result<String> = withContext(Dispatchers.IO) {
+        runCatching {
+            val body = MultipartBody.Builder().setType(MultipartBody.FORM)
+                .addFormDataPart("file", "image.jpg", bytes.toRequestBody("image/jpeg".toMediaType()))
+                .build()
+            val req = Request.Builder().url("$apiBase/uploads/image").post(body)
+                .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
+                .build()
+            client.newCall(req).execute().use { res ->
+                val text = res.body?.string().orEmpty()
+                if (!res.isSuccessful) error("이미지 업로드에 실패했어요.")
+                JSONObject(text).optString("url").ifEmpty { error("이미지 업로드에 실패했어요.") }
+            }
+        }
+    }
 
     suspend fun saveJob(id: Int?, form: JobForm): Result<Int> {
         val path = if (id != null) "/jobs/$id" else "/jobs"
