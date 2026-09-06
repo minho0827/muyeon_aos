@@ -152,6 +152,9 @@ object ChatSocketManager {
                 .onFailure { Log.w(TAG, "chat-room-added 파싱 실패: ${json.toString().take(200)}") }
         }
 
+        // 알림(인증 승인 등) — 채팅과 무관하지만 같은 /chat 네임스페이스로 온다(iOS 와 동일).
+        s.on("notification") { ChatEventBus.emit(ChatEvent.ServerNotification) }
+
         s.connect()
     }
 

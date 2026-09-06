@@ -225,12 +225,18 @@ class AppBridgeInterface(
         return true
     }
 
-    /** 상태 통지류 처리(현재는 기록만 — 플로팅 버튼/활성유형은 네이티브 이식 시 연결). */
+    /** 상태 통지류 처리 — UI 를 열지 않고 네이티브 상태만 갱신한다. */
     private fun onSilentAction(action: String, data: JSONObject) {
         android.util.Log.d(TAG, "silent action=$action data=$data")
-        // 활성 회원유형은 로그만 찍고 버리면 안 된다 — 네이티브 화면이 "지금 학원인가 강사인가"를
-        //  판단할 유일한 근거다(iOS RoleGate.store 대응). UI 없음은 그대로 유지.
-        if (action == "syncActiveType") ActiveRole.store(activity, data.optString("type"))
+        when (action) {
+            // 활성 회원유형은 로그만 찍고 버리면 안 된다 — 네이티브 화면이 "지금 학원인가 강사인가"를
+            //  판단할 유일한 근거다(iOS RoleGate.store 대응).
+            "syncActiveType" -> ActiveRole.store(activity, data.optString("type"))
+            // 플로팅(채팅 버튼·인증 책갈피) 표시 판정 — iOS WebViewModel.currentRoute / floatingHidden.
+            "routeChanged" -> com.muyeon.app.ui.floating.FloatingState.updateRoute(data.optString("path"))
+            "setFloatingHidden" ->
+                com.muyeon.app.ui.floating.FloatingState.updateFloatingHidden(data.optString("hidden") == "1")
+        }
     }
 
     /** SPA 이동 — 웹이 심어둔 window.__nativeGo(path) 사용(전체 리로드 없이 라우팅). */

@@ -16,6 +16,7 @@ import androidx.annotation.RequiresExtension
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.ViewModelProvider
@@ -106,6 +107,7 @@ class WebViewActivity : ComponentActivity() {
         val composeView: ComposeView = findViewById(R.id.compose_view)
 
         setupWebView()
+        attachFloatingScrollListener()
 
         fileInterface = FileWebViewInterface(
             context = this,
@@ -250,6 +252,19 @@ class WebViewActivity : ComponentActivity() {
             val allowedImages by fileViewModel.allowedImages.collectAsStateWithLifecycle()
 
             MuyeonTheme {
+                // 웹 라우트와 무관하게 살아 있는 네이티브 플로팅(채팅 버튼 + 인증 책갈피).
+                //  ComposeView 가 웹뷰 위에 깔려 있어 여기 붙이면 페이지 이동에도 사라지지 않는다.
+                com.muyeon.app.ui.floating.FloatingOverlay(
+                    api = remember { com.muyeon.app.ui.floating.FloatingApi(com.muyeon.app.utils.TokenManager.getAccessToken(this@WebViewActivity)) },
+                    onOpenChatList = { com.muyeon.app.ui.chat.ChatActivity.startList(this@WebViewActivity, "") },
+                    // 완료 화면 '시작하기' → 웹이 해당 유형 화면으로 전환한다.
+                    onRoleApproved = { role ->
+                        webView.evaluateJavascript(
+                            "(function(){ if(window.__onRoleApproved){ window.__onRoleApproved('$role'); } return null; })()",
+                            null,
+                        )
+                    },
+                )
                 if (showImagePicker) {
                     ImagePickerBottomSheet(
                         images = allowedImages,
@@ -359,6 +374,24 @@ class WebViewActivity : ComponentActivity() {
     }
 
     @SuppressLint("SetJavaScriptEnabled")
+    /**
+     * 스크롤 방향으로 채팅 플로팅 숨김/표시 — iOS `CommonWebView.scrollViewDidScroll` 1:1.
+     *  최상단 근처면 항상 표시, 6px 이상 아래로면 숨김, 위로면 표시.
+     */
+    private var lastScrollY = 0
+
+    private fun attachFloatingScrollListener() {
+        webView.setOnScrollChangeListener { _, _, y, _, _ ->
+            val dy = y - lastScrollY
+            when {
+                y <= 0 -> com.muyeon.app.ui.floating.FloatingState.updateHideChatFloat(false)
+                dy > 6 -> com.muyeon.app.ui.floating.FloatingState.updateHideChatFloat(true)
+                dy < -6 -> com.muyeon.app.ui.floating.FloatingState.updateHideChatFloat(false)
+            }
+            lastScrollY = y
+        }
+    }
+
     private fun setupWebView() {
         android.webkit.WebView.setWebContentsDebuggingEnabled(true)
         webView.webViewClient = object : WebViewClient() {

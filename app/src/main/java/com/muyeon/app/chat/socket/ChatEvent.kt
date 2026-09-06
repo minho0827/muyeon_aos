@@ -46,4 +46,10 @@ sealed class ChatEvent {
      *  (send-message·mark-read·join-room 모두 이걸 쏜다).
      */
     data class ChatRoomAdded(val room: ChatRoomSummary) : ChatEvent()
+
+    /**
+     * 서버 알림(인증 승인 등) — 플로팅 책갈피/뱃지가 즉시 재조회하도록 흘린다.
+     *  iOS FloatingSocketManager 의 'notification' 핸들러 대응. payload 는 쓰지 않는다.
+     */
+    data object ServerNotification : ChatEvent()
 }
