@@ -10,9 +10,12 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircleOutline
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.LocationOn
@@ -22,6 +25,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -96,6 +101,7 @@ class QuoteBrowseState(private val api: QuoteApi) {
             hasMore = res.hasMore ?: false
             needsGenre = res.needsGenre ?: false
             res.myCategoryIds?.let { myCats = it }
+            if (page == 0) attachmentRole = api.myAttachmentType()
             prefsApplied = res.prefsApplied ?: false
             prefsSummary = res.prefsSummary ?: emptyList()
             prefsFilteredOut = res.prefsFilteredOut ?: 0
@@ -123,10 +129,19 @@ class QuoteBrowseState(private val api: QuoteApi) {
 
     suspend fun endVisit() { api.endQuoteBrowseVisit() }
 
+    /** 첨부할 내 프로필 종류(TEACHER|ACADEMY) — 시트 문구·발송 payload 공통. */
+    var attachmentRole by mutableStateOf("TEACHER")
+
     /** 견적 발송 — 성공 시 목록에서 제거(available 은 응답한 요청을 제외하므로 정합). */
-    suspend fun respond(quoteId: Int, priceAmount: Int?, message: String): Boolean {
+    suspend fun respond(
+        quoteId: Int,
+        priceAmount: Int?,
+        depositAmount: Int?,
+        message: String,
+        attachmentType: String,
+    ): Boolean {
         var ok = false
-        api.sendQuoteResponse(quoteId, priceAmount, message)
+        api.sendQuoteResponse(quoteId, priceAmount, depositAmount, message, attachmentType)
             .onSuccess {
                 items = items.filterNot { it.id == quoteId }
                 toast = "견적을 보냈어요. 고객이 확인하면 알림으로 알려드릴게요."
@@ -502,14 +517,15 @@ private fun QuoteDeckScreen(state: QuoteBrowseState, initialIndex: Int, onClose:
     respondFor?.let { quote ->
         QuoteRespondSheet(
             quote = quote,
+            attachmentRole = state.attachmentRole,
             onDismiss = { respondFor = null },
-            onSend = { amount, message ->
-                scope.launch {
-                    if (state.respond(quote.id, amount, message)) {
-                        respondFor = null
-                        if (state.filtered.isEmpty()) onClose()
-                    }
+            onSend = { amount, deposit, message, attachmentType ->
+                val sent = state.respond(quote.id, amount, deposit, message, attachmentType)
+                if (sent) {
+                    respondFor = null
+                    if (state.filtered.isEmpty()) onClose()
                 }
+                sent
             },
         )
     }
@@ -613,12 +629,28 @@ fun QuoteRequestCard(quote: QuoteFull) {
     }
 }
 
-/** 견적 보내기 시트 — iOS QuoteRespondSheet(금액 + 메시지). */
+/**
+ * 견적 보내기 시트 — iOS `QuoteRespondSheet` 1:1.
+ *  회당 금액 + 예약금(선택) + 메시지 + 내 프로필 첨부 + 발송 재확인.
+ */
 @Composable
-private fun QuoteRespondSheet(quote: QuoteFull, onDismiss: () -> Unit, onSend: (Int?, String) -> Unit) {
+private fun QuoteRespondSheet(
+    quote: QuoteFull,
+    attachmentRole: String,                       // TEACHER | ACADEMY
+    onDismiss: () -> Unit,
+    // (금액, 예약금, 메시지, attachmentType) → 발송 성공 여부. 실패면 시트를 열어둔 채 버튼을 되살린다.
+    onSend: suspend (Int?, Int?, String, String) -> Boolean,
+) {
+    val scope = rememberCoroutineScope()
     var amountText by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
+    var takesDeposit by remember { mutableStateOf(false) }
+    var depositAmount by remember { mutableIntStateOf(10_000) }
+    var includeProfile by remember { mutableStateOf(true) }
+    var confirmSend by remember { mutableStateOf(false) }
     var sending by remember { mutableStateOf(false) }
+    val isAcademy = attachmentRole == "ACADEMY"
+    val attachmentType = if (!includeProfile) "NONE" else attachmentRole
     val canSend = message.trim().isNotEmpty() && !sending
 
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
@@ -626,6 +658,7 @@ private fun QuoteRespondSheet(quote: QuoteFull, onDismiss: () -> Unit, onSend: (
             Modifier
                 .clip(RoundedCornerShape(16.dp))
                 .background(MuyeonColors.surface)
+                .verticalScroll(rememberScrollState())
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -647,6 +680,47 @@ private fun QuoteRespondSheet(quote: QuoteFull, onDismiss: () -> Unit, onSend: (
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            // 예약금 — 서버 규칙: 1천원 단위, 금액의 30% 이하, 최대 5만원(quotes.service 검증과 동일 문구)
+            Row(
+                Modifier.fillMaxWidth().clickable { takesDeposit = !takesDeposit },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "예약금 결제 후 확정",
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp,
+                    lineHeight = 18.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
+                )
+                Switch(
+                    checked = takesDeposit, onCheckedChange = { takesDeposit = it },
+                    colors = SwitchDefaults.colors(checkedTrackColor = MuyeonColors.primary),
+                )
+            }
+            if (takesDeposit) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(10_000, 20_000, 30_000).forEach { v ->
+                        val on = depositAmount == v
+                        Text(
+                            "${String.format(java.util.Locale.KOREA, "%,d", v)}원",
+                            fontFamily = customFontFamily,
+                            fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = 14.sp, lineHeight = 17.sp,
+                            color = if (on) Color.White else MuyeonColors.textHead,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (on) MuyeonColors.primary else Color(0xFFF2F2F7))
+                                .clickable { depositAmount = v }
+                                .padding(horizontal = 14.dp, vertical = 9.dp),
+                        )
+                    }
+                }
+                Text(
+                    "예약금은 1천원 단위로 견적 금액의 30% 이하, 최대 5만원까지 설정할 수 있어요.",
+                    fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp,
+                    color = MuyeonColors.secondary,
+                )
+            }
+
             Text(
                 "견적 메시지",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
@@ -657,6 +731,37 @@ private fun QuoteRespondSheet(quote: QuoteFull, onDismiss: () -> Unit, onSend: (
                 onValueChange = { message = it },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
             )
+
+            // 내 프로필 첨부 — 켜면 견적 카드에 기본 이력서(강사) / 학원 기본정보(학원)가 붙는다.
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFF2F2F7))
+                    .clickable { includeProfile = !includeProfile }
+                    .padding(14.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    if (includeProfile) Icons.Filled.CheckCircle else Icons.Filled.AddCircleOutline,
+                    null,
+                    tint = if (includeProfile) MuyeonColors.primary else MuyeonColors.textHead,
+                    modifier = Modifier.size(20.dp),
+                )
+                Text(
+                    if (isAcademy) "내 학원 정보 넣기" else "내 이력서 넣기",
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp,
+                    lineHeight = 18.sp,
+                    color = if (includeProfile) MuyeonColors.primary else MuyeonColors.textHead,
+                )
+            }
+            Text(
+                "선택하면 견적 카드에서 내 공개 정보를 함께 확인할 수 있어요.",
+                fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp,
+                color = MuyeonColors.textSub,
+            )
+
             Text(
                 if (sending) "보내는 중…" else "견적 보내기",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
@@ -665,12 +770,35 @@ private fun QuoteRespondSheet(quote: QuoteFull, onDismiss: () -> Unit, onSend: (
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(26.dp))
                     .background(if (canSend) MuyeonColors.primary else Color.Gray.copy(alpha = 0.4f))
-                    .clickable(enabled = canSend) {
-                        sending = true
-                        onSend(amountText.toIntOrNull(), message.trim())
-                    }
+                    .clickable(enabled = canSend) { confirmSend = true }
                     .padding(vertical = 15.dp),
             )
         }
+    }
+
+    if (confirmSend) {
+        QuoteDialog(
+            title = "견적을 보내시겠습니까?",
+            message = if (includeProfile) {
+                if (isAcademy) "학원 기본정보가 견적 카드에 함께 전달돼요." else "기본 이력서가 견적 카드에 함께 전달돼요."
+            } else {
+                "프로필 없이 금액과 메시지만 전달돼요."
+            },
+            confirmText = "견적 보내기",
+            onConfirm = {
+                confirmSend = false
+                sending = true
+                scope.launch {
+                    val sent = onSend(
+                        amountText.toIntOrNull(),
+                        if (takesDeposit) depositAmount else null,
+                        message.trim(),
+                        attachmentType,
+                    )
+                    if (!sent) sending = false   // iOS `if !sent { sending = false }`
+                }
+            },
+            onDismiss = { confirmSend = false },
+        )
     }
 }

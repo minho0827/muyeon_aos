@@ -103,12 +103,43 @@ class QuoteApi(private val token: String?) {
         return call(path).map { AvailableQuotesResponse.from(it.asObject()) }
     }
 
-    /** 견적 보내기(응답). POST /quotes/:id/responses { message, priceAmount, priceUnit } */
-    suspend fun sendQuoteResponse(quoteId: Int, priceAmount: Int?, message: String): Result<Unit> {
-        val body = JSONObject().put("message", message)
+    /**
+     * 견적 보내기(응답). POST /quotes/:id/responses
+     *  { message, attachmentType, priceAmount, priceUnit, paymentMode, depositAmount }
+     *  attachmentType 에 따라 견적 카드에 기본 이력서(TEACHER) 또는 학원 기본정보(ACADEMY)가 붙는다.
+     *  보유하지 않은 역할을 보내면 서버가 403 이므로 myAttachmentType() 으로 정한다.
+     */
+    suspend fun sendQuoteResponse(
+        quoteId: Int,
+        priceAmount: Int?,
+        depositAmount: Int?,
+        message: String,
+        attachmentType: String,
+    ): Result<Unit> {
+        val body = JSONObject().put("message", message).put("attachmentType", attachmentType)
         if (priceAmount != null) body.put("priceAmount", priceAmount).put("priceUnit", "PER_SESSION")
+        body.put("paymentMode", if (depositAmount == null) "NONE" else "DEPOSIT")
+        body.put("depositAmount", depositAmount ?: 0)
         return call("/quotes/$quoteId/responses", "POST", body).map { }
     }
+
+    /**
+     * 첨부할 내 프로필 종류 — iOS `RoleGate.activeType == "ACADEMY" ? ACADEMY : TEACHER`.
+     *  AOS 에는 activeType 캐시가 없어 GET /auth/me 로 읽고,
+     *  활동유형이 GENERAL 이면 보유 역할로 보정한다(학원만 보유한 계정의 403 방지).
+     */
+    suspend fun myAttachmentType(): String = call("/auth/me").map { res ->
+        val o = res.asObject()
+        val active = o.optString("activeType")
+        when (active) {
+            "ACADEMY", "TEACHER" -> active
+            else -> {
+                val types = o.optJSONArray("memberTypes")
+                val has = (0 until (types?.length() ?: 0)).map { i -> types?.optString(i).orEmpty() }
+                if (has.contains("TEACHER")) "TEACHER" else if (has.contains("ACADEMY")) "ACADEMY" else "TEACHER"
+            }
+        }
+    }.getOrDefault("TEACHER")
 
     /** 열람 기록(N 배지 제거). POST /quotes/browse/seen/:id — 실패해도 UI 영향 없음. */
     suspend fun markQuoteBrowseSeen(quoteId: Int) { call("/quotes/browse/seen/$quoteId", "POST") }
