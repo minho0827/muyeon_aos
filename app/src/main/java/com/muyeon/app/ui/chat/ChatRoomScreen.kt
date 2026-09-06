@@ -59,6 +59,7 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var showAttach by remember { mutableStateOf(false) }
+    var showProposal by remember { mutableStateOf(false) }
     var showReport by remember { mutableStateOf(false) }
     var reactionTarget by remember { mutableStateOf<ChatMessage?>(null) }
 
@@ -182,8 +183,21 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
             onPickImages = { uris -> vm.sendImages(context, uris) },
             onPickVideo = { uri -> vm.sendVideo(context, uri) },
             onSurvey = { vm.toast = "설문지는 곧 제공될 기능이에요." },
-            onProposal = { vm.toast = "레슨 약속잡기는 곧 제공될 기능이에요." },
+            onProposal = { showProposal = true },
             onDismiss = { showAttach = false },
+        )
+    }
+    if (showProposal) {
+        LessonProposalComposer(
+            api = remember { LessonProposalApi(vm.tokenForCards) },
+            calendarApi = remember { com.muyeon.app.ui.lesson.UserCalendarApi(vm.tokenForCards) },
+            roomId = vm.roomId,
+            isTeacher = vm.quoteContext?.isTeacher == true,
+            // 금액은 방의 견적 컨텍스트에서 가져온다(회원 화면의 예약금 안내에만 쓰인다).
+            totalPrice = vm.quoteContext?.priceAmount ?: 0,
+            depositAmount = 0,
+            onSent = { showProposal = false; vm.toast = "약속을 제안했어요."; vm.reloadContext() },
+            onDismiss = { showProposal = false },
         )
     }
     if (showReport) {
