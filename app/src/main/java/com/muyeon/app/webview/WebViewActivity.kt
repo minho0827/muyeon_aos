@@ -390,6 +390,13 @@ class WebViewActivity : ComponentActivity() {
         val webSettings: WebSettings = webView.settings
         webSettings.javaScriptEnabled = true
         webSettings.domStorageEnabled = true
+        // ★ meta viewport 를 존중한다. 기본값(false)이면 안드로이드 WebView 가
+        //   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0">
+        //   를 통째로 무시해서, 레이아웃 폭이 화면과 어긋나고 핀치 줌도 막히지 않는다.
+        //   → 살짝 확대되는 순간부터 가로 스크롤이 생긴다. iOS WKWebView 는 항상 존중하므로
+        //     안드로이드만 다르게 보이던 원인.
+        webSettings.useWideViewPort = true
+        webSettings.loadWithOverviewMode = true
         // 교차 앱 스크립팅(Cross-App Scripting) 방지: file/content URL 기반 접근 차단
         webSettings.allowFileAccess = false
         webSettings.allowContentAccess = false

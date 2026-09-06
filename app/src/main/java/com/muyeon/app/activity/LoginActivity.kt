@@ -41,6 +41,9 @@ class LoginActivity : ComponentActivity() {
             settings.apply {
                 javaScriptEnabled  = true
                 domStorageEnabled  = true
+                // meta viewport 존중 — WebViewActivity 와 같은 이유(기본값이면 무시돼 가로 스크롤)
+                useWideViewPort    = true
+                loadWithOverviewMode = true
                 // 교차 앱 스크립팅(Cross-App Scripting) 방지
                 mixedContentMode   = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
                 allowFileAccess = false
