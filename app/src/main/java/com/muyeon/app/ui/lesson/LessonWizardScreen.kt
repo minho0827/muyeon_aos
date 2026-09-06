@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -34,6 +35,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -172,7 +174,7 @@ fun LessonWizardScreen(
                 1 -> StepIntro(draft, hasDetailImageEnt, uploading, { draft = it },
                     onPickPhotos = { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                     onPickDetail = { detailPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
-                2 -> StepLocation(draft) { draft = it }
+                2 -> StepLocation(draft, api.token) { draft = it }
                 3 -> StepSchedule(draft) { draft = it }
                 4 -> StepExtra(draft) { draft = it }
                 else -> StepPreview(draft)
@@ -311,7 +313,12 @@ private fun StepIntro(
 }
 
 @Composable
-private fun StepLocation(d: LessonWizardDraft, onChange: (LessonWizardDraft) -> Unit) {
+private fun StepLocation(d: LessonWizardDraft, token: String?, onChange: (LessonWizardDraft) -> Unit) {
+    var showPostcode by remember { mutableStateOf(false) }
+    var geocoding by remember { mutableStateOf(false) }
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+
     // 온라인↔오프라인 전환 시 위치 입력을 전부 초기화 — 서로 의미가 다른 값이 남아
     //  '유령 좌표'로 게시되는 것을 막는다(iOS setOnline 규칙).
     WizardToggle("온라인(비대면) 레슨", d.isOnline) { on ->
@@ -322,15 +329,82 @@ private fun StepLocation(d: LessonWizardDraft, onChange: (LessonWizardDraft) -> 
             WizardTextField(d.place, "예: 무용연 스튜디오 강남점") { onChange(d.copy(place = it)) }
         }
         WizardField("주소") {
-            WizardTextField(d.address, "도로명 또는 지번 주소") { onChange(d.copy(address = it)) }
+            // ★ 자유 입력이 아니라 다음 우편번호 검색 — 주소가 표준화돼야
+            //   region(지역 필터)·lat/lng(지도 핀)가 붙는다(iOS setPostcode).
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                    .border(1.dp, MuyeonColors.border, RoundedCornerShape(10.dp))
+                    .clickable { showPostcode = true }
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.Search, null, tint = MuyeonColors.primary, modifier = Modifier.size(16.dp))
+                Text(
+                    d.address.ifEmpty { "주소 검색" },
+                    fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 17.sp,
+                    color = if (d.address.isEmpty()) MuyeonColors.chevron else MuyeonColors.textHead,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                )
+                Text("›", fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.chevron)
+            }
         }
-        WizardField("상세 주소") {
-            WizardTextField(d.addressDetail, "건물명·동·호수") { onChange(d.copy(addressDetail = it)) }
+        if (d.address.isNotEmpty()) {
+            WizardField("상세 주소") {
+                WizardTextField(d.addressDetail, "건물명·동·호수") { onChange(d.copy(addressDetail = it)) }
+            }
+        }
+        if (d.region.isNotEmpty()) {
+            Text(
+                "지역: ${d.region}",
+                fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp, color = MuyeonColors.textSub,
+            )
+        }
+        when {
+            geocoding -> Text(
+                "지도 위치를 찾는 중…",
+                fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp, color = MuyeonColors.textSub,
+            )
+            d.lat != null && d.lng != null -> LocationPreviewCard(
+                LessonPlace(d.place.ifEmpty { d.address }, d.address, d.lat, d.lng),
+            ) { openLessonNaverMap(ctx, d.place.ifEmpty { d.address }, d.lat, d.lng) }
+            d.address.isNotEmpty() -> Text(
+                "지도에서 위치를 못 찾았어요. 주소는 저장돼요.",
+                fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp, color = MuyeonColors.textSub,
+            )
         }
         Text(
             "장소명 또는 주소 중 하나는 입력해야 다음으로 넘어갈 수 있어요.",
             fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp, color = MuyeonColors.textSub,
         )
+
+        if (showPostcode) {
+            PostcodeSheet(
+                onComplete = { r ->
+                    // iOS setPostcode: 도로명 우선 저장, 지번 앞 2어절로 지역 산출, 좌표는 비동기.
+                    val region = shortRegion(r.jibunAddress.ifEmpty { r.roadAddress })
+                    onChange(d.copy(address = r.preferred, region = region, lat = null, lng = null))
+                    geocoding = true
+                    scope.launch {
+                        // 도로명 → 지번 순으로 시도(한 쪽이 실패해도 다른 쪽으로 핀 확보).
+                        val coord = listOf(r.roadAddress, r.jibunAddress)
+                            .filter { it.isNotBlank() }
+                            .firstNotNullOfOrNull { geocodeOne(ctx, it) }
+                        // regionCode 는 /regions 이름 매칭으로 채운다 — 없으면 지역 필터에서 빠진다.
+                        val code = regionCodeFor(token, region)
+                        geocoding = false
+                        onChange(
+                            d.copy(
+                                address = r.preferred, region = region,
+                                regionCode = code ?: d.regionCode,
+                                lat = coord?.first, lng = coord?.second,
+                            ),
+                        )
+                    }
+                },
+                onDismiss = { showPostcode = false },
+            )
+        }
     } else {
         Text(
             "온라인 레슨은 장소·주소가 필요 없어요. 접속 방법은 '예약 안내'에 적어주세요.",
@@ -608,4 +682,29 @@ private fun WizardButton(
             .clickable(enabled = enabled, onClick = onClick)
             .padding(vertical = 16.dp),
     )
+}
+
+/** 지번 주소 앞 2어절 = 지역("서울 강남구") — iOS shortRegion. */
+private fun shortRegion(addr: String): String =
+    addr.trim().split(" ").filter { it.isNotEmpty() }.take(2).joinToString(" ")
+
+/** 주소 → 좌표. 키가 필요 없는 플랫폼 Geocoder(iOS CLGeocoder 대응). 실패하면 핀 생략. */
+private suspend fun geocodeOne(ctx: android.content.Context, query: String): Pair<Double, Double>? =
+    withContext(Dispatchers.IO) {
+        if (!android.location.Geocoder.isPresent()) return@withContext null
+        runCatching {
+            @Suppress("DEPRECATION")
+            android.location.Geocoder(ctx, java.util.Locale.KOREA)
+                .getFromLocationName(query, 1)?.firstOrNull()?.let { it.latitude to it.longitude }
+        }.getOrNull()
+    }
+
+/**
+ * 지역명 → regionCode. /regions 의 name 과 정확히 같은 포맷("서울 강남구")이라 이름으로 찾는다.
+ *  못 찾으면 null — 코드 없이도 저장은 되지만 지역 필터에선 빠진다.
+ */
+private suspend fun regionCodeFor(token: String?, region: String): String? {
+    if (region.isEmpty()) return null
+    val regions = com.muyeon.app.ui.quote.RegionRepo.fetchRegions(token)
+    return regions.firstOrNull { it.name == region }?.code
 }

@@ -18,7 +18,7 @@ import java.net.URLEncoder
  * 이력서/공개프로필/지원자 REST — iOS `ResumeService`(ResumeModels.swift) 1:1.
  *  엔드포인트·페이로드 키를 iOS 와 동일하게 유지(서버 무변경).
  */
-class ResumeApi(private val token: String?) {
+class ResumeApi(internal val token: String?) {
 
     private val client = OkHttpClient()
     private val apiBase = BuildConfig.API_BASE_URL + "/api"

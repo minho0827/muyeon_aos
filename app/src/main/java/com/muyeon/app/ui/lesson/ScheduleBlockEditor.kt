@@ -8,9 +8,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -26,8 +30,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
@@ -47,8 +53,9 @@ import java.util.TimeZone
  * ⚠️ 종전 AOS 는 개인 일정을 **조회만** 하고 추가·수정·삭제가 아예 없었다
  *   (UserCalendarApi 에 schedule() 만 있었다). 캘린더에 남의 일정처럼 뜨기만 했다.
  *
- * iOS 편집기의 반복 일정·지도 검색은 여기서 제외했다 — 서버 DTO 에도 반복 필드가 없고,
- * 장소는 좌표 없이 텍스트만 보내도 같은 컬럼(place)에 저장된다.
+ * iOS 편집기의 반복 일정은 여기서 제외했다 — 서버 DTO 에도 반복 필드가 없다.
+ * 장소는 iOS 처럼 검색(LocationSearchSheet)으로 좌표까지 받아
+ * place/placeAddress/placeLat/placeLng 를 함께 저장한다.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,6 +79,16 @@ fun ScheduleBlockEditor(
     var endTime by remember { mutableStateOf(block?.endTime ?: "11:00") }
     var calendarId by remember { mutableStateOf(block?.calendarId) }
     var memo by remember { mutableStateOf(block?.memo.orEmpty()) }
+    var place by remember { mutableStateOf(block?.place.orEmpty()) }
+    // 좌표를 가진 '검색으로 고른' 장소. 직접입력이면 null 이고 place 텍스트만 남는다.
+    var selectedPlace by remember {
+        mutableStateOf(
+            block?.place?.takeIf { block.placeLat != null }?.let {
+                LessonPlace(it, block.placeAddress, block.placeLat, block.placeLng)
+            },
+        )
+    }
+    var showLocationSearch by remember { mutableStateOf(false) }
     var remindMinutes by remember { mutableStateOf<Int?>(null) }
     var saving by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -80,6 +97,7 @@ fun ScheduleBlockEditor(
     var showStart by remember { mutableStateOf(false) }
     var showEnd by remember { mutableStateOf(false) }
     var showCalendarPicker by remember { mutableStateOf(false) }
+    val ctx = LocalContext.current
 
     val selectedCalendar = calendars.firstOrNull { it.id == calendarId } ?: UserCalendar.DEFAULT
     val canSave = title.isNotBlank() && !saving
@@ -113,12 +131,14 @@ fun ScheduleBlockEditor(
                                     ymd, title.trim(), calendarId, allDay,
                                     if (allDay) null else startTime, if (allDay) null else endTime,
                                     memo.trim().ifEmpty { null }, remindMinutes,
+                                    placePayload(place, selectedPlace),
                                 )
                             } else {
                                 api.updateBlock(
                                     block.id, ymd, title.trim(), calendarId, allDay,
                                     if (allDay) null else startTime, if (allDay) null else endTime,
                                     memo.trim().ifEmpty { null }, remindMinutes,
+                                    placePayload(place, selectedPlace),
                                 )
                             }
                             result.onSuccess { onSaved() }
@@ -214,6 +234,57 @@ fun ScheduleBlockEditor(
                     }
                 }
 
+                EditorField("장소") {
+                    val picked = selectedPlace
+                    if (picked != null) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                                    .border(1.dp, MuyeonColors.border, RoundedCornerShape(10.dp))
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    picked.name,
+                                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp,
+                                    lineHeight = 18.sp, color = MuyeonColors.textHead,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                                )
+                                Icon(
+                                    Icons.Filled.Cancel, "장소 해제", tint = MuyeonColors.chevron,
+                                    modifier = Modifier.size(18.dp)
+                                        .clickable { selectedPlace = null; place = "" },
+                                )
+                            }
+                            if (picked.hasCoord) {
+                                LocationPreviewCard(picked) { openLessonNaverMap(ctx, picked.name, picked.lat, picked.lng) }
+                            }
+                        }
+                    } else {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            OutlinedTextField(
+                                value = place, onValueChange = { place = it },
+                                placeholder = {
+                                    Text(
+                                        "장소 (선택)",
+                                        fontFamily = customFontFamily, fontSize = 15.sp,
+                                        color = MuyeonColors.chevron,
+                                    )
+                                },
+                                singleLine = true, modifier = Modifier.weight(1f),
+                            )
+                            Icon(
+                                Icons.Filled.Search, "장소 검색", tint = MuyeonColors.primary,
+                                modifier = Modifier.size(20.dp).clickable { showLocationSearch = true },
+                            )
+                        }
+                    }
+                }
+
                 EditorField("메모") {
                     OutlinedTextField(
                         value = memo, onValueChange = { memo = it },
@@ -241,6 +312,14 @@ fun ScheduleBlockEditor(
                 Spacer(Modifier.height(8.dp))
             }
         }
+    }
+
+    if (showLocationSearch) {
+        LocationSearchSheet(
+            initialQuery = place,
+            onSelect = { picked -> selectedPlace = picked; place = picked.name },
+            onDismiss = { showLocationSearch = false },
+        )
     }
 
     if (showDate) {
@@ -381,3 +460,10 @@ private fun plusHour(hhmm: String): String {
     val h = (p[0] + 1).coerceAtMost(23)
     return String.format(Locale.KOREA, "%02d:%02d", h, p[1])
 }
+
+/**
+ * 저장용 장소 — 검색으로 고른 게 있으면 그대로, 없으면 입력 텍스트만(좌표 없이).
+ *  iOS TimetreeEventEditor.save() 의 placeObj 폴백과 동일.
+ */
+private fun placePayload(text: String, selected: LessonPlace?): LessonPlace? =
+    selected ?: text.trim().takeIf { it.isNotEmpty() }?.let { LessonPlace(name = it) }

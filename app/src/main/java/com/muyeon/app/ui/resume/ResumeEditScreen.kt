@@ -73,8 +73,9 @@ fun ResumeEditScreen(
     var image by remember { mutableStateOf<String?>(null) }
     var images by remember { mutableStateOf(listOf<String>()) }
     var genres by remember { mutableStateOf(listOf<String>()) }
-    var activeRegions by remember { mutableStateOf(listOf<String>()) }   // 최대 3
-    var activeRegionCode by remember { mutableStateOf<String?>(null) }
+    // 이름+코드 쌍으로 들고 있는다 — iOS 와 동일. 이름만 두면 첫 지역을 지웠을 때
+    //  대표 코드(activeRegionCode)가 사라진 지역을 계속 가리킨다.
+    var activeRegions by remember { mutableStateOf(listOf<Pair<String, String?>>()) }   // 최대 3
     var days by remember { mutableStateOf(listOf<String>()) }
     var slots by remember { mutableStateOf(listOf<String>()) }
     var careerBucket by remember { mutableStateOf("") }
@@ -118,11 +119,14 @@ fun ResumeEditScreen(
             gender = d.gender.orEmpty(); height = d.height.orEmpty()
             companyCareer = d.companyCareer.orEmpty(); videoUrl = d.videoUrl.orEmpty()
             genres = d.genres ?: emptyList()
-            // 다중 지역: activeRegions[] 우선, 없으면 activeRegion 을 콤마 분해(최대 3)
-            activeRegions = d.activeRegions?.takeIf { it.isNotEmpty() }
+            // 다중 지역: activeRegions[] 우선, 없으면 activeRegion 을 콤마 분해(최대 3).
+            //  서버가 주는 코드는 단일이라 iOS 처럼 첫 지역에만 붙인다.
+            val names = d.activeRegions?.takeIf { it.isNotEmpty() }
                 ?: d.activeRegion?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }?.take(3)
                 ?: emptyList()
-            activeRegionCode = d.activeRegionCode
+            activeRegions = names.mapIndexed { i, n ->
+                n to if (i == 0) d.activeRegionCode?.ifEmpty { null } else null
+            }
             days = d.availableDays ?: emptyList()
             slots = d.availableTimeSlots ?: emptyList()
             careerBucket = d.career.orEmpty()
@@ -214,10 +218,37 @@ fun ResumeEditScreen(
                 }
 
                 // 활동 지역(최대 3)
+                //  ★ 자유 텍스트가 아니라 /regions 코드에서 고른다 — activeRegion 이
+                //    regions.name("서울 강남구") 포맷이어야 지역 강사수(prefix 매칭)·목록 필터·
+                //    견적 지역 매칭이 싱크된다. "강남" 처럼 적으면 저장은 되는데 검색에서 빠진다.
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     ResumeSection("활동 지역", "최대 3개")
-                    LabeledField("지역", activeRegions.joinToString(", "), "예: 서울 강남구, 서울 서초구") { text ->
-                        activeRegions = text.split(",").map { it.trim() }.filter { it.isNotEmpty() }.take(3)
+                    activeRegions.forEach { (name, _) ->
+                        Row(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                                .background(MuyeonColors.primary.copy(alpha = 0.08f))
+                                .padding(horizontal = 12.dp, vertical = 11.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                name,
+                                fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
+                                lineHeight = 17.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
+                            )
+                            Icon(
+                                Icons.Filled.Close, "삭제", tint = MuyeonColors.secondary,
+                                modifier = Modifier.size(16.dp).clickable {
+                                    activeRegions = activeRegions.filterNot { it.first == name }
+                                },
+                            )
+                        }
+                    }
+                    if (activeRegions.size < 3) {
+                        com.muyeon.app.ui.quote.RegionAddRow(token = api.token) { name, code ->
+                            if (activeRegions.none { it.first == name }) {
+                                activeRegions = (activeRegions + (name to code)).take(3)
+                            }
+                        }
                     }
                 }
 
@@ -332,7 +363,20 @@ fun ResumeEditScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         ResumeSection("희망 근무 조건")
                         LabeledField("희망 직종", desired.job.orEmpty(), "예: 발레 강사") { desired = desired.copy(job = it) }
-                        LabeledField("희망 지역", desired.region.orEmpty(), "예: 서울 전체") { desired = desired.copy(region = it) }
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                "희망 지역",
+                                fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
+                                color = MuyeonColors.textSub,
+                            )
+                            com.muyeon.app.ui.quote.RegionPickRow(
+                                token = api.token, placeholder = "지역을 선택하세요",
+                                name = desired.region.orEmpty(),
+                            ) { name, code ->
+                                desired = desired.copy(region = name)
+                                desiredRegionCode = code
+                            }
+                        }
                         Text("희망 급여", fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, color = MuyeonColors.textSub)
                         MultiChips(ResumeOptions.salaryRanges, setOfNotNull(desired.salary)) {
                             desired = desired.copy(salary = if (desired.salary == it) null else it)
@@ -380,9 +424,10 @@ fun ResumeEditScreen(
                                 height = if (mode.isDancer) height else loadedData.height,
                                 companyCareer = if (mode.isDancer) companyCareer else loadedData.companyCareer,
                                 videoUrl = if (mode.isDancer) videoUrl else loadedData.videoUrl,
-                                activeRegions = activeRegions,
-                                activeRegion = activeRegions.joinToString(", "),
-                                activeRegionCode = activeRegionCode ?: "",
+                                activeRegions = activeRegions.map { it.first },
+                                activeRegion = activeRegions.joinToString(", ") { it.first },
+                                // 서버 컬럼은 단일 — iOS 와 같이 첫 지역 코드를 대표로 보낸다.
+                                activeRegionCode = activeRegions.firstOrNull()?.second ?: "",
                                 availableDays = days, availableTimeSlots = slots,
                                 career = bucket,
                                 educations = educations.filter { it.school.isNotEmpty() },

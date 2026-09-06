@@ -6,6 +6,12 @@
         <intent>
             <action android:name="android.provider.MediaStore.ACTION_PICK_IMAGES" />
         </intent>
+        <!-- 네이버지도 앱(nmap 스킴). Android 11+ 는 패키지 가시성이 없으면
+             암시적 인텐트가 ActivityNotFound 로 떨어져 항상 웹 폴백만 열린다. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="nmap" />
+        </intent>
     </queries>
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.BLUETOOTH" />

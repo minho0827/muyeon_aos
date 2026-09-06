@@ -219,7 +219,7 @@ data class LessonProductDetail(
 }
 
 /** 레슨 상품(개설/수정) API — iOS LessonWizardService. */
-class LessonWizardApi(private val token: String?) {
+class LessonWizardApi(internal val token: String?) {
 
     private val client = OkHttpClient()
     private val apiBase = BuildConfig.API_BASE_URL + "/api"

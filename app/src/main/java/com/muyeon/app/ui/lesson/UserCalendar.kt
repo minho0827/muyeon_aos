@@ -2,6 +2,7 @@ package com.muyeon.app.ui.lesson
 
 import androidx.compose.ui.graphics.Color
 import com.muyeon.app.BuildConfig
+import com.muyeon.app.ui.quote.doubleOrNull
 import com.muyeon.app.ui.quote.intOrNull
 import com.muyeon.app.ui.quote.map
 import com.muyeon.app.ui.quote.stringOrNull
@@ -81,12 +82,18 @@ data class StudioBlock(
     val endTime: String?,
     val calendarId: Int?,
     val memo: String?,
+    val place: String?,
+    val placeAddress: String?,
+    val placeLat: Double?,
+    val placeLng: Double?,
 ) {
     companion object {
         fun from(o: JSONObject) = StudioBlock(
             o.optInt("id"), o.optString("date"), o.optString("title"),
             o.optBoolean("allDay", false), o.stringOrNull("startTime"), o.stringOrNull("endTime"),
             o.intOrNull("calendarId"), o.stringOrNull("memo"),
+            o.stringOrNull("place"), o.stringOrNull("placeAddress"),
+            o.doubleOrNull("placeLat"), o.doubleOrNull("placeLng"),
         )
     }
 }
@@ -118,15 +125,17 @@ class UserCalendarApi(private val token: String?) {
     suspend fun createBlock(
         date: String, title: String, calendarId: Int?, allDay: Boolean,
         startTime: String?, endTime: String?, memo: String?, remindMinutesBefore: Int?,
+        place: LessonPlace? = null,
     ): Result<Unit> = call("/studio/schedule-blocks", "POST",
-        blockBody(date, title, calendarId, allDay, startTime, endTime, memo, remindMinutesBefore)).map { }
+        blockBody(date, title, calendarId, allDay, startTime, endTime, memo, remindMinutesBefore, place)).map { }
 
     /** 개인 일정 수정 — PATCH /studio/schedule-blocks/:id. */
     suspend fun updateBlock(
         id: Int, date: String, title: String, calendarId: Int?, allDay: Boolean,
         startTime: String?, endTime: String?, memo: String?, remindMinutesBefore: Int?,
+        place: LessonPlace? = null,
     ): Result<Unit> = call("/studio/schedule-blocks/$id", "PATCH",
-        blockBody(date, title, calendarId, allDay, startTime, endTime, memo, remindMinutesBefore)).map { }
+        blockBody(date, title, calendarId, allDay, startTime, endTime, memo, remindMinutesBefore, place)).map { }
 
     suspend fun deleteBlock(id: Int): Result<Unit> =
         call("/studio/schedule-blocks/$id", "DELETE").map { }
@@ -134,6 +143,7 @@ class UserCalendarApi(private val token: String?) {
     private fun blockBody(
         date: String, title: String, calendarId: Int?, allDay: Boolean,
         startTime: String?, endTime: String?, memo: String?, remindMinutesBefore: Int?,
+        place: LessonPlace?,
     ): JSONObject = JSONObject()
         .put("date", date)
         .put("title", title)
@@ -146,6 +156,13 @@ class UserCalendarApi(private val token: String?) {
             }
             memo?.takeIf { it.isNotEmpty() }?.let { put("memo", it) }
             remindMinutesBefore?.let { put("remindMinutesBefore", it) }
+            // 좌표는 검색으로 고른 장소에만 있다. 직접입력이면 place 만 값이 있고 나머지는 null.
+            // ⚠️ 비었을 때 키를 빼면 안 된다 — 서버는 undefined 를 '변경 없음'으로 보므로
+            //   수정에서 장소를 지워도 예전 값이 그대로 남는다(DTO 주석: null 전달 = 해제).
+            put("place", place?.name?.takeIf { it.isNotBlank() } ?: JSONObject.NULL)
+            put("placeAddress", place?.address ?: JSONObject.NULL)
+            put("placeLat", place?.lat ?: JSONObject.NULL)
+            put("placeLng", place?.lng ?: JSONObject.NULL)
         }
 
     suspend fun schedule(from: String, to: String): Result<List<StudioBlock>> =

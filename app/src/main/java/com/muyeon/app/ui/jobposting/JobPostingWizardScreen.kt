@@ -223,8 +223,27 @@ fun JobPostingWizardScreen(
                     JobChips("수업 대상", ResumeOptions.classTargets, setOfNotNull(form.target)) {
                         form = form.copy(target = if (form.target == it) null else it)
                     }
-                    JobField("근무 지역", form.region.orEmpty(), "예: 서울 강남구", required = true) {
-                        form = form.copy(region = it)
+                    // ★ 자유 텍스트가 아니라 /regions 코드에서 고른다 — regionCode 가 있어야
+                    //   공고 목록의 지역 필터·관심조건 매칭 알림이 걸린다(iOS RegionPickRow).
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(
+                                "근무 지역",
+                                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
+                                color = MuyeonColors.textHead,
+                            )
+                            Text(
+                                "*",
+                                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                                color = MuyeonColors.primary,
+                            )
+                        }
+                        com.muyeon.app.ui.quote.RegionPickRow(
+                            token = api.token, placeholder = "지역을 선택하세요",
+                            name = form.region.orEmpty(),
+                        ) { name, code ->
+                            form = form.copy(region = name, regionCode = code)
+                        }
                     }
                     CoverUpload(form.imageUrl, uploadingCover) {
                         coverPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))

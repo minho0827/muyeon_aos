@@ -235,7 +235,7 @@ data class JobPref(
     }
 }
 
-class JobPostingApi(private val token: String?) {
+class JobPostingApi(internal val token: String?) {
 
     private val client = OkHttpClient()
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
