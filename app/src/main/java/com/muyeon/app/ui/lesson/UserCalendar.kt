@@ -111,6 +111,43 @@ class UserCalendarApi(private val token: String?) {
     suspend fun remove(id: Int): Result<Unit> = call("/studio/calendars/$id", "DELETE").map { }
 
     /** 개인 일정 조회 — from/to 'yyyy-MM-dd'. { blocks: [] }. */
+    /**
+     * 개인 일정 등록 — POST /studio/schedule-blocks.
+     *  하루 종일이면 시간 필드를 아예 보내지 않는다(서버가 HH:mm 형식을 강제한다).
+     */
+    suspend fun createBlock(
+        date: String, title: String, calendarId: Int?, allDay: Boolean,
+        startTime: String?, endTime: String?, memo: String?, remindMinutesBefore: Int?,
+    ): Result<Unit> = call("/studio/schedule-blocks", "POST",
+        blockBody(date, title, calendarId, allDay, startTime, endTime, memo, remindMinutesBefore)).map { }
+
+    /** 개인 일정 수정 — PATCH /studio/schedule-blocks/:id. */
+    suspend fun updateBlock(
+        id: Int, date: String, title: String, calendarId: Int?, allDay: Boolean,
+        startTime: String?, endTime: String?, memo: String?, remindMinutesBefore: Int?,
+    ): Result<Unit> = call("/studio/schedule-blocks/$id", "PATCH",
+        blockBody(date, title, calendarId, allDay, startTime, endTime, memo, remindMinutesBefore)).map { }
+
+    suspend fun deleteBlock(id: Int): Result<Unit> =
+        call("/studio/schedule-blocks/$id", "DELETE").map { }
+
+    private fun blockBody(
+        date: String, title: String, calendarId: Int?, allDay: Boolean,
+        startTime: String?, endTime: String?, memo: String?, remindMinutesBefore: Int?,
+    ): JSONObject = JSONObject()
+        .put("date", date)
+        .put("title", title)
+        .put("allDay", allDay)
+        .apply {
+            calendarId?.takeIf { it > 0 }?.let { put("calendarId", it) }
+            if (!allDay) {
+                startTime?.let { put("startTime", it) }
+                endTime?.let { put("endTime", it) }
+            }
+            memo?.takeIf { it.isNotEmpty() }?.let { put("memo", it) }
+            remindMinutesBefore?.let { put("remindMinutesBefore", it) }
+        }
+
     suspend fun schedule(from: String, to: String): Result<List<StudioBlock>> =
         call("/studio/schedule?from=$from&to=$to").map {
             JSONObject(it.ifBlank { "{}" }).optJSONArray("blocks")?.map(StudioBlock::from) ?: emptyList()

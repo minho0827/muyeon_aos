@@ -43,7 +43,7 @@ data class LessonDay(
 
 class LessonCalendarState(
     private val lessonApi: LessonApi,
-    private val calendarApi: UserCalendarApi,
+    internal val calendarApi: UserCalendarApi,
     /** 배지 상태 저장 — iOS 는 UserDefaults. 계정 id 를 로컬에 안 두므로 키에 계정을 붙이지 않는다. */
     private val prefs: SharedPreferences? = null,
 ) : ViewModel() {

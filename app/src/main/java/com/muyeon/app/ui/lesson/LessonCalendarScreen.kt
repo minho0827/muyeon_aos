@@ -92,6 +92,9 @@ fun LessonCalendarScreen(
 
     var refreshing by remember { mutableStateOf(false) }
     val refreshScope = rememberCoroutineScope()
+    // 개인 일정 편집기 — null 이면 닫힘, StudioBlock 이면 수정, NEW_BLOCK 이면 신규.
+    var editorBlock by remember { mutableStateOf<StudioBlock?>(null) }
+    var editorOpen by remember { mutableStateOf(false) }
 
     val days = remember(state.monthAnchor, state.schedules, state.blocks, state.hiddenCalendarIds) { state.days() }
     var statusTab by remember { mutableStateOf(StatusTab.ALL) }
@@ -301,10 +304,29 @@ fun LessonCalendarScreen(
         ) {
             when {
                 state.loading && !state.didLoad -> LoadingAgenda()
-                state.selectedYmd != null -> SelectedDayAgenda(state, onOpenLesson, onOpenChat)
+                state.selectedYmd != null -> SelectedDayAgenda(
+                    state, onOpenLesson, onOpenChat,
+                    onAddBlock = { editorBlock = null; editorOpen = true },
+                    onEditBlock = { b -> editorBlock = b; editorOpen = true },
+                )
                 else -> MonthAgenda(state, statusTab, onOpenLesson, onOpenChat)
             }
         }
+    }
+
+    if (editorOpen) {
+        ScheduleBlockEditor(
+            api = state.calendarApi,
+            block = editorBlock,
+            defaultYmd = state.selectedYmd ?: LessonCalendarState.todayYmdKST(),
+            calendars = state.calendars,
+            onSaved = {
+                editorOpen = false
+                // 저장 직후 달력을 다시 읽어 방금 만든 일정이 바로 보이게 한다.
+                refreshScope.launch { state.load() }
+            },
+            onDismiss = { editorOpen = false },
+        )
     }
 }
 
@@ -314,6 +336,8 @@ private fun SelectedDayAgenda(
     state: LessonCalendarState,
     onOpenLesson: (Int) -> Unit,
     onOpenChat: (Int) -> Unit,
+    onAddBlock: () -> Unit,
+    onEditBlock: (StudioBlock) -> Unit,
 ) {
     Row(
         Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 6.dp),
@@ -323,6 +347,15 @@ private fun SelectedDayAgenda(
             state.selectedDayTitle,
             fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
             lineHeight = 17.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
+        )
+        Text(
+            "일정 추가",
+            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+            lineHeight = 16.sp, color = Color.White,
+            modifier = Modifier.padding(end = 8.dp).clip(RoundedCornerShape(50))
+                .background(MuyeonColors.primary)
+                .clickable { onAddBlock() }
+                .padding(horizontal = 12.dp, vertical = 7.dp),
         )
         Text(
             "전체 보기",
@@ -339,7 +372,9 @@ private fun SelectedDayAgenda(
         lessons.forEach { LessonCard(it, state, pending = false, onOpenLesson = onOpenLesson, onOpenChat = onOpenChat) }
         blocks.forEach { b ->
             val cal = state.calendars.firstOrNull { it.id == b.calendarId } ?: UserCalendar.DEFAULT
-            Box(Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) { BlockRow(b, cal) }
+            Box(
+                Modifier.padding(horizontal = 20.dp, vertical = 6.dp).clickable { onEditBlock(b) },
+            ) { BlockRow(b, cal) }
         }
     }
 }
