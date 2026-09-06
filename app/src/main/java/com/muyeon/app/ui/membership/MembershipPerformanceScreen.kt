@@ -198,7 +198,7 @@ private fun PerformanceContent(
         }
 
         // 최근 30일 활동
-        CardShell {
+        CardShell(spacing = 18.dp) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     "최근 30일 활동",
@@ -211,25 +211,28 @@ private fun PerformanceContent(
                     lineHeight = 14.sp, color = MuyeonColors.textSub,
                 )
             }
-            discovery.chunked(2).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                    row.forEach { (label, value) ->
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                            Text(
-                                label,
-                                fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
-                                lineHeight = 16.sp, color = MuyeonColors.textSub,
-                            )
-                            CountUpText(value, 24.sp, MuyeonColors.textHead)
+            // iOS LazyVGrid(spacing: 20) — 행 사이 간격이 카드 줄간격(18)과 다르다.
+            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                discovery.chunked(2).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                        row.forEach { (label, value) ->
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Text(
+                                    label,
+                                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
+                                    lineHeight = 16.sp, color = MuyeonColors.textSub,
+                                )
+                                CountUpText(value, 24.sp, MuyeonColors.textHead)
+                            }
                         }
+                        if (row.size == 1) Spacer(Modifier.weight(1f))
                     }
-                    if (row.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
         }
 
         // 14일 추세
-        CardShell {
+        CardShell(spacing = 18.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     "최근 14일 ${selectedMetric.title(isAcademy)}",
@@ -328,10 +331,14 @@ private fun PerformanceContent(
 
 /** 카드 공통 껍데기 — 카드마다 배경·모서리를 따로 적으면 값이 조금씩 어긋난다. */
 @Composable
-private fun CardShell(content: @Composable ColumnScope.() -> Unit) {
+private fun CardShell(
+    // iOS 는 cardShell 이 16, summaryCard/chartCard 만 18 이다 — 섞으면 카드마다 줄간격이 달라진다.
+    spacing: androidx.compose.ui.unit.Dp = 16.dp,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(MuyeonColors.surface).padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(spacing),
         content = content,
     )
 }

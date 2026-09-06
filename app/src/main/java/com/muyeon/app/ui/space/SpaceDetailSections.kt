@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -20,6 +21,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
+
+/**
+ * 티켓 카드 그림자색. iOS 는 Color.black.opacity(0.04) 를 그대로 쓰지만,
+ *  Compose 의 shadow 는 elevation 에 따라 알파를 한 번 더 감쇠시켜 4% 면 사실상 안 보인다.
+ *  같은 진하기로 보이도록 10% 로 올렸다(수치가 아니라 결과를 맞춘 값).
+ */
+private val SHADOW = Color.Black.copy(alpha = 0.10f)
 
 /**
  * 공간 상세 조각 — iOS `SpaceDetailView+Summary.swift` / `+Sections.swift` 1:1.
@@ -32,7 +40,11 @@ import com.muyeon.app.theme.customFontFamily
 internal fun SpaceTicketCard(space: SpaceDetail) {
     Column(
         Modifier.padding(horizontal = SpaceDesign.gutter).padding(top = 32.dp)
-            .fillMaxWidth().clip(RoundedCornerShape(SpaceDesign.cardRadius))
+            .fillMaxWidth()
+            // iOS .shadow(radius 10, y 2) 대응 — Compose 는 반경 대신 elevation 이라 5dp 로 맞춘다.
+            //  ★ shadow 는 clip/background 보다 앞에 와야 그림자가 카드 밖으로 나온다.
+            .shadow(5.dp, RoundedCornerShape(SpaceDesign.cardRadius), spotColor = SHADOW, ambientColor = SHADOW)
+            .clip(RoundedCornerShape(SpaceDesign.cardRadius))
             .background(Color.White).padding(SpaceDesign.cardPadding),
     ) {
         Text(

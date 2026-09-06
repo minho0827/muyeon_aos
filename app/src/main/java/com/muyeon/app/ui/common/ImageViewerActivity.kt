@@ -151,6 +151,9 @@ private fun ImageViewer(
 
         Column(Modifier.fillMaxSize()) {
             // 상단 바 — 닫기 / 카운터 / 저장
+            // 아이콘 22dp — iOS 는 SF Symbol 18pt 지만, SF Symbol 은 글리프가 지정 크기보다
+            //  크게 그려지고 Material 아이콘은 지정 크기 박스 안에 맞춰 그려진다.
+            //  숫자를 그대로 18 로 두면 iOS 보다 눈에 띄게 작아져, 보이는 크기를 맞춘 값이다.
             Row(
                 Modifier.fillMaxWidth().background(Color.Black.copy(alpha = 0.4f))
                     .statusBarsPadding()
