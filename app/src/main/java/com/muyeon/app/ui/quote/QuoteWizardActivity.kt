@@ -26,6 +26,7 @@ import com.muyeon.app.theme.customFontFamily
 import androidx.lifecycle.lifecycleScope
 import com.muyeon.app.utils.TokenManager
 import com.muyeon.app.webview.NativeWebRoute
+import com.muyeon.app.webview.WebCallbacks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -117,6 +118,8 @@ class QuoteWizardActivity : ComponentActivity() {
                             Toast.makeText(this@QuoteWizardActivity, "요청에 실패했어요. 잠시 후 다시 시도해 주세요.", Toast.LENGTH_SHORT).show()
                             phase = "wizard"
                         } else {
+                            // 웹이 받은견적 목록으로 라우팅한다(iOS notifyWebQuoteSubmitted).
+                            WebCallbacks.quoteSubmitted(this@QuoteWizardActivity)
                             phase = "done"
                         }
                     },

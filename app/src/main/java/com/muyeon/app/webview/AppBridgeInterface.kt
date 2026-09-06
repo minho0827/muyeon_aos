@@ -160,12 +160,20 @@ class AppBridgeInterface(
                 val tid = d.optString("teacherId").toIntOrNull() ?: return true
                 com.muyeon.app.ui.resume.ResumeActivity.startReviewList(activity, tid)
             }
-            "openReviewWrite", "openReviewEdit" -> {
+            "openReviewWrite" -> {
                 val tid = d.optString("teacherId").toIntOrNull() ?: return true
                 com.muyeon.app.ui.resume.ResumeActivity.startReviewWrite(
                     activity, tid, d.optString("teacherName"), d.optString("lessonType"),
                 )
             }
+            // 리뷰 '수정' 은 작성과 다른 화면이다 — payload 에 teacherId 가 없어서
+            //  종전처럼 openReviewWrite 로 넘기면 teacherId 파싱에 걸려 **아무것도 안 열렸다**.
+            //  저장은 웹이 __onReviewEdited 로 수행한다(iOS presentReviewEdit 와 동일).
+            "openReviewEdit" -> com.muyeon.app.ui.resume.ResumeActivity.startReviewEdit(
+                activity,
+                d.optString("rating").toIntOrNull() ?: 0,
+                d.optString("content"),
+            )
             "openApplicantResume" -> {
                 // 대타(SUB)는 subId 로 온다 — jobId 만 읽으면 대타 지원자 화면이 안 열린다(iOS 와 동일 키).
                 val kind = d.optString("applicationKind").ifEmpty { "JOB" }

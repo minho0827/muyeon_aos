@@ -13,10 +13,12 @@ import androidx.navigation.compose.rememberNavController
 import com.muyeon.app.ui.chat.ChatActivity
 import com.muyeon.app.ui.quote.QuoteWizardActivity
 import com.muyeon.app.ui.review.ReviewApi
+import com.muyeon.app.ui.review.ReviewEditSheet
 import com.muyeon.app.ui.review.ReviewListScreen
 import com.muyeon.app.ui.review.ReviewWriteScreen
 import com.muyeon.app.utils.TokenManager
 import com.muyeon.app.webview.NativeWebRoute
+import com.muyeon.app.webview.WebCallbacks
 
 /**
  * 이력서/공개프로필/리뷰 컨테이너 — 웹 브릿지 진입점.
@@ -37,6 +39,8 @@ class ResumeActivity : ComponentActivity() {
         private const val EXTRA_APPLICATION_ID = "applicationId"
         private const val EXTRA_TEACHER_NAME = "teacherName"
         private const val EXTRA_LESSON_TYPE = "lessonType"
+        private const val EXTRA_RATING = "rating"
+        private const val EXTRA_CONTENT = "content"
         private const val EXTRA_SEEK_PROFILE = "seekProfile"
 
         /** 이력서 목록(mode=teacher|dancer). */
@@ -70,6 +74,17 @@ class ResumeActivity : ComponentActivity() {
             )
 
         /** 지원자 이력서(원장). kind=JOB(구인) | SUB(대타) — postingId 가 각각 jobId/subId. */
+        /**
+         * 리뷰 수정 시트. 저장 API 는 웹이 __onReviewEdited 로 수행하므로 teacherId 가 필요 없다
+         * (웹 openReviewEdit payload 에도 rating/content 만 온다).
+         */
+        fun startReviewEdit(context: Context, rating: Int, content: String) =
+            context.go(
+                intent(context, "reviewEdit")
+                    .putExtra(EXTRA_RATING, rating)
+                    .putExtra(EXTRA_CONTENT, content),
+            )
+
         fun startApplicant(context: Context, postingId: Int, applicationId: Int, kind: String?) =
             context.go(
                 intent(context, "applicant")
@@ -100,6 +115,8 @@ class ResumeActivity : ComponentActivity() {
         val teacherName = intent.getStringExtra(EXTRA_TEACHER_NAME).orEmpty()
         val lessonType = intent.getStringExtra(EXTRA_LESSON_TYPE)?.ifEmpty { null }
         val seekProfileExtra = intent.getBooleanExtra(EXTRA_SEEK_PROFILE, false)
+        val editRating = intent.getIntExtra(EXTRA_RATING, 0)
+        val editContent = intent.getStringExtra(EXTRA_CONTENT).orEmpty()
 
         setContent {
             val nav = rememberNavController()
@@ -176,7 +193,20 @@ class ResumeActivity : ComponentActivity() {
                         api = reviewApi, resumeApi = api, teacherId = userId,
                         teacherName = teacherName, teacherImage = null,
                         lessonDateLine = null, prefillLessonType = lessonType,
-                        onClose = { back() }, onDone = { back() },
+                        onClose = { back() },
+                        // 웹 강사 리뷰 목록 재조회(iOS presentReviewWrite onSaved 와 동일 콜백)
+                        onDone = { WebCallbacks.reviewWritten(this@ResumeActivity); back() },
+                    )
+                }
+                composable("reviewEdit") {
+                    // 리뷰 수정은 네이티브가 UI 만 담당하고 저장은 웹이 __onReviewEdited 로 수행한다.
+                    ReviewEditSheet(
+                        initialRating = editRating, initialContent = editContent,
+                        onSave = { r, c ->
+                            WebCallbacks.reviewEdited(this@ResumeActivity, r, c)
+                            finish()
+                        },
+                        onClose = { back() },
                     )
                 }
                 composable("applicant") {

@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -32,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.chat.ChatActivity
 import com.muyeon.app.ui.common.MuyeonColors
+import com.muyeon.app.webview.WebCallbacks
 import com.muyeon.app.ui.quote.QuoteEmptyState
 import com.muyeon.app.ui.quote.QuoteHubActivity
 import com.muyeon.app.ui.quote.QuoteNavBar
@@ -56,6 +58,7 @@ fun NotificationListScreen(
     var loadingMore by remember { mutableStateOf(false) }
     var reachedEnd by remember { mutableStateOf(false) }
     var refreshing by remember { mutableStateOf(false) }
+    val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
 
     suspend fun reload() {
@@ -94,7 +97,8 @@ fun NotificationListScreen(
                 fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
                 lineHeight = 16.sp, color = MuyeonColors.primary,
                 modifier = Modifier.clickable {
-                    scope.launch { api.markAllRead(); reload() }
+                    // 웹 알림 배지도 같이 내려야 한다(iOS .muyeonNotificationsRead → __onNativeNotificationsRead).
+                    scope.launch { api.markAllRead(); WebCallbacks.notificationsRead(ctx); reload() }
                 },
             )
         }

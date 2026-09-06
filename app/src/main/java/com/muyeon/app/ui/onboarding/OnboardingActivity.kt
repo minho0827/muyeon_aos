@@ -15,6 +15,7 @@ import androidx.navigation.compose.rememberNavController
 import com.muyeon.app.utils.TokenManager
 import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.webview.NativeWebRoute
+import com.muyeon.app.webview.WebCallbacks
 import com.muyeon.app.webview.WebCallbackQueue
 import org.json.JSONArray
 import org.json.JSONObject
@@ -156,6 +157,10 @@ class OnboardingActivity : ComponentActivity() {
                         token, r0, c0,
                         onComplete = { region, code ->
                             OnboardingAddressStore.persist(this@OnboardingActivity, region, code)
+                            // ★ 웹이 실제로 듣는 훅은 onAddressSelected(name, code) 하나다
+                            //   (components/muyeon/NativeAddressBridge.js). __onAddressSetupComplete 는
+                            //   웹에 정의된 적이 없어 지역이 반영되지 않고 있었다 — iOS notifyWebAddressSelected 와 맞춘다.
+                            WebCallbacks.addressSelected(this@OnboardingActivity, region, code)
                             val json = JSONObject().put("region", region).put("code", code)
                             notifyWeb("if(window.__onAddressSetupComplete){ window.__onAddressSetupComplete($json); }")
                         },
