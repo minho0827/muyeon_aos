@@ -7,6 +7,13 @@
             <item name="android:statusBarColor">@android:color/transparent</item>
             <item name="android:windowLightStatusBar">true</item>
     </style>
+    <!-- 전체화면 이미지 뷰어 — 검은 배경 + 밝은 상태바 아이콘(iOS statusBarHidden 대응) -->
+    <style name="Theme.Muyeon.ImageViewer" parent="Theme.Muyeon">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/black</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
     <style name="Theme.Splash" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:windowBackground">@android:color/white</item>
         <item name="android:windowNoTitle">true</item>

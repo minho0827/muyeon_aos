@@ -383,16 +383,22 @@ private fun MessageBubble(
                     modifier = Modifier.padding(bottom = 2.dp),
                 )
             }
+            // 이미지 말풍선은 배경 없이 사진만 보여준다(iOS ChatImageBubble — 말풍선 밖).
+            val bare = message.type == "IMAGE" && !message.isDeleted
             Box(
                 Modifier
                     .widthIn(max = 260.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(if (isMine) MuyeonColors.primary else Color(0xFFF2F2F7))
-                    .combinedClickable(
-                        onClick = { if (isMine) onEdit() else onReply() },
-                        onLongClick = onLongPress,
-                    )
-                    .padding(horizontal = 14.dp, vertical = 9.dp),
+                    .clip(RoundedCornerShape(if (bare) 12.dp else 18.dp))
+                    .then(
+                        if (bare) Modifier
+                        else Modifier
+                            .background(if (isMine) MuyeonColors.primary else Color(0xFFF2F2F7))
+                            .combinedClickable(
+                                onClick = { if (isMine) onEdit() else onReply() },
+                                onLongClick = onLongPress,
+                            )
+                            .padding(horizontal = 14.dp, vertical = 9.dp),
+                    ),
             ) {
                 when {
                     message.isDeleted -> Text(
@@ -400,22 +406,12 @@ private fun MessageBubble(
                         fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 20.sp,
                         color = if (isMine) Color.White.copy(alpha = 0.7f) else MuyeonColors.secondary,
                     )
-                    message.type == "IMAGE" -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        message.imageUrls.take(4).forEach { url ->
-                            AsyncImage(
-                                QuoteUi.imageUrl(url), null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.size(180.dp).clip(RoundedCornerShape(12.dp)),
-                            )
-                        }
-                        if (message.content.isNotBlank()) {
-                            Text(
-                                message.content,
-                                fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 20.sp,
-                                color = if (isMine) Color.White else MuyeonColors.textHead,
-                            )
-                        }
-                    }
+                    message.type == "IMAGE" -> ChatImageBubble(
+                        urls = message.imageUrls,
+                        // 저장은 내가 보낸 사진만(iOS viewerAllowsSaving = vm.isMine)
+                        allowsSaving = isMine,
+                        onLongPress = onLongPress,
+                    )
                     message.type == "VIDEO" -> ChatVideoBubble(message.imageUrl.orEmpty())
                     else -> Text(
                         message.content,

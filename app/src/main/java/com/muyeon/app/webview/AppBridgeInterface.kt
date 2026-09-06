@@ -178,6 +178,14 @@ class AppBridgeInterface(
                 val roomId = d.optString("roomId").toIntOrNull() ?: return true
                 com.muyeon.app.ui.chat.ChatActivity.startRoom(activity, roomId, d.optString("title"))
             }
+            // 이미지 뷰어 — 웹은 네이티브 핸들러가 있으면 자기 라이트박스를 안 띄운다.
+            //  여기서 안 받으면 이미지 탭이 무반응 버튼이 된다(iOS presentImageViewer 와 동일 키).
+            "openImageViewer" -> com.muyeon.app.ui.common.ImageViewerActivity.start(
+                activity,
+                rawUrls = d.optString("urls"),
+                index = d.optString("index").toIntOrNull() ?: 0,
+                allowSave = d.optString("allowSave") == "true",
+            )
             else -> return false
         }
         return true
@@ -232,9 +240,7 @@ class AppBridgeInterface(
             //  구버전 번들이 캐시된 기기를 위해 웹 경로를 열어 둔다.
             "openSpaceDetail" -> s("spaceId").takeIf { it.isNotEmpty() }?.let { "/spaces/$it" }
 
-            // 채팅 — openNative() 에서 네이티브 화면으로 처리(이식 완료).
-            // 이미지 뷰어 — 웹 대체 없음.
-            "openImageViewer" -> null
+            // 채팅 · 이미지 뷰어 — openNative() 에서 처리(이식 완료).
             // 애플 로그인 — iOS 전용.
             "getAppleLogin" -> null
 
