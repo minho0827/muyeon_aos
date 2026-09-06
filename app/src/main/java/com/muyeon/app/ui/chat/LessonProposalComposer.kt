@@ -120,6 +120,12 @@ fun LessonProposalComposer(
     isTeacher: Boolean,
     totalPrice: Int,
     depositAmount: Int,
+    /** 캘린더에서 열 때 편집기에 이미 적어둔 값을 그대로 싣는다(iOS 는 편집기가 제안 모드로 바뀐다). */
+    initialStartAt: Long? = null,
+    initialDurationMin: Int? = null,
+    initialPlace: String = "",
+    initialMemo: String = "",
+    initialCalendarId: Int? = null,
     onSent: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -127,12 +133,12 @@ fun LessonProposalComposer(
     val scope = rememberCoroutineScope()
 
     // 기본값: 내일 오후 3시(KST) — iOS 와 같다.
-    var startAt by remember { mutableLongStateOf(defaultStart()) }
-    var durationMin by remember { mutableIntStateOf(60) }
-    var place by remember { mutableStateOf("") }
-    var memo by remember { mutableStateOf("") }
+    var startAt by remember { mutableLongStateOf(initialStartAt ?: defaultStart()) }
+    var durationMin by remember { mutableIntStateOf(initialDurationMin ?: 60) }
+    var place by remember { mutableStateOf(initialPlace) }
+    var memo by remember { mutableStateOf(initialMemo) }
     var calendars by remember { mutableStateOf<List<UserCalendar>>(emptyList()) }
-    var calendarId by remember { mutableStateOf<Int?>(null) }
+    var calendarId by remember { mutableStateOf(initialCalendarId) }
     var policyAgreed by remember { mutableStateOf(false) }
     var sending by remember { mutableStateOf(false) }
     var errorText by remember { mutableStateOf<String?>(null) }

@@ -172,6 +172,15 @@ class ReviewApi(private val token: String?) {
     suspend fun submit(payload: ReviewSubmit): Result<Unit> = call("/reviews", "POST", payload.toJson()).map { }
 
     /** 도움돼요 토글 → { liked, count }. */
+    /** 리뷰 상세 — 둘러보기 리뷰 카드에서 연다. */
+    suspend fun detail(id: Int): Result<ReviewDetail> =
+        call("/reviews/$id").map { ReviewDetail.from(JSONObject(it.ifBlank { "{}" })) }
+
+    /** '같은 조건으로 견적 요청' 프리필 — 리뷰가 가리키는 레슨상품 기준. */
+    suspend fun quotePrefill(lessonProductId: Int): Result<LessonQuotePrefill> =
+        call("/lesson-products/$lessonProductId/quote-prefill")
+            .map { LessonQuotePrefill.from(JSONObject(it.ifBlank { "{}" })) }
+
     suspend fun toggleHelpful(reviewId: Int): Result<Pair<Boolean, Int>> =
         call("/reviews/$reviewId/helpful", "POST").map {
             val o = JSONObject(it.ifBlank { "{}" })
@@ -218,4 +227,73 @@ class ReviewApi(private val token: String?) {
         }
 
     private companion object { val JSON = "application/json".toMediaType() }
+}
+
+/**
+ * 리뷰 상세 — 둘러보기 '리뷰' 카드 → GET /reviews/:id. iOS `ReviewDetail`.
+ *  목록 아이템과 달리 강사·서비스 정보와 견적 프리필 대상(prefillLessonId)이 함께 온다.
+ */
+data class ReviewDetail(
+    val id: Int,
+    val rating: Int,
+    val content: String?,
+    val createdAt: String?,
+    val reviewerName: String?,
+    val lessonType: String?,
+    val durationBucket: String?,
+    val tags: List<String>?,
+    val images: List<String>?,
+    val teacher: Teacher,
+    val service: ServiceInfo?,
+    /** '같은 조건으로 견적 요청' 이 프리필을 끌어올 레슨상품 id. 없으면 버튼 비활성. */
+    val prefillLessonId: Int?,
+) {
+    data class Teacher(val id: Int, val name: String?, val image: String?, val avg: Double?, val count: Int?) {
+        companion object {
+            fun from(o: JSONObject?) = Teacher(
+                o?.optInt("id") ?: 0, o?.stringOrNull("name"), o?.stringOrNull("image"),
+                o?.doubleOrNull("avg"), o?.intOrNull("count"),
+            )
+        }
+    }
+
+    data class ServiceInfo(val genre: String?, val region: String?, val purposes: List<String>?) {
+        companion object {
+            fun from(o: JSONObject?) = o?.let {
+                ServiceInfo(it.stringOrNull("genre"), it.stringOrNull("region"), it.stringList("purposes"))
+            }
+        }
+    }
+
+    companion object {
+        fun from(o: JSONObject) = ReviewDetail(
+            id = o.optInt("id"), rating = o.optInt("rating"),
+            content = o.stringOrNull("content"), createdAt = o.stringOrNull("createdAt"),
+            reviewerName = o.stringOrNull("reviewerName"),
+            lessonType = o.stringOrNull("lessonType"), durationBucket = o.stringOrNull("durationBucket"),
+            tags = o.stringList("tags"), images = o.stringList("images"),
+            teacher = Teacher.from(o.optJSONObject("teacher")),
+            service = ServiceInfo.from(o.optJSONObject("service")),
+            prefillLessonId = o.intOrNull("prefillLessonId"),
+        )
+    }
+}
+
+/** 견적 프리필 — GET /lesson-products/:id/quote-prefill. iOS `LessonQuotePrefill`. */
+data class LessonQuotePrefill(
+    val categoryId: String,
+    val region: String?,
+    val regionCode: String?,
+    val targetTeacherId: Int,
+    /** {"class":[…],"age":[…],"format":[…]} — 문진 옵션 id 와 같은 체계. */
+    val prefillJson: String,
+) {
+    companion object {
+        fun from(o: JSONObject) = LessonQuotePrefill(
+            categoryId = o.optString("categoryId").ifEmpty { "ballet" },
+            region = o.stringOrNull("region"), regionCode = o.stringOrNull("regionCode"),
+            targetTeacherId = o.optInt("targetTeacherId"),
+            prefillJson = (o.optJSONObject("prefill") ?: JSONObject()).toString(),
+        )
+    }
 }

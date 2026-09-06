@@ -52,6 +52,7 @@ fun LessonBrowseScreen(
     onClose: () -> Unit,
     onSelectPortfolio: (Int) -> Unit,
     onSelectTeacher: (Int) -> Unit,
+    onSelectReview: (Int) -> Unit,
 ) {
     var filter by remember { mutableStateOf(LessonBrowseFilter()) }
     var items by remember { mutableStateOf<List<BrowseFeedItem>>(emptyList()) }
@@ -99,8 +100,8 @@ fun LessonBrowseScreen(
             ) {
                 items(items, key = { "${it.type}-${it.itemId}" }) { item ->
                     BrowseCard(item) {
-                        // 리뷰 카드는 강사 프로필로, 포트폴리오는 콘텐츠 상세로(iOS 라우팅과 동일).
-                        if (item.isReview) item.teacherId?.let(onSelectTeacher)
+                        // 리뷰 카드는 리뷰 상세로, 포트폴리오는 콘텐츠 상세로(iOS 라우팅과 동일).
+                        if (item.isReview) onSelectReview(item.itemId)
                         else onSelectPortfolio(item.itemId)
                     }
                 }
@@ -237,6 +238,10 @@ class LessonBrowseActivity : ComponentActivity() {
         fun startDetail(context: Context, lessonProductId: Int) =
             context.go(intent(context, "detail").putExtra(EXTRA_ID, lessonProductId))
 
+        /** 리뷰 카드 → 리뷰 상세. */
+        fun startReview(context: Context, reviewId: Int) =
+            context.go(intent(context, "review").putExtra(EXTRA_ID, reviewId))
+
         private fun intent(context: Context, route: String) =
             Intent(context, LessonBrowseActivity::class.java).putExtra(EXTRA_ROUTE, route)
 
@@ -253,7 +258,22 @@ class LessonBrowseActivity : ComponentActivity() {
 
         setContent {
             val api = remember { LessonBrowseApi(TokenManager.getAccessToken(this)) }
-            if (route == "detail" && id > 0) {
+            if (route == "review" && id > 0) {
+                val reviewApi = remember { com.muyeon.app.ui.review.ReviewApi(TokenManager.getAccessToken(this)) }
+                com.muyeon.app.ui.review.ReviewDetailScreen(
+                    api = reviewApi, reviewId = id,
+                    onClose = { finish() },
+                    onSelectTeacher = { tid ->
+                        com.muyeon.app.ui.resume.ResumeActivity.startProfile(this, tid, "review")
+                    },
+                    onRequestQuote = { p ->
+                        com.muyeon.app.ui.quote.QuoteWizardActivity.start(
+                            this, p.categoryId, p.targetTeacherId.takeIf { it > 0 }?.toString(),
+                            p.prefillJson, p.region, p.regionCode,
+                        )
+                    },
+                )
+            } else if (route == "detail" && id > 0) {
                 LessonContentDetailScreen(
                     api = api, lessonProductId = id,
                     onClose = { finish() },
@@ -270,6 +290,7 @@ class LessonBrowseActivity : ComponentActivity() {
                     onSelectTeacher = { tid ->
                         com.muyeon.app.ui.resume.ResumeActivity.startProfile(this, tid, "browse")
                     },
+                    onSelectReview = { rid -> startReview(this, rid) },
                 )
             }
         }

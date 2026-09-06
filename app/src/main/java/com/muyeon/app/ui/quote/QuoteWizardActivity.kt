@@ -46,14 +46,29 @@ class QuoteWizardActivity : ComponentActivity() {
     companion object {
         private const val EXTRA_CATEGORY = "categoryId"
         private const val EXTRA_TARGET_TEACHER = "targetTeacherId"
+        // '같은 조건으로 견적 요청' 프리필 — class/age/format 옵션 id 와 지역(iOS prefill).
+        private const val EXTRA_PREFILL = "prefill"
+        private const val EXTRA_REGION = "region"
+        private const val EXTRA_REGION_CODE = "regionCode"
         // 인트로 최초 1회 노출 기록(기기 기준) — iOS UserDefaults "muyeon.quoteIntroSeen" 대응.
         private const val QUOTE_PREFS = "muyeon.quote"
         private const val KEY_INTRO_SEEN = "muyeon.quoteIntroSeen"
 
-        fun start(context: Context, categoryId: String?, targetTeacherId: String?) {
+        fun start(
+            context: Context,
+            categoryId: String?,
+            targetTeacherId: String?,
+            /** 문진 프리필 — {"class":[...],"age":[...],"format":[...]} JSON. */
+            prefillJson: String? = null,
+            region: String? = null,
+            regionCode: String? = null,
+        ) {
             val i = Intent(context, QuoteWizardActivity::class.java)
                 .putExtra(EXTRA_CATEGORY, categoryId ?: "")
                 .putExtra(EXTRA_TARGET_TEACHER, targetTeacherId ?: "")
+                .putExtra(EXTRA_PREFILL, prefillJson ?: "")
+                .putExtra(EXTRA_REGION, region ?: "")
+                .putExtra(EXTRA_REGION_CODE, regionCode ?: "")
             if (context !is Activity) i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(i)
         }
@@ -63,6 +78,11 @@ class QuoteWizardActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val categoryId = intent.getStringExtra(EXTRA_CATEGORY).orEmpty()
         val targetTeacherId = intent.getStringExtra(EXTRA_TARGET_TEACHER).orEmpty()
+        val seed = seedAnswersOf(
+            intent.getStringExtra(EXTRA_PREFILL).orEmpty(),
+            intent.getStringExtra(EXTRA_REGION).orEmpty(),
+            intent.getStringExtra(EXTRA_REGION_CODE).orEmpty(),
+        )
 
         setContent {
             // 최초 1회 인트로("강사를 찾고 계신가요?") — 종류 선택으로 바로 떨어지는 갑작스러움 해소.
@@ -81,15 +101,19 @@ class QuoteWizardActivity : ComponentActivity() {
                     onClose = { finish() },
                 )
                 cat == null -> QuoteCategoryScreen(onSelect = { selected = it }, onClose = { finish() })
-                else -> WizardFlow(cat, targetTeacherId)
+                else -> WizardFlow(cat, targetTeacherId, seed)
             }
         }
     }
 
     /** 종류가 정해진 뒤의 문진 → 로딩 → 완료 흐름. */
     @Composable
-    private fun WizardFlow(category: QuoteCategory, targetTeacherId: String) {
-            val vm = remember(category.id) { QuoteWizardViewModel(category) }
+    private fun WizardFlow(
+        category: QuoteCategory,
+        targetTeacherId: String,
+        seedAnswers: Map<String, QuoteAnswer>,
+    ) {
+            val vm = remember(category.id) { QuoteWizardViewModel(category, seedAnswers) }
             var showExit by remember { mutableStateOf(false) }
             // 단계: wizard → loading(매칭 로딩) → done(완료 안내). iOS 흐름 동일.
             var phase by remember { mutableStateOf("wizard") }
@@ -272,4 +296,29 @@ private fun QuoteExitSheet(
             }
         }
     }
+}
+
+/**
+ * 서버 quote-prefill 응답 → 문진 시드 답변.
+ *  키(class/age/format)와 옵션 id 체계가 문진과 같아 그대로 얹는다(iOS 와 동일한 전제).
+ *  지역은 별도 문항이라 region/regionCode 를 그 문항에 넣는다.
+ */
+private fun seedAnswersOf(prefillJson: String, region: String, regionCode: String): Map<String, QuoteAnswer> {
+    val out = mutableMapOf<String, QuoteAnswer>()
+    if (prefillJson.isNotEmpty()) {
+        runCatching {
+            val o = org.json.JSONObject(prefillJson)
+            o.keys().forEach { k ->
+                val arr = o.optJSONArray(k) ?: return@forEach
+                var ids = (0 until arr.length()).map { arr.optString(it) }.filter { it.isNotEmpty() }
+                // age 는 단일 선택 문항인데 서버는 배열로 준다 — 첫 값만 얹는다(복수면 UI 가 깨진다).
+                if (k == "age") ids = ids.take(1)
+                if (ids.isNotEmpty()) out[k] = QuoteAnswer(questionId = k, selectedOptionIds = ids)
+            }
+        }
+    }
+    if (region.isNotEmpty()) {
+        out["region"] = QuoteAnswer(questionId = "region", region = region, regionCode = regionCode.ifEmpty { null })
+    }
+    return out
 }

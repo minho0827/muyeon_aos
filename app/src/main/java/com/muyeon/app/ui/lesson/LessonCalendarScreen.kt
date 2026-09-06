@@ -39,6 +39,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalContext
+import com.muyeon.app.utils.TokenManager
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteAvatar
@@ -95,6 +97,11 @@ fun LessonCalendarScreen(
     // 개인 일정 편집기 — null 이면 닫힘, StudioBlock 이면 수정, NEW_BLOCK 이면 신규.
     var editorBlock by remember { mutableStateOf<StudioBlock?>(null) }
     var editorOpen by remember { mutableStateOf(false) }
+    // 캘린더발 레슨 약속 제안 — 수강생을 고르면 방을 확보한 뒤 작성 시트를 연다.
+    var proposal by remember { mutableStateOf<Pair<Int, ProposalDraft>?>(null) }
+    var proposalError by remember { mutableStateOf<String?>(null) }
+    val calCtx = LocalContext.current
+    val proposalApi = remember { com.muyeon.app.ui.chat.LessonProposalApi(TokenManager.getAccessToken(calCtx)) }
 
     val days = remember(state.monthAnchor, state.schedules, state.blocks, state.hiddenCalendarIds) { state.days() }
     var statusTab by remember { mutableStateOf(StatusTab.ALL) }
@@ -320,12 +327,51 @@ fun LessonCalendarScreen(
             block = editorBlock,
             defaultYmd = state.selectedYmd ?: LessonCalendarState.todayYmdKST(),
             calendars = state.calendars,
+            lessonApi = state.lessonApi,
+            onPropose = { partner, draft ->
+                editorOpen = false
+                refreshScope.launch {
+                    // 방이 이미 있으면 그대로, 없으면 1:1 방을 만든다(멱등) — iOS 와 동일.
+                    val roomId = partner.roomId ?: state.lessonApi.ensureDirectRoom(partner.userId).getOrNull()
+                    if (roomId == null) proposalError = "채팅방을 열지 못했어요. 잠시 후 다시 시도해 주세요."
+                    else proposal = roomId to draft
+                }
+            },
             onSaved = {
                 editorOpen = false
                 // 저장 직후 달력을 다시 읽어 방금 만든 일정이 바로 보이게 한다.
                 refreshScope.launch { state.load() }
             },
             onDismiss = { editorOpen = false },
+        )
+    }
+
+    proposal?.let { (roomId, draft) ->
+        com.muyeon.app.ui.chat.LessonProposalComposer(
+            api = proposalApi,
+            calendarApi = state.calendarApi,
+            roomId = roomId,
+            // 캘린더발 제안은 언제나 강사·원장이 보낸다(수강생 목록이 곧 내 레슨 이력이다).
+            isTeacher = true,
+            totalPrice = 0,
+            depositAmount = 0,
+            initialStartAt = draft.startAtMillis,
+            initialDurationMin = draft.durationMin,
+            initialPlace = draft.place,
+            initialMemo = draft.memo,
+            initialCalendarId = draft.calendarId,
+            onSent = {
+                proposal = null
+                refreshScope.launch { state.load() }
+            },
+            onDismiss = { proposal = null },
+        )
+    }
+
+    proposalError?.let { msg ->
+        com.muyeon.app.ui.quote.QuoteDialog(
+            "알림", msg, "확인",
+            onConfirm = { proposalError = null }, onDismiss = { proposalError = null },
         )
     }
 }

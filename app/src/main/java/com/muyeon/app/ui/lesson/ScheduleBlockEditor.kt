@@ -66,6 +66,16 @@ fun ScheduleBlockEditor(
     /** 신규 기본 날짜(yyyy-MM-dd). */
     defaultYmd: String,
     calendars: List<UserCalendar>,
+    /** 수강생 목록 조회용 — null 이면 '수강생' 행을 감춘다. */
+    lessonApi: LessonApi? = null,
+    /**
+     * 수강생을 고르면 개인 일정 대신 **레슨 약속 제안**으로 넘긴다(iOS 는 저장 버튼이
+     *  '레슨 제안 보내기'로 바뀐다). 방 확보·제안 발송은 호출한 화면이 맡는다.
+     *
+     * ⚠️ 신규 작성일 때만 보여준다 — 기존 일정을 고치던 중에 고르면 수정분이
+     *   저장되지 않고 제안으로 새어 나간다(iOS 는 수정 중에도 보여줘서 그 함정이 있다).
+     */
+    onPropose: ((LessonPartnerSummary, ProposalDraft) -> Unit)? = null,
     onSaved: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -89,6 +99,7 @@ fun ScheduleBlockEditor(
         )
     }
     var showLocationSearch by remember { mutableStateOf(false) }
+    var showPartners by remember { mutableStateOf(false) }
     var remindMinutes by remember { mutableStateOf<Int?>(null) }
     var saving by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -153,6 +164,29 @@ fun ScheduleBlockEditor(
                 Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
+                if (block == null && lessonApi != null && onPropose != null) {
+                    EditorField("수강생") {
+                        Row(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                                .border(1.dp, MuyeonColors.border, RoundedCornerShape(10.dp))
+                                .clickable { showPartners = true }.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                "없음 (개인 일정)",
+                                fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp,
+                                lineHeight = 18.sp, color = MuyeonColors.textSub, modifier = Modifier.weight(1f),
+                            )
+                            Text("›", fontFamily = customFontFamily, fontSize = 15.sp, color = MuyeonColors.chevron)
+                        }
+                        Text(
+                            "수강생을 고르면 개인 일정 대신 레슨 약속을 제안해요.",
+                            fontFamily = customFontFamily, fontSize = 11.sp, lineHeight = 14.sp,
+                            color = MuyeonColors.secondary,
+                        )
+                    }
+                }
+
                 EditorField("제목") {
                     OutlinedTextField(
                         value = title, onValueChange = { title = it },
@@ -314,6 +348,30 @@ fun ScheduleBlockEditor(
         }
     }
 
+    if (showPartners && lessonApi != null) {
+        LessonPartnersSheet(
+            api = lessonApi,
+            onSelect = { p ->
+                onPropose?.invoke(
+                    p,
+                    ProposalDraft(
+                        // 종일 일정에는 시작 시각이 없다 — 제안은 시간이 필수라 기본 10:00 을 쓴다.
+                        startAtMillis = millisOfKst(ymd, if (allDay) "10:00" else startTime),
+                        durationMin = durationMinutes(
+                            if (allDay) "10:00" else startTime,
+                            if (allDay) "11:00" else endTime,
+                        ),
+                        place = placePayload(place, selectedPlace)?.name.orEmpty(),
+                        memo = listOf(title.trim(), memo.trim()).filter { it.isNotEmpty() }.joinToString(" — "),
+                        calendarId = calendarId,
+                    ),
+                )
+                onDismiss()
+            },
+            onDismiss = { showPartners = false },
+        )
+    }
+
     if (showLocationSearch) {
         LocationSearchSheet(
             initialQuery = place,
@@ -467,3 +525,32 @@ private fun plusHour(hhmm: String): String {
  */
 private fun placePayload(text: String, selected: LessonPlace?): LessonPlace? =
     selected ?: text.trim().takeIf { it.isNotEmpty() }?.let { LessonPlace(name = it) }
+
+/** 캘린더 편집기에서 넘기는 제안 초안 — 입력해 둔 값을 그대로 싣는다. */
+data class ProposalDraft(
+    val startAtMillis: Long,
+    val durationMin: Int,
+    val place: String,
+    val memo: String,
+    val calendarId: Int?,
+)
+
+/** 'yyyy-MM-dd' + 'HH:mm'(KST) → epoch millis. */
+private fun millisOfKst(ymd: String, hhmm: String): Long {
+    val d = ymd.split("-").mapNotNull { it.toIntOrNull() }
+    val t = hhmm.split(":").mapNotNull { it.toIntOrNull() }
+    if (d.size < 3 || t.size < 2) return System.currentTimeMillis()
+    return Calendar.getInstance(KST).apply {
+        clear()
+        set(d[0], d[1] - 1, d[2], t[0], t[1])
+    }.timeInMillis
+}
+
+/** 시작~종료 분 — 역전이면 iOS 와 같이 최소 30분. */
+private fun durationMinutes(start: String, end: String): Int {
+    fun mins(hhmm: String): Int {
+        val p = hhmm.split(":").mapNotNull { it.toIntOrNull() }
+        return if (p.size < 2) 0 else p[0] * 60 + p[1]
+    }
+    return maxOf(30, mins(end) - mins(start))
+}

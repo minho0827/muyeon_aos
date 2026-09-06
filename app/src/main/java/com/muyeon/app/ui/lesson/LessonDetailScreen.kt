@@ -287,6 +287,12 @@ fun LessonDetailScreen(
                 DetailAction("취소", filled = false, danger = true, enabled = !busy, modifier = Modifier.weight(1f)) {
                     confirmCancel = true
                 }
+                // 강사만 — 회원이 낸 레슨 전 설문 모아보기(iOS 레슨 상세 액션과 같은 자리).
+                if (l.iAmTeacher && l.partner.id > 0) {
+                    DetailAction("설문 프로필", filled = false, enabled = !busy, modifier = Modifier.weight(1f)) {
+                        com.muyeon.app.ui.survey.SurveyActivity.startProfile(ctx, l.partner.id)
+                    }
+                }
                 // 강사만 완료/완료취소
                 if (l.iAmTeacher) {
                     if (l.status == "DONE") {
