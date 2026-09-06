@@ -132,6 +132,11 @@ class AppBridgeInterface(
                 val aid = d.optString("academyId").toIntOrNull() ?: return true
                 com.muyeon.app.ui.academy.AcademyProfileActivity.start(activity, aid)
             }
+            // 학원↔강사 소속 — 네이티브 이식 완료(iOS AcademyTeachersView / AcademyInvitesView)
+            "openAcademyTeachers" ->
+                com.muyeon.app.ui.academy.AcademyMembershipActivity.startTeachers(activity)
+            "openAcademyInvites" ->
+                com.muyeon.app.ui.academy.AcademyMembershipActivity.startInvites(activity)
 
             // 레슨 — D 이식 완료
             "openLessonCalendar" -> com.muyeon.app.ui.lesson.LessonActivity.startCalendar(activity)
@@ -232,12 +237,6 @@ class AppBridgeInterface(
 
             // 온보딩/계정 — openSignupTerms/openAddressSetup 은 네이티브. 유형 온보딩만 웹 유지.
             "openRoleOnboarding" -> "/mypage"
-
-            // 학원-강사 소속 — 네이티브 화면 미이식. 웹 폴백 화면이 완성돼 있으니 그쪽으로 보낸다.
-            //  ★ 웹은 2026-08-13 부터 이 액션을 아예 보내지 않지만(브릿지 호출 제거),
-            //    구버전 번들이 캐시된 기기가 있어 여기서도 받아준다. 없으면 죽은 버튼이 된다.
-            "openAcademyTeachers" -> "/my/academyTeachers"
-            "openAcademyInvites" -> "/my/academyInvites"
 
             // 멤버십 성과 — 네이티브 화면 미이식(iOS 는 MembershipPerformanceView).
             //  폴백이 없으면 안드로이드에서 '성과 보기' 가 무반응이라 죽은 버튼이 된다.

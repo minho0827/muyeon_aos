@@ -46,6 +46,11 @@ object WebCallbacks {
         )
     }
 
+    /** 학원↔강사 소속 변경 — 웹 MY 소속 배지 갱신(iOS presentAcademyFull dismiss 콜백). */
+    fun academyChanged(context: Context) {
+        enqueue(context, "window.__onNativeAcademyChanged && window.__onNativeAcademyChanged()")
+    }
+
     /** 예약 취소 — 웹 예약내역에 즉시 CANCELED 반영. */
     fun lessonReservationCanceled(context: Context, reservationId: Int) {
         enqueue(
