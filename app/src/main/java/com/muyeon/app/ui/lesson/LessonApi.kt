@@ -43,9 +43,13 @@ class LessonApi(private val token: String?) {
         call("/lessons/schedules/$id/history").map { JSONArray(it.ifBlank { "[]" }).map(LessonHistoryItem::from) }
 
     /**
-     * 일정 확정/변경. iOS setSchedule 과 동일 페이로드 규약:
-     *  - place/placeAddress 는 **항상 전송**(빈 문자열 = 해제). 좌표는 있을 때만.
+     * 일정 확정/변경 페이로드 규약:
+     *  - place/placeAddress/placeLat/placeLng 는 **항상 전송**(빈 값 = 해제).
      *  - calendarId 는 3-상태: null=미변경(키 생략) / Some(null)=기본으로 해제(JSONObject.NULL) / Some(v)=배정
+     *
+     * ⚠️ 좌표만 iOS 와 다르게 보낸다 — iOS 는 좌표를 있을 때만 실어서, 장소를 다른 곳으로
+     *   바꾸면 서버가 **예전 좌표를 그대로 유지**한다(PATCH 는 미전송을 '변경 없음'으로 본다).
+     *   그러면 이름·주소는 새 장소인데 지도 핀만 옛 장소를 가리킨다. 여기선 명시적 null 로 해제한다.
      */
     suspend fun setSchedule(
         id: Int,
@@ -58,8 +62,8 @@ class LessonApi(private val token: String?) {
         if (startAt != null) body.put("startAt", startAt)
         body.put("place", place?.name ?: "")
         body.put("placeAddress", place?.address ?: "")
-        place?.lat?.let { body.put("placeLat", it) }
-        place?.lng?.let { body.put("placeLng", it) }
+        body.put("placeLat", place?.lat ?: JSONObject.NULL)
+        body.put("placeLng", place?.lng ?: JSONObject.NULL)
         if (memo != null) body.put("memo", memo)
         calendarChange?.let { body.put("calendarId", it.value ?: JSONObject.NULL) }
         return call("/lessons/schedules/$id", "PATCH", body).map { }

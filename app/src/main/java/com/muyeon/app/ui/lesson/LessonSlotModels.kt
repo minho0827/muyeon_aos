@@ -87,20 +87,63 @@ data class MyLessonProduct(
     }
 }
 
-/** 슬롯 예약자(출석 체크용). */
+/** 명단의 회원 수강권 — 출석 처리 시 '어느 권에서 차감할지' 선택기용. iOS `RosterPassDTO`. */
+data class RosterPass(
+    val id: Int,
+    val productName: String,
+    val passType: String,          // PERIOD | COUNT
+    val remainingCount: Int?,
+) {
+    val label: String
+        get() = if (passType == "COUNT") "$productName · 잔여 ${remainingCount ?: 0}회" else "$productName · 기간권"
+
+    companion object {
+        fun from(o: JSONObject) = RosterPass(
+            o.optInt("id"), o.optString("productName"), o.optString("passType"),
+            o.intOrNull("remainingCount"),
+        )
+    }
+}
+
+/**
+ * 슬롯 예약자(출석 체크용) — iOS `LessonSlotReservationDTO` 1:1.
+ *
+ * ⚠️ 출석 상태는 **status** 다(CONFIRMED|ATTENDED|NOSHOW). 종전 AOS 는 없는
+ *   `attendance`("PRESENT"/"ABSENT") 를 읽고 있어 늘 null 이었고, 이름도
+ *   서버에 없는 `userName` 을 봤다(서버 키는 name).
+ */
 data class LessonSlotReservation(
     val id: Int,
     val userId: Int?,
-    val userName: String?,
+    val name: String,
+    val phone: String?,
     val headcount: Int,
-    val status: String?,
-    val attendance: String?,   // PRESENT | ABSENT | null
+    val status: String?,           // CONFIRMED | ATTENDED | NOSHOW
+    val passes: List<RosterPass>,
+    val rescheduleStatus: String?, // REQUESTED 면 승인/거절 줄이 뜬다
 ) {
+    val attendance: SlotAttendance get() = SlotAttendance.from(status)
+
     companion object {
         fun from(o: JSONObject) = LessonSlotReservation(
-            o.optInt("id"), o.intOrNull("userId"), o.stringOrNull("userName"),
-            o.optInt("headcount", 1), o.stringOrNull("status"), o.stringOrNull("attendance"),
+            o.optInt("id"), o.intOrNull("userId"),
+            o.stringOrNull("name") ?: "회원", o.stringOrNull("phone"),
+            o.optInt("headcount", 1), o.stringOrNull("status"),
+            o.optJSONArray("passes")?.map(RosterPass::from) ?: emptyList(),
+            o.stringOrNull("rescheduleStatus"),
         )
+    }
+}
+
+/** 출석 상태 — 예약/출석/결석. iOS `AttendanceState` 와 같은 라벨·색. */
+enum class SlotAttendance(val label: String, val tint: androidx.compose.ui.graphics.Color) {
+    CONFIRMED("예약", com.muyeon.app.ui.common.MuyeonColors.primary),
+    ATTENDED("출석", androidx.compose.ui.graphics.Color(0xFF29A659)),
+    NOSHOW("결석", androidx.compose.ui.graphics.Color(0xFFE6382E));
+
+    companion object {
+        /** 모르는 값은 '예약'으로 — iOS ?? .confirmed. */
+        fun from(status: String?): SlotAttendance = entries.firstOrNull { it.name == status } ?: CONFIRMED
     }
 }
 
@@ -170,11 +213,26 @@ class LessonSlotApi(private val token: String?) {
     suspend fun slotReservations(slotId: Int): Result<List<LessonSlotReservation>> =
         call("/lesson-slots/$slotId/reservations").map { JSONArray(it.ifBlank { "[]" }).map(LessonSlotReservation::from) }
 
-    /** 출석 체크 — PATCH /lesson-slots/:sid/reservations/:rid/attendance { attendance }. */
-    suspend fun setAttendance(slotId: Int, reservationId: Int, attendance: String): Result<Unit> =
+    /**
+     * 출석 체크 — PATCH /lesson-slots/:sid/reservations/:rid/attendance.
+     *  ⚠️ 바디 키는 **status** 다. 종전엔 `attendance` 로 보내 서버 DTO 검증에서 전부 400 이었다.
+     *  passId 를 주면 그 수강권에서 차감하고, 생략하면 서버가 만료 임박순으로 고른다.
+     */
+    suspend fun setAttendance(
+        slotId: Int,
+        reservationId: Int,
+        status: String,
+        passId: Int? = null,
+    ): Result<Unit> = call(
+        "/lesson-slots/$slotId/reservations/$reservationId/attendance", "PATCH",
+        JSONObject().put("status", status).apply { passId?.let { put("passId", it) } },
+    ).map { }
+
+    /** 일정 변경 요청 승인·거절 — PATCH /lesson-reservations/:id/reschedule-decision. */
+    suspend fun decideReschedule(reservationId: Int, approved: Boolean): Result<Unit> =
         call(
-            "/lesson-slots/$slotId/reservations/$reservationId/attendance", "PATCH",
-            JSONObject().put("attendance", attendance),
+            "/lesson-reservations/$reservationId/reschedule-decision", "PATCH",
+            JSONObject().put("approved", approved),
         ).map { }
 
     private suspend fun call(path: String, method: String = "GET", body: JSONObject? = null): Result<String> =

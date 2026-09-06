@@ -58,6 +58,8 @@ fun LessonSlotManageScreen(
     var loading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var deleteTarget by remember { mutableStateOf<LessonSlotTemplate?>(null) }
+    // 회차 탭 → 예약자 명단·출석 시트(iOS sheet(item: $selectedSlot)).
+    var openSlot by remember { mutableStateOf<LessonSlot?>(null) }
 
     // 새 규칙 입력값 — iOS 기본값(수요일 19:00~20:00, 정원 8)
     var newDay by remember { mutableIntStateOf(3) }
@@ -248,16 +250,27 @@ fun LessonSlotManageScreen(
             HorizontalDivider(color = MuyeonColors.border)
 
             // 생성된 슬롯(앞으로 4주)
-            SectionHeader("생성된 예약 시간", "$from ~ $to")
+            SectionHeader("생성된 예약 시간", "$from ~ $to · 탭하면 예약자 명단·출석")
             if (slots.isEmpty()) {
                 Text(
-                    "생성된 예약 시간이 없어요. 규칙을 추가하면 자동으로 만들어져요.",
+                    if (readOnly) "생성된 예약 시간이 없어요. 학원이 시간표를 편성하면 여기에 표시돼요."
+                    else "생성된 예약 시간이 없어요. 규칙을 추가하면 자동으로 만들어져요.",
                     fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp, color = MuyeonColors.textSub,
                 )
             }
-            slots.forEach { s -> SlotRow(s) }
+            slots.forEach { s -> SlotRow(s) { openSlot = s } }
             Spacer(Modifier.height(12.dp))
         }
+    }
+
+    openSlot?.let { s ->
+        ClassDetailSheet(
+            api = api,
+            productTitle = selected?.title ?: "레슨",
+            slot = s,
+            // 닫힐 때 새로고침 — 출석 처리로 예약 수·상태가 바뀌었을 수 있다(iOS onDismiss).
+            onDismiss = { openSlot = null; scope.launch { reload() } },
+        )
     }
 
     deleteTarget?.let { t ->
@@ -362,9 +375,10 @@ private fun CapacityMenu(value: Int, modifier: Modifier = Modifier, onSelect: (I
 }
 
 @Composable
-private fun SlotRow(s: LessonSlot) {
+private fun SlotRow(s: LessonSlot, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFFF7F7F7)).padding(10.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFFF7F7F7))
+            .clickable(onClick = onClick).padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -376,6 +390,11 @@ private fun SlotRow(s: LessonSlot) {
             if (s.isOpen) "예약 가능 ${s.remaining}/${s.capacity}" else if (s.status == "FULL") "마감" else "종료",
             fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, lineHeight = 15.sp,
             color = if (s.isOpen) MuyeonColors.primary else MuyeonColors.secondary,
+        )
+        Text(
+            "›",
+            fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.chevron,
+            modifier = Modifier.padding(start = 6.dp),
         )
     }
 }

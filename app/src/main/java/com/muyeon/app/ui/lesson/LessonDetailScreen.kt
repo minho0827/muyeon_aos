@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -20,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -65,6 +67,11 @@ fun LessonDetailScreen(
     var startAt by remember { mutableStateOf<String?>(null) }
     var placeName by remember { mutableStateOf("") }
     var placeAddress by remember { mutableStateOf("") }
+    // 검색으로 고른 장소의 좌표. 손으로 고치면 좌표는 버린다(옛 핀이 남지 않도록).
+    var placeLat by remember { mutableStateOf<Double?>(null) }
+    var placeLng by remember { mutableStateOf<Double?>(null) }
+    var showLocationSearch by remember { mutableStateOf(false) }
+    val ctx = LocalContext.current
     var memo by remember { mutableStateOf("") }
     var calendarId by remember { mutableStateOf<Int?>(null) }
 
@@ -76,6 +83,7 @@ fun LessonDetailScreen(
             startAt = l.startAt
             placeName = l.place.orEmpty()
             placeAddress = l.placeAddress.orEmpty()
+            placeLat = l.placeLat; placeLng = l.placeLng
             memo = l.memo.orEmpty()
             calendarId = l.calendarId
         }
@@ -165,16 +173,35 @@ fun LessonDetailScreen(
             }
 
             DetailField("장소") {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedTextField(
+                        // 이름을 손으로 고치면 검색 좌표는 무효 — 옛 핀이 새 장소에 붙는 걸 막는다.
+                        value = placeName,
+                        onValueChange = { placeName = it; placeLat = null; placeLng = null },
+                        singleLine = true,
+                        placeholder = { Text("장소명", fontFamily = customFontFamily, fontSize = 14.sp) },
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(
+                        Icons.Filled.Search, "장소 검색", tint = MuyeonColors.primary,
+                        modifier = Modifier.size(20.dp).clickable { showLocationSearch = true },
+                    )
+                }
                 OutlinedTextField(
-                    value = placeName, onValueChange = { placeName = it }, singleLine = true,
-                    placeholder = { Text("장소명", fontFamily = customFontFamily, fontSize = 14.sp) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = placeAddress, onValueChange = { placeAddress = it }, singleLine = true,
+                    value = placeAddress,
+                    onValueChange = { placeAddress = it; placeLat = null; placeLng = null },
+                    singleLine = true,
                     placeholder = { Text("주소", fontFamily = customFontFamily, fontSize = 14.sp) },
                     modifier = Modifier.fillMaxWidth(),
                 )
+                if (placeLat != null && placeLng != null) {
+                    LocationPreviewCard(LessonPlace(placeName, placeAddress.ifEmpty { null }, placeLat, placeLng)) {
+                        openLessonNaverMap(ctx, placeName, placeLat, placeLng)
+                    }
+                }
                 Text(
                     "비우고 저장하면 장소가 해제돼요.",
                     fontFamily = customFontFamily, fontSize = 11.sp, lineHeight = 14.sp, color = MuyeonColors.secondary,
@@ -286,7 +313,10 @@ fun LessonDetailScreen(
                         api.setSchedule(
                             id = lessonId,
                             startAt = startAt,
-                            place = LessonPlace(name = placeName, address = placeAddress.ifEmpty { null }),
+                            place = LessonPlace(
+                                name = placeName, address = placeAddress.ifEmpty { null },
+                                lat = placeLat, lng = placeLng,
+                            ),
                             memo = memo,
                         ).onSuccess { toast = "저장했어요." }.onFailure { toast = it.message }
                         load(); busy = false
@@ -294,6 +324,17 @@ fun LessonDetailScreen(
                 }
             }
         }
+    }
+
+    if (showLocationSearch) {
+        LocationSearchSheet(
+            initialQuery = placeName.ifEmpty { placeAddress },
+            onSelect = { p ->
+                placeName = p.name; placeAddress = p.address.orEmpty()
+                placeLat = p.lat; placeLng = p.lng
+            },
+            onDismiss = { showLocationSearch = false },
+        )
     }
 
     if (confirmCancel) {
