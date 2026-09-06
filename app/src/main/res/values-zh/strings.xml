@@ -37,13 +37,13 @@
     <string name="perm_title">应用访问权限指南</string>
     <string name="perm_subtitle">以下权限用于使用 MUYEON 服务。</string>
     <string name="perm_camera_name">相机</string>
-    <string name="perm_camera_desc">记录用餐记录和读取二维码信息的权限。</string>
+    <string name="perm_camera_desc">拍摄头像、聊天图片和资格证明文件的权限。</string>
     <string name="perm_photo_name">照片</string>
-    <string name="perm_photo_desc">添加照片的权限。</string>
+    <string name="perm_photo_desc">添加头像、课程和场地图片、聊天照片的权限。</string>
     <string name="perm_notif_name">通知</string>
-    <string name="perm_notif_desc">接收预订和优惠通知的权限。</string>
+    <string name="perm_notif_desc">接收预约变更、报价到达和聊天消息通知的权限。</string>
     <string name="perm_location_name">位置</string>
-    <string name="perm_location_desc">此权限用于利用位置信息提供个性化服务。</string>
+    <string name="perm_location_desc">查找附近课程和练习室并自动设置所在地区的权限。</string>
     <string name="perm_optional_notice">即使不授予可选权限，您仍然可以使用该服务，但需要这些权限的功能可能会受到限制。</string>
     <string name="option">(可选)</string>
 </resources>

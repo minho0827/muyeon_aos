@@ -110,7 +110,14 @@ class LessonActivity : ComponentActivity() {
                     LessonSlotManageScreen(slotApi, e.arguments?.getString("id")?.toIntOrNull(), onClose = { back() })
                 }
                 composable("booking") {
-                    LessonBookingScreen(bookingApi, id, onClose = { back() }, onDone = { back() })
+                    LessonBookingScreen(
+                        bookingApi, id,
+                        onClose = { back() },
+                        onDone = { back() },
+                        // 예약금 결제는 웹 결제창으로 넘긴다(iOS 와 동일 경로).
+                        //  /reservations/:id?pay=1 이 토스 결제창을 띄우고, 승인되면 예약이 확정된다.
+                        onNeedPayment = { rid -> openWebAndFinish("/reservations/$rid?pay=1") },
+                    )
                 }
                 composable("detail") {
                     LessonDetailScreen(

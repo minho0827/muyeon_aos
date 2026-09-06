@@ -39,13 +39,13 @@
     <string name="perm_title">App Access\n Permissions Guide</string>
     <string name="perm_subtitle">The below permissions\n are required to use MUYEON service.</string>
     <string name="perm_camera_name">Camera</string>
-    <string name="perm_camera_desc">Permission to register meal records and read QR code information.</string>
+    <string name="perm_camera_desc">Permission to take photos for your profile, chat images, and verification documents.</string>
     <string name="perm_photo_name">Gallery</string>
-    <string name="perm_photo_desc">Permission to attach photos.</string>
+    <string name="perm_photo_desc">Permission to attach profile photos, lesson and space images, and chat photos.</string>
     <string name="perm_notif_name">Notifications</string>
-    <string name="perm_notif_desc">Permission to receive reservation and benefit notifications.</string>
+    <string name="perm_notif_desc">Permission to notify you of booking updates, new quotes, and chat messages.</string>
     <string name="perm_location_name">Location</string>
-    <string name="perm_location_desc">This permission is used to provide customized services using location information.</string>
+    <string name="perm_location_desc">Permission to find lessons and practice rooms near you and set your area automatically.</string>
     <string name="perm_optional_notice">You can use the service without agreeing to the optional permission, but some features are may be limited</string>
     <string name="option">(Optional)</string>
 </resources>

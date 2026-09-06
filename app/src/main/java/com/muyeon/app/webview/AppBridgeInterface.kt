@@ -219,6 +219,15 @@ class AppBridgeInterface(
             "openAcademyTeachers" -> "/my/academyTeachers"
             "openAcademyInvites" -> "/my/academyInvites"
 
+            // 멤버십 성과 — 네이티브 화면 미이식(iOS 는 MembershipPerformanceView).
+            //  폴백이 없으면 안드로이드에서 '성과 보기' 가 무반응이라 죽은 버튼이 된다.
+            "openMembershipPerformance" -> "/myMembership/performance"
+
+            // 공간 상세 — iOS 는 네이티브(SpaceDetailView). 지금 공간 기능은 플래그로 닫혀 있고
+            //  웹에서도 NATIVE_PLATFORMS 로 iOS 전용이라 여기 도달하지 않지만,
+            //  구버전 번들이 캐시된 기기를 위해 웹 경로를 열어 둔다.
+            "openSpaceDetail" -> s("spaceId").takeIf { it.isNotEmpty() }?.let { "/spaces/$it" }
+
             // 채팅 — openNative() 에서 네이티브 화면으로 처리(이식 완료).
             // 이미지 뷰어 — 웹 대체 없음.
             "openImageViewer" -> null
