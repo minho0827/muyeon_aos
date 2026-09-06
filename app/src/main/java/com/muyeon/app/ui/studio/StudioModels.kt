@@ -1,6 +1,7 @@
 package com.muyeon.app.ui.studio
 
 import com.muyeon.app.BuildConfig
+import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteUi
 import com.muyeon.app.ui.quote.intOrNull
 import com.muyeon.app.ui.quote.map
@@ -94,12 +95,28 @@ data class StudioRecentReservation(
     val endTime: String?,
     val title: String?,
 ) {
+    /** 출석 상태 — 서버 status 가 CONFIRMED/ATTENDED/NOSHOW. iOS AttendanceState. */
+    val attendance: AttendanceState get() = AttendanceState.from(status)
+
     companion object {
         fun from(o: JSONObject) = StudioRecentReservation(
             o.optInt("id"), o.optString("status"), o.optInt("headcount", 1),
             o.stringOrNull("date"), o.stringOrNull("startTime"), o.stringOrNull("endTime"),
             o.stringOrNull("title"),
         )
+    }
+}
+
+/** 예약 출석 상태 — iOS `AttendanceState`(LessonBookingModels.swift) 와 같은 라벨·색. */
+enum class AttendanceState(val label: String, val tint: androidx.compose.ui.graphics.Color) {
+    CONFIRMED("예약", MuyeonColors.primary),
+    ATTENDED("출석", androidx.compose.ui.graphics.Color(0xFF29A659)),
+    NOSHOW("결석", androidx.compose.ui.graphics.Color(0xFFE6382E));
+
+    companion object {
+        /** 모르는 값은 '예약'으로 — iOS ?? .confirmed. */
+        fun from(status: String?): AttendanceState =
+            entries.firstOrNull { it.name == status } ?: CONFIRMED
     }
 }
 

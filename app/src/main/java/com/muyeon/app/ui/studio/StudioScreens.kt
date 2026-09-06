@@ -11,17 +11,20 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -31,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
+import com.muyeon.app.ui.lesson.LessonTimeFmt
 import com.muyeon.app.ui.quote.QuoteAvatar
 import com.muyeon.app.ui.quote.QuoteEmptyState
 import com.muyeon.app.ui.quote.QuoteNavBar
@@ -38,6 +42,7 @@ import com.muyeon.app.ui.quote.QuoteUi
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Date
+import org.json.JSONObject
 
 /**
  * 스튜디오 운영 — iOS `Studio/StudioMembersView` · `StudioSalesView` · `StudioScheduleView` ·
@@ -56,6 +61,7 @@ fun StudioMembersScreen(api: StudioApi, onClose: () -> Unit, onOpenMember: (Int)
     var tab by remember { mutableStateOf("ACTIVE") }   // ACTIVE | LEAD
     var loading by remember { mutableStateOf(true) }
     var refreshing by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     suspend fun load() {
@@ -67,7 +73,18 @@ fun StudioMembersScreen(api: StudioApi, onClose: () -> Unit, onOpenMember: (Int)
     LaunchedEffect(tab) { load() }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(title = "회원 관리", onBack = onClose)
+        QuoteNavBar(
+            title = "회원 관리", onBack = onClose,
+            trailing = {
+                // iOS StudioMembersView 툴바의 설정 진입점.
+                Box(Modifier.size(44.dp).clickable { showSettings = true }, Alignment.Center) {
+                    Icon(
+                        Icons.Outlined.Settings, "스튜디오 설정",
+                        tint = MuyeonColors.textHead, modifier = Modifier.size(18.dp),
+                    )
+                }
+            },
+        )
 
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
@@ -119,6 +136,10 @@ fun StudioMembersScreen(api: StudioApi, onClose: () -> Unit, onOpenMember: (Int)
                 }
             }
         }
+    }
+
+    if (showSettings) {
+        StudioSettingsSheet(api = api, onDismiss = { showSettings = false })
     }
 }
 
@@ -179,10 +200,16 @@ fun StudioMemberDetailScreen(api: StudioApi, memberId: Int, onClose: () -> Unit)
     var memo by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(true) }
     var toast by remember { mutableStateOf<String?>(null) }
+    var showIssuePass by remember { mutableStateOf(false) }
+    var cancelTarget by remember { mutableStateOf<StudioPass?>(null) }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(memberId) {
+    suspend fun reload() {
         api.member(memberId).onSuccess { detail = it; memo = it.memo.orEmpty() }
+    }
+
+    LaunchedEffect(memberId) {
+        reload()
         loading = false
     }
 
@@ -220,38 +247,92 @@ fun StudioMemberDetailScreen(api: StudioApi, memberId: Int, onClose: () -> Unit)
                 }
             }
 
-            StudioSection("수강권 ${d.passes.size}건") {
+            // 이용회원 ↔ 상담고객 — iOS 헤더 카드의 세그먼트. 종전 AOS 엔 전환 수단이 없어
+            //  상담고객으로 들어온 회원을 앱에서 이용회원으로 돌릴 수 없었다.
+            MemberLeadToggle(isLead = d.leadStatus == "LEAD") { lead ->
+                scope.launch {
+                    api.updateMember(memberId, null, null, if (lead) "LEAD" else "ACTIVE")
+                        .onSuccess { reload() }.onFailure { toast = it.message }
+                }
+            }
+
+            StudioSection("수강권 ${d.passes.size}건", action = "발급" to { showIssuePass = true }) {
                 if (d.passes.isEmpty()) {
-                    Text("발급된 수강권이 없어요.", fontFamily = customFontFamily, fontSize = 13.sp, color = MuyeonColors.textSub)
+                    Text(
+                        "발급된 수강권이 없어요. '발급'으로 수강권을 등록하세요.",
+                        fontFamily = customFontFamily, fontSize = 13.sp, color = MuyeonColors.textSub,
+                    )
                 }
                 d.passes.forEach { p ->
+                    // 취소·만료 건은 흐리게 — iOS opacity 0.6.
+                    val inactive = p.status != "ACTIVE"
                     Column(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                            .border(1.dp, MuyeonColors.border, RoundedCornerShape(10.dp)).padding(12.dp),
+                            .border(1.dp, MuyeonColors.border, RoundedCornerShape(10.dp)).padding(12.dp)
+                            .alpha(if (inactive) 0.6f else 1f),
                         verticalArrangement = Arrangement.spacedBy(3.dp),
                     ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                p.productName,
+                                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
+                                lineHeight = 17.sp,
+                                color = if (inactive) MuyeonColors.textSub else MuyeonColors.textHead,
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (inactive) {
+                                Text(
+                                    if (p.status == "CANCELED") "취소됨" else "만료",
+                                    fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 11.sp,
+                                    lineHeight = 14.sp, color = MuyeonColors.textSub,
+                                )
+                            } else {
+                                Text(
+                                    "수강권 취소",
+                                    fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 12.sp,
+                                    lineHeight = 15.sp, color = MuyeonColors.danger,
+                                    modifier = Modifier.clickable { cancelTarget = p },
+                                )
+                            }
+                        }
                         Text(
-                            p.productName,
-                            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
-                            lineHeight = 17.sp, color = MuyeonColors.textHead,
-                        )
-                        Text(
-                            listOfNotNull(p.remainText, p.expireText, StudioDateFmt.won(p.price)).joinToString(" · "),
+                            listOfNotNull(
+                                p.remainText, p.expireText,
+                                StudioDateFmt.won(p.price).takeIf { p.price > 0 },
+                            ).joinToString(" · "),
                             fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 15.sp, color = MuyeonColors.textSub,
                         )
                     }
                 }
             }
 
-            StudioSection("최근 예약") {
+            StudioSection("최근 예약·출석") {
                 if (d.recentReservations.isEmpty()) {
                     Text("최근 예약이 없어요.", fontFamily = customFontFamily, fontSize = 13.sp, color = MuyeonColors.textSub)
                 }
                 d.recentReservations.forEach { r ->
-                    Text(
-                        listOfNotNull(r.date, r.startTime, r.title).joinToString(" · "),
-                        fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp, color = MuyeonColors.body,
-                    )
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                r.title ?: "레슨",
+                                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
+                                lineHeight = 17.sp, color = MuyeonColors.textHead,
+                            )
+                            Text(
+                                listOfNotNull(r.date, r.startTime?.let { LessonTimeFmt.ampm(it) }).joinToString(" "),
+                                fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 15.sp,
+                                color = MuyeonColors.textSub,
+                            )
+                        }
+                        // 출석 배지 — 종전엔 상태가 안 보여 결석 여부를 알 수 없었다.
+                        Text(
+                            r.attendance.label,
+                            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                            lineHeight = 15.sp, color = Color.White,
+                            modifier = Modifier.clip(RoundedCornerShape(50)).background(r.attendance.tint)
+                                .padding(horizontal = 10.dp, vertical = 5.dp),
+                        )
+                    }
                 }
             }
 
@@ -279,8 +360,61 @@ fun StudioMemberDetailScreen(api: StudioApi, memberId: Int, onClose: () -> Unit)
         }
     }
 
+    if (showIssuePass) {
+        IssuePassSheet(
+            onSubmit = { body ->
+                showIssuePass = false
+                scope.launch {
+                    api.issuePass(memberId, body)
+                        .onSuccess { reload(); toast = "수강권을 발급했어요." }
+                        .onFailure { toast = it.message ?: "발급하지 못했어요." }
+                }
+            },
+            onDismiss = { showIssuePass = false },
+        )
+    }
+
+    cancelTarget?.let { p ->
+        com.muyeon.app.ui.quote.QuoteDialog(
+            "수강권 취소", "'${p.productName}'을 취소할까요? 되돌릴 수 없어요.", "취소하기",
+            onConfirm = {
+                cancelTarget = null
+                scope.launch {
+                    api.updatePass(p.id, JSONObject().put("status", "CANCELED"))
+                        .onSuccess { reload() }.onFailure { toast = it.message ?: "취소하지 못했어요." }
+                }
+            },
+            onDismiss = { cancelTarget = null },
+        )
+    }
+
     toast?.let { msg ->
         com.muyeon.app.ui.quote.QuoteDialog("알림", msg, "확인", onConfirm = { toast = null }, onDismiss = { toast = null })
+    }
+}
+
+/** 이용회원 ↔ 상담고객 세그먼트 — iOS 헤더 카드의 Picker(.segmented). */
+@Composable
+private fun MemberLeadToggle(isLead: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(9.dp)).background(MuyeonColors.groupedBg).padding(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        listOf(false to "이용회원", true to "상담고객").forEach { (lead, label) ->
+            val on = isLead == lead
+            Text(
+                label,
+                fontFamily = customFontFamily,
+                fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium,
+                fontSize = 14.sp, lineHeight = 17.sp,
+                color = if (on) MuyeonColors.textHead else MuyeonColors.textSub,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f).clip(RoundedCornerShape(7.dp))
+                    .background(if (on) MuyeonColors.surface else Color.Transparent)
+                    .clickable(enabled = !on) { onChange(lead) }
+                    .padding(vertical = 7.dp),
+            )
+        }
     }
 }
 
@@ -507,13 +641,28 @@ private fun monthRange(): Pair<String, String> {
 }
 
 @Composable
-private fun StudioSection(title: String, content: @Composable ColumnScope.() -> Unit) {
+private fun StudioSection(
+    title: String,
+    /** 우측 액션(라벨 to 동작) — 수강권 '발급' 처럼 섹션 헤더에 붙는 버튼. */
+    action: Pair<String, () -> Unit>? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            title,
-            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
-            lineHeight = 19.sp, color = MuyeonColors.textHead,
-        )
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                title,
+                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                lineHeight = 19.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
+            )
+            action?.let { (label, onClick) ->
+                Text(
+                    "+ $label",
+                    fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                    lineHeight = 16.sp, color = MuyeonColors.primary,
+                    modifier = Modifier.clickable(onClick = onClick),
+                )
+            }
+        }
         content()
     }
 }
