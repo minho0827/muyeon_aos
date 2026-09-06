@@ -128,6 +128,12 @@ class AppBridgeInterface(
                 com.muyeon.app.ui.onboarding.OnboardingActivity.startNotificationConsent(activity)
             // 멤버십은 계정에 하나 — featureType·memberType 은 받기만 하고 쓰지 않는다.
             "openMembership" -> com.muyeon.app.ui.membership.MembershipActivity.start(activity)
+            // 멤버십 성과 — 네이티브 이식 완료(iOS MembershipPerformanceView).
+            //  memberType 이 비면 저장된 활동유형을 쓴다(iOS RoleGate.activeType 폴백과 동일).
+            "openMembershipPerformance" ->
+                com.muyeon.app.ui.membership.MembershipPerformanceActivity.start(
+                    activity, d.optString("memberType"),
+                )
             "openAcademyProfile" -> {
                 val aid = d.optString("academyId").toIntOrNull() ?: return true
                 com.muyeon.app.ui.academy.AcademyProfileActivity.start(activity, aid)
@@ -237,10 +243,6 @@ class AppBridgeInterface(
 
             // 온보딩/계정 — openSignupTerms/openAddressSetup 은 네이티브. 유형 온보딩만 웹 유지.
             "openRoleOnboarding" -> "/mypage"
-
-            // 멤버십 성과 — 네이티브 화면 미이식(iOS 는 MembershipPerformanceView).
-            //  폴백이 없으면 안드로이드에서 '성과 보기' 가 무반응이라 죽은 버튼이 된다.
-            "openMembershipPerformance" -> "/myMembership/performance"
 
             // 공간 상세 — iOS 는 네이티브(SpaceDetailView). 지금 공간 기능은 플래그로 닫혀 있고
             //  웹에서도 NATIVE_PLATFORMS 로 iOS 전용이라 여기 도달하지 않지만,
