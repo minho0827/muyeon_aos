@@ -23,6 +23,8 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -50,6 +52,7 @@ import kotlinx.coroutines.launch
 /**
  * 내 공고 관리 + 공고 등록 — iOS `JobPosting/MyJobPostingsView` · `JobPostingWizardView` 이식.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyPostingsScreen(
     api: JobPostingApi,
@@ -64,6 +67,7 @@ fun MyPostingsScreen(
     var tab by remember { mutableStateOf("ALL") }
     var loading by remember { mutableStateOf(true) }
     var toast by remember { mutableStateOf<String?>(null) }
+    var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     // 보관함 — 삭제가 소프트(ARCHIVED)라 되살릴 경로가 반드시 있어야 한다.
@@ -109,79 +113,85 @@ fun MyPostingsScreen(
             filtered.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                 QuoteEmptyState(Icons.Outlined.WorkOutline, "등록한 공고가 없어요", "공고를 올리면 지원자를 받을 수 있어요.")
             }
-            else -> LazyColumn(
-                Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+            else -> PullToRefreshBox(
+                isRefreshing = refreshing,
+                onRefresh = { scope.launch { refreshing = true; load(); refreshing = false } },
+                modifier = Modifier.weight(1f),
             ) {
-                items(filtered, key = { it.uid }) { p ->
-                    PostingCard(
-                        p = p,
-                        onClick = { if (p.kind == "JOB") onEdit(p.id) },
-                        onApplicants = { onApplicants(p.id) },
-                        onView = { onView(p.kind, p.id) },
-                        onEdit = { if (p.kind == "JOB") onEdit(p.id) else onView(p.kind, p.id) },
-                        onDuplicate = {
-                            scope.launch {
-                                api.duplicate(p.kind, p.id).onSuccess { toast = "임시저장으로 복사했어요." }
-                                    .onFailure { toast = it.message }
-                                load()
-                            }
-                        },
-                        onDelete = { deleteTarget = p },
-                        onStatus = { s ->
-                            scope.launch {
-                                api.setStatus(p.kind, p.id, s).onFailure { toast = it.message }
-                                load()
-                            }
-                        },
-                    )
-                }
-                if (archived.isNotEmpty()) {
-                    item(key = "archived-toggle") {
-                        Text(
-                            if (showArchived) "보관함 닫기" else "보관함 (${archived.size})",
-                            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
-                            lineHeight = 17.sp, color = MuyeonColors.textSub, textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                                .clip(RoundedCornerShape(20.dp))
-                                .border(1.dp, MuyeonColors.border, RoundedCornerShape(20.dp))
-                                .clickable { showArchived = !showArchived }
-                                .padding(vertical = 10.dp),
+                LazyColumn(
+                    Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(filtered, key = { it.uid }) { p ->
+                        PostingCard(
+                            p = p,
+                            onClick = { if (p.kind == "JOB") onEdit(p.id) },
+                            onApplicants = { onApplicants(p.id) },
+                            onView = { onView(p.kind, p.id) },
+                            onEdit = { if (p.kind == "JOB") onEdit(p.id) else onView(p.kind, p.id) },
+                            onDuplicate = {
+                                scope.launch {
+                                    api.duplicate(p.kind, p.id).onSuccess { toast = "임시저장으로 복사했어요." }
+                                        .onFailure { toast = it.message }
+                                    load()
+                                }
+                            },
+                            onDelete = { deleteTarget = p },
+                            onStatus = { s ->
+                                scope.launch {
+                                    api.setStatus(p.kind, p.id, s).onFailure { toast = it.message }
+                                    load()
+                                }
+                            },
                         )
                     }
-                    if (showArchived) {
-                        items(archived, key = { "arc-${it.uid}" }) { p ->
-                            Row(
-                                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                                    .background(MuyeonColors.groupedBg).padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    if (archived.isNotEmpty()) {
+                        item(key = "archived-toggle") {
+                            Text(
+                                if (showArchived) "보관함 닫기" else "보관함 (${archived.size})",
+                                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                                lineHeight = 17.sp, color = MuyeonColors.textSub, textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .border(1.dp, MuyeonColors.border, RoundedCornerShape(20.dp))
+                                    .clickable { showArchived = !showArchived }
+                                    .padding(vertical = 10.dp),
+                            )
+                        }
+                        if (showArchived) {
+                            items(archived, key = { "arc-${it.uid}" }) { p ->
+                                Row(
+                                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                                        .background(MuyeonColors.groupedBg).padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        Text(
+                                            p.title ?: "(제목 없음)",
+                                            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                                            lineHeight = 17.sp, color = MuyeonColors.textHead,
+                                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                        )
+                                        Text(
+                                            "${JobPostingOptions.kindLabel[p.kind] ?: p.kind} · 삭제 전 상태로 되돌아갑니다",
+                                            fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp,
+                                            color = MuyeonColors.textSub,
+                                        )
+                                    }
                                     Text(
-                                        p.title ?: "(제목 없음)",
-                                        fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
-                                        lineHeight = 17.sp, color = MuyeonColors.textHead,
-                                        maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                    )
-                                    Text(
-                                        "${JobPostingOptions.kindLabel[p.kind] ?: p.kind} · 삭제 전 상태로 되돌아갑니다",
-                                        fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp,
-                                        color = MuyeonColors.textSub,
+                                        "복원",
+                                        fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                                        lineHeight = 16.sp, color = MuyeonColors.primary,
+                                        modifier = Modifier.clickable {
+                                            scope.launch {
+                                                api.restore(p.kind, p.id).onSuccess { toast = "공고를 복원했어요." }
+                                                    .onFailure { toast = it.message }
+                                                load()
+                                            }
+                                        }.padding(horizontal = 8.dp, vertical = 4.dp),
                                     )
                                 }
-                                Text(
-                                    "복원",
-                                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                                    lineHeight = 16.sp, color = MuyeonColors.primary,
-                                    modifier = Modifier.clickable {
-                                        scope.launch {
-                                            api.restore(p.kind, p.id).onSuccess { toast = "공고를 복원했어요." }
-                                                .onFailure { toast = it.message }
-                                            load()
-                                        }
-                                    }.padding(horizontal = 8.dp, vertical = 4.dp),
-                                )
                             }
                         }
                     }

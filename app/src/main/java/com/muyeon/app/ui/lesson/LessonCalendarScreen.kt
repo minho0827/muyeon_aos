@@ -22,6 +22,8 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +38,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteAvatar
@@ -76,6 +79,7 @@ private val FOLD_THRESHOLD = 25.dp
 /** 보기 모드 — iOS `CalViewMode`. */
 private enum class CalViewMode { MONTH, LIST }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LessonCalendarScreen(
     state: LessonCalendarState,
@@ -85,6 +89,9 @@ fun LessonCalendarScreen(
     onOpenChat: (Int) -> Unit = {},
 ) {
     LaunchedEffect(Unit) { state.load() }
+
+    var refreshing by remember { mutableStateOf(false) }
+    val refreshScope = rememberCoroutineScope()
 
     val days = remember(state.monthAnchor, state.schedules, state.blocks, state.hiddenCalendarIds) { state.days() }
     var statusTab by remember { mutableStateOf(StatusTab.ALL) }
@@ -121,12 +128,18 @@ fun LessonCalendarScreen(
             HorizontalDivider(color = MuyeonColors.border)
             StatusChipsRow(statusTab, state.hasUnseenPending) { statusTab = it }
             HorizontalDivider(color = MuyeonColors.border)
-            Column(
-                Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(bottom = 24.dp),
+            PullToRefreshBox(
+                isRefreshing = refreshing,
+                onRefresh = { refreshScope.launch { refreshing = true; state.load(); refreshing = false } },
+                modifier = Modifier.weight(1f),
             ) {
-                when {
-                    state.loading && !state.didLoad -> LoadingAgenda()
-                    else -> ListBody(state, statusTab, onOpenLesson, onOpenChat) { statusTab = it }
+                Column(
+                    Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp),
+                ) {
+                    when {
+                        state.loading && !state.didLoad -> LoadingAgenda()
+                        else -> ListBody(state, statusTab, onOpenLesson, onOpenChat) { statusTab = it }
+                    }
                 }
             }
             return@Column

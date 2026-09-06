@@ -16,6 +16,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,12 +48,14 @@ import java.util.Date
 // 회원 관리
 // ============================================================
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudioMembersScreen(api: StudioApi, onClose: () -> Unit, onOpenMember: (Int) -> Unit) {
     var members by remember { mutableStateOf<List<StudioMemberSummary>>(emptyList()) }
     var query by remember { mutableStateOf("") }
     var tab by remember { mutableStateOf("ACTIVE") }   // ACTIVE | LEAD
     var loading by remember { mutableStateOf(true) }
+    var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     suspend fun load() {
@@ -102,10 +106,16 @@ fun StudioMembersScreen(api: StudioApi, onClose: () -> Unit, onOpenMember: (Int)
             members.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                 QuoteEmptyState(Icons.Outlined.Groups, "회원이 없어요", "수강권을 발급하면 여기에 모여요.")
             }
-            else -> LazyColumn(Modifier.weight(1f).padding(top = 8.dp)) {
-                items(members, key = { it.memberId }) { m ->
-                    MemberRow(m) { onOpenMember(m.memberId) }
-                    HorizontalDivider(Modifier.padding(start = 20.dp), color = MuyeonColors.border)
+            else -> PullToRefreshBox(
+                isRefreshing = refreshing,
+                onRefresh = { scope.launch { refreshing = true; load(); refreshing = false } },
+                modifier = Modifier.weight(1f),
+            ) {
+                LazyColumn(Modifier.fillMaxSize().padding(top = 8.dp)) {
+                    items(members, key = { it.memberId }) { m ->
+                        MemberRow(m) { onOpenMember(m.memberId) }
+                        HorizontalDivider(Modifier.padding(start = 20.dp), color = MuyeonColors.border)
+                    }
                 }
             }
         }
@@ -278,18 +288,23 @@ fun StudioMemberDetailScreen(api: StudioApi, memberId: Int, onClose: () -> Unit)
 // 매출
 // ============================================================
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudioSalesScreen(api: StudioApi, onClose: () -> Unit) {
     var summary by remember { mutableStateOf<SalesSummary?>(null) }
     var sales by remember { mutableStateOf<List<StudioSale>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
+    var refreshing by remember { mutableStateOf(false) }
     val (from, to) = remember { monthRange() }
+    val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
+    suspend fun load() {
         api.salesSummary(from, to).onSuccess { summary = it }
         api.sales(from, to).onSuccess { sales = it }
         loading = false
     }
+
+    LaunchedEffect(Unit) { load() }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         QuoteNavBar(title = "매출 현황", onBack = onClose)
@@ -301,72 +316,78 @@ fun StudioSalesScreen(api: StudioApi, onClose: () -> Unit) {
             return@Column
         }
 
-        Column(
-            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+        PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = { scope.launch { refreshing = true; load(); refreshing = false } },
+            modifier = Modifier.weight(1f),
         ) {
             Column(
-                Modifier.padding(top = 14.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp))
-                    .background(MuyeonColors.primary.copy(alpha = 0.07f)).padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
-                Text("$from ~ $to", fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 14.sp, color = MuyeonColors.textSub)
-                Text(
-                    StudioDateFmt.won(summary?.total ?: 0),
-                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 26.sp,
-                    lineHeight = 31.sp, color = MuyeonColors.textHead,
-                )
-                val unpaid = summary?.unpaidTotal ?: 0
-                if (unpaid > 0) {
+                Column(
+                    Modifier.padding(top = 14.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                        .background(MuyeonColors.primary.copy(alpha = 0.07f)).padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text("$from ~ $to", fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 14.sp, color = MuyeonColors.textSub)
                     Text(
-                        "미수금 ${StudioDateFmt.won(unpaid)}",
-                        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                        lineHeight = 16.sp, color = MuyeonColors.danger,
+                        StudioDateFmt.won(summary?.total ?: 0),
+                        fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 26.sp,
+                        lineHeight = 31.sp, color = MuyeonColors.textHead,
                     )
-                }
-            }
-
-            StudioSection("항목별") {
-                (summary?.byCategory ?: emptyList()).forEach { c ->
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    val unpaid = summary?.unpaidTotal ?: 0
+                    if (unpaid > 0) {
                         Text(
-                            "${c.label} ${c.count}건",
-                            fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 17.sp,
-                            color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
-                        )
-                        Text(
-                            StudioDateFmt.won(c.amount),
-                            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
-                            lineHeight = 17.sp, color = MuyeonColors.textHead,
+                            "미수금 ${StudioDateFmt.won(unpaid)}",
+                            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                            lineHeight = 16.sp, color = MuyeonColors.danger,
                         )
                     }
                 }
-            }
 
-            StudioSection("매출 내역 ${sales.size}건") {
-                sales.forEach { s ->
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                StudioSection("항목별") {
+                    (summary?.byCategory ?: emptyList()).forEach { c ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                s.title,
-                                fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
+                                "${c.label} ${c.count}건",
+                                fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 17.sp,
+                                color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                StudioDateFmt.won(c.amount),
+                                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
                                 lineHeight = 17.sp, color = MuyeonColors.textHead,
                             )
-                            Text(
-                                "${s.categoryLabel} · ${QuoteUi.relativeTime(s.soldAt)}",
-                                fontFamily = customFontFamily, fontSize = 11.sp, lineHeight = 14.sp,
-                                color = MuyeonColors.secondary,
-                            )
                         }
-                        Text(
-                            StudioDateFmt.won(s.amount),
-                            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
-                            lineHeight = 17.sp, color = MuyeonColors.textHead,
-                        )
                     }
                 }
+
+                StudioSection("매출 내역 ${sales.size}건") {
+                    sales.forEach { s ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    s.title,
+                                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
+                                    lineHeight = 17.sp, color = MuyeonColors.textHead,
+                                )
+                                Text(
+                                    "${s.categoryLabel} · ${QuoteUi.relativeTime(s.soldAt)}",
+                                    fontFamily = customFontFamily, fontSize = 11.sp, lineHeight = 14.sp,
+                                    color = MuyeonColors.secondary,
+                                )
+                            }
+                            Text(
+                                StudioDateFmt.won(s.amount),
+                                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
+                                lineHeight = 17.sp, color = MuyeonColors.textHead,
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
             }
-            Spacer(Modifier.height(12.dp))
         }
     }
 }
@@ -375,19 +396,23 @@ fun StudioSalesScreen(api: StudioApi, onClose: () -> Unit) {
 // 일정
 // ============================================================
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudioScheduleScreen(api: StudioApi, onClose: () -> Unit) {
     var data by remember { mutableStateOf<StudioScheduleData?>(null) }
     var noshowConsumes by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
+    var refreshing by remember { mutableStateOf(false) }
     val (from, to) = remember { monthRange() }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
+    suspend fun load() {
         api.schedule(from, to).onSuccess { data = it }
         api.getSettings().onSuccess { noshowConsumes = it }
         loading = false
     }
+
+    LaunchedEffect(Unit) { load() }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         QuoteNavBar(title = "일정 관리", onBack = onClose)
@@ -399,69 +424,75 @@ fun StudioScheduleScreen(api: StudioApi, onClose: () -> Unit) {
             return@Column
         }
 
-        Column(
-            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+        PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = { scope.launch { refreshing = true; load(); refreshing = false } },
+            modifier = Modifier.weight(1f),
         ) {
-            // 노쇼 차감 설정 — 수강권 회차 차감 여부
-            Row(
-                Modifier.padding(top = 14.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFF7F7F7)).padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        "노쇼 시 수강권 차감",
-                        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
-                        lineHeight = 17.sp, color = MuyeonColors.textHead,
-                    )
-                    Text(
-                        "결석 처리하면 횟수권에서 1회가 빠져요.",
-                        fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 15.sp, color = MuyeonColors.textSub,
+                // 노쇼 차감 설정 — 수강권 회차 차감 여부
+                Row(
+                    Modifier.padding(top = 14.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFF7F7F7)).padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            "노쇼 시 수강권 차감",
+                            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
+                            lineHeight = 17.sp, color = MuyeonColors.textHead,
+                        )
+                        Text(
+                            "결석 처리하면 횟수권에서 1회가 빠져요.",
+                            fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 15.sp, color = MuyeonColors.textSub,
+                        )
+                    }
+                    Switch(
+                        checked = noshowConsumes,
+                        onCheckedChange = { v ->
+                            noshowConsumes = v
+                            scope.launch { api.updateSettings(v).onFailure { noshowConsumes = !v } }
+                        },
+                        colors = SwitchDefaults.colors(checkedTrackColor = MuyeonColors.primary),
                     )
                 }
-                Switch(
-                    checked = noshowConsumes,
-                    onCheckedChange = { v ->
-                        noshowConsumes = v
-                        scope.launch { api.updateSettings(v).onFailure { noshowConsumes = !v } }
-                    },
-                    colors = SwitchDefaults.colors(checkedTrackColor = MuyeonColors.primary),
-                )
-            }
 
-            StudioSection("수업 ${data?.sessions?.size ?: 0}건") {
-                (data?.sessions ?: emptyList()).forEach { s ->
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                StudioSection("수업 ${data?.sessions?.size ?: 0}건") {
+                    (data?.sessions ?: emptyList()).forEach { s ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    s.title ?: "수업",
+                                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
+                                    lineHeight = 17.sp, color = MuyeonColors.textHead,
+                                )
+                                Text(
+                                    listOfNotNull(s.date, s.startTime).joinToString(" "),
+                                    fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 15.sp, color = MuyeonColors.textSub,
+                                )
+                            }
                             Text(
-                                s.title ?: "수업",
-                                fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
-                                lineHeight = 17.sp, color = MuyeonColors.textHead,
-                            )
-                            Text(
-                                listOfNotNull(s.date, s.startTime).joinToString(" "),
-                                fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 15.sp, color = MuyeonColors.textSub,
+                                "${s.reservedCount}/${s.capacity}",
+                                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                                lineHeight = 16.sp, color = MuyeonColors.primary,
                             )
                         }
+                    }
+                }
+
+                StudioSection("개인 일정 ${data?.blocks?.size ?: 0}건") {
+                    (data?.blocks ?: emptyList()).forEach { b ->
                         Text(
-                            "${s.reservedCount}/${s.capacity}",
-                            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                            lineHeight = 16.sp, color = MuyeonColors.primary,
+                            listOfNotNull(b.date, if (b.allDay) "종일" else b.startTime, b.title).joinToString(" · "),
+                            fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp, color = MuyeonColors.body,
                         )
                     }
                 }
+                Spacer(Modifier.height(12.dp))
             }
-
-            StudioSection("개인 일정 ${data?.blocks?.size ?: 0}건") {
-                (data?.blocks ?: emptyList()).forEach { b ->
-                    Text(
-                        listOfNotNull(b.date, if (b.allDay) "종일" else b.startTime, b.title).joinToString(" · "),
-                        fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp, color = MuyeonColors.body,
-                    )
-                }
-            }
-            Spacer(Modifier.height(12.dp))
         }
     }
 }

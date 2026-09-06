@@ -18,6 +18,8 @@ import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 
@@ -60,6 +63,7 @@ private data class DashTile(
     val count: Int,
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuoteDashboardScreen(
     api: QuoteApi,
@@ -71,7 +75,12 @@ fun QuoteDashboardScreen(
     onUpcomingTap: (QuoteDashUpcoming) -> Unit,
 ) {
     var data by remember { mutableStateOf<QuoteDashboardData?>(null) }
-    LaunchedEffect(role) { api.getQuoteDashboard(role).onSuccess { data = it } }
+    var refreshing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    suspend fun load() { api.getQuoteDashboard(role).onSuccess { data = it } }
+
+    LaunchedEffect(role) { load() }
 
     // 기능 카드에 group 이 있으면 시안 섹션 레이아웃(오늘 할 일 카드 + 3열 그리드)
     val isSectioned = functions.any { it.group != null }
@@ -93,20 +102,26 @@ fun QuoteDashboardScreen(
             }
         }
 
-        Column(
-            Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+        PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = { scope.launch { refreshing = true; load(); refreshing = false } },
+            modifier = Modifier.weight(1f),
         ) {
-            if (isSectioned) TodayCard(tiles.take(2), onTileAction) else TileGrid(tiles, onTileAction)
+            Column(
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
+                if (isSectioned) TodayCard(tiles.take(2), onTileAction) else TileGrid(tiles, onTileAction)
 
-            // 강사 — 채택됐지만 날짜 미정인 레슨(놓치기 쉬운 액션) 배너
-            val pending = data?.pendingSchedules ?: 0
-            if (role == "teacher" && pending > 0) PendingBanner(pending) { onTileAction("pending") }
+                // 강사 — 채택됐지만 날짜 미정인 레슨(놓치기 쉬운 액션) 배너
+                val pending = data?.pendingSchedules ?: 0
+                if (role == "teacher" && pending > 0) PendingBanner(pending) { onTileAction("pending") }
 
-            val upcoming = data?.upcoming ?: emptyList()
-            if (upcoming.isNotEmpty()) UpcomingSection(upcoming, onUpcomingTap)
+                val upcoming = data?.upcoming ?: emptyList()
+                if (upcoming.isNotEmpty()) UpcomingSection(upcoming, onUpcomingTap)
 
-            if (isSectioned) GroupedFunctionSections(functions) else LegacyFunctionList(functions)
+                if (isSectioned) GroupedFunctionSections(functions) else LegacyFunctionList(functions)
+            }
         }
     }
 }

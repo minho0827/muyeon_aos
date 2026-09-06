@@ -15,6 +15,8 @@ import androidx.compose.material.icons.outlined.RateReview
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,6 +39,7 @@ import java.util.Locale
  * 강사 후기 목록 — iOS `ReviewListView.swift` + `+Components.swift` 1:1.
  *  요약(평균·분포·3축 평균·태그 집계) + 정렬/필터(형태·목적·사진만) + 후기 카드(도움돼요).
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReviewListScreen(
     api: ReviewApi,
@@ -50,6 +53,7 @@ fun ReviewListScreen(
     var lessonType by remember { mutableStateOf<String?>(null) }
     var purpose by remember { mutableStateOf<String?>(null) }
     var photoOnly by remember { mutableStateOf(false) }
+    var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     suspend fun load() {
@@ -69,28 +73,34 @@ fun ReviewListScreen(
             }
             else -> {
                 val d = data
-                LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 24.dp)) {
-                    item { SummarySection(d) }
-                    item {
-                        FilterBar(
-                            sort = sort, lessonType = lessonType, purpose = purpose, photoOnly = photoOnly,
-                            onSort = { sort = it }, onLessonType = { lessonType = it },
-                            onPurpose = { purpose = it }, onPhotoOnly = { photoOnly = it },
-                        )
-                    }
-                    val items = d?.items ?: emptyList()
-                    if (items.isEmpty()) {
+                PullToRefreshBox(
+                    isRefreshing = refreshing,
+                    onRefresh = { scope.launch { refreshing = true; load(); refreshing = false } },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
+                        item { SummarySection(d) }
                         item {
-                            QuoteEmptyState(
-                                Icons.Outlined.RateReview, "아직 후기가 없어요",
-                                "레슨을 받은 회원이 후기를 남기면 여기에 보여요.",
-                                Modifier.height(200.dp).wrapContentHeight(Alignment.CenterVertically),
+                            FilterBar(
+                                sort = sort, lessonType = lessonType, purpose = purpose, photoOnly = photoOnly,
+                                onSort = { sort = it }, onLessonType = { lessonType = it },
+                                onPurpose = { purpose = it }, onPhotoOnly = { photoOnly = it },
                             )
                         }
-                    } else {
-                        items(items, key = { it.id }) { item ->
-                            ReviewCard(item) { rid ->
-                                scope.launch { api.toggleHelpful(rid); load() }
+                        val items = d?.items ?: emptyList()
+                        if (items.isEmpty()) {
+                            item {
+                                QuoteEmptyState(
+                                    Icons.Outlined.RateReview, "아직 후기가 없어요",
+                                    "레슨을 받은 회원이 후기를 남기면 여기에 보여요.",
+                                    Modifier.height(200.dp).wrapContentHeight(Alignment.CenterVertically),
+                                )
+                            }
+                        } else {
+                            items(items, key = { it.id }) { item ->
+                                ReviewCard(item) { rid ->
+                                    scope.launch { api.toggleHelpful(rid); load() }
+                                }
                             }
                         }
                     }

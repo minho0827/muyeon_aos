@@ -17,6 +17,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,6 +43,7 @@ import kotlinx.coroutines.launch
  * 알림 목록 — iOS `NotificationListView.swift` 이식.
  *  전체/안읽음 탭 + 커서 페이징 + 탭 시 읽음 처리 후 딥링크 이동.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationListScreen(
     api: NotificationApi,
@@ -52,6 +55,7 @@ fun NotificationListScreen(
     var loading by remember { mutableStateOf(true) }
     var loadingMore by remember { mutableStateOf(false) }
     var reachedEnd by remember { mutableStateOf(false) }
+    var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     suspend fun reload() {
@@ -105,28 +109,34 @@ fun NotificationListScreen(
                     "새 소식이 오면 여기에 모아드려요.",
                 )
             }
-            else -> LazyColumn(Modifier.weight(1f)) {
-                itemsIndexed(items, key = { _, n -> n.id }) { idx, n ->
-                    NotificationRow(n) {
-                        scope.launch {
-                            if (!n.isRead) {
-                                api.markRead(n.id)
-                                items = items.map { if (it.id == n.id) it.copy(isRead = true) else it }
+            else -> PullToRefreshBox(
+                isRefreshing = refreshing,
+                onRefresh = { scope.launch { refreshing = true; reload(); refreshing = false } },
+                modifier = Modifier.weight(1f),
+            ) {
+                LazyColumn(Modifier.fillMaxSize()) {
+                    itemsIndexed(items, key = { _, n -> n.id }) { idx, n ->
+                        NotificationRow(n) {
+                            scope.launch {
+                                if (!n.isRead) {
+                                    api.markRead(n.id)
+                                    items = items.map { if (it.id == n.id) it.copy(isRead = true) else it }
+                                }
+                                onOpen(n)
                             }
-                            onOpen(n)
                         }
-                    }
-                    if (idx != items.lastIndex) HorizontalDivider(color = MuyeonColors.border)
+                        if (idx != items.lastIndex) HorizontalDivider(color = MuyeonColors.border)
 
-                    // 마지막 항목 도달 → 다음 페이지(커서 = 마지막 id)
-                    if (idx == items.lastIndex && !reachedEnd && !loadingMore) {
-                        LaunchedEffect(n.id) {
-                            loadingMore = true
-                            api.list(n.id, 20, unreadOnly).onSuccess { more ->
-                                items = items + more.filterNot { m -> items.any { it.id == m.id } }
-                                reachedEnd = more.size < 20
+                        // 마지막 항목 도달 → 다음 페이지(커서 = 마지막 id)
+                        if (idx == items.lastIndex && !reachedEnd && !loadingMore) {
+                            LaunchedEffect(n.id) {
+                                loadingMore = true
+                                api.list(n.id, 20, unreadOnly).onSuccess { more ->
+                                    items = items + more.filterNot { m -> items.any { it.id == m.id } }
+                                    reachedEnd = more.size < 20
+                                }
+                                loadingMore = false
                             }
-                            loadingMore = false
                         }
                     }
                 }

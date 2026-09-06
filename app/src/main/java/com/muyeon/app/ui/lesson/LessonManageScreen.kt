@@ -13,6 +13,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -168,6 +169,7 @@ fun LessonManageScreen(
     var boostTarget by remember { mutableStateOf<LessonProduct?>(null) }
     var plans by remember { mutableStateOf<List<LessonPlan>>(emptyList()) }
     var toast by remember { mutableStateOf<String?>(null) }
+    var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     // 명의 배지 판정 — 웹이 syncActiveType 으로 넘겨준 활성유형(ActiveRole).
     val ctx = LocalContext.current
@@ -194,33 +196,39 @@ fun LessonManageScreen(
                     "레슨을 개설하면 예약 시간이 자동으로 만들어져요.",
                 )
             }
-            else -> LazyColumn(
-                Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+            else -> PullToRefreshBox(
+                isRefreshing = refreshing,
+                onRefresh = { scope.launch { refreshing = true; load(); refreshing = false } },
+                modifier = Modifier.weight(1f),
             ) {
-                if (archived.isNotEmpty()) {
-                    item {
-                        Text(
-                            "보관함 ${archived.size}개 보기",
-                            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                            lineHeight = 16.sp, color = MuyeonColors.textSub,
-                            modifier = Modifier.clickable { showArchive = true },
+                LazyColumn(
+                    Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    if (archived.isNotEmpty()) {
+                        item {
+                            Text(
+                                "보관함 ${archived.size}개 보기",
+                                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                                lineHeight = 16.sp, color = MuyeonColors.textSub,
+                                modifier = Modifier.clickable { showArchive = true },
+                            )
+                        }
+                    }
+                    items(list, key = { it.id }) { l ->
+                        LessonCard(
+                            l = l,
+                            isAcademyViewer = isAcademyViewer,
+                            onEdit = { onEdit(l.id) },
+                            onSlots = { onSlots(l.id) },
+                            onBoost = {
+                                boostTarget = l
+                                scope.launch { plans = api.plans("HOME_PROMOTION").getOrDefault(emptyList()) }
+                            },
+                            onDelete = { deleteTarget = l },
                         )
                     }
-                }
-                items(list, key = { it.id }) { l ->
-                    LessonCard(
-                        l = l,
-                        isAcademyViewer = isAcademyViewer,
-                        onEdit = { onEdit(l.id) },
-                        onSlots = { onSlots(l.id) },
-                        onBoost = {
-                            boostTarget = l
-                            scope.launch { plans = api.plans("HOME_PROMOTION").getOrDefault(emptyList()) }
-                        },
-                        onDelete = { deleteTarget = l },
-                    )
                 }
             }
         }

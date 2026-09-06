@@ -27,6 +27,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -162,6 +164,7 @@ private val BROWSE_CATEGORIES: List<Pair<String, String>> = listOf(
     "modern" to "현대무용", "practical" to "실용무용", "balletfit" to "발레핏", "musical" to "뮤지컬",
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuoteBrowseScreen(
     api: QuoteApi,
@@ -171,6 +174,7 @@ fun QuoteBrowseScreen(
 ) {
     val state = remember { QuoteBrowseState(api) }
     var deckIndex by remember { mutableStateOf<Int?>(null) }
+    var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) { state.load() }
@@ -205,24 +209,30 @@ fun QuoteBrowseScreen(
                     "새 견적요청이 오면 알림으로 알려드릴게요.",
                     Modifier.fillMaxSize().wrapContentHeight(Alignment.CenterVertically),
                 )
-                else -> LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    contentPadding = PaddingValues(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                else -> PullToRefreshBox(
+                    isRefreshing = refreshing,
+                    onRefresh = { scope.launch { refreshing = true; state.load(); refreshing = false } },
+                    modifier = Modifier.fillMaxSize(),
                 ) {
-                    items(state.filtered, key = { it.id }) { quote ->
-                        GridCell(
-                            quote = quote,
-                            isNew = state.isNew(quote),
-                            onClick = {
-                                scope.launch { state.markSeen(quote.id) }
-                                deckIndex = state.filtered.indexOfFirst { it.id == quote.id }.coerceAtLeast(0)
-                            },
-                        )
-                        // 마지막 항목 노출 시 다음 페이지
-                        if (quote.id == state.filtered.lastOrNull()?.id) {
-                            LaunchedEffect(quote.id) { state.loadMore() }
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        contentPadding = PaddingValues(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        items(state.filtered, key = { it.id }) { quote ->
+                            GridCell(
+                                quote = quote,
+                                isNew = state.isNew(quote),
+                                onClick = {
+                                    scope.launch { state.markSeen(quote.id) }
+                                    deckIndex = state.filtered.indexOfFirst { it.id == quote.id }.coerceAtLeast(0)
+                                },
+                            )
+                            // 마지막 항목 노출 시 다음 페이지
+                            if (quote.id == state.filtered.lastOrNull()?.id) {
+                                LaunchedEffect(quote.id) { state.loadMore() }
+                            }
                         }
                     }
                 }
