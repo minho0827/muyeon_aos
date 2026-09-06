@@ -1,6 +1,7 @@
 package com.muyeon.app.ui.lesson
 
 import com.muyeon.app.BuildConfig
+import com.muyeon.app.ui.quote.doubleOrNull
 import com.muyeon.app.ui.quote.intOrNull
 import com.muyeon.app.ui.quote.map
 import com.muyeon.app.ui.quote.stringOrNull
@@ -96,28 +97,123 @@ data class MyLessonReservation(
 }
 
 /** 예약 상세 — 취소 규정·장소 등 안내 포함. */
+/** 예약 상세의 레슨/장소 — 서버가 `lesson` 으로 중첩해 내려준다. */
+data class LessonResPlace(
+    val id: Int?,
+    val title: String,
+    val genre: String?,
+    val description: String?,
+    val place: String?,
+    val address: String?,
+    val lat: Double?,
+    val lng: Double?,
+    val phone: String?,
+    val parkingInfo: String?,
+    val valetInfo: String?,
+    val notice: String?,
+    val homepage: String?,
+    val businessHours: List<LessonBizHour>?,
+    val cancelPolicy: String?,
+) {
+    companion object {
+        fun from(o: JSONObject?): LessonResPlace {
+            val h = o?.optJSONArray("businessHours")
+            return LessonResPlace(
+                id = o?.intOrNull("id"),
+                title = o?.stringOrNull("title") ?: "레슨",
+                genre = o?.stringOrNull("genre"),
+                description = o?.stringOrNull("description"),
+                place = o?.stringOrNull("place"),
+                address = o?.stringOrNull("address"),
+                lat = o?.doubleOrNull("lat"),
+                lng = o?.doubleOrNull("lng"),
+                phone = o?.stringOrNull("phone"),
+                parkingInfo = o?.stringOrNull("parkingInfo"),
+                valetInfo = o?.stringOrNull("valetInfo"),
+                notice = o?.stringOrNull("notice"),
+                homepage = o?.stringOrNull("homepage"),
+                businessHours = h?.let { arr ->
+                    (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let(LessonBizHour::from) }
+                },
+                cancelPolicy = o?.stringOrNull("cancelPolicy"),
+            )
+        }
+    }
+}
+
+data class LessonBizHour(val day: String, val time: String, val lastOrder: String?) {
+    companion object {
+        fun from(o: JSONObject) =
+            LessonBizHour(o.optString("day"), o.optString("time"), o.stringOrNull("lastOrder"))
+    }
+}
+
+data class LessonResPerson(val id: Int?, val name: String, val phone: String?) {
+    companion object {
+        fun from(o: JSONObject?) =
+            LessonResPerson(o?.intOrNull("id"), o?.stringOrNull("name") ?: "", o?.stringOrNull("phone"))
+    }
+}
+
+/**
+ * 예약 상세 — iOS `LessonResDetailDTO` 1:1.
+ *
+ * ⚠️ 종전 AOS 모델은 title/place/address 를 **최상위에서** 읽었는데 서버는 `lesson` 안에 넣어 보낸다
+ *   (lesson-booking.service 의 detail 응답). 화면이 없어 드러나지 않았을 뿐 값이 전부 비었다.
+ */
 data class LessonReservationDetail(
     val id: Int,
     val status: String?,
     val headcount: Int,
+    val deposit: Int,
+    val paymentAmount: Int?,
+    val totalPrice: Int?,
+    val remainingAmount: Int?,
+    val rescheduleCount: Int?,
+    val disputeStatus: String?,
+    val cancelFee: Int?,
+    val refundAmount: Int?,
+    // 아직 취소하지 않은 예약의 **예상** 환불액(서버 계산).
+    //  ★ 앱에서 위약금을 다시 계산하지 않는다 — 규정이 바뀌면 서버만 고치면 되게.
+    val expectedCancelFee: Int?,
+    val expectedRefundAmount: Int?,
     val date: String?,
     val startTime: String?,
     val endTime: String?,
-    val title: String?,
-    val place: String?,
-    val address: String?,
-    val price: Int?,
-    val cancelPolicy: String?,
-    val notice: String?,
-    val teacherName: String?,
+    val freeCancelDays: Int,
+    val lesson: LessonResPlace,
+    val owner: LessonResPerson,
+    val member: LessonResPerson,
 ) {
+    val dateLine: String
+        get() = listOf(
+            LessonDateFmt.krDate(date.orEmpty()),
+            startTime?.let { LessonTimeFmt.ampm(it) }.orEmpty(),
+            "${headcount}명",
+        ).filter { it.isNotEmpty() }.joinToString(" · ")
+
     companion object {
         fun from(o: JSONObject) = LessonReservationDetail(
-            o.optInt("id"), o.stringOrNull("status"), o.optInt("headcount", 1),
-            o.stringOrNull("date"), o.stringOrNull("startTime"), o.stringOrNull("endTime"),
-            o.stringOrNull("title"), o.stringOrNull("place"), o.stringOrNull("address"),
-            o.intOrNull("price"), o.stringOrNull("cancelPolicy"), o.stringOrNull("notice"),
-            o.stringOrNull("teacherName"),
+            id = o.optInt("id"),
+            status = o.stringOrNull("status"),
+            headcount = o.optInt("headcount", 1),
+            deposit = o.optInt("deposit"),
+            paymentAmount = o.intOrNull("paymentAmount"),
+            totalPrice = o.intOrNull("totalPrice"),
+            remainingAmount = o.intOrNull("remainingAmount"),
+            rescheduleCount = o.intOrNull("rescheduleCount"),
+            disputeStatus = o.stringOrNull("disputeStatus"),
+            cancelFee = o.intOrNull("cancelFee"),
+            refundAmount = o.intOrNull("refundAmount"),
+            expectedCancelFee = o.intOrNull("expectedCancelFee"),
+            expectedRefundAmount = o.intOrNull("expectedRefundAmount"),
+            date = o.stringOrNull("date"),
+            startTime = o.stringOrNull("startTime"),
+            endTime = o.stringOrNull("endTime"),
+            freeCancelDays = o.optInt("freeCancelDays"),
+            lesson = LessonResPlace.from(o.optJSONObject("lesson")),
+            owner = LessonResPerson.from(o.optJSONObject("owner")),
+            member = LessonResPerson.from(o.optJSONObject("member")),
         )
     }
 }
@@ -125,12 +221,20 @@ data class LessonReservationDetail(
 /**
  * 예약 취소 사유 — 코드 문자열은 서버(CANCEL_REASON_CODES)·admin 과 **3레포 계약**.
  *  ⚠️ 값을 바꾸면 관리자 통계가 조용히 깨진다.
+ *
+ * ★ 종전 AOS 는 RESCHEDULE/CHANGE_OF_MIND/TEACHER_CANCELED 3개만 갖고 있었는데,
+ *   그건 서버 DTO 에서 "이미 배포된 구버전 앱 호환 코드"로 남겨둔 것들이다.
+ *   정본은 iOS 와 같은 아래 8개다(lesson-booking.dto.ts).
  */
 enum class LessonCancelReason(val code: String, val label: String) {
-    OTHER_LESSON("OTHER_LESSON", "다른 강사(레슨)를 예약했어요."),
-    RESCHEDULE("RESCHEDULE", "예약 날짜나 시간을 변경하고 싶어요."),
-    CHANGE_OF_MIND("CHANGE_OF_MIND", "단순히 마음이 바뀌었어요."),
-    TEACHER_CANCELED("TEACHER_CANCELED", "강사님 사정으로 취소하게 됐어요."),
+    SCHEDULE_MISMATCH("SCHEDULE_MISMATCH", "일정이 맞지 않아요"),
+    PERSONAL_CIRCUMSTANCES("PERSONAL_CIRCUMSTANCES", "개인 사정이 생겼어요"),
+    AGREED_WITH_TEACHER("AGREED_WITH_TEACHER", "강사와 협의 후 취소해요"),
+    LESSON_MISMATCH("LESSON_MISMATCH", "원하는 레슨과 달라요"),
+    OTHER_LESSON("OTHER_LESSON", "다른 레슨을 선택했어요"),
+    CONTACT_DIFFICULTY("CONTACT_DIFFICULTY", "강사와 연락이 어려워요"),
+    COST_BURDEN("COST_BURDEN", "비용이 부담돼요"),
+    OTHER("OTHER", "기타"),
 }
 
 class LessonBookingApi(private val token: String?) {
@@ -167,8 +271,18 @@ class LessonBookingApi(private val token: String?) {
     suspend fun myReservations(): Result<List<MyLessonReservation>> =
         call("/me/lesson-reservations").map { JSONArray(it.ifBlank { "[]" }).map(MyLessonReservation::from) }
 
-    suspend fun cancel(reservationId: Int, reasonCode: String): Result<Unit> =
-        call("/lesson-reservations/$reservationId/cancel", "POST", JSONObject().put("reasonCode", reasonCode)).map { }
+    suspend fun cancel(reservationId: Int, reasonCode: String, reasonDetail: String? = null): Result<Unit> {
+        val body = JSONObject().put("reasonCode", reasonCode)
+        if (!reasonDetail.isNullOrEmpty()) body.put("reasonDetail", reasonDetail)
+        return call("/lesson-reservations/$reservationId/cancel", "POST", body).map { }
+    }
+
+    /** 수업 처리 이의 신청 — 접수되면 확인 전까지 정산이 보류된다. */
+    suspend fun openDispute(reservationId: Int, reason: String): Result<Unit> =
+        call(
+            "/lesson-reservations/$reservationId/disputes", "POST",
+            JSONObject().put("reason", reason),
+        ).map { }
 
     suspend fun reservationDetail(id: Int): Result<LessonReservationDetail> =
         call("/lesson-reservations/$id/detail").map { LessonReservationDetail.from(JSONObject(it)) }

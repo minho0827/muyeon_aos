@@ -104,6 +104,21 @@ data class LessonSlotReservation(
     }
 }
 
+/** "2026-07-17" → "2026.07.17 (금)" — iOS LessonDateFmt.krDate. */
+object LessonDateFmt {
+    private val WEEK = listOf("일", "월", "화", "수", "목", "금", "토")
+
+    fun krDate(ymd: String): String {
+        val p = ymd.split("-").mapNotNull { it.toIntOrNull() }
+        if (p.size < 3) return ymd
+        val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("Asia/Seoul"))
+        cal.clear()
+        cal.set(p[0], p[1] - 1, p[2])
+        val w = WEEK[(cal.get(java.util.Calendar.DAY_OF_WEEK) - 1).coerceIn(0, 6)]
+        return String.format(Locale.KOREA, "%04d.%02d.%02d (%s)", p[0], p[1], p[2], w)
+    }
+}
+
 /** "19:00" → "오후 7:00" — iOS LessonTimeFmt.ampm. */
 object LessonTimeFmt {
     fun ampm(hhmm: String): String {

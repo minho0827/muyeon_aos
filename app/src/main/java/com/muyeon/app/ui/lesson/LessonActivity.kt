@@ -14,6 +14,7 @@ import androidx.navigation.compose.rememberNavController
 import com.muyeon.app.ui.chat.ChatActivity
 import com.muyeon.app.utils.TokenManager
 import com.muyeon.app.webview.NativeWebRoute
+import com.muyeon.app.webview.WebCallbacks
 
 /**
  * 레슨 컨테이너 — 웹 브릿지 진입점.
@@ -39,6 +40,10 @@ class LessonActivity : ComponentActivity() {
         fun startDetail(context: Context, lessonId: Int) =
             context.go(intent(context, "detail").putExtra(EXTRA_ID, lessonId))
 
+        /** 예약 상세(웹 예약내역 항목 탭) — iOS presentLessonReservationDetail 대응. */
+        fun startReservationDetail(context: Context, reservationId: Int) =
+            context.go(intent(context, "reservation").putExtra(EXTRA_RESERVATION_ID, reservationId))
+
         private fun intent(context: Context, route: String) =
             Intent(context, LessonActivity::class.java).putExtra(EXTRA_ROUTE, route)
 
@@ -52,6 +57,7 @@ class LessonActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val route = intent.getStringExtra(EXTRA_ROUTE) ?: "calendar"
         val id = intent.getIntExtra(EXTRA_ID, 0)
+        val reservationId = intent.getIntExtra(EXTRA_RESERVATION_ID, 0)
 
         setContent {
             val nav = rememberNavController()
@@ -132,6 +138,19 @@ class LessonActivity : ComponentActivity() {
                         lessonApi, calendarApi, lid, onClose = { back() },
                         onOpenChat = { rid -> ChatActivity.startRoom(this@LessonActivity, rid) },
                         onOpenReservation = { openWebAndFinish("/myReservations") },
+                    )
+                }
+                composable("reservation") {
+                    LessonReservationDetailScreen(
+                        bookingApi, reservationId,
+                        onClose = { back() },
+                        // 변경: 같은 레슨상품 예약 화면을 '변경 모드'로 다시 연다(원자적 리스케줄).
+                        onChange = { pid, rid -> openWebAndFinish("/lessons/$pid?reschedule=$rid") },
+                        onCanceled = { rid ->
+                            // 취소 완료 → 웹 예약내역에 즉시 반영(재조회 없이 콜백).
+                            WebCallbacks.lessonReservationCanceled(this@LessonActivity, rid)
+                            finish()
+                        },
                     )
                 }
             }

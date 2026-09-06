@@ -146,6 +146,11 @@ class AppBridgeInterface(
 
             // 레슨 — D 이식 완료
             "openLessonCalendar" -> com.muyeon.app.ui.lesson.LessonActivity.startCalendar(activity)
+            // 예약 상세 — 네이티브 이식 완료(iOS LessonReservationDetailSheet).
+            "openLessonReservationDetail" -> {
+                val rid = d.optString("reservationId").toIntOrNull() ?: return true
+                com.muyeon.app.ui.lesson.LessonActivity.startReservationDetail(activity, rid)
+            }
             "openLessonCreate" -> com.muyeon.app.ui.lesson.LessonActivity.startCreate(activity)
             "openLessonSlotManage" -> com.muyeon.app.ui.lesson.LessonActivity.startSlots(
                 activity, d.optString("lessonProductId").toIntOrNull(),
@@ -233,9 +238,6 @@ class AppBridgeInterface(
         return when (action) {
             // 견적 — openQuoteWizard/openMyQuotes/openReceivedQuotes/openQuoteBrowse/
             //  openAutoQuoteTemplates/openLessonQuoteHub 는 openNative() 에서 처리(이식 완료).
-
-            // 레슨 — openNative() 에서 처리(이식 완료). 예약 내역만 웹 유지(목록 화면 미이식).
-            "openLessonReservationDetail" -> "/myReservations"
 
             // 프로필/이력서/리뷰 · 이용권 · 학원 프로필 — openNative() 에서 처리(이식 완료).
             //  단 academyId 가 없으면 학원 목록 웹으로.

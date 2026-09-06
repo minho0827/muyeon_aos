@@ -17,6 +17,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -433,8 +434,9 @@ private fun bookingRange(): Pair<String, String> {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LessonCancelReasonSheet(onDismiss: () -> Unit, onConfirm: (LessonCancelReason) -> Unit) {
+fun LessonCancelReasonSheet(onDismiss: () -> Unit, onConfirm: (LessonCancelReason, String?) -> Unit) {
     var selected by remember { mutableStateOf<LessonCancelReason?>(null) }
+    var otherText by remember { mutableStateOf("") }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
@@ -461,6 +463,20 @@ fun LessonCancelReasonSheet(onDismiss: () -> Unit, onConfirm: (LessonCancelReaso
                     )
                 }
             }
+            // '기타' 는 자유 입력을 함께 받아 서버에 reasonDetail 로 넘긴다(iOS 와 동일).
+            if (selected == LessonCancelReason.OTHER) {
+                OutlinedTextField(
+                    value = otherText,
+                    onValueChange = { otherText = it },
+                    placeholder = {
+                        Text(
+                            "사유를 적어 주세요 (선택)",
+                            fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.chevron,
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                )
+            }
             Text(
                 "선택 완료",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
@@ -469,7 +485,12 @@ fun LessonCancelReasonSheet(onDismiss: () -> Unit, onConfirm: (LessonCancelReaso
                     .padding(horizontal = 20.dp, vertical = 12.dp)
                     .fillMaxWidth().clip(RoundedCornerShape(12.dp))
                     .background(if (selected != null) MuyeonColors.primary else Color.Gray.copy(alpha = 0.4f))
-                    .clickable(enabled = selected != null) { selected?.let(onConfirm) }
+                    .clickable(enabled = selected != null) {
+                        selected?.let { r ->
+                            val detail = if (r == LessonCancelReason.OTHER) otherText.trim().ifEmpty { null } else null
+                            onConfirm(r, detail)
+                        }
+                    }
                     .padding(vertical = 15.dp),
             )
         }
