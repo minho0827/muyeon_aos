@@ -185,6 +185,11 @@
             android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize" />
         <activity
+            android:name=".ui.space.SpaceActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
             android:name=".ui.membership.MembershipPerformanceActivity"
             android:exported="false"
             android:screenOrientation="portrait" />

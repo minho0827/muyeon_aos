@@ -134,6 +134,13 @@ class AppBridgeInterface(
                 com.muyeon.app.ui.membership.MembershipPerformanceActivity.start(
                     activity, d.optString("memberType"),
                 )
+            // 공간 상세 — 네이티브 이식 완료(iOS SpaceDetailView).
+            "openSpaceDetail" -> {
+                val sid = d.optString("spaceId").toIntOrNull() ?: return true
+                com.muyeon.app.ui.space.SpaceActivity.start(
+                    activity, sid, d.optString("date"), d.optString("fromReservation") == "1",
+                )
+            }
             "openAcademyProfile" -> {
                 val aid = d.optString("academyId").toIntOrNull() ?: return true
                 com.muyeon.app.ui.academy.AcademyProfileActivity.start(activity, aid)
@@ -245,11 +252,6 @@ class AppBridgeInterface(
 
             // 온보딩/계정 — openSignupTerms/openAddressSetup 은 네이티브. 유형 온보딩만 웹 유지.
             "openRoleOnboarding" -> "/mypage"
-
-            // 공간 상세 — iOS 는 네이티브(SpaceDetailView). 지금 공간 기능은 플래그로 닫혀 있고
-            //  웹에서도 NATIVE_PLATFORMS 로 iOS 전용이라 여기 도달하지 않지만,
-            //  구버전 번들이 캐시된 기기를 위해 웹 경로를 열어 둔다.
-            "openSpaceDetail" -> s("spaceId").takeIf { it.isNotEmpty() }?.let { "/spaces/$it" }
 
             // 채팅 · 이미지 뷰어 — openNative() 에서 처리(이식 완료).
             // 애플 로그인 — iOS 전용.
