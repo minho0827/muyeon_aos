@@ -36,17 +36,19 @@ class ResumeActivity : ComponentActivity() {
         private const val EXTRA_APPLICATION_ID = "applicationId"
         private const val EXTRA_TEACHER_NAME = "teacherName"
         private const val EXTRA_LESSON_TYPE = "lessonType"
+        private const val EXTRA_SEEK_PROFILE = "seekProfile"
 
         /** 이력서 목록(mode=teacher|dancer). */
         fun startList(context: Context, mode: String?) =
             context.go(intent(context, "list").putExtra(EXTRA_MODE, mode ?: ""))
 
-        /** 이력서 편집(resumeId 없으면 신규). */
-        fun startEdit(context: Context, resumeId: Int?, mode: String?) =
+        /** 이력서 편집(resumeId 없으면 신규). seekProfile=구직 프로필 등록 모드. */
+        fun startEdit(context: Context, resumeId: Int?, mode: String?, seekProfile: Boolean = false) =
             context.go(
                 intent(context, "edit")
                     .putExtra(EXTRA_RESUME_ID, resumeId ?: 0)
-                    .putExtra(EXTRA_MODE, mode ?: ""),
+                    .putExtra(EXTRA_MODE, mode ?: "")
+                    .putExtra(EXTRA_SEEK_PROFILE, seekProfile),
             )
 
         fun startVisibility(context: Context, mode: String?) =
@@ -93,6 +95,7 @@ class ResumeActivity : ComponentActivity() {
         val applicationId = intent.getIntExtra(EXTRA_APPLICATION_ID, 0)
         val teacherName = intent.getStringExtra(EXTRA_TEACHER_NAME).orEmpty()
         val lessonType = intent.getStringExtra(EXTRA_LESSON_TYPE)?.ifEmpty { null }
+        val seekProfileExtra = intent.getBooleanExtra(EXTRA_SEEK_PROFILE, false)
 
         setContent {
             val nav = rememberNavController()
@@ -109,17 +112,30 @@ class ResumeActivity : ComponentActivity() {
                         api = api, mode = mode, onClose = { finish() },
                         onEdit = { id -> nav.navigate("edit/${id ?: 0}") },
                         onVisibility = { nav.navigate("visibility") },
+                        // 기본 이력서(없으면 첫 이력서, 그것도 없으면 신규)를 구직 프로필로 등록
+                        onSeekProfile = { id -> nav.navigate("seek/${id ?: 0}") },
                     )
                 }
                 composable("edit") {
                     ResumeEditScreen(
                         api = api, resumeId = resumeIdExtra.takeIf { it > 0 }, mode = mode,
                         onClose = { back() }, onSaved = { back() },
+                        isSeekProfile = seekProfileExtra,
+                        onVisibility = { nav.navigate("visibility") },
                     )
                 }
                 composable("edit/{id}") { e ->
                     val id = e.arguments?.getString("id")?.toIntOrNull()?.takeIf { it > 0 }
                     ResumeEditScreen(api = api, resumeId = id, mode = mode, onClose = { back() }, onSaved = { back() })
+                }
+                composable("seek/{id}") { e ->
+                    val id = e.arguments?.getString("id")?.toIntOrNull()?.takeIf { it > 0 }
+                    ResumeEditScreen(
+                        api = api, resumeId = id, mode = mode,
+                        onClose = { back() }, onSaved = { back() },
+                        isSeekProfile = true,
+                        onVisibility = { nav.navigate("visibility") },
+                    )
                 }
                 composable("visibility") {
                     FieldVisibilityScreen(

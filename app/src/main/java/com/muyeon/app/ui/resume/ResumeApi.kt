@@ -25,8 +25,10 @@ class ResumeApi(private val token: String?) {
 
     // ── 이력서 CRUD ──
 
-    suspend fun list(): Result<List<ResumeListItem>> =
-        call("/resumes").map { JSONArray(it.ifBlank { "[]" }).map(ResumeListItem::from) }
+    /** GET /resumes?roleIntent= — 강사/무용수 이력서를 섞지 않는다(iOS ResumeService.list). */
+    suspend fun list(mode: ResumeMode = ResumeMode.TEACHER): Result<List<ResumeListItem>> =
+        call("/resumes?roleIntent=${mode.roleIntent}")
+            .map { JSONArray(it.ifBlank { "[]" }).map(ResumeListItem::from) }
 
     suspend fun getOne(id: Int): Result<ResumeDetail> =
         call("/resumes/$id").map { ResumeDetail.from(JSONObject(it)) }
@@ -35,16 +37,37 @@ class ResumeApi(private val token: String?) {
      * 저장 — 서버가 data 를 spread 병합하므로 편집 화면의 전체 스냅샷을 보낸다.
      *  ResumeData.toJson() 이 raw(미지 키 포함) 위에 아는 키만 덮어쓴다.
      */
-    suspend fun save(id: Int?, title: String, data: ResumeData): Result<Int> {
+    suspend fun save(
+        id: Int?,
+        title: String,
+        data: ResumeData,
+        mode: ResumeMode = ResumeMode.TEACHER,
+        publishSeek: Boolean = true,
+    ): Result<Int> {
         val path = if (id != null) "/resumes/$id" else "/resumes"
         val method = if (id != null) "PATCH" else "POST"
-        val body = JSONObject().put("title", title).put("data", data.toJson())
+        val tagged = data.copy(roleIntent = mode.roleIntent)
+        val body = JSONObject()
+            .put("title", title)
+            .put("data", tagged.toJson())
+            .put("publishSeek", publishSeek)
+            .put("roleIntent", mode.roleIntent)
         return call(path, method, body).map { JSONObject(it.ifBlank { "{}" }).optInt("id", id ?: 0) }
     }
 
     suspend fun setDefault(id: Int): Result<Unit> = call("/resumes/$id/default", "PATCH").map { }
 
     suspend fun remove(id: Int): Result<Unit> = call("/resumes/$id", "DELETE").map { }
+
+    // ── 구직 프로필(열람 알림) — iOS ResumeService.get/setProfileViewAlert ──
+
+    /** GET /auth/me/profile → viewAlert. 실패 시 iOS 와 같이 true(기본 켜짐). */
+    suspend fun getProfileViewAlert(): Boolean =
+        call("/auth/me/profile").getOrNull()
+            ?.let { runCatching { JSONObject(it).optBoolean("viewAlert", true) }.getOrNull() } ?: true
+
+    suspend fun setProfileViewAlert(enabled: Boolean): Result<Unit> =
+        call("/auth/me/profile", "PATCH", JSONObject().put("viewAlert", enabled)).map { }
 
     // ── 공개범위 ──
 

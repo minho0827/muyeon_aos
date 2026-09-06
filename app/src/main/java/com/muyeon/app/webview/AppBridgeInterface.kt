@@ -149,6 +149,7 @@ class AppBridgeInterface(
             "openResumeList" -> com.muyeon.app.ui.resume.ResumeActivity.startList(activity, d.optString("mode"))
             "openResumeEdit" -> com.muyeon.app.ui.resume.ResumeActivity.startEdit(
                 activity, d.optString("resumeId").toIntOrNull(), d.optString("mode"),
+                seekProfile = d.optString("seekProfile") == "1",
             )
             "openFieldVisibility" -> com.muyeon.app.ui.resume.ResumeActivity.startVisibility(activity, d.optString("mode"))
             "openPublicProfile", "openTeacherProfile" -> {

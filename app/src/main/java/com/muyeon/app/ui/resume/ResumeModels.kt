@@ -109,6 +109,8 @@ data class ResumeData(
     var height: String? = null,
     var companyCareer: String? = null,
     var videoUrl: String? = null,
+    // 이력서 역할(TEACHER|DANCER) — 목록 필터/저장 태깅. 서버 정본 resumes.service.normalizeRole
+    var roleIntent: String? = null,
 ) {
     /** 학력: 신규 배열 없으면 레거시 4필드에서 생성(iOS seededEducations). */
     fun seededEducations(): List<EduItem> {
@@ -142,6 +144,7 @@ data class ResumeData(
         desired?.let { o.put("desired", it.toJson()) }
         o.putOpt("gender", gender); o.putOpt("height", height)
         o.putOpt("companyCareer", companyCareer); o.putOpt("videoUrl", videoUrl)
+        o.putOpt("roleIntent", roleIntent)
         return o
     }
 
@@ -180,6 +183,7 @@ data class ResumeData(
                 height = o.stringOrNull("height"),
                 companyCareer = o.stringOrNull("companyCareer"),
                 videoUrl = o.stringOrNull("videoUrl"),
+                roleIntent = o.stringOrNull("roleIntent"),
             )
         }
     }

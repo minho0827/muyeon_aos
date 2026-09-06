@@ -16,9 +16,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -58,6 +62,9 @@ fun ResumeEditScreen(
     mode: ResumeMode,
     onClose: () -> Unit,
     onSaved: () -> Unit,
+    // 구직 프로필 등록 진입 — 상단 제목/하단 설정 섹션이 바뀌고 저장 시 기본 이력서로 지정한다.
+    isSeekProfile: Boolean = false,
+    onVisibility: () -> Unit = {},
 ) {
     var title by remember { mutableStateOf(mode.defaultResumeTitle) }
     var basic by remember { mutableStateOf(ResumeBasic()) }
@@ -89,10 +96,15 @@ fun ResumeEditScreen(
     var saving by remember { mutableStateOf(false) }
     var uploading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var viewAlert by remember { mutableStateOf(true) }   // 구직 프로필 — 내 프로필 열람 알림
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     val portfolioMax = if (mode.isDancer) 20 else 10
+
+    LaunchedEffect(isSeekProfile) {
+        if (isSeekProfile) viewAlert = api.getProfileViewAlert()
+    }
 
     LaunchedEffect(resumeId) {
         val id = resumeId ?: return@LaunchedEffect
@@ -153,7 +165,7 @@ fun ResumeEditScreen(
     }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(title = mode.navTitle, onBack = onClose)
+        QuoteNavBar(title = if (isSeekProfile) "구직 프로필 등록" else mode.navTitle, onBack = onClose)
 
         if (loading) {
             Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
@@ -334,6 +346,14 @@ fun ResumeEditScreen(
                     { intro = it }
                 }
 
+                if (isSeekProfile) {
+                    SeekProfileSettings(
+                        viewAlert = viewAlert,
+                        onViewAlert = { viewAlert = it },
+                        onVisibility = onVisibility,
+                    )
+                }
+
                 Spacer(Modifier.height(8.dp))
             }
 
@@ -373,8 +393,13 @@ fun ResumeEditScreen(
                                 desiredRegion = desired.region ?: "",
                                 desiredRegionCode = desiredRegionCode ?: "",
                             )
-                            api.save(resumeId, title, d)
+                            api.save(resumeId, title, d, mode)
                                 .onSuccess { newId ->
+                                    if (isSeekProfile) {
+                                        // 구직 프로필은 기본 이력서가 원본이다(iOS ResumeEditVM.save).
+                                        if (resumeId == null) api.setDefault(newId)
+                                        api.setProfileViewAlert(viewAlert)
+                                    }
                                     if (mode.isDancer) {
                                         // 유형은 인증 절차에서만 부여한다 — 이력서 저장이 유형 인증을 우회하면 안 된다.
                                         //  (iOS `ResumeEditVM.save` 와 동일. 신규는 기본이력서 지정만 한다)
@@ -393,6 +418,57 @@ fun ResumeEditScreen(
 
     errorMessage?.let { msg ->
         QuoteDialog("오류", msg, "확인", onConfirm = { errorMessage = null }, onDismiss = { errorMessage = null })
+    }
+}
+
+/** 구직 프로필 설정 — iOS `ResumeEditView.seekProfileSettingsSection` 1:1. */
+@Composable
+private fun SeekProfileSettings(viewAlert: Boolean, onViewAlert: (Boolean) -> Unit, onVisibility: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .border(1.dp, MuyeonColors.border, RoundedCornerShape(12.dp))
+                .clickable(onClick = onVisibility)
+                .padding(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier.size(36.dp).clip(CircleShape).background(MuyeonColors.primary.copy(alpha = 0.10f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Tune, null, tint = MuyeonColors.primary, modifier = Modifier.size(16.dp))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    "공개 범위 설정",
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                    lineHeight = 18.sp, color = MuyeonColors.textHead,
+                )
+                Text(
+                    "원장님에게 공개할 프로필 항목을 설정하세요.",
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp,
+                    lineHeight = 14.sp, color = MuyeonColors.textSub,
+                )
+            }
+            Icon(Icons.Filled.KeyboardArrowRight, null, tint = MuyeonColors.chevron, modifier = Modifier.size(16.dp))
+        }
+        Row(
+            Modifier.fillMaxWidth().clickable { onViewAlert(!viewAlert) },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "내 프로필을 열람하면 알림 받기",
+                fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
+                lineHeight = 17.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
+            )
+            Switch(
+                checked = viewAlert, onCheckedChange = onViewAlert,
+                colors = SwitchDefaults.colors(checkedTrackColor = MuyeonColors.primary),
+            )
+        }
     }
 }
 

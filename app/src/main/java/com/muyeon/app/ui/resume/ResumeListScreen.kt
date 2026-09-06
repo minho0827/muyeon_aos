@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Tune
@@ -16,7 +17,9 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,6 +41,7 @@ import kotlinx.coroutines.launch
  *  다중 이력서 목록(기본 지정/삭제) + [새 이력서 작성] + [공개 범위 설정].
  *  기본 이력서가 공개 프로필의 원본이 된다.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResumeListScreen(
     api: ResumeApi,
@@ -45,20 +49,23 @@ fun ResumeListScreen(
     onClose: () -> Unit,
     onEdit: (Int?) -> Unit,        // null = 신규
     onVisibility: () -> Unit,
+    // 강사 모드 상단 진입 카드 — 기본 이력서를 열어 구직 프로필로 등록한다.
+    onSeekProfile: (Int?) -> Unit = {},
 ) {
     var items by remember { mutableStateOf<List<ResumeListItem>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var deleteTarget by remember { mutableStateOf<ResumeListItem?>(null) }
+    var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     suspend fun load() {
         loading = true
-        items = api.list().getOrDefault(emptyList())
+        items = api.list(mode).getOrDefault(emptyList())
         loading = false
     }
 
-    LaunchedEffect(Unit) { load() }
+    LaunchedEffect(mode) { load() }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         QuoteNavBar(title = mode.listTitle, onBack = onClose)
@@ -68,31 +75,38 @@ fun ResumeListScreen(
                 CircularProgressIndicator(color = MuyeonColors.primary)
             }
         } else {
-            Column(
-                Modifier.weight(1f).verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp).padding(top = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+            PullToRefreshBox(
+                isRefreshing = refreshing,
+                onRefresh = { scope.launch { refreshing = true; load(); refreshing = false } },
+                modifier = Modifier.weight(1f),
             ) {
-                VisibilityEntry(onVisibility)
-                items.forEach { item ->
-                    ResumeRow(
-                        item = item,
-                        onClick = { onEdit(item.id) },
-                        onSetDefault = { scope.launch { api.setDefault(item.id).onFailure { errorMessage = it.message }; load() } },
-                        onDelete = { deleteTarget = item },
-                    )
-                }
-                if (items.isEmpty()) {
-                    Text(
-                        "아직 작성한 이력서가 없어요.\n아래 버튼으로 첫 이력서를 작성해보세요.",
-                        fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
-                        lineHeight = 20.sp, color = MuyeonColors.textSub, textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
-                    )
+                Column(
+                    Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp).padding(top = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    if (mode.isDancer) VisibilityEntry(onVisibility)
+                    else SeekProfileEntry { onSeekProfile((items.firstOrNull { it.isDefault } ?: items.firstOrNull())?.id) }
+                    items.forEach { item ->
+                        ResumeRow(
+                            item = item,
+                            onClick = { onEdit(item.id) },
+                            onSetDefault = { scope.launch { api.setDefault(item.id).onFailure { errorMessage = it.message }; load() } },
+                            onDelete = { deleteTarget = item },
+                        )
+                    }
+                    if (items.isEmpty()) {
+                        Text(
+                            "아직 작성한 이력서가 없어요.\n아래 버튼으로 첫 이력서를 작성해보세요.",
+                            fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
+                            lineHeight = 20.sp, color = MuyeonColors.textSub, textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
+                        )
+                    }
                 }
             }
             Text(
-                if (mode.isDancer) "새 무용수 프로필 작성" else "새 이력서 작성",
+                if (mode.isDancer) "+ 새 이력서 작성" else "새 이력서 작성",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
                 lineHeight = 19.sp, color = Color.White, textAlign = TextAlign.Center,
                 modifier = Modifier
@@ -123,6 +137,41 @@ fun ResumeListScreen(
             title = "오류", message = msg, confirmText = "확인",
             onConfirm = { errorMessage = null }, onDismiss = { errorMessage = null },
         )
+    }
+}
+
+/** 구직 프로필 등록 카드(강사) — iOS `ResumeListView.seekProfileEntry` 1:1. */
+@Composable
+private fun SeekProfileEntry(onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MuyeonColors.primary.copy(alpha = 0.055f))
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.size(48.dp).clip(CircleShape).background(MuyeonColors.primary.copy(alpha = 0.10f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Filled.Badge, null, tint = MuyeonColors.primary, modifier = Modifier.size(20.dp))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(
+                "구직 프로필 등록",
+                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                lineHeight = 19.sp, color = MuyeonColors.textHead,
+            )
+            Text(
+                "이력서를 바탕으로 구직 프로필을 등록하고\n원장님에게 나를 알려보세요.",
+                fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
+                lineHeight = 18.sp, color = MuyeonColors.textSub,
+            )
+        }
+        Icon(Icons.Filled.KeyboardArrowRight, null, tint = MuyeonColors.chevron, modifier = Modifier.size(18.dp))
     }
 }
 

@@ -63,10 +63,12 @@ enum class ResumeMode(val raw: String) {
     TEACHER("teacher"),   // 희망조건·경력·레슨시간 등 전체
     DANCER("dancer");     // 희망조건·경력·레슨시간 제거 + 성별/키/무용단경력/포트폴리오(최대20)
 
-    val navTitle: String get() = if (this == DANCER) "무용수 프로필" else "이력서 작성"
-    val listTitle: String get() = if (this == DANCER) "무용수 프로필 관리" else "이력서 관리"
+    val navTitle: String get() = if (this == DANCER) "무용수 이력서" else "이력서 작성"
+    val listTitle: String get() = if (this == DANCER) "무용수 이력서 관리" else "이력서 관리"
     val defaultResumeTitle: String get() = if (this == DANCER) "무용수 프로필" else "이력서"
     val isDancer: Boolean get() = this == DANCER
+    /** 서버 태그(resumes.service.normalizeRole) — 목록 필터/저장 공통. */
+    val roleIntent: String get() = if (this == DANCER) "DANCER" else "TEACHER"
 
     companion object {
         fun from(s: String?) = if (s == "dancer") DANCER else TEACHER
