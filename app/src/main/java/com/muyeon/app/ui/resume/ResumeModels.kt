@@ -107,6 +107,7 @@ data class ResumeData(
     // 무용수(DANCER) 전용
     var gender: String? = null,
     var height: String? = null,
+    var weight: String? = null,
     var companyCareer: String? = null,
     var videoUrl: String? = null,
     // 이력서 역할(TEACHER|DANCER) — 목록 필터/저장 태깅. 서버 정본 resumes.service.normalizeRole
@@ -142,7 +143,7 @@ data class ResumeData(
         o.putOpt("awards", awards)
         sns?.let { o.put("sns", JSONArray(it)) }
         desired?.let { o.put("desired", it.toJson()) }
-        o.putOpt("gender", gender); o.putOpt("height", height)
+        o.putOpt("gender", gender); o.putOpt("height", height); o.putOpt("weight", weight)
         o.putOpt("companyCareer", companyCareer); o.putOpt("videoUrl", videoUrl)
         o.putOpt("roleIntent", roleIntent)
         return o
@@ -181,6 +182,7 @@ data class ResumeData(
                 gradSchool = o.stringOrNull("gradSchool"),
                 gender = o.stringOrNull("gender"),
                 height = o.stringOrNull("height"),
+                weight = o.stringOrNull("weight"),
                 companyCareer = o.stringOrNull("companyCareer"),
                 videoUrl = o.stringOrNull("videoUrl"),
                 roleIntent = o.stringOrNull("roleIntent"),
@@ -277,6 +279,34 @@ data class PublicProfile(
     val myQuoteHasResponse: Boolean?,
 ) {
     companion object {
+        /**
+         * 지원자 응답 → 공개 프로필. iOS `PublicProfileDTO.init(applicant:)` 1:1.
+         *  ★ 연락처/이메일은 항상 비운다 — 지원자 이력서에는 노출하지 않는 규약.
+         */
+        fun from(applicant: Applicant): PublicProfile {
+            val d = applicant.mergedData
+            return PublicProfile(
+                id = applicant.applicantId,
+                name = d.basic?.name ?: applicant.applicantName,
+                image = d.image ?: d.basic?.photo,
+                images = d.images,
+                oneLiner = d.oneLiner, intro = d.intro,
+                genres = d.genres, fields = d.fields,
+                activeRegion = d.activeRegion,
+                availableDays = d.availableDays, availableTimeSlots = d.availableTimeSlots,
+                career = d.career, careers = d.careers,
+                educations = d.seededEducations(),
+                certificates = d.certificates, performances = d.performances,
+                awards = d.awards, sns = d.sns,
+                ratingAvg = null, ratingCount = null,
+                contactVisible = false, contactPhone = null,
+                scrapped = false, chatRoomId = null,
+                phone = null, email = null,
+                full = true, recruiterLocked = false, selfView = false,
+                myQuoteId = null, myQuoteHasResponse = null,
+            )
+        }
+
         fun from(o: JSONObject) = PublicProfile(
             id = o.optInt("id"),
             name = o.stringOrNull("name"), image = o.stringOrNull("image"), images = o.stringList("images"),
@@ -305,10 +335,27 @@ data class PublicProfile(
 }
 
 /** 원장이 여는 지원자 상세 — 지원 메타 + 이력서 원본. */
+/** 지원 공고 종류 — iOS `ApplicantPostingKind` 1:1. */
+enum class ApplicantPostingKind(val raw: String) {
+    JOB("JOB"),   // 구인 공고
+    SUB("SUB");   // 대타 공고
+
+    val apiPath: String get() = if (this == SUB) "subs" else "jobs"
+    val confirmTitle: String get() = if (this == SUB) "대타 확정" else "채용 확정"
+
+    companion object {
+        fun from(s: String?) = if (s == "SUB") SUB else JOB
+    }
+}
+
 data class Applicant(
     val id: Int,
     val applicantId: Int,
     val applicantName: String?,
+    val applicantType: String?,
+    // 지원자가 프로필 노출 멤버십 보유 — true 면 공개 프로필 화면을 그대로 보여준다(iOS 와 동일)
+    val profileMembershipActive: Boolean?,
+    val postingHeadcount: Int?,
     val applicantPhone: String?,
     val phoneUnlocked: Boolean?,
     val status: String?,
@@ -352,6 +399,11 @@ data class Applicant(
                 artHigh = a.artHigh ?: base.artHigh,
                 university = a.university ?: base.university,
                 gradSchool = a.gradSchool ?: base.gradSchool,
+                gender = a.gender ?: base.gender,
+                height = a.height ?: base.height,
+                weight = a.weight ?: base.weight,
+                companyCareer = a.companyCareer ?: base.companyCareer,
+                videoUrl = a.videoUrl ?: base.videoUrl,
             )
         }
 
@@ -361,6 +413,9 @@ data class Applicant(
             return Applicant(
                 id = o.optInt("id"), applicantId = o.optInt("applicantId"),
                 applicantName = o.stringOrNull("applicantName"),
+                applicantType = o.stringOrNull("applicantType"),
+                profileMembershipActive = o.boolOrNull("profileMembershipActive"),
+                postingHeadcount = if (o.has("postingHeadcount")) o.optInt("postingHeadcount") else null,
                 applicantPhone = o.stringOrNull("applicantPhone"),
                 phoneUnlocked = o.boolOrNull("phoneUnlocked"),
                 status = o.stringOrNull("status"), appliedAt = o.stringOrNull("appliedAt"),

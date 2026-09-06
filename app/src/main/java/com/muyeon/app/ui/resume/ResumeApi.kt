@@ -115,16 +115,39 @@ class ResumeApi(private val token: String?) {
 
     // ── 원장: 지원자 이력서 열람 + 합불 ──
 
-    suspend fun applicant(jobId: Int, applicationId: Int): Result<Applicant> =
-        call("/jobs/$jobId/applicants/$applicationId").map { Applicant.from(JSONObject(it)) }
+    suspend fun applicant(
+        postingId: Int,
+        applicationId: Int,
+        kind: ApplicantPostingKind = ApplicantPostingKind.JOB,
+    ): Result<Applicant> =
+        call("/${kind.apiPath}/$postingId/applicants/$applicationId").map { Applicant.from(JSONObject(it)) }
 
-    suspend fun decide(applicationId: Int, status: String): Result<Unit> =
-        call("/jobs/applications/$applicationId/status", "PATCH", JSONObject().put("status", status)).map { }
+    /** 합불 처리 → { remainingReviewingCount } (남은 검토중 지원자 수). */
+    suspend fun decide(
+        applicationId: Int,
+        status: String,
+        kind: ApplicantPostingKind = ApplicantPostingKind.JOB,
+    ): Result<Int> =
+        call("/${kind.apiPath}/applications/$applicationId/status", "PATCH", JSONObject().put("status", status))
+            .map { JSONObject(it.ifBlank { "{}" }).optInt("remainingReviewingCount", 0) }
+
+    /** 공고 마감 + 남은 지원자 일괄 미선정 → rejectedCount. */
+    suspend fun finalizePosting(postingId: Int, kind: ApplicantPostingKind): Result<Int> =
+        call("/${kind.apiPath}/$postingId/close", "PATCH", JSONObject().put("rejectPending", true))
+            .map { JSONObject(it.ifBlank { "{}" }).optInt("rejectedCount", 0) }
 
     /** 지원자와 1:1 채팅방 생성 → roomId. */
-    suspend fun directRoom(targetUserId: Int): Result<Int> =
-        call("/chat/rooms/direct", "POST", JSONObject().put("targetUserId", targetUserId))
+    suspend fun directRoom(
+        targetUserId: Int,
+        applicationKind: String? = null,
+        applicationId: Int? = null,
+    ): Result<Int> {
+        val body = JSONObject().put("targetUserId", targetUserId)
+        if (applicationKind != null) body.put("applicationKind", applicationKind)
+        if (applicationId != null) body.put("applicationId", applicationId)
+        return call("/chat/rooms/direct", "POST", body)
             .map { JSONObject(it.ifBlank { "{}" }).optInt("roomId", 0) }
+    }
 
     // ── 업로드(사진/포트폴리오) ──
 

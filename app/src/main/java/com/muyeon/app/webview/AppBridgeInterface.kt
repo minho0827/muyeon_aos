@@ -167,9 +167,12 @@ class AppBridgeInterface(
                 )
             }
             "openApplicantResume" -> {
-                val job = d.optString("jobId").toIntOrNull() ?: return true
+                // 대타(SUB)는 subId 로 온다 — jobId 만 읽으면 대타 지원자 화면이 안 열린다(iOS 와 동일 키).
+                val kind = d.optString("applicationKind").ifEmpty { "JOB" }
+                val posting = (if (kind == "SUB") d.optString("subId") else d.optString("jobId")).toIntOrNull()
+                    ?: return true
                 val app = d.optString("applicationId").toIntOrNull() ?: return true
-                com.muyeon.app.ui.resume.ResumeActivity.startApplicant(activity, job, app)
+                com.muyeon.app.ui.resume.ResumeActivity.startApplicant(activity, posting, app, kind)
             }
             "openChatRoom" -> {
                 val roomId = d.optString("roomId").toIntOrNull() ?: return true

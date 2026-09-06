@@ -58,6 +58,14 @@ fun PublicProfileScreen(
     userId: Int,
     preview: Boolean = false,
     src: String? = null,
+    // 학원·공연팀(채용) 시점 — 하단 CTA 가 무료 [채팅하기] 하나로 바뀐다(iOS recruitMode)
+    recruitMode: Boolean = false,
+    // 다른 화면 안에 끼워 넣은 경우 — 자체 뒤로가기 버튼을 숨긴다(iOS embedded)
+    embedded: Boolean = false,
+    // 열람 전용 맥락 — 하단 CTA 전체 숨김(iOS hideCta)
+    hideCta: Boolean = false,
+    // 이미 받아둔 프로필로 시작(지원자 이력서 등) — 네트워크 재조회를 하지 않는다
+    initialProfile: PublicProfile? = null,
     onClose: () -> Unit,
     onOpenChat: (Int) -> Unit,
     onRequestQuote: () -> Unit,
@@ -76,13 +84,18 @@ fun PublicProfileScreen(
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
 
-    LaunchedEffect(userId, preview) {
-        api.publicProfile(userId, preview, src).onSuccess {
-            profile = it
-            scrapped = it.scrapped == true
-            if (it.selfView == true) {
-                api.list().onSuccess { items ->
-                    myResumeId = (items.firstOrNull { r -> r.isDefault } ?: items.firstOrNull())?.id
+    LaunchedEffect(userId, preview, initialProfile) {
+        if (initialProfile != null) {
+            profile = initialProfile
+            scrapped = initialProfile.scrapped == true
+        } else {
+            api.publicProfile(userId, preview, src).onSuccess {
+                profile = it
+                scrapped = it.scrapped == true
+                if (it.selfView == true) {
+                    api.list().onSuccess { items ->
+                        myResumeId = (items.firstOrNull { r -> r.isDefault } ?: items.firstOrNull())?.id
+                    }
                 }
             }
         }
@@ -117,9 +130,9 @@ fun PublicProfileScreen(
                         Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        CircleIconButton(Icons.AutoMirrored.Filled.ArrowBack, "뒤로", onClick = onClose)
+                        if (!embedded) CircleIconButton(Icons.AutoMirrored.Filled.ArrowBack, "뒤로", onClick = onClose)
                         Spacer(Modifier.weight(1f))
-                        if (!preview) {
+                        if (!preview && !embedded) {
                             CircleIconButton(
                                 if (scrapped) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                                 "찜",
@@ -219,18 +232,23 @@ fun PublicProfileScreen(
                 Spacer(Modifier.height(20.dp))
             }
 
-            // 하단 CTA — 기존 채팅방이 있을 때만 [문의하기](iOS chatRoomId 규칙)
-            if (!preview) {
+            // 하단 CTA — 채용 시점은 무료 [채팅하기] 하나,
+            //  일반은 기존 채팅방이 있을 때만 [문의하기] + [견적 요청하기](iOS ctaBar/generalCtas).
+            if (!preview && !hideCta) {
                 Row(
                     Modifier.fillMaxWidth().background(MuyeonColors.surface)
                         .padding(horizontal = 20.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    val roomId = p.chatRoomId ?: 0
-                    if (roomId > 0) {
-                        CtaButton("문의하기", filled = false, modifier = Modifier.weight(1f)) { onOpenChat(roomId) }
+                    if (recruitMode) {
+                        CtaButton("채팅하기", filled = true, modifier = Modifier.weight(1f)) { onOpenChat(p.id) }
+                    } else {
+                        val roomId = p.chatRoomId ?: 0
+                        if (roomId > 0) {
+                            CtaButton("문의하기", filled = false, modifier = Modifier.weight(1f)) { onOpenChat(roomId) }
+                        }
+                        CtaButton("견적 요청하기", filled = true, modifier = Modifier.weight(1f), onClick = onRequestQuote)
                     }
-                    CtaButton("견적 요청하기", filled = true, modifier = Modifier.weight(1f), onClick = onRequestQuote)
                 }
             }
         }

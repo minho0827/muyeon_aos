@@ -32,7 +32,8 @@ class ResumeActivity : ComponentActivity() {
         private const val EXTRA_RESUME_ID = "resumeId"
         private const val EXTRA_USER_ID = "userId"
         private const val EXTRA_SRC = "src"
-        private const val EXTRA_JOB_ID = "jobId"
+        private const val EXTRA_JOB_ID = "postingId"
+        private const val EXTRA_KIND = "applicationKind"
         private const val EXTRA_APPLICATION_ID = "applicationId"
         private const val EXTRA_TEACHER_NAME = "teacherName"
         private const val EXTRA_LESSON_TYPE = "lessonType"
@@ -68,11 +69,13 @@ class ResumeActivity : ComponentActivity() {
                     .putExtra(EXTRA_LESSON_TYPE, lessonType ?: ""),
             )
 
-        fun startApplicant(context: Context, jobId: Int, applicationId: Int) =
+        /** 지원자 이력서(원장). kind=JOB(구인) | SUB(대타) — postingId 가 각각 jobId/subId. */
+        fun startApplicant(context: Context, postingId: Int, applicationId: Int, kind: String?) =
             context.go(
                 intent(context, "applicant")
-                    .putExtra(EXTRA_JOB_ID, jobId)
-                    .putExtra(EXTRA_APPLICATION_ID, applicationId),
+                    .putExtra(EXTRA_JOB_ID, postingId)
+                    .putExtra(EXTRA_APPLICATION_ID, applicationId)
+                    .putExtra(EXTRA_KIND, kind ?: "JOB"),
             )
 
         private fun intent(context: Context, route: String) =
@@ -91,7 +94,8 @@ class ResumeActivity : ComponentActivity() {
         val resumeIdExtra = intent.getIntExtra(EXTRA_RESUME_ID, 0)
         val userId = intent.getIntExtra(EXTRA_USER_ID, 0)
         val src = intent.getStringExtra(EXTRA_SRC)?.ifEmpty { null }
-        val jobId = intent.getIntExtra(EXTRA_JOB_ID, 0)
+        val postingId = intent.getIntExtra(EXTRA_JOB_ID, 0)
+        val applicationKind = ApplicantPostingKind.from(intent.getStringExtra(EXTRA_KIND))
         val applicationId = intent.getIntExtra(EXTRA_APPLICATION_ID, 0)
         val teacherName = intent.getStringExtra(EXTRA_TEACHER_NAME).orEmpty()
         val lessonType = intent.getStringExtra(EXTRA_LESSON_TYPE)?.ifEmpty { null }
@@ -177,9 +181,10 @@ class ResumeActivity : ComponentActivity() {
                 }
                 composable("applicant") {
                     ApplicantResumeScreen(
-                        api = api, jobId = jobId, applicationId = applicationId,
+                        api = api, reviewApi = reviewApi,
+                        postingId = postingId, applicationId = applicationId, kind = applicationKind,
                         onClose = { back() },
-                        onOpenChat = { roomId -> ChatActivity.startRoom(this@ResumeActivity, roomId) },
+                        onOpenChat = { roomId, name -> ChatActivity.startRoom(this@ResumeActivity, roomId, name) },
                     )
                 }
             }
