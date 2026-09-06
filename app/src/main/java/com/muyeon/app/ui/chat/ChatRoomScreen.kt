@@ -113,6 +113,24 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
                             onToggleReaction = { emoji -> vm.toggleReaction(m, emoji) },
                             onOpenLink = { url -> openExternal(context, url) },
                             onProposalChanged = { vm.reloadContext() },
+                            onOpenProvider = { id, isAcademy ->
+                                if (isAcademy) {
+                                    com.muyeon.app.ui.academy.AcademyProfileActivity.start(context, id)
+                                } else {
+                                    // 채팅 맥락 — 열람기록 제외·CTA 숨김(iOS src:"chat", hideCta:true).
+                                    com.muyeon.app.ui.resume.ResumeActivity.startProfile(context, id, "chat")
+                                }
+                            },
+                            // 네이티브 설문 화면. 내가 보낸 카드(강사)면 열람만, 받은 쪽이면 응답 가능
+                            //  — iOS SurveyOpen(canRespond: !isMine) 과 같은 규칙.
+                            onOpenSurvey = { did ->
+                                com.muyeon.app.ui.survey.SurveyActivity.start(
+                                    context, did, canRespond = m.senderId != vm.currentUserId,
+                                )
+                            },
+                            onOpenLesson = { lid ->
+                                com.muyeon.app.ui.lesson.LessonActivity.startDetail(context, lid)
+                            },
                         )
                     }
                     items(vm.pending.size) { i -> PendingBubble(vm.pending[i]) { vm.retry(vm.pending[i]) } }
@@ -349,13 +367,57 @@ private fun MessageBubble(
     onToggleReaction: (String) -> Unit,
     onOpenLink: (String) -> Unit,
     onProposalChanged: () -> Unit,
+    onOpenProvider: (Int, Boolean) -> Unit,
+    onOpenSurvey: (Int) -> Unit,
+    onOpenLesson: (Int) -> Unit,
 ) {
-    // 레슨 약속 제안은 말풍선이 아니라 전용 카드로 렌더(iOS LessonProposalCardBubble).
-    if (message.type == "LESSON_PROPOSAL" && !message.isDeleted) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
-            LessonProposalBubble(message.content, isTeacherSide, token, onProposalChanged)
+    // ── 말풍선이 아니라 전용 카드/안내로 그리는 타입들 ──
+    //  ⚠️ 여기서 안 받으면 `else -> Text(content)` 로 떨어져 JSON 원문이 그대로 노출된다.
+    if (!message.isDeleted) {
+        when (message.type) {
+            "SYSTEM", "QUOTE_REQUEST" -> {
+                SystemNoticeBubble(message.type, message.content)
+                return
+            }
+            "SURVEY_UPDATE" -> {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    SurveyUpdateBubble(message.content, onOpenSurvey)
+                }
+                return
+            }
+            "LESSON_CARD" -> {
+                // 양쪽 공통(가운데) — 누가 등록했는지는 카드 안 문구로 구분한다.
+                LessonCardBubble(message.content, onOpenLesson)
+                return
+            }
+            "QUOTE_CARD" -> {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
+                    // 제공자 본인이 보낸 카드엔 자기 프로필 버튼을 노출하지 않는다.
+                    QuoteCardBubble(message.content, showProviderProfile = !isMine, onOpenProvider = onOpenProvider)
+                }
+                return
+            }
+            "SURVEY_CARD" -> {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
+                    SurveyCardBubble(
+                        json = message.content,
+                        done = message.surveyDone == true,
+                        seq = message.surveySeq ?: 0,
+                        sentAt = message.surveySentAt,
+                        revision = message.surveyRevision ?: 0,
+                        onOpen = onOpenSurvey,
+                    )
+                }
+                return
+            }
+            // 레슨 약속 제안은 전용 카드로 렌더(iOS LessonProposalCardBubble).
+            "LESSON_PROPOSAL" -> {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
+                    LessonProposalBubble(message.content, isTeacherSide, token, onProposalChanged)
+                }
+                return
+            }
         }
-        return
     }
     Row(
         Modifier.fillMaxWidth(),
