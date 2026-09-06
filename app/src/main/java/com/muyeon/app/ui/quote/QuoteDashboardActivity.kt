@@ -114,7 +114,7 @@ class QuoteDashboardActivity : ComponentActivity() {
         )
         // 레슨 설정(강사프로필 관리 + 레슨 탭 노출 토글)은 강사 전용 — 학원 유형에겐 효과가 없는 화면.
         if (role != "ACADEMY") {
-            list.add(QuoteDashFunction(Icons.Filled.Settings, "레슨 설정", "노출·장르", gLesson) { openWebAndFinish("/lessonSettings") })
+            list.add(QuoteDashFunction(Icons.Filled.Settings, "레슨 설정", "노출·장르", gLesson) { com.muyeon.app.ui.lesson.LessonActivity.startSettings(this) })
         }
         return list
     }

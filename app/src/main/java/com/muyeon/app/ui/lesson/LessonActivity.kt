@@ -40,6 +40,9 @@ class LessonActivity : ComponentActivity() {
         fun startDetail(context: Context, lessonId: Int) =
             context.go(intent(context, "detail").putExtra(EXTRA_ID, lessonId))
 
+        /** 레슨 설정(노출·성별·견적 수신 조건) — 웹 /lessonSettings 의 네이티브 이식. */
+        fun startSettings(context: Context) = context.go(intent(context, "settings"))
+
         /** 예약 상세(웹 예약내역 항목 탭) — iOS presentLessonReservationDetail 대응. */
         fun startReservationDetail(context: Context, reservationId: Int) =
             context.go(intent(context, "reservation").putExtra(EXTRA_RESERVATION_ID, reservationId))
@@ -138,6 +141,16 @@ class LessonActivity : ComponentActivity() {
                         lessonApi, calendarApi, lid, onClose = { back() },
                         onOpenChat = { rid -> ChatActivity.startRoom(this@LessonActivity, rid) },
                         onOpenReservation = { openWebAndFinish("/myReservations") },
+                    )
+                }
+                composable("settings") {
+                    LessonProvideSettingsScreen(
+                        api = remember { LessonSettingsApi(token) },
+                        onClose = { back() },
+                        // 강사프로필 = 기본 이력서. 이력서 관리로 보낸다(iOS onManageProfile).
+                        onManageProfile = {
+                            com.muyeon.app.ui.resume.ResumeActivity.startList(this@LessonActivity, "teacher")
+                        },
                     )
                 }
                 composable("reservation") {

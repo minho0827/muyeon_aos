@@ -33,7 +33,7 @@ class QuoteBrowseActivity : ComponentActivity() {
                 onClose = { finish() },
                 // 전공 등록 / 견적 수신 조건 — 네이티브 미이식 화면이라 웹 경로로(브릿지 폴백과 동일).
                 onGoGenreSettings = { openWebAndFinish("/lessonGenres") },
-                onGoLessonSettings = { openWebAndFinish("/lessonSettings") },
+                onGoLessonSettings = { com.muyeon.app.ui.lesson.LessonActivity.startSettings(this) },
             )
         }
     }

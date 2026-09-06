@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
+import com.muyeon.app.ui.survey.SurveyPickerSheet
 import com.muyeon.app.ui.quote.QuoteAvatar
 import com.muyeon.app.ui.quote.QuoteUi
 import kotlinx.coroutines.launch
@@ -60,6 +61,7 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     var showAttach by remember { mutableStateOf(false) }
     var showProposal by remember { mutableStateOf(false) }
+    var showSurveyPicker by remember { mutableStateOf(false) }
     var showReport by remember { mutableStateOf(false) }
     var reactionTarget by remember { mutableStateOf<ChatMessage?>(null) }
 
@@ -182,9 +184,18 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
             showProposal = vm.quoteContext?.isTeacher == true,
             onPickImages = { uris -> vm.sendImages(context, uris) },
             onPickVideo = { uri -> vm.sendVideo(context, uri) },
-            onSurvey = { vm.toast = "설문지는 곧 제공될 기능이에요." },
+            onSurvey = { showSurveyPicker = true },
             onProposal = { showProposal = true },
             onDismiss = { showAttach = false },
+        )
+    }
+    if (showSurveyPicker) {
+        SurveyPickerSheet(
+            api = remember { com.muyeon.app.ui.survey.SurveyApi(vm.tokenForCards) },
+            roomId = vm.roomId,
+            recipientId = vm.opponentId,
+            onSent = { showSurveyPicker = false; vm.toast = "설문지를 보냈어요." },
+            onDismiss = { showSurveyPicker = false },
         )
     }
     if (showProposal) {
