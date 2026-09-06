@@ -151,8 +151,13 @@ class QuoteWizardActivity : ComponentActivity() {
                         lessons = exitLessons,
                         onStop = { finish() },
                         onContinue = { showExit = false },
-                        onSeeAll = { openWebAndFinish("/lessons") },
-                        onSelectLesson = { id -> openWebAndFinish("/lessons/$id") },
+                        // 둘러보기·콘텐츠 상세 네이티브(iOS presentLessonBrowse / presentLessonContentDetail).
+                        onSeeAll = {
+                            com.muyeon.app.ui.lesson.LessonBrowseActivity.startBrowse(this@QuoteWizardActivity)
+                        },
+                        onSelectLesson = { id ->
+                            com.muyeon.app.ui.lesson.LessonBrowseActivity.startDetail(this@QuoteWizardActivity, id)
+                        },
                     )
                 }
             }
