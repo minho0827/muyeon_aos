@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.resume
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,6 +14,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -274,7 +277,45 @@ fun PublicProfileScreen(
 
 @Composable
 private fun ProfileSections(p: PublicProfile, reviews: ReviewList?, onOpenReviews: () -> Unit) {
+    val ctx = LocalContext.current
     Column(Modifier.fillMaxWidth()) {
+        // 연락처 — 서버가 열람 권한을 판단해 contactVisible/contactPhone 을 내려준 경우만.
+        //  ★ 화면에서 권한을 판정하지 않는다. 번호가 없으면 서버가 허용하지 않은 것이다.
+        //  iOS PublicProfileView.contactSection 과 같은 조건/같은 위치(최상단).
+        val contactPhone = p.contactPhone?.trim()
+        if (p.contactVisible == true && !contactPhone.isNullOrEmpty()) {
+            ProfileSection("연락처") {
+                Row(
+                    Modifier.fillMaxWidth().clickable {
+                        val digits = contactPhone.filter { it.isDigit() }
+                        if (digits.isNotEmpty()) {
+                            runCatching {
+                                ctx.startActivity(
+                                    Intent(Intent.ACTION_DIAL, Uri.parse("tel:$digits")),
+                                )
+                            }
+                        }
+                    },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        contactPhone,
+                        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
+                        lineHeight = 18.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
+                    )
+                    Icon(
+                        Icons.Filled.Phone, contentDescription = null,
+                        tint = MuyeonColors.primary, modifier = Modifier.size(14.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        "전화하기",
+                        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                        lineHeight = 16.sp, color = MuyeonColors.primary,
+                    )
+                }
+            }
+        }
         p.intro?.takeIf { it.isNotEmpty() }?.let {
             ProfileSection("소개글") {
                 Text(it, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 24.sp, color = MuyeonColors.body)
@@ -301,6 +342,7 @@ private fun ProfileSections(p: PublicProfile, reviews: ReviewList?, onOpenReview
             }
         }
         p.activeRegion?.takeIf { it.isNotEmpty() }?.let { BodySection("활동 지역", it) }
+
         if (!p.availableDays.isNullOrEmpty() || !p.availableTimeSlots.isNullOrEmpty()) {
             ProfileSection("레슨 가능 시간") { LessonTimeGrid(p) }
         }

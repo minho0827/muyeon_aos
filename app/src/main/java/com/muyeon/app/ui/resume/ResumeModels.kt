@@ -261,6 +261,7 @@ data class PublicProfile(
     val ratingAvg: Double?,
     val ratingCount: Int?,
     val contactVisible: Boolean?,
+    val contactPhone: String?,  // 서버가 열람 권한을 판단해 내려준 번호(contactVisible 과 한 쌍)
     val scrapped: Boolean?,
     val chatRoomId: Int?,       // 기존 채팅방 — 있어야만 [문의하기] 노출
     val phone: String?,         // 원장+이용권(full) 열람 시에만 서버가 내려줌
@@ -286,7 +287,9 @@ data class PublicProfile(
             performances = o.optJSONArray("performances")?.map { PerfItem.from(it) },
             awards = o.stringOrNull("awards"), sns = o.stringList("sns"),
             ratingAvg = o.doubleOrNull("ratingAvg"), ratingCount = o.intOrNull("ratingCount"),
-            contactVisible = o.boolOrNull("contactVisible"), scrapped = o.boolOrNull("scrapped"),
+            contactVisible = o.boolOrNull("contactVisible"),
+            contactPhone = o.stringOrNull("contactPhone"),
+            scrapped = o.boolOrNull("scrapped"),
             chatRoomId = o.intOrNull("chatRoomId"),
             phone = o.stringOrNull("phone"), email = o.stringOrNull("email"),
             full = o.boolOrNull("full"), recruiterLocked = o.boolOrNull("recruiterLocked"),

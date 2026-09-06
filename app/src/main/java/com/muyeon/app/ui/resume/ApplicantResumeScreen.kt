@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
  *  지원 메타 + 이력서 원본(마스크 없음) + 합불 처리 + 1:1 채팅.
  *
  * ⚠️ 표시 데이터는 **공개 프로필 위에 첨부 이력서를 덮어 병합**한 것(웹과 동일 규칙, Applicant.mergedData).
- *   연락처는 서버가 phoneUnlocked 일 때만 내려준다(이용권 게이트).
+ *   ★ 연락처·이메일은 노출하지 않는다. 공개 프로필에서만 서버 허용 시 보여준다(iOS 와 동일).
  */
 @Composable
 fun ApplicantResumeScreen(
@@ -98,13 +98,9 @@ fun ApplicantResumeScreen(
                 }
             }
 
-            // 연락처 — 서버가 이용권/권한에 따라 내려준 경우만.
-            val phone = a.applicantPhone ?: d.basic?.phone
-            if (a.phoneUnlocked == true && !phone.isNullOrEmpty()) {
-                InfoBox("연락처", phone)
-            } else if (a.phoneUnlocked == false) {
-                InfoBox("연락처", "이용권이 있으면 연락처를 볼 수 있어요.", muted = true)
-            }
+            // ★ 지원자 이력서에는 연락처·이메일을 노출하지 않는다(iOS fa61d9a 와 동일).
+            //   연락처는 공개 프로필에서만, 서버가 허용한 경우(contactVisible/contactPhone)에 보여준다.
+            //   종전에는 phoneUnlocked 로 분기했는데 백엔드에 그런 필드가 없어 안내문만 뜨고 있었다.
 
             a.resumeTitle?.takeIf { it.isNotEmpty() }?.let {
                 Text(
