@@ -48,6 +48,10 @@ object ChatSocketManager {
     private const val EV_CHAT_ROOM_ADDED = "chat-room-added"
 
     /** 클라 → 서버 (@SubscribeMessage). */
+    /** 한 번이라도 연결된 적이 있는지 — 최초 연결과 재연결을 구분한다. */
+    @Volatile
+    private var everConnected = false
+
     private const val EV_JOIN_ROOM = "join-room"
     private const val EV_LEAVE_ROOM = "leave-room"
     private const val EV_SEND_MESSAGE = "send-message"
@@ -107,6 +111,10 @@ object ChatSocketManager {
             Log.i(TAG, "/chat connected — re-joining ${active.size} room(s)")
             // 재연결 시 자동 재진입 — ref>0 인 방만.
             active.forEach { emitJoinRoom(it) }
+            // 첫 연결이 아니라면(네트워크 복구·백그라운드 복귀) 끊긴 동안의 이벤트가 유실됐다.
+            //  화면들이 서버 기준으로 다시 맞추도록 알린다. 최초 연결은 화면이 알아서 로드한다.
+            if (everConnected) ChatEventBus.emit(ChatEvent.Reconnected)
+            everConnected = true
         }
         s.on(Socket.EVENT_DISCONNECT) { args ->
             Log.i(TAG, "/chat disconnected reason=${args.firstOrNull()}")

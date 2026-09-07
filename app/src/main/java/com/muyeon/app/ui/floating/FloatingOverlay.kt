@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.muyeon.app.chat.socket.ChatEvent
 import com.muyeon.app.chat.socket.ChatEventBus
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
@@ -70,6 +71,12 @@ fun FloatingOverlay(
         unread = api.unreadCount()
     }
 
+    /** 안읽음 수만 — 채팅 이벤트에는 인증 상태를 다시 물을 이유가 없다. */
+    suspend fun refreshUnread() {
+        if (!api.isLoggedIn) { unread = 0; return }
+        unread = api.unreadCount()
+    }
+
     // 60초 폴링(승인 반영) — iOS Timer.publish(every: 60) 대응.
     LaunchedEffect(Unit) {
         while (true) {
@@ -77,9 +84,27 @@ fun FloatingOverlay(
             delay(60_000)
         }
     }
-    // 소켓 이벤트(알림·채팅) 즉시 반영 — iOS FloatingSocketManager.onEvent 대응.
+    // 소켓 이벤트 즉시 반영 — iOS FloatingSocketManager.onEvent 대응.
+    //  ⚠️ 모든 이벤트에 반응하면 안 된다. 종전엔 상대가 **타이핑할 때마다**
+    //    verificationStatus + unreadCount 를 호출해, 한 문장 입력에 수십 번씩 왕복했다.
+    //    안읽음 수를 바꿀 수 있는 이벤트만 골라 받는다.
     LaunchedEffect(Unit) {
-        ChatEventBus.events.collect { refresh() }
+        ChatEventBus.events.collect { e ->
+            when (e) {
+                // 끊긴 동안의 이벤트는 유실됐다 — 서버 기준으로 다시 맞춘다.
+                is ChatEvent.Reconnected,
+                // 인증 승인 등 서버 알림은 책갈피(role/status)까지 바뀔 수 있어 전체 갱신.
+                is ChatEvent.ServerNotification -> refresh()
+
+                is ChatEvent.NewMessage,
+                is ChatEvent.MessagesRead,
+                is ChatEvent.RoomUpdated,
+                is ChatEvent.ChatRoomAdded -> refreshUnread()
+
+                // 타이핑·반응·메시지 수정/삭제는 안읽음 수와 무관.
+                else -> Unit
+            }
+        }
     }
     // 로그인 변경 등 외부 신호.
     LaunchedEffect(FloatingState.refreshTick) { refresh() }

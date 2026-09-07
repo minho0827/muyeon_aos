@@ -171,6 +171,9 @@ class ChatRoomViewModel(
                     is ChatEvent.MessageReaction ->
                         // 서버가 집계를 안 실어준다(뷰어별 mine 이 달라서) → 해당 페이지 재조회.
                         if (e.roomId == roomId) viewModelScope.launch { refreshReactions() }
+                    // 끊긴 동안 온 메시지는 replay=0 이라 통째로 유실된다 — 방에 그대로 머물러
+                    //  있으면 그 사이 대화가 영영 안 보인다(나갔다 들어와야 보였다).
+                    is ChatEvent.Reconnected -> viewModelScope.launch { syncMissed() }
                     else -> Unit
                 }
             }
@@ -191,6 +194,22 @@ class ChatRoomViewModel(
     private fun replaceMessage(msg: ChatMessage) {
         val i = messages.indexOfFirst { it.id == msg.id }
         if (i >= 0) messages[i] = msg
+    }
+
+    /**
+     * 재연결 직후 누락분 보충 — 첫 페이지를 받아 **없는 것만 끼워 넣는다.**
+     *  ⚠️ loadFirstPage() 를 재사용하면 안 된다. 그건 목록을 비우고 다시 채우므로
+     *    위로 스크롤해 불러둔 이전 페이지가 날아가고 스크롤이 튄다.
+     */
+    private suspend fun syncMissed() {
+        api.getMessages(roomId, page = 1, limit = pageLimit).onSuccess { res ->
+            totalCount = res.total
+            val missing = res.messages.filter { fresh -> messages.none { it.id == fresh.id } }
+            if (missing.isEmpty()) return@onSuccess
+            messages.addAll(missing)
+            messages.sortBy { it.id }
+            scheduleMarkRead()
+        }
     }
 
     private suspend fun refreshReactions() {

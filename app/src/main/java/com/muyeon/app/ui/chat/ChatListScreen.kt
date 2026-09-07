@@ -30,8 +30,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.muyeon.app.chat.socket.ChatEvent
-import com.muyeon.app.chat.socket.ChatEventBus
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteAvatar
@@ -41,79 +39,43 @@ import kotlinx.coroutines.launch
 
 /**
  * 채팅방 리스트 — iOS `ChatListView.swift` 1:1.
- *  GET /chat/rooms + 소켓 실시간 갱신(chat-room-added 증분 upsert / room-updated 안전망 재조회).
+ *  상태는 [ChatListState] 가 들고 있다(ChatActivity 에서 생성 — 방을 다녀와도 유지).
+ *  이 함수는 렌더링만 한다.
  *
  * ⚠️ iOS 수치: 아바타 48 / 제목 16 semibold / 미리보기 14 / 시간 12 / 안읽음 점 8 / 행 상하 4+.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatListScreen(
-    api: ChatApi,
-    initialFilter: ChatRoomFilter,
+    state: ChatListState,
     onClose: () -> Unit,
     onOpenRoom: (Int, String) -> Unit,
 ) {
-    var rooms by remember { mutableStateOf<List<ChatRoomSummary>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }   // 진입 즉시 스켈레톤(빈화면 깜빡임 방지)
-    var loadFailed by remember { mutableStateOf(false) } // '채팅 없음'으로 위장하지 않고 재시도 노출
-    var refreshing by remember { mutableStateOf(false) }
-    var filter by remember { mutableStateOf(initialFilter) }
     val scope = rememberCoroutineScope()
-
-    suspend fun load() {
-        api.getRooms()
-            .onSuccess { list ->
-                rooms = list.sortedByDescending { it.lastMessageAt ?: "" }
-                loadFailed = false
-            }
-            .onFailure { if (rooms.isEmpty()) loadFailed = true }   // 캐시 있으면 조용히 유지
-        isLoading = false
-    }
-
-    LaunchedEffect(Unit) { load() }
-
-    // 소켓 — 증분 upsert(재조회 없음) + 안전망 재조회.
-    LaunchedEffect(Unit) {
-        ChatEventBus.events.collect { e ->
-            when (e) {
-                is ChatEvent.ChatRoomAdded -> {
-                    rooms = (listOf(e.room) + rooms.filterNot { it.roomId == e.room.roomId })
-                        .sortedByDescending { it.lastMessageAt ?: "" }
-                }
-                // 요약 없이 오는 갱신(edit/delete 등)은 전체 재조회.
-                is ChatEvent.RoomUpdated -> load()
-                else -> Unit
-            }
-        }
-    }
-
-    val filtered = rooms.filter { filter.matches(it) }
+    val rooms = state.rooms
+    val filtered = rooms.filter { state.filter.matches(it) }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         QuoteNavBar(title = "채팅", onClose = onClose)
         if (rooms.isNotEmpty()) {
-            ChatFilterSegmented(filter) { filter = it }
+            ChatFilterSegmented(state.filter) { state.filter = it }
         }
 
         when {
-            isLoading && rooms.isEmpty() -> ChatListSkeleton()
-            loadFailed && rooms.isEmpty() -> LoadFailed { scope.launch { isLoading = true; load() } }
+            state.isLoading && rooms.isEmpty() -> ChatListSkeleton()
+            state.loadFailed && rooms.isEmpty() -> LoadFailed { scope.launch { state.retry() } }
             rooms.isEmpty() -> EmptyMessage(Icons.Outlined.ChatBubbleOutline, "진행 중인 채팅이 없습니다.")
             filtered.isEmpty() -> EmptyMessage(Icons.Outlined.FilterList, "해당하는 채팅이 없습니다.")
             else -> PullToRefreshBox(
-                isRefreshing = refreshing,
-                onRefresh = { scope.launch { refreshing = true; load(); refreshing = false } },
+                isRefreshing = state.refreshing,
+                onRefresh = { scope.launch { state.pullToRefresh() } },
                 modifier = Modifier.fillMaxSize(),
             ) {
                 LazyColumn(Modifier.fillMaxSize()) {
                     itemsIndexed(filtered, key = { _, r -> r.roomId }) { idx, room ->
                         // iOS allowsFullSwipe:false — 끝까지 밀어도 자동 실행 안 되고 버튼을 눌러야 나간다.
                         SwipeToLeaveRow(
-                            onLeave = {
-                                // 낙관적 제거 후 서버 반영, 실패 시 복구.
-                                rooms = rooms.filterNot { it.roomId == room.roomId }
-                                scope.launch { api.leaveRoom(room.roomId).onFailure { load() } }
-                            },
+                            onLeave = { scope.launch { state.leave(room.roomId) } },
                         ) {
                             ChatRoomRow(room) { onOpenRoom(room.roomId, room.displayTitle) }
                         }

@@ -6,7 +6,13 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -63,13 +69,35 @@ class ChatActivity : ComponentActivity() {
             val token = remember { TokenManager.getAccessToken(this) }
             val api = remember { ChatApi(token) }
 
+            // ★ 목록 상태는 NavHost **바깥**에 둔다 — 방에 들어가면 목록 composable 이
+            //   composition 에서 빠지므로, 안에 두면 목록·필터가 매번 날아간다.
+            val listState = remember { ChatListState(api) }
+            val scope = rememberCoroutineScope()
+            LaunchedEffect(Unit) {
+                listState.setFilterFrom(filter)
+                listState.start(scope)
+                listState.load()
+            }
+
+            // 화면이 다시 보일 때마다 조용히 재조회.
+            //  ⚠️ 이게 없으면 백그라운드에 다녀온 사이 온 메시지가 목록에 안 뜬다 —
+            //    소켓은 ON_STOP 에서 끊기고 이벤트는 replay=0 이라 통째로 유실되기 때문이다.
+            //    (최초 진입의 ON_RESUME 은 위 load() 와 겹치지만 요청이 합쳐져 1회로 끝난다.)
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) listState.requestReload()
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+            }
+
             val start = if (deepRoomId > 0) "room/$deepRoomId" else "list"
 
             NavHost(nav, startDestination = start) {
                 composable("list") {
                     ChatListScreen(
-                        api = api,
-                        initialFilter = filter,
+                        state = listState,
                         onClose = { finish() },
                         onOpenRoom = { rid, title -> nav.navigate("room/$rid?title=$title") },
                     )

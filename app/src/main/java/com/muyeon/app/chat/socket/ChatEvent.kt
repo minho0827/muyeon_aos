@@ -48,6 +48,13 @@ sealed class ChatEvent {
     data class ChatRoomAdded(val room: ChatRoomSummary) : ChatEvent()
 
     /**
+     * 소켓이 (재)연결됨. 끊겨 있던 동안 온 이벤트는 replay=0 이라 통째로 유실되므로
+     *  목록·뱃지를 서버 기준으로 다시 맞추라는 신호다.
+     *  ⚠️ 서버가 보내는 이벤트가 아니라 **클라이언트가 스스로 만드는** 이벤트다.
+     */
+    data object Reconnected : ChatEvent()
+
+    /**
      * 서버 알림(인증 승인 등) — 플로팅 책갈피/뱃지가 즉시 재조회하도록 흘린다.
      *  iOS FloatingSocketManager 의 'notification' 핸들러 대응. payload 는 쓰지 않는다.
      */
