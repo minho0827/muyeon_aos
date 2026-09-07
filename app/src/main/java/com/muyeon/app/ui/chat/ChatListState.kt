@@ -71,6 +71,9 @@ class ChatListState(private val api: ChatApi) {
                 when (e) {
                     // 요약을 실어 오는 증분 갱신 — 재조회 없이 그 방만 갈아끼운다.
                     is ChatEvent.ChatRoomAdded -> upsert(e.room)
+                    // 다른 기기·웹에서 나간 방 — 여기서도 즉시 지운다.
+                    is ChatEvent.ChatRoomRemoved ->
+                        rooms = rooms.filterNot { it.roomId == e.roomId }
                     // 요약이 없는 갱신(수정·삭제 등)은 재조회로 맞춘다.
                     is ChatEvent.RoomUpdated -> requestReload()
                     // 끊겼다 붙는 동안 온 이벤트는 유실된다(replay=0). 붙자마자 전체를 다시 맞춘다.

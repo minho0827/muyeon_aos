@@ -40,6 +40,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.survey.SurveyPickerSheet
@@ -63,6 +65,7 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
     var showProposal by remember { mutableStateOf(false) }
     var showSurveyPicker by remember { mutableStateOf(false) }
     var showReport by remember { mutableStateOf(false) }
+    var confirmBlock by remember { mutableStateOf(false) }
     var reactionTarget by remember { mutableStateOf<ChatMessage?>(null) }
 
     LaunchedEffect(vm.roomId) { vm.start() }
@@ -80,7 +83,7 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        RoomNavBar(vm, onBack, onReport = { showReport = true })
+        RoomNavBar(vm, onBack, onReport = { showReport = true }, onBlock = { confirmBlock = true })
 
         Box(Modifier.weight(1f).fillMaxWidth().background(Color(0xFFF7F7F8))) {
             if (vm.isLoading && vm.messages.isEmpty()) {
@@ -211,6 +214,25 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
             onDismiss = { showProposal = false },
         )
     }
+    if (confirmBlock) {
+        val scope2 = rememberCoroutineScope()
+        com.muyeon.app.ui.quote.QuoteDialog(
+            "${vm.title}님을 차단할까요?",
+            "서로의 채팅 목록에서 사라지고 더 이상 대화할 수 없어요.\n채팅 목록 우측 상단에서 차단을 해제할 수 있습니다.",
+            "차단하기",
+            onConfirm = {
+                confirmBlock = false
+                scope2.launch {
+                    vm.api.blockUser(vm.opponentId)
+                        // 차단하면 이 방은 목록에서 사라진다 — 방에 남아 있을 이유가 없다.
+                        .onSuccess { onBack() }
+                        .onFailure { vm.toast = it.message ?: "차단하지 못했어요." }
+                }
+            },
+            onDismiss = { confirmBlock = false },
+        )
+    }
+
     if (showReport) {
         ChatReportSheet(
             roomId = vm.roomId,
@@ -304,7 +326,12 @@ private fun copyToClipboard(context: android.content.Context, text: String) {
 }
 
 @Composable
-private fun RoomNavBar(vm: ChatRoomViewModel, onBack: () -> Unit, onReport: () -> Unit) {
+private fun RoomNavBar(
+    vm: ChatRoomViewModel,
+    onBack: () -> Unit,
+    onReport: () -> Unit,
+    onBlock: () -> Unit,
+) {
     Box(
         Modifier.fillMaxWidth().height(44.dp).background(MuyeonColors.surface),
         contentAlignment = Alignment.Center,
@@ -330,9 +357,32 @@ private fun RoomNavBar(vm: ChatRoomViewModel, onBack: () -> Unit, onReport: () -
                     modifier = Modifier.size(18.dp),
                 )
             }
-            // 신고 — iOS 우상단 ⋯ 메뉴
-            Box(Modifier.size(44.dp).clickable(onClick = onReport), contentAlignment = Alignment.Center) {
-                Icon(Icons.Filled.MoreVert, "더보기", tint = MuyeonColors.textHead, modifier = Modifier.size(18.dp))
+            // 신고·차단 — iOS 우상단 ⋯ 메뉴.
+            //  App Store Guideline 1.2 는 UGC·채팅 앱에 신고와 차단을 **둘 다** 요구한다.
+            var menuOpen by remember { mutableStateOf(false) }
+            Box {
+                Box(
+                    Modifier.size(44.dp).clickable { menuOpen = true },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Filled.MoreVert, "더보기", tint = MuyeonColors.textHead, modifier = Modifier.size(18.dp))
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = {
+                            Text("신고하기", fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.danger)
+                        },
+                        onClick = { menuOpen = false; onReport() },
+                    )
+                    if (vm.opponentId > 0) {
+                        DropdownMenuItem(
+                            text = {
+                                Text("차단하기", fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.danger)
+                            },
+                            onClick = { menuOpen = false; onBlock() },
+                        )
+                    }
+                }
             }
         }
     }

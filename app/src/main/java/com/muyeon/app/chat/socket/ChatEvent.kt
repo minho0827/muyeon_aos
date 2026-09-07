@@ -7,12 +7,17 @@ import com.muyeon.app.ui.chat.ChatRoomSummary
  * muyeon-backend `chat.gateway.ts` 가 실제로 emit 하는 이벤트만 sealed class 로.
  *
  *  ⚠️ PaceERA 의 ChatEvent 를 그대로 베끼면 안 된다 — 무용연 게이트웨이에는
- *   force-logout · user-online/offline · participant-left · chat-room-updated/removed 가 **없다**.
+ *   force-logout · user-online/offline · participant-left 가 **없다**.
  *   (서버에 없는 이벤트를 구독하면 영원히 안 오는 코드가 남는다.)
  *
- *  서버 → 클라 8종:
+ *  ⚠️ 단 chat-room-removed 는 **있다**. 게이트웨이가 아니라 chat.controller 의
+ *   방 나가기(DELETE /rooms/:id/leave)에서 emitToUser 로 보낸다. 종전 주석이
+ *   '없다'고 단정하는 바람에 구독이 빠져, 웹이나 다른 기기에서 방을 나가도
+ *   앱 목록에는 그 방이 계속 남아 있었다.
+ *
+ *  서버 → 클라 9종:
  *   new-message · message-updated · message-deleted · messages-read
- *   · message-reaction · user-typing · room-updated · chat-room-added
+ *   · message-reaction · user-typing · room-updated · chat-room-added · chat-room-removed
  */
 sealed class ChatEvent {
 
@@ -46,6 +51,9 @@ sealed class ChatEvent {
      *  (send-message·mark-read·join-room 모두 이걸 쏜다).
      */
     data class ChatRoomAdded(val room: ChatRoomSummary) : ChatEvent()
+
+    /** 방에서 나감(다른 기기·웹 포함) — 목록에서 제거. chat.controller 의 leave 에서 온다. */
+    data class ChatRoomRemoved(val roomId: Int) : ChatEvent()
 
     /**
      * 소켓이 (재)연결됨. 끊겨 있던 동안 온 이벤트는 replay=0 이라 통째로 유실되므로

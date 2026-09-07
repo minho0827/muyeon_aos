@@ -383,3 +383,20 @@ data class ChatQuickReply(val id: Int, val text: String, val icon: String?) {
         fun from(o: JSONObject) = ChatQuickReply(o.optInt("id"), o.optString("text"), o.stringOrNull("icon"))
     }
 }
+
+/** 내가 차단한 사용자 — GET /me/blocks. 채팅 목록 우측 상단에서 해제한다. */
+data class BlockedUser(
+    val userId: Int,
+    val name: String,
+    val image: String?,
+    val blockedAt: String?,
+) {
+    companion object {
+        fun from(o: JSONObject) = BlockedUser(
+            o.optInt("userId"),
+            o.stringOrNull("name") ?: "회원",
+            o.stringOrNull("image"),
+            o.stringOrNull("blockedAt"),
+        )
+    }
+}

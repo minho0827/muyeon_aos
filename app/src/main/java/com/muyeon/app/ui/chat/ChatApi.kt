@@ -37,6 +37,23 @@ class ChatApi(private val token: String?) {
     /** DELETE /chat/rooms/:id/leave — 내 참여기록 삭제(방 나가기). */
     suspend fun leaveRoom(roomId: Int): Result<Unit> = call("/chat/rooms/$roomId/leave", "DELETE").map { }
 
+    /**
+     * 사용자 차단/해제 — App Store Guideline 1.2(UGC) 가 요구하는 기능.
+     *  차단하면 서로의 목록에서 방이 사라지고 새 대화도 막힌다.
+     */
+    suspend fun blockUser(userId: Int, reasonCode: String? = null): Result<Unit> =
+        call(
+            "/users/$userId/block", "POST",
+            JSONObject().apply { reasonCode?.let { put("reasonCode", it) } },
+        ).map { }
+
+    suspend fun unblockUser(userId: Int): Result<Unit> =
+        call("/users/$userId/block", "DELETE").map { }
+
+    /** 내가 차단한 사용자 — 해제 화면용. */
+    suspend fun blockedUsers(): Result<List<BlockedUser>> =
+        call("/me/blocks").map { JSONArray(it.ifBlank { "[]" }).map(BlockedUser::from) }
+
     /** PATCH /chat/rooms/:id/mute { muted } */
     suspend fun setRoomMute(roomId: Int, muted: Boolean): Result<Unit> =
         call("/chat/rooms/$roomId/mute", "PATCH", JSONObject().put("muted", muted)).map { }

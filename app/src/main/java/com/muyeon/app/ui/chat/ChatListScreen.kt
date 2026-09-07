@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.DoNotDisturbOn
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.WifiOff
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,13 +51,25 @@ fun ChatListScreen(
     state: ChatListState,
     onClose: () -> Unit,
     onOpenRoom: (Int, String) -> Unit,
+    onOpenBlocked: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val rooms = state.rooms
     val filtered = rooms.filter { state.filter.matches(it) }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(title = "채팅", onClose = onClose)
+        QuoteNavBar(
+            title = "채팅", onClose = onClose,
+            trailing = {
+                // 차단 해제 진입점 — 설정(MY)이 웹이라 차단이 일어나는 이 화면에 둔다.
+                Box(Modifier.size(44.dp).clickable(onClick = onOpenBlocked), Alignment.Center) {
+                    Icon(
+                        Icons.Outlined.DoNotDisturbOn, "차단한 사용자",
+                        tint = MuyeonColors.textHead, modifier = Modifier.size(18.dp),
+                    )
+                }
+            },
+        )
         if (rooms.isNotEmpty()) {
             ChatFilterSegmented(state.filter) { state.filter = it }
         }

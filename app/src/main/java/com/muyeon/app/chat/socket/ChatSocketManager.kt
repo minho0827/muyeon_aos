@@ -46,6 +46,7 @@ object ChatSocketManager {
     private const val EV_USER_TYPING = "user-typing"
     private const val EV_ROOM_UPDATED = "room-updated"
     private const val EV_CHAT_ROOM_ADDED = "chat-room-added"
+    private const val EV_CHAT_ROOM_REMOVED = "chat-room-removed"
 
     /** 클라 → 서버 (@SubscribeMessage). */
     /** 한 번이라도 연결된 적이 있는지 — 최초 연결과 재연결을 구분한다. */
@@ -161,6 +162,10 @@ object ChatSocketManager {
         }
 
         // 알림(인증 승인 등) — 채팅과 무관하지만 같은 /chat 네임스페이스로 온다(iOS 와 동일).
+        s.on(EV_CHAT_ROOM_REMOVED) { args ->
+            val json = asJson(args.firstOrNull()) ?: return@on
+            ChatEventBus.emit(ChatEvent.ChatRoomRemoved(json.optInt("roomId")))
+        }
         s.on("notification") { ChatEventBus.emit(ChatEvent.ServerNotification) }
 
         s.connect()

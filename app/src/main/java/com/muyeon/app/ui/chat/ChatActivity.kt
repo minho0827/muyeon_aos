@@ -100,7 +100,11 @@ class ChatActivity : ComponentActivity() {
                         state = listState,
                         onClose = { finish() },
                         onOpenRoom = { rid, title -> nav.navigate("room/$rid?title=$title") },
+                        onOpenBlocked = { nav.navigate("blocked") },
                     )
+                }
+                composable("blocked") {
+                    BlockedUsersScreen(api = api, onBack = { nav.popBackStack() })
                 }
                 composable("room/{roomId}") { entry ->
                     val rid = entry.arguments?.getString("roomId")?.toIntOrNull() ?: 0

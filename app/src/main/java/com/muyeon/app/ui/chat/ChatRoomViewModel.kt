@@ -26,7 +26,7 @@ import java.util.UUID
 class ChatRoomViewModel(
     val roomId: Int,
     initialTitle: String,
-    private val api: ChatApi,
+    internal val api: ChatApi,
     token: String?,
 ) : ViewModel() {
 
