@@ -20,6 +20,7 @@ class QuoteWizardViewModel(
 
     var currentIndex by mutableStateOf(0)
         private set
+    private var editReturnIndex: Int? = null
 
     init {
         if (seedAnswers.isNotEmpty()) {
@@ -83,13 +84,24 @@ class QuoteWizardViewModel(
 
     /** 다음으로. 마지막이면 onComplete — iOS next(onComplete:) 동일. */
     fun goNextOrComplete(onComplete: () -> Unit) {
-        if (isLastQuestion) onComplete() else currentIndex += 1
+        val returnIndex = editReturnIndex
+        if (returnIndex != null) {
+            editReturnIndex = null
+            currentIndex = minOf(returnIndex, questions.lastIndex)
+        } else if (isLastQuestion) {
+            onComplete()
+        } else {
+            currentIndex += 1
+        }
     }
 
     /** 이전 답변 '수정' — 해당 질문으로 이동. */
     fun editStep(questionId: String) {
         val idx = questions.indexOfFirst { it.id == questionId }
-        if (idx >= 0) currentIndex = idx
+        if (idx >= 0) {
+            if (editReturnIndex == null) editReturnIndex = currentIndex
+            currentIndex = idx
+        }
     }
 
     fun back() {
