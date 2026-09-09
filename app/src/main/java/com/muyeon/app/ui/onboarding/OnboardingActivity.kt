@@ -34,6 +34,7 @@ class OnboardingActivity : ComponentActivity() {
         private const val EXTRA_PAYLOAD = "payload"     // 웹이 넘긴 역할 JSON
         private const val EXTRA_HERO = "hero"
         private const val EXTRA_ROLE = "role"
+        private const val EXTRA_OWNER_NAME = "ownerName"
         private const val EXTRA_ACTIVE_TYPE = "activeType"
 
         /**
@@ -57,11 +58,12 @@ class OnboardingActivity : ComponentActivity() {
         fun startRoleOnboarding(context: Context) =
             context.go(Intent(context, OnboardingActivity::class.java).putExtra(EXTRA_ROUTE, "roleOnboarding"))
 
-        fun startVerification(context: Context, role: String?) =
+        fun startVerification(context: Context, role: String?, ownerName: String? = null) =
             context.go(
                 Intent(context, OnboardingActivity::class.java)
                     .putExtra(EXTRA_ROUTE, "verify")
-                    .putExtra(EXTRA_ROLE, role ?: ""),
+                    .putExtra(EXTRA_ROLE, role ?: "")
+                    .putExtra(EXTRA_OWNER_NAME, ownerName ?: ""),
             )
 
         /** 약관 동의(강제 게이트) — `openSignupTerms`. */
@@ -93,6 +95,8 @@ class OnboardingActivity : ComponentActivity() {
         val payloadJson = intent.getStringExtra(EXTRA_PAYLOAD)
         val hero = intent.getStringExtra(EXTRA_HERO)?.ifEmpty { null }
         val role = intent.getStringExtra(EXTRA_ROLE)?.ifEmpty { null }
+        // 대표원장 실명 — 웹이 브릿지로 넘긴 값. 없으면 빈 문자열이라 화면이 줄을 그리지 않는다.
+        val ownerName = intent.getStringExtra(EXTRA_OWNER_NAME).orEmpty()
         val activeType = intent.getStringExtra(EXTRA_ACTIVE_TYPE)?.ifEmpty { null } ?: "GENERAL"
 
         setContent {
@@ -120,6 +124,7 @@ class OnboardingActivity : ComponentActivity() {
                 composable("verify") {
                     RoleVerificationScreen(
                         api, role.orEmpty(),
+                        ownerName = ownerName,
                         onClose = { finish() },
                         onDone = { r, urls, academyName ->
                             notifyWeb(verifyJs("__onRoleVerify", r, urls, academyName))

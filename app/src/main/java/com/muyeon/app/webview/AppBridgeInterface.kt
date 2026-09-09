@@ -120,8 +120,10 @@ class AppBridgeInterface(
             // 회원유형 선택 온보딩 — 네이티브 이식 완료(iOS RoleOnboardingView).
             "openRoleOnboarding" ->
                 com.muyeon.app.ui.onboarding.OnboardingActivity.startRoleOnboarding(activity)
+            // ownerName = 본인확인으로 등록된 실명. 학원 인증에서 '대표원장'으로 읽기전용 표시한다.
+            //  구웹은 안 보내므로 빈 문자열이 되고, 그때는 화면이 해당 줄을 그리지 않는다.
             "openRoleVerification" -> com.muyeon.app.ui.onboarding.OnboardingActivity.startVerification(
-                activity, d.optString("role"),
+                activity, d.optString("role"), d.optString("ownerName"),
             )
 
             // 온보딩·이용권·학원 프로필 — E 이식 완료

@@ -103,6 +103,9 @@ class RoleVerificationApi(private val token: String?) {
 /**
  * @param initialImages 재제출 시 기존 제출 서류(미리보기). 삭제·추가 후 다시 제출할 수 있다.
  * @param onDone (역할코드, 서류 URL, 학원명) — 학원명은 ACADEMY 에서만 채워진다.
+ * @param ownerName 본인확인(NICE)으로 등록된 실명. 학원 인증에서 '대표원장'으로 읽기전용 표시한다.
+ *   ★ 입력받지 않는다 — 대표원장 이름은 계정의 실명 인증 결과가 정본이고, 여기서 고쳐 쓸 수 있으면
+ *     서류상 대표자와 다른 이름이 공개 프로필·공고에 노출된다. (iOS RoleVerificationView 와 동일)
  */
 @Composable
 fun RoleVerificationScreen(
@@ -110,6 +113,7 @@ fun RoleVerificationScreen(
     role: String,
     onClose: () -> Unit,
     onDone: (String, List<String>, String?) -> Unit,
+    ownerName: String = "",
     initialImages: List<String> = emptyList(),
 ) {
     // 기존 제출 서류를 그대로 이어받는다 — 재제출인데 빈 화면이면 처음부터 다시 찍어 올려야 한다.
@@ -174,6 +178,26 @@ fun RoleVerificationScreen(
                         },
                         modifier = Modifier.fillMaxWidth(),
                     )
+
+                    // 대표원장 — 본인확인으로 등록된 실명. 학원명과 함께 공개된다.
+                    //  입력칸이 아니라 값 표시로 그린다 — 비활성 입력칸은 "왜 안 눌리지"로 읽힌다.
+                    if (ownerName.isNotEmpty()) {
+                        Text(
+                            "대표원장",
+                            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                            lineHeight = 18.sp, color = MuyeonColors.textHead,
+                        )
+                        Text(
+                            ownerName,
+                            fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 18.sp,
+                            color = MuyeonColors.textHead,
+                        )
+                        Text(
+                            "휴대폰 본인확인으로 등록된 이름이에요. 학원명과 함께 공개됩니다.",
+                            fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 16.sp,
+                            color = MuyeonColors.textSub,
+                        )
+                    }
                 }
             }
 

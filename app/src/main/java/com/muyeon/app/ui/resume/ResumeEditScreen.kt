@@ -221,7 +221,15 @@ fun ResumeEditScreen(
                             Icon(Icons.Filled.PhotoCamera, "사진 등록", tint = MuyeonColors.secondary, modifier = Modifier.size(26.dp))
                         }
                     }
-                    LabeledField("이름", basic.name.orEmpty()) { basic = basic.copy(name = it) }
+                    // 이름은 계정의 본인확인 실명이 정본이다(서버 ResumesService.applyOwnerName 이 저장 시 덮어쓴다).
+                    //  이력서는 학원·공연팀이 지원자를 볼 때 여는 문서라, 여기만 활동명을 허용하면
+                    //  목록의 지원자명(실명)과 문서 안 이름이 갈린다. (iOS ResumeEditView 와 동일)
+                    ReadOnlyField(
+                        "이름",
+                        basic.name.orEmpty(),
+                        hint = "본인확인으로 등록된 이름이에요.",
+                        empty = "휴대폰 본인확인 후 채워져요",
+                    )
                     LabeledField("생년월일", basic.birth.orEmpty(), "예: 1995.03.21") { basic = basic.copy(birth = it) }
                     LabeledField("연락처", basic.phone.orEmpty(), keyboard = KeyboardType.Phone) { basic = basic.copy(phone = it) }
                     LabeledField("이메일", basic.email.orEmpty(), keyboard = KeyboardType.Email) { basic = basic.copy(email = it) }
@@ -564,6 +572,27 @@ private fun ResumeSection(title: String, sub: String? = null) {
         )
         sub?.let {
             Text(it, fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 14.sp, color = MuyeonColors.textSub)
+        }
+    }
+}
+
+/**
+ * 수정할 수 없는 값 행. 계정에서 정해지는 값(본인확인 실명 등)에 쓴다.
+ *  비활성 입력칸으로 두지 않고 값 표시로 그린다 — 비활성 입력칸은 "왜 안 눌리지"로 읽히지만,
+ *  값 표시는 애초에 입력칸이 아니라는 게 보인다. (iOS readOnlyRow 와 동일)
+ */
+@Composable
+private fun ReadOnlyField(label: String, value: String, hint: String? = null, empty: String = "") {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(label, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, color = MuyeonColors.textSub)
+        Text(
+            value.ifEmpty { empty },
+            fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 18.sp,
+            color = if (value.isEmpty()) MuyeonColors.secondary else MuyeonColors.textHead,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (hint != null) {
+            Text(hint, fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 14.sp, color = MuyeonColors.textSub)
         }
     }
 }
