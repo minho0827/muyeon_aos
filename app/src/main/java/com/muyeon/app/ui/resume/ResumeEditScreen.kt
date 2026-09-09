@@ -1,5 +1,8 @@
 package com.muyeon.app.ui.resume
 
+import android.content.Context
+import android.content.Intent
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,9 +24,9 @@ import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,6 +41,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import androidx.core.app.NotificationManagerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteDialog
@@ -98,13 +105,15 @@ fun ResumeEditScreen(
     var uploading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var viewAlert by remember { mutableStateOf(true) }   // 구직 프로필 — 내 프로필 열람 알림
+    var awaitingNotificationSettings by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
 
     val portfolioMax = if (mode.isDancer) 20 else 10
 
     LaunchedEffect(isSeekProfile) {
-        if (isSeekProfile) viewAlert = api.getProfileViewAlert()
+        if (isSeekProfile) viewAlert = api.getProfileViewAlert() && context.notificationsEnabled()
     }
 
     LaunchedEffect(resumeId) {
@@ -139,6 +148,17 @@ fun ResumeEditScreen(
             desiredRegionCode = d.desiredRegionCode
         }
         loading = false
+    }
+
+    DisposableEffect(lifecycleOwner, awaitingNotificationSettings) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME && awaitingNotificationSettings) {
+                awaitingNotificationSettings = false
+                if (context.notificationsEnabled()) viewAlert = true
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     suspend fun upload(uri: android.net.Uri): String? {
@@ -393,7 +413,18 @@ fun ResumeEditScreen(
                 if (isSeekProfile) {
                     SeekProfileSettings(
                         viewAlert = viewAlert,
-                        onViewAlert = { viewAlert = it },
+                        onViewAlert = { enabled ->
+                            if (!enabled) {
+                                viewAlert = false
+                            } else if (context.notificationsEnabled()) {
+                                viewAlert = true
+                            } else {
+                                awaitingNotificationSettings = true
+                                context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                })
+                            }
+                        },
                         onVisibility = onVisibility,
                     )
                 }
@@ -516,6 +547,9 @@ private fun SeekProfileSettings(viewAlert: Boolean, onViewAlert: (Boolean) -> Un
         }
     }
 }
+
+private fun Context.notificationsEnabled(): Boolean =
+    NotificationManagerCompat.from(this).areNotificationsEnabled()
 
 private fun <T> List<T>.replaced(index: Int, transform: (T) -> T): List<T> =
     mapIndexed { i, v -> if (i == index) transform(v) else v }
