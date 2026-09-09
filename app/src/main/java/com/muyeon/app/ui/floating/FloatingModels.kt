@@ -1,6 +1,5 @@
 package com.muyeon.app.ui.floating
 
-import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -10,6 +9,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 
 /**
@@ -78,7 +79,7 @@ object FloatingState {
 }
 
 /** 인증 상태 요약 — GET /me/roles/verification-status. */
-data class VerifyStatus(val role: String?, val status: String)
+data class VerifyStatus(val role: String?, val status: String, val acknowledged: Boolean)
 
 class FloatingApi(private val token: String?) {
 
@@ -88,7 +89,25 @@ class FloatingApi(private val token: String?) {
     val isLoggedIn: Boolean get() = !token.isNullOrEmpty()
 
     suspend fun verificationStatus(): VerifyStatus? = get("/me/roles/verification-status")?.let {
-        VerifyStatus(it.optString("role").ifEmpty { null }, it.optString("status").ifEmpty { "NONE" })
+        VerifyStatus(
+            it.optString("role").ifEmpty { null },
+            it.optString("status").ifEmpty { "NONE" },
+            it.optBoolean("acknowledged", false),
+        )
+    }
+
+    suspend fun acknowledgeVerification(role: String): Boolean = withContext(Dispatchers.IO) {
+        if (token.isNullOrEmpty()) return@withContext false
+        runCatching {
+            val body = JSONObject().put("role", role).toString()
+                .toRequestBody("application/json".toMediaType())
+            val req = Request.Builder()
+                .url("$apiBase/me/roles/verification-status/acknowledge")
+                .patch(body)
+                .addHeader("Authorization", "Bearer $token")
+                .build()
+            client.newCall(req).execute().use { it.isSuccessful }
+        }.getOrDefault(false)
     }
 
     suspend fun unreadCount(): Int = get("/chat/unread-count")?.optInt("count") ?: 0
@@ -103,20 +122,5 @@ class FloatingApi(private val token: String?) {
                 res.body?.string()?.takeIf { it.isNotBlank() }?.let { JSONObject(it) }
             }
         }.getOrNull()
-    }
-}
-
-/**
- * 완료(APPROVED) 확인 여부 — 역할별로 기억한다. 확인하면 책갈피를 숨긴다.
- *  iOS 는 UserDefaults("verifyAck_<role>") 를 쓴다.
- */
-object VerifyAck {
-    private const val PREFS = "muyeon.verifyAck"
-
-    fun isAcked(context: Context, role: String): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(role, false)
-
-    fun acknowledge(context: Context, role: String) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(role, true).apply()
     }
 }

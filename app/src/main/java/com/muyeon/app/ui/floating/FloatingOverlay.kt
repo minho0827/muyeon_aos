@@ -21,7 +21,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -54,11 +53,10 @@ fun FloatingOverlay(
 ) {
     var role by remember { mutableStateOf<String?>(null) }
     var status by remember { mutableStateOf("NONE") }
+    var acknowledged by remember { mutableStateOf(false) }
     var unread by remember { mutableIntStateOf(0) }
     var toast by remember { mutableStateOf<String?>(null) }
     var showComplete by remember { mutableStateOf(false) }
-    var ackTick by remember { mutableIntStateOf(0) }
-    val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
 
     suspend fun refresh() {
@@ -67,7 +65,11 @@ fun FloatingOverlay(
             role = null; status = "NONE"; unread = 0
             return
         }
-        api.verificationStatus()?.let { role = it.role; status = it.status }
+        api.verificationStatus()?.let {
+            role = it.role
+            status = it.status
+            acknowledged = it.acknowledged
+        }
         unread = api.unreadCount()
     }
 
@@ -112,9 +114,8 @@ fun FloatingOverlay(
     LaunchedEffect(toast) { if (toast != null) { delay(2000); toast = null } }
 
     val approved = status == "APPROVED"
-    val acked = remember(role, ackTick) { role?.let { VerifyAck.isAcked(ctx, it) } ?: false }
     val showBookmark = api.isLoggedIn && role != null &&
-        (status == "PENDING" || (approved && !acked))
+        (status == "PENDING" || (approved && !acknowledged))
 
     Box(Modifier.fillMaxSize()) {
         // 인증 책갈피 — 오른쪽 벽, 상단 30%
@@ -210,13 +211,19 @@ fun FloatingOverlay(
         androidx.compose.ui.window.Dialog(
             onDismissRequest = {
                 showComplete = false
-                if (r.isNotEmpty()) { VerifyAck.acknowledge(ctx, r); ackTick += 1 }
+                if (r.isNotEmpty()) {
+                    acknowledged = true
+                    scope.launch { api.acknowledgeVerification(r) }
+                }
             },
             properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
         ) {
             VerificationCompleteScreen(role = r) {
                 showComplete = false
-                if (r.isNotEmpty()) { VerifyAck.acknowledge(ctx, r); ackTick += 1 }
+                if (r.isNotEmpty()) {
+                    acknowledged = true
+                    scope.launch { api.acknowledgeVerification(r) }
+                }
                 // 웹뷰를 해당 유형 화면으로 전환(iOS notifyWebRoleApproved).
                 scope.launch { onRoleApproved(r) }
             }
