@@ -85,6 +85,15 @@ class QuoteApi(private val token: String?) {
     suspend fun blockRecommendation(teacherId: Int): Result<Unit> =
         call("/quotes/recommend-blocks", "POST", JSONObject().put("teacherId", teacherId)).map { }
 
+    /** 추천에서 제외한 강사 목록. GET /quotes/recommend-blocks */
+    suspend fun recommendBlocks(): Result<List<RecommendBlockedTeacher>> =
+        call("/quotes/recommend-blocks").map { it.asArray().map(RecommendBlockedTeacher::from) }
+
+    /** 추천 제외 해제. DELETE /quotes/recommend-blocks/:teacherId
+     *  ⚠️ 제외만 되고 푸는 곳이 없으면 실수로 누른 사용자가 영영 되돌리지 못한다(채팅 차단도 해제가 있다). */
+    suspend fun unblockRecommendation(teacherId: Int): Result<Unit> =
+        call("/quotes/recommend-blocks/$teacherId", "DELETE").map { }
+
     /** 강사의 공개 레슨 목록(추천 카드 '레슨 보기'). GET /lesson-products?creatorId= */
     suspend fun getTeacherLessons(teacherId: Int): Result<List<TeacherLessonItem>> =
         call("/lesson-products?creatorId=$teacherId").map { it.asArray().map(TeacherLessonItem::from) }

@@ -306,6 +306,23 @@ data class TeacherLessonItem(val id: Int, val title: String?, val genre: String?
     }
 }
 
+/** GET /quotes/recommend-blocks — 추천에서 제외한 강사 1건(해제 화면용). */
+data class RecommendBlockedTeacher(
+    val teacherId: Int,
+    val name: String,
+    val image: String?,
+    val blockedAt: String?,
+) {
+    companion object {
+        fun from(o: JSONObject) = RecommendBlockedTeacher(
+            o.optInt("teacherId"),
+            o.stringOrNull("name") ?: "강사",
+            o.stringOrNull("image"),
+            o.stringOrNull("blockedAt"),
+        )
+    }
+}
+
 /** GET /quotes/dashboard?role= — 견적관리 허브 대시보드(iOS QuoteDashboardView.swift 모델). */
 data class QuoteDashboardData(
     val role: String?,

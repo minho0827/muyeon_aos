@@ -75,6 +75,14 @@ class QuoteHubActivity : ComponentActivity() {
                         onClose = { finish() },
                         onOpenReceived = { quoteId -> nav.navigate("received/$quoteId") },
                         onOpenSent = { item -> sentDetail = item; nav.navigate("sent") },
+                        onOpenRecommendBlocks = { nav.navigate("recommendBlocks") },
+                    )
+                }
+                composable("recommendBlocks") {
+                    RecommendBlocksScreen(
+                        api = api,
+                        onBack = { if (!nav.popBackStack()) finish() },
+                        onOpenTeacher = ::openTeacherProfile,
                     )
                 }
                 composable("received/{quoteId}") { entry ->

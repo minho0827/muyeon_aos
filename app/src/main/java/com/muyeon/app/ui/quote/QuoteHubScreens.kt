@@ -1,6 +1,7 @@
 package com.muyeon.app.ui.quote
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -52,11 +53,24 @@ fun QuoteHubScreen(
     onClose: () -> Unit,
     onOpenReceived: (Int) -> Unit,
     onOpenSent: (SentQuoteItem) -> Unit,
+    onOpenRecommendBlocks: () -> Unit,
 ) {
     var tab by remember { mutableIntStateOf(if (isPro) initialTab else 0) }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(title = "견적 요청 내역", onClose = onClose)
+        QuoteNavBar(
+            title = "견적 요청 내역", onClose = onClose,
+            trailing = {
+                // 추천 제외 해제 진입점 — 채팅의 '차단한 사용자'와 같은 이유로, 제외가 일어나는
+                //  추천 카드와 같은 화면 계층에 둔다(설정(MY)은 웹이라 여기가 유일한 자리).
+                Box(Modifier.size(44.dp).clickable(onClick = onOpenRecommendBlocks), Alignment.Center) {
+                    Icon(
+                        Icons.Outlined.VisibilityOff, "추천 제외한 강사",
+                        tint = MuyeonColors.textHead, modifier = Modifier.size(18.dp),
+                    )
+                }
+            },
+        )
         if (isPro) {
             QuoteTabBar(tab = tab, titles = listOf("받은 견적", "보낸 견적"), onSelect = { tab = it })
             HorizontalDivider(color = MuyeonColors.border)
