@@ -31,9 +31,18 @@ data class AppGateNotice(
     val id: Int,
     val title: String,
     val body: String?,
+    val imageUrl: String?,
     val linkUrl: String?,
     val dismissType: String,          // NONE | TODAY | ALWAYS
-)
+) {
+    /**
+     * 표시용 절대 URL. 서버는 상대경로(/images/...)로도 내려준다.
+     * ui/quote 의 imageUrl() 과 같은 규칙 — 한쪽만 바꾸면 화면마다 결과가 달라진다.
+     */
+    val imageUrlAbsolute: String?
+        get() = imageUrl?.takeIf { it.isNotBlank() }
+            ?.let { if (it.startsWith("http")) it else BuildConfig.API_BASE_URL + it }
+}
 
 data class AppGateResult(val update: AppGateUpdate?, val notice: AppGateNotice?)
 
@@ -73,6 +82,7 @@ object AppGateApi {
                         id = it.optInt("id"),
                         title = it.optString("title"),
                         body = it.optString("body").ifBlank { null },
+                        imageUrl = it.optString("imageUrl").ifBlank { null },
                         linkUrl = it.optString("linkUrl").ifBlank { null },
                         dismissType = it.optString("dismissType", "TODAY"),
                     )

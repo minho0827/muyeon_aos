@@ -4,7 +4,15 @@ import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.muyeon.app.common_components.dialog.PermissionExplanationDialog
 import com.muyeon.app.data.repository.AuthRepositoryImpl
 import com.muyeon.app.routers.SplashRouterImpl
@@ -145,17 +153,63 @@ class SplashActivity : ComponentActivity() {
 
         val n = notice
         if (stage == "notice" && n != null && !AppGateDismiss.isDismissed(this@SplashActivity, n)) {
-            androidx.compose.material3.AlertDialog(
-                onDismissRequest = { AppGateDismiss.remember(this@SplashActivity, n); stage = "done" },
-                title = { androidx.compose.material3.Text(n.title) },
-                text = { androidx.compose.material3.Text(n.body ?: "") },
-                confirmButton = {
-                    androidx.compose.material3.TextButton(onClick = {
-                        AppGateDismiss.remember(this@SplashActivity, n)
-                        stage = "done"
-                    }) { androidx.compose.material3.Text("확인") }
-                },
-            )
+            NoticePopup(n) { AppGateDismiss.remember(this@SplashActivity, n); stage = "done" }
+        }
+    }
+
+    /**
+     * 공지 팝업 — 이미지를 띄울 수 있어야 해서 AlertDialog 대신 커스텀 Dialog 를 쓴다.
+     * (AlertDialog 는 title/text 가 문자열 슬롯이라 이미지를 넣을 자리가 없다)
+     *
+     * 이미지는 Coil AsyncImage — 이미 chat/quote 화면에서 쓰는 것과 같은 방식이라
+     * 의존성을 새로 넣지 않는다. 로딩 실패·없음이면 그 영역만 빠지고 나머지는 그대로 뜬다.
+     */
+    @Composable
+    private fun NoticePopup(n: AppGateNotice, onClose: () -> Unit) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = onClose) {
+            androidx.compose.material3.Surface(
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                color = androidx.compose.ui.graphics.Color.White,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                androidx.compose.foundation.layout.Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    n.imageUrlAbsolute?.let { url ->
+                        coil3.compose.AsyncImage(
+                            model = url,
+                            contentDescription = null,
+                            contentScale = androidx.compose.ui.layout.ContentScale.FillWidth,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                // 세로로 긴 이미지가 팝업을 화면 밖까지 밀지 않게 상한을 둔다.
+                                .heightIn(max = 320.dp),
+                        )
+                    }
+                    androidx.compose.foundation.layout.Column(
+                        modifier = Modifier.padding(20.dp),
+                    ) {
+                        androidx.compose.material3.Text(
+                            n.title,
+                            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                        )
+                        if (!n.body.isNullOrBlank()) {
+                            androidx.compose.foundation.layout.Spacer(Modifier.height(8.dp))
+                            androidx.compose.material3.Text(
+                                n.body,
+                                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                        androidx.compose.foundation.layout.Spacer(Modifier.height(16.dp))
+                        androidx.compose.material3.TextButton(
+                            onClick = onClose,
+                            modifier = Modifier.align(androidx.compose.ui.Alignment.End),
+                        ) { androidx.compose.material3.Text("확인") }
+                    }
+                }
+            }
         }
     }
 
