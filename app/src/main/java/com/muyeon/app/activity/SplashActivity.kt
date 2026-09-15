@@ -8,11 +8,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.muyeon.app.common_components.dialog.PermissionExplanationDialog
 import com.muyeon.app.data.repository.AuthRepositoryImpl
 import com.muyeon.app.routers.SplashRouterImpl
@@ -133,36 +138,26 @@ class SplashActivity : ComponentActivity() {
         val u = update
         if (stage == "update" && u != null) {
             val forced = u.action == "FORCE"
-            androidx.compose.material3.AlertDialog(
-                onDismissRequest = { if (!forced) stage = "notice" },
-                title = { androidx.compose.material3.Text(u.title ?: "새 버전이 있습니다") },
-                text = { androidx.compose.material3.Text(u.message ?: "") },
-                confirmButton = {
-                    // ⚠️ 스토어만 열고 흐름은 진행시키지 않는다(stage 를 그대로 둔다).
-                    //    전에는 여기서 곧장 다음 단계로 넘겼는데, 그 사이 앱이 백그라운드로 가서
-                    //    스토어에 다녀오면 공지 팝업이 떠 있었다. 업데이트하러 간 사람이 그냥 앱에
-                    //    들어와졌고, 업데이트를 안 하고 돌아왔어도 다시 물어볼 기회가 없었다.
-                    //    Compose 다이얼로그는 스스로 닫히지 않으므로 복귀하면 안내가 그대로 남는다.
-                    androidx.compose.material3.TextButton(onClick = {
-                        openStore(u.storeUrl)
-                    }) { androidx.compose.material3.Text("업데이트") }
-                },
-                // 강제면 '종료'만 준다 — 업데이트를 안 할 거면 앱을 쓸 수 없다.
-                //  finishAffinity() 는 이 태스크의 액티비티를 전부 닫는다(SplashActivity 만
-                //  finish() 하면 뒤에 남은 화면으로 떨어질 수 있다).
-                // 강제가 아니면 '다음에' 로 진행한다.
-                dismissButton = {
-                    if (forced) {
-                        androidx.compose.material3.TextButton(onClick = { finishAffinity() }) {
-                            androidx.compose.material3.Text("종료")
+            GateScrim {
+                GateCard {
+                    GateTitle(u.title ?: "새 버전이 있습니다")
+                    if (!u.message.isNullOrBlank()) GateBody(u.message)
+                    GateActions {
+                        if (forced) {
+                            // 강제면 '종료'만 — 업데이트를 안 할 거면 앱을 쓸 수 없다.
+                            //  finishAffinity() 는 태스크의 액티비티를 전부 닫는다(SplashActivity 만
+                            //  finish() 하면 뒤에 남은 화면으로 떨어질 수 있다).
+                            GateButton("종료", danger = true) { finishAffinity() }
+                        } else {
+                            GateButton("다음에", subtle = true) { stage = "notice" }
                         }
-                    } else {
-                        androidx.compose.material3.TextButton(onClick = { stage = "notice" }) {
-                            androidx.compose.material3.Text("다음에")
-                        }
+                        // ⚠️ 스토어만 열고 흐름은 진행시키지 않는다(stage 를 그대로 둔다).
+                        //    넘겨버리면 앱이 백그라운드로 가는 사이 다음 단계가 떠서,
+                        //    스토어에 다녀왔을 때 공지 팝업이 올라와 있었다.
+                        GateButton("업데이트") { openStore(u.storeUrl) }
                     }
-                },
-            )
+                }
+            }
         }
 
         val n = notice
@@ -172,24 +167,15 @@ class SplashActivity : ComponentActivity() {
     }
 
     /**
-     * 공지 팝업 — 이미지를 띄울 수 있어야 해서 AlertDialog 대신 커스텀 Dialog 를 쓴다.
-     * (AlertDialog 는 title/text 가 문자열 슬롯이라 이미지를 넣을 자리가 없다)
-     *
-     * 이미지는 Coil AsyncImage — 이미 chat/quote 화면에서 쓰는 것과 같은 방식이라
-     * 의존성을 새로 넣지 않는다. 로딩 실패·없음이면 그 영역만 빠지고 나머지는 그대로 뜬다.
+     * 공지 팝업 — 업데이트 안내와 같은 오버레이를 쓴다.
+     * 이미지가 들어가야 해서 AlertDialog 는 애초에 못 쓴다(title/text 가 문자열 슬롯).
      */
     @Composable
     private fun NoticePopup(n: AppGateNotice, onClose: () -> Unit) {
-        androidx.compose.ui.window.Dialog(onDismissRequest = onClose) {
-            androidx.compose.material3.Surface(
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                color = androidx.compose.ui.graphics.Color.White,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
+        GateScrim {
+            GateCard(padding = 0.dp) {
                 androidx.compose.foundation.layout.Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState()),
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
                 ) {
                     n.imageUrlAbsolute?.let { url ->
                         coil3.compose.AsyncImage(
@@ -202,28 +188,106 @@ class SplashActivity : ComponentActivity() {
                                 .heightIn(max = 320.dp),
                         )
                     }
-                    androidx.compose.foundation.layout.Column(
-                        modifier = Modifier.padding(20.dp),
-                    ) {
-                        androidx.compose.material3.Text(
-                            n.title,
-                            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
-                        )
-                        if (!n.body.isNullOrBlank()) {
-                            androidx.compose.foundation.layout.Spacer(Modifier.height(8.dp))
-                            androidx.compose.material3.Text(
-                                n.body,
-                                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-                            )
-                        }
-                        androidx.compose.foundation.layout.Spacer(Modifier.height(16.dp))
-                        androidx.compose.material3.TextButton(
-                            onClick = onClose,
-                            modifier = Modifier.align(androidx.compose.ui.Alignment.End),
-                        ) { androidx.compose.material3.Text("확인") }
+                    androidx.compose.foundation.layout.Column(Modifier.padding(20.dp)) {
+                        GateTitle(n.title)
+                        if (!n.body.isNullOrBlank()) GateBody(n.body)
+                        GateActions { GateButton("확인", onClick = onClose) }
                     }
                 }
             }
+        }
+    }
+
+    // ── 게이트 공용 조각 — 직접 그린다. 시스템 다이얼로그를 쓰지 않는다 ──────────
+    //
+    // ⚠️ Material AlertDialog / Dialog 를 쓰지 않는 이유:
+    //    · 프레임워크가 버튼을 손댈 여지가 없어야 한다. iOS 에서 .alert 가 cancel 역할 버튼이
+    //      없다는 이유로 '취소'를 자동으로 끼워 넣었고, 그걸 누르면 아무 동작 없이 닫혀
+    //      강제 업데이트가 뚫렸다. 같은 사고를 안드로이드에서도 만들지 않는다.
+    //    · 강제 업데이트는 우리가 지울 때까지 절대 사라지면 안 된다.
+    //    바깥을 눌러도 닫히지 않는다 — 스크림이 탭을 먹고 아무것도 하지 않는다.
+
+    @Composable
+    private fun GateScrim(content: @Composable () -> Unit) {
+        androidx.compose.foundation.layout.Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(androidx.compose.ui.graphics.Color(0x73000000))
+                .blockTaps(),
+            contentAlignment = androidx.compose.ui.Alignment.Center,
+        ) { content() }
+    }
+
+    /** 바깥 탭을 흡수만 하고 아무 동작도 하지 않는다(리플도 없다). */
+    @Composable
+    private fun Modifier.blockTaps(): Modifier {
+        val src = remember { MutableInteractionSource() }
+        return this.clickable(interactionSource = src, indication = null, onClick = {})
+    }
+
+    @Composable
+    private fun GateCard(padding: androidx.compose.ui.unit.Dp = 20.dp, content: @Composable () -> Unit) {
+        androidx.compose.foundation.layout.Column(
+            modifier = Modifier
+                .padding(horizontal = 32.dp)
+                .fillMaxWidth()
+                .background(
+                    androidx.compose.ui.graphics.Color.White,
+                    androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                )
+                .blockTaps()
+                .padding(padding),
+        ) { content() }
+    }
+
+    @Composable
+    private fun GateTitle(text: String) {
+        androidx.compose.material3.Text(
+            text,
+            color = androidx.compose.ui.graphics.Color.Black,
+            fontSize = 17.sp,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+        )
+    }
+
+    @Composable
+    private fun GateBody(text: String) {
+        androidx.compose.foundation.layout.Spacer(Modifier.height(8.dp))
+        androidx.compose.material3.Text(
+            text,
+            color = androidx.compose.ui.graphics.Color(0xFF4D4D4D),
+            fontSize = 15.sp,
+        )
+    }
+
+    @Composable
+    private fun GateActions(content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit) {
+        androidx.compose.foundation.layout.Spacer(Modifier.height(12.dp))
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End,
+            content = content,
+        )
+    }
+
+    @Composable
+    private fun GateButton(
+        text: String,
+        danger: Boolean = false,
+        subtle: Boolean = false,
+        onClick: () -> Unit,
+    ) {
+        androidx.compose.material3.TextButton(onClick = onClick) {
+            androidx.compose.material3.Text(
+                text,
+                color = when {
+                    danger -> androidx.compose.ui.graphics.Color(0xFFD32F2F)
+                    subtle -> androidx.compose.ui.graphics.Color(0xFF595959)
+                    else -> androidx.compose.ui.graphics.Color(0xFF1976D2)
+                },
+                fontSize = 15.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+            )
         }
     }
 
