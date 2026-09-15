@@ -64,8 +64,12 @@ object AppGateApi {
     suspend fun fetch(): AppGateResult? = withContext(Dispatchers.IO) {
         try {
             val url = "${BuildConfig.API_BASE_URL}/api/app-gate?platform=AOS&build=$buildNumber"
+            android.util.Log.d("AppGate", "요청 build=$buildNumber url=$url")
             client.newCall(Request.Builder().url(url).get().build()).execute().use { res ->
-                if (!res.isSuccessful) return@withContext null
+                if (!res.isSuccessful) {
+                    android.util.Log.d("AppGate", "응답 status=${res.code} → 그대로 진입")
+                    return@withContext null
+                }
                 val root = JSONObject(res.body?.string().orEmpty().ifBlank { "{}" })
 
                 val u = root.optJSONObject("update")?.let {
@@ -87,9 +91,15 @@ object AppGateApi {
                         dismissType = it.optString("dismissType", "TODAY"),
                     )
                 }
+                android.util.Log.d(
+                    "AppGate",
+                    "update=${u?.action ?: "nil"} notice=" +
+                        (n?.let { "id ${it.id} '${it.title}' dismiss=${it.dismissType} img=${it.imageUrl ?: "없음"}" } ?: "없음"),
+                )
                 AppGateResult(u, n)
             }
         } catch (e: Exception) {
+            android.util.Log.d("AppGate", "조회 실패 — 그대로 진입: ${e.message}")
             null
         }
     }

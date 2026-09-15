@@ -130,7 +130,16 @@ class SplashActivity : ComponentActivity() {
         LaunchedEffect(stage) {
             if (stage == "notice") {
                 val n = notice
-                if (n == null || AppGateDismiss.isDismissed(this@SplashActivity, n)) stage = "done"
+                when {
+                    n == null -> {
+                        android.util.Log.d("AppGate", "공지 없음 → 진입"); stage = "done"
+                    }
+                    AppGateDismiss.isDismissed(this@SplashActivity, n) -> {
+                        android.util.Log.d("AppGate", "공지 id ${n.id} 는 이미 닫음(${n.dismissType}) → 진입")
+                        stage = "done"
+                    }
+                    else -> android.util.Log.d("AppGate", "공지 팝업 표시 id=${n.id} img=${n.imageUrlAbsolute ?: "없음"}")
+                }
             }
             if (stage == "done") viewModel.checkTokenAndNavigate()
         }
@@ -181,6 +190,9 @@ class SplashActivity : ComponentActivity() {
                         coil3.compose.AsyncImage(
                             model = url,
                             contentDescription = null,
+                            onSuccess = { android.util.Log.d("AppGate", "이미지 로딩 성공") },
+                            // 실패해도 팝업은 그대로 뜬다 — 이미지 자리만 빈다.
+                            onError = { android.util.Log.d("AppGate", "이미지 로딩 실패: ${it.result.throwable.message}") },
                             contentScale = androidx.compose.ui.layout.ContentScale.FillWidth,
                             modifier = Modifier
                                 .fillMaxWidth()
