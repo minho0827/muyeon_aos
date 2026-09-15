@@ -14,7 +14,7 @@ interface ApiService {
 
     suspend fun refreshTokenCheck(@Body requestBody: TokenRequest): Response<RefreshTokenResponse>
 
-    @POST("auth/signin")
+    @POST("api/auth/login")
     suspend fun login(@Body requestBody: LoginRequest): Response<LoginResponse>
 
     @POST("api/reserve/external/selectQrReserve")

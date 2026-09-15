@@ -17,12 +17,7 @@ class AuthRepositoryImpl(
         return withContext(dispatcher) {
             val accessToken = TokenManager.getAccessToken(context)
             val refreshToken = TokenManager.getRefreshToken(context)
-            if (accessToken.isNullOrEmpty() || refreshToken.isNullOrEmpty()) {
-                false
-            } else {
-                val result = TokenAPI.refreshToken(context,accessToken, refreshToken)
-                result == WebMessageStatus.SUCCESS
-            }
+            !accessToken.isNullOrEmpty() && !refreshToken.isNullOrEmpty()
         }
     }
 
