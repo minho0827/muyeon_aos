@@ -184,7 +184,7 @@ class OnboardingActivity : ComponentActivity() {
                             notifyWeb("if(window.__onSignupTermsAgreed){ window.__onSignupTermsAgreed($json); }")
                         },
                         onDecline = { notifyWeb("if(window.__onSignupTermsDeclined){ window.__onSignupTermsDeclined(); }") },
-                        onOpenPolicy = { doc -> NativeWebRoute.openWebAndFinish(this@OnboardingActivity, "/policy?doc=$doc") },
+                        onOpenPolicy = { doc -> openPolicy(doc) },
                     )
                 }
                 composable("address") {
@@ -256,4 +256,30 @@ class OnboardingActivity : ComponentActivity() {
     private fun closeAndFlush() = finish()
 
     private fun notifyWeb(js: String) = NativeWebRoute.notifyWebAndFinish(this, js)
+
+    /**
+     * 약관 상세 — 외부 브라우저로 연다.
+     *
+     * 종전에는 NativeWebRoute.openWebAndFinish() 를 썼는데 두 가지가 겹쳐 있었다.
+     *  ① `activity.finish()` — 약관 동의 화면을 죽인다. 돌아올 화면이 없어지고 체크해 둔 동의도 날아간다.
+     *  ② FLAG_ACTIVITY_CLEAR_TOP|SINGLE_TOP 으로 **메인 웹뷰(WebViewActivity)를 /policy 로 가로챈다**.
+     *     새 창이 아니라 앱 본체가 약관 페이지로 바뀌는 셈이라 되돌릴 방법이 없었다.
+     * 그래서 웹의 뒤로가기를 누르면 폴백이 끝까지 떨어져 홈으로 가버렸다.
+     *
+     * 외부 브라우저로 열면 온보딩 액티비티가 그대로 살아 있어 시스템 뒤로가기로 돌아온다.
+     * iOS 가 인앱 사파리(SFSafariViewController)로 여는 것과 같은 성격이다.
+     *
+     * embed=1 — "닫기는 네이티브(브라우저)가 한다"는 표시. 웹이 자체 뒤로가기 화살표를 숨긴다.
+     */
+    private fun openPolicy(doc: String) {
+        val base = com.muyeon.app.utils.Constants.getBaseUrl(this).trimEnd('/')
+        val uri = android.net.Uri.parse("$base/policy?doc=$doc&embed=1")
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, uri))
+        } catch (e: Exception) {
+            // 브라우저가 없는 기기(사실상 없음) — 약관을 못 보는 것보다 안내가 낫다.
+            Toast.makeText(this, "약관을 열 수 있는 브라우저가 없습니다.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
 }
