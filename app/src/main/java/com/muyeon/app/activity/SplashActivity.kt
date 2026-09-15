@@ -138,11 +138,16 @@ class SplashActivity : ComponentActivity() {
                 title = { androidx.compose.material3.Text(u.title ?: "새 버전이 있습니다") },
                 text = { androidx.compose.material3.Text(u.message ?: "") },
                 confirmButton = {
+                    // ⚠️ 스토어만 열고 흐름은 진행시키지 않는다(stage 를 그대로 둔다).
+                    //    전에는 여기서 곧장 다음 단계로 넘겼는데, 그 사이 앱이 백그라운드로 가서
+                    //    스토어에 다녀오면 공지 팝업이 떠 있었다. 업데이트하러 간 사람이 그냥 앱에
+                    //    들어와졌고, 업데이트를 안 하고 돌아왔어도 다시 물어볼 기회가 없었다.
+                    //    Compose 다이얼로그는 스스로 닫히지 않으므로 복귀하면 안내가 그대로 남는다.
                     androidx.compose.material3.TextButton(onClick = {
                         openStore(u.storeUrl)
-                        if (!forced) stage = "notice"
                     }) { androidx.compose.material3.Text("업데이트") }
                 },
+                // 진행은 '다음에' 를 눌렀을 때만. 강제는 이 버튼 자체가 없어 빠져나갈 길이 없다.
                 dismissButton = if (forced) null else {
                     { androidx.compose.material3.TextButton(onClick = { stage = "notice" }) {
                         androidx.compose.material3.Text("다음에")
