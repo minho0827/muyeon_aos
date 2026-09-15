@@ -147,11 +147,20 @@ class SplashActivity : ComponentActivity() {
                         openStore(u.storeUrl)
                     }) { androidx.compose.material3.Text("업데이트") }
                 },
-                // 진행은 '다음에' 를 눌렀을 때만. 강제는 이 버튼 자체가 없어 빠져나갈 길이 없다.
-                dismissButton = if (forced) null else {
-                    { androidx.compose.material3.TextButton(onClick = { stage = "notice" }) {
-                        androidx.compose.material3.Text("다음에")
-                    } }
+                // 강제면 '종료'만 준다 — 업데이트를 안 할 거면 앱을 쓸 수 없다.
+                //  finishAffinity() 는 이 태스크의 액티비티를 전부 닫는다(SplashActivity 만
+                //  finish() 하면 뒤에 남은 화면으로 떨어질 수 있다).
+                // 강제가 아니면 '다음에' 로 진행한다.
+                dismissButton = {
+                    if (forced) {
+                        androidx.compose.material3.TextButton(onClick = { finishAffinity() }) {
+                            androidx.compose.material3.Text("종료")
+                        }
+                    } else {
+                        androidx.compose.material3.TextButton(onClick = { stage = "notice" }) {
+                            androidx.compose.material3.Text("다음에")
+                        }
+                    }
                 },
             )
         }
