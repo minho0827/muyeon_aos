@@ -51,9 +51,17 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
             title = data["title"]
             body = data["body"]
-            notificationType = data["notification_type"]
-            notificationUrl = data["notification_url"]
+            // ⚠️ 키 계약은 muyeon-backend 의 buildDeeplinkData(notifications.service.ts) 가 정한다.
+            //    거기서 보내는 건 "type" / "url" 이다. notification_type / notification_url 은
+            //    후니드 시절 키라 서버가 한 번도 보낸 적이 없다 → 늘 null 이 되어
+            //    모든 url 딥링크가 홈으로 떨어졌다(채팅 roomId 경로만 우연히 살아 있었음).
+            //    구 키는 하위호환으로 남겨 두고 신 키를 우선한다.
+            notificationType = data["type"] ?: data["notification_type"]
+            notificationUrl = data["url"] ?: data["notification_url"]
 
+            // ⚠️ "type"/"url" 은 일부러 standardFields 에 넣지 않는다 — customData 로도 흘려보내야
+            //    아래 showNotification 의 채팅 분기(customData["type"] == "chat_message")와
+            //    네이티브 딥링크용 부가키(roomId/lessonId 등)가 그대로 동작한다.
             val standardFields = setOf("title", "body", "notification_type", "notification_url", "notification_id")
             data.forEach { (key, value) ->
                 if (key !in standardFields) {
