@@ -8,6 +8,10 @@ import androidx.compose.runtime.*
 import com.muyeon.app.common_components.dialog.PermissionExplanationDialog
 import com.muyeon.app.data.repository.AuthRepositoryImpl
 import com.muyeon.app.routers.SplashRouterImpl
+import com.muyeon.app.ui.splash.AppGateApi
+import com.muyeon.app.ui.splash.AppGateDismiss
+import com.muyeon.app.ui.splash.AppGateNotice
+import com.muyeon.app.ui.splash.AppGateUpdate
 import com.muyeon.app.ui.splash.SplashScreen
 import com.muyeon.app.ui.splash.SplashViewModel
 import com.muyeon.app.utils.PermissionManager
@@ -79,7 +83,88 @@ class SplashActivity : ComponentActivity() {
     private fun proceedToSplashScreen() {
         setContent {
             SplashScreen()
+            AppGateGate()
         }
-        viewModel.checkTokenAndNavigate()
+    }
+
+    /**
+     * 앱 시작 게이트 — 업데이트 안내 / 공지 팝업을 띄우고, 끝나면 웹뷰로 넘긴다.
+     *
+     * ⚠️ 서버 응답이 없으면(장애·비행기모드) 곧장 진입한다. 여기서 막으면 서버 장애가
+     *    곧 앱 마비가 된다. 판정은 전부 서버가 하고 앱은 action 만 따른다.
+     * ⚠️ 강제 업데이트는 닫을 수 없다 — onDismissRequest 를 비우고 취소 버튼도 없앤다.
+     *    뒤로가기로 빠져나가면 강제가 아니게 된다.
+     */
+    @Composable
+    private fun AppGateGate() {
+        var update by remember { mutableStateOf<AppGateUpdate?>(null) }
+        var notice by remember { mutableStateOf<AppGateNotice?>(null) }
+        var stage by remember { mutableStateOf("loading") } // loading | update | notice | done
+
+        LaunchedEffect(Unit) {
+            val gate = AppGateApi.fetch()
+            val action = gate?.update?.action ?: "NONE"
+            notice = gate?.notice
+            if (action == "FORCE" || action == "OPTIONAL") {
+                update = gate?.update
+                stage = "update"
+            } else {
+                stage = "notice"
+            }
+        }
+
+        // 공지 차례 — 이미 '안 보기' 한 건은 건너뛴다.
+        LaunchedEffect(stage) {
+            if (stage == "notice") {
+                val n = notice
+                if (n == null || AppGateDismiss.isDismissed(this@SplashActivity, n)) stage = "done"
+            }
+            if (stage == "done") viewModel.checkTokenAndNavigate()
+        }
+
+        val u = update
+        if (stage == "update" && u != null) {
+            val forced = u.action == "FORCE"
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { if (!forced) stage = "notice" },
+                title = { androidx.compose.material3.Text(u.title ?: "새 버전이 있습니다") },
+                text = { androidx.compose.material3.Text(u.message ?: "") },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(onClick = {
+                        openStore(u.storeUrl)
+                        if (!forced) stage = "notice"
+                    }) { androidx.compose.material3.Text("업데이트") }
+                },
+                dismissButton = if (forced) null else {
+                    { androidx.compose.material3.TextButton(onClick = { stage = "notice" }) {
+                        androidx.compose.material3.Text("다음에")
+                    } }
+                },
+            )
+        }
+
+        val n = notice
+        if (stage == "notice" && n != null && !AppGateDismiss.isDismissed(this@SplashActivity, n)) {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { AppGateDismiss.remember(this@SplashActivity, n); stage = "done" },
+                title = { androidx.compose.material3.Text(n.title) },
+                text = { androidx.compose.material3.Text(n.body ?: "") },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(onClick = {
+                        AppGateDismiss.remember(this@SplashActivity, n)
+                        stage = "done"
+                    }) { androidx.compose.material3.Text("확인") }
+                },
+            )
+        }
+    }
+
+    private fun openStore(url: String?) {
+        if (url.isNullOrBlank()) return
+        try {
+            startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+        } catch (e: Exception) {
+            // 스토어 앱도 브라우저도 없는 기기 — 진입을 막지는 않는다.
+        }
     }
 }
