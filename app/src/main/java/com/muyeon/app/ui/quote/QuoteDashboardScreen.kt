@@ -51,6 +51,7 @@ data class QuoteDashFunction(
     val group: String? = null,   // 지정 시 섹션 3열 카드 그리드(시안). null 이면 리스트.
     val badge: String? = null,   // 상태 뱃지(자동응답 "켜짐"/"꺼짐")
     val badgeOn: Boolean = false,
+    val activityKey: String? = null, // 서버 안읽음 판정과 연결할 기능(receivedQuotes)
     val action: () -> Unit,
 )
 
@@ -120,7 +121,8 @@ fun QuoteDashboardScreen(
                 val upcoming = data?.upcoming ?: emptyList()
                 if (upcoming.isNotEmpty()) UpcomingSection(upcoming, onUpcomingTap)
 
-                if (isSectioned) GroupedFunctionSections(functions) else LegacyFunctionList(functions)
+                val unreadQuotes = data?.unreadQuotes ?: 0
+                if (isSectioned) GroupedFunctionSections(functions, unreadQuotes) else LegacyFunctionList(functions, unreadQuotes)
             }
         }
     }
@@ -307,7 +309,7 @@ private fun UpcomingSection(items: List<QuoteDashUpcoming>, onTap: (QuoteDashUpc
 
 /** 기능 리스트(그룹 미지정 시) — iOS legacyFunctionList. */
 @Composable
-private fun LegacyFunctionList(functions: List<QuoteDashFunction>) {
+private fun LegacyFunctionList(functions: List<QuoteDashFunction>, unreadQuotes: Int) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             "관리 기능",
@@ -328,11 +330,14 @@ private fun LegacyFunctionList(functions: List<QuoteDashFunction>) {
                         Icon(fn.icon, null, tint = MuyeonColors.primary, modifier = Modifier.size(15.dp))
                     }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                        Text(
-                            fn.title,
-                            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
-                            lineHeight = 18.sp, color = MuyeonColors.textHead,
-                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                fn.title,
+                                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                                lineHeight = 18.sp, color = MuyeonColors.textHead,
+                            )
+                            ActivityDot(fn, unreadQuotes)
+                        }
                         fn.subtitle?.let {
                             Text(
                                 it,
@@ -351,7 +356,7 @@ private fun LegacyFunctionList(functions: List<QuoteDashFunction>) {
 
 /** 섹션 3열 카드 그리드(시안) — iOS groupedFunctionSections. 그룹 등장 순서 유지. */
 @Composable
-private fun GroupedFunctionSections(functions: List<QuoteDashFunction>) {
+private fun GroupedFunctionSections(functions: List<QuoteDashFunction>, unreadQuotes: Int) {
     val groups = remember(functions) {
         val seen = linkedSetOf<String>()
         functions.forEach { fn -> fn.group?.let { seen.add(it) } }
@@ -369,7 +374,7 @@ private fun GroupedFunctionSections(functions: List<QuoteDashFunction>) {
                 // LazyVerticalGrid 는 스크롤 Column 안에서 높이가 불확정이라 고정 행으로 배치.
                 cards.chunked(3).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        row.forEach { fn -> FunctionCard(fn, Modifier.weight(1f)) }
+                        row.forEach { fn -> FunctionCard(fn, unreadQuotes, Modifier.weight(1f)) }
                         repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                     }
                 }
@@ -380,7 +385,7 @@ private fun GroupedFunctionSections(functions: List<QuoteDashFunction>) {
 
 /** 카드 — 아이콘 위, 제목(굵게), 서브(작은 회색). iOS functionCard(minHeight 108, r14). */
 @Composable
-private fun FunctionCard(fn: QuoteDashFunction, modifier: Modifier = Modifier) {
+private fun FunctionCard(fn: QuoteDashFunction, unreadQuotes: Int, modifier: Modifier = Modifier) {
     Column(
         modifier
             .heightIn(min = 108.dp)
@@ -404,17 +409,35 @@ private fun FunctionCard(fn: QuoteDashFunction, modifier: Modifier = Modifier) {
                     .padding(horizontal = 7.dp, vertical = 3.dp),
             )
         }
-        Text(
-            fn.title,
-            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
-            lineHeight = 17.sp, color = MuyeonColors.textHead, textAlign = TextAlign.Center,
-        )
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                fn.title,
+                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                lineHeight = 17.sp, color = MuyeonColors.textHead, textAlign = TextAlign.Center,
+            )
+            ActivityDot(fn, unreadQuotes)
+        }
         fn.subtitle?.let {
             Text(
                 it,
                 fontFamily = customFontFamily, fontWeight = FontWeight.Normal, fontSize = 11.sp,
                 lineHeight = 13.sp, color = MuyeonColors.textSub, textAlign = TextAlign.Center,
             )
+        }
+    }
+}
+
+@Composable
+private fun ActivityDot(fn: QuoteDashFunction, unreadQuotes: Int) {
+    if (fn.activityKey == "receivedQuotes" && unreadQuotes > 0) {
+        Box(
+            Modifier
+                .size(12.dp)
+                .clip(CircleShape)
+                .background(Color(0x4DFF5B5F)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(Modifier.size(7.dp).clip(CircleShape).background(Color(0xFFFF5B5F)))
         }
     }
 }

@@ -101,7 +101,7 @@ class QuoteDashboardActivity : ComponentActivity() {
             QuoteDashFunction(Icons.AutoMirrored.Filled.Note, "내 레슨 관리", "개설·수정·삭제", gLesson) { openWebAndFinish("/myLessons") },
             QuoteDashFunction(Icons.Filled.CreateNewFolder, "레슨 개설", "새 레슨 등록", gLesson) { openWebAndFinish("/lessons/create") },
             QuoteDashFunction(Icons.Filled.CalendarMonth, "예약 가능 시간 관리", "요일·시간·정원", gLesson) { openWebAndFinish("/myLessons") },
-            QuoteDashFunction(Icons.Filled.Inbox, "받은 견적 확인하기", "받은 견적·채택", gQuote) {
+            QuoteDashFunction(Icons.Filled.Inbox, "받은 견적 확인하기", "받은 견적·채택", gQuote, activityKey = "receivedQuotes") {
                 QuoteHubActivity.start(this, isPro = true, initialTab = 0)
             },
             QuoteDashFunction(Icons.AutoMirrored.Filled.Send, "보낸 견적 확인하기", "보낸 견적 현황", gQuote) {
@@ -121,7 +121,7 @@ class QuoteDashboardActivity : ComponentActivity() {
 
     /** 일반회원 — iOS presentCustomerQuoteDashboard functions 동일(그룹 없음 = 리스트). */
     private fun customerFunctions(): List<QuoteDashFunction> = listOf(
-        QuoteDashFunction(Icons.Filled.Inbox, "견적 요청 내역", "받은 견적 확인·채택") {
+        QuoteDashFunction(Icons.Filled.Inbox, "견적 요청 내역", "받은 견적 확인·채택", activityKey = "receivedQuotes") {
             QuoteHubActivity.start(this, isPro = false, initialTab = 0)
         },
         QuoteDashFunction(Icons.Filled.EditNote, "레슨 요청하기", "새 견적 문진 작성") {
