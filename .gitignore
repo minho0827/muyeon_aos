@@ -140,5 +140,5 @@ local.properties
 app/google-services.json
 **/google-services.json
 keystore/healthcarediet-key.jks
-gradle.properties
+# gradle.properties 는 저장소에 포함한다(비밀값 없음). 시크릿은 local.properties / service-account.env.
 CLAUDE.md
