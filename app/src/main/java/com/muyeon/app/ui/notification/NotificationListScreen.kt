@@ -108,8 +108,10 @@ fun NotificationListScreen(
                 listOf(
                     Chip("전체", false, null), Chip("안 읽음", true, null),
                     Chip("레슨·예약", false, "LESSON"), Chip("견적·상담", false, "QUOTE"),
-                    // 2026-09-19: '공고·지원' 하나를 셋으로 쪼갰다 — 대타만 보고 싶은 강사가 많다.
-                    //  (서버는 옛 키 POSTING 도 셋으로 펼쳐 계속 받아 준다 = 구버전 앱 호환)
+                    // 2026-09-19: '공고·지원' 하나를 넷으로 쪼갰다 — 대타만 보고 싶은 강사가 많고,
+                    //  지원 결과는 끌 수 없는 알림이라 공고와 성격이 다르다.
+                    //  (서버는 옛 키 POSTING 도 펼쳐서 계속 받아 준다 = 구버전 앱 호환)
+                    Chip("지원·결과", false, "APPLY"),
                     Chip("채용", false, "JOB"), Chip("대타", false, "SUB"),
                     Chip("캐스팅", false, "CASTING"), Chip("활동", false, "ACTIVITY"),
                 ).forEach { chip ->
