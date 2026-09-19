@@ -40,6 +40,11 @@ import com.muyeon.app.ui.quote.QuoteNavBar
 import com.muyeon.app.utils.TokenManager
 import com.muyeon.app.webview.NativeWebRoute
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.size
 
 /**
  * 알림 목록 — iOS `NotificationListView.swift` 이식.
@@ -54,6 +59,8 @@ fun NotificationListScreen(
 ) {
     var items by remember { mutableStateOf<List<AppNotification>>(emptyList()) }
     var unreadOnly by remember { mutableStateOf(false) }
+    // 선택된 칩. null = 전체/안읽음(상태 필터), 그 외 = 카테고리 키(서버 필터).
+    var category by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
     var loadingMore by remember { mutableStateOf(false) }
     var reachedEnd by remember { mutableStateOf(false) }
@@ -64,34 +71,59 @@ fun NotificationListScreen(
     suspend fun reload() {
         loading = items.isEmpty()
         reachedEnd = false
-        api.list(null, 20, unreadOnly).onSuccess { items = it; reachedEnd = it.size < 20 }
+        api.list(null, 20, unreadOnly, category).onSuccess { items = it; reachedEnd = it.size < 20 }
         loading = false
     }
 
-    LaunchedEffect(unreadOnly) { reload() }
+    LaunchedEffect(unreadOnly, category) { reload() }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(title = "알림", onClose = onClose)
+        QuoteNavBar(
+            title = "알림",
+            onClose = onClose,
+            trailing = {
+                Icon(
+                    Icons.Outlined.Settings, contentDescription = "알림 설정",
+                    tint = MuyeonColors.textHead,
+                    modifier = Modifier.padding(end = 12.dp).size(22.dp)
+                        .clickable { NotificationSettingsActivity.start(ctx) },
+                )
+            },
+        )
 
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            listOf(false to "전체", true to "안 읽음").forEach { (v, label) ->
-                val on = unreadOnly == v
-                Text(
-                    label,
-                    fontFamily = customFontFamily,
-                    fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
-                    fontSize = 13.sp, lineHeight = 16.sp,
-                    color = if (on) Color.White else MuyeonColors.textSub,
-                    modifier = Modifier.clip(RoundedCornerShape(50))
-                        .background(if (on) MuyeonColors.primary else Color(0xFFF2F2F7))
-                        .clickable { unreadOnly = v }.padding(horizontal = 12.dp, vertical = 6.dp),
-                )
+            // 상태(전체·안읽음) + 카테고리를 한 줄에 둔다. 서버 계약이 한 번에 하나라
+            //  "안 읽은 레슨 알림" 같은 교차 선택을 기대하게 만들지 않는다.
+            //  ※ 채팅은 알림함에 이력을 쌓지 않으므로(FCM 직행) 칩에도 두지 않는다.
+            Row(
+                Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                data class Chip(val label: String, val unread: Boolean, val category: String?)
+                listOf(
+                    Chip("전체", false, null), Chip("안 읽음", true, null),
+                    Chip("레슨·예약", false, "LESSON"), Chip("견적·상담", false, "QUOTE"),
+                    Chip("공고·지원", false, "POSTING"), Chip("활동", false, "ACTIVITY"),
+                ).forEach { chip ->
+                    val on = unreadOnly == chip.unread && category == chip.category
+                    Text(
+                        chip.label,
+                        fontFamily = customFontFamily,
+                        fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
+                        fontSize = 13.sp, lineHeight = 16.sp,
+                        color = if (on) Color.White else MuyeonColors.textSub,
+                        modifier = Modifier.clip(RoundedCornerShape(50))
+                            .background(if (on) MuyeonColors.primary else Color(0xFFF2F2F7))
+                            .clickable { unreadOnly = chip.unread; category = chip.category }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
             }
-            Spacer(Modifier.weight(1f))
             Text(
                 "모두 읽음",
                 fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,

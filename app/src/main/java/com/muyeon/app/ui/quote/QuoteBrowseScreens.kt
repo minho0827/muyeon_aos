@@ -171,6 +171,10 @@ fun QuoteBrowseScreen(
     onClose: () -> Unit,
     onGoGenreSettings: (() -> Unit)? = null,
     onGoLessonSettings: (() -> Unit)? = null,
+    /** 「개인레슨 관리」 탭 안에서 쓰일 때 true — 자체 상단바를 걷어낸다.
+     *  방문 종료(N 배지 기준시각)도 컨테이너가 화면을 닫을 때 한 번만 기록한다 —
+     *  탭을 오갈 때마다 기록하면 보지도 않은 요청의 N 이 사라진다(iOS 에서 실제로 났던 문제). */
+    embedded: Boolean = false,
 ) {
     val state = remember { QuoteBrowseState(api) }
     var deckIndex by remember { mutableStateOf<Int?>(null) }
@@ -195,7 +199,9 @@ fun QuoteBrowseScreen(
     Box(Modifier.fillMaxSize().background(MuyeonColors.groupedBg)) {
         Column(Modifier.fillMaxSize()) {
             // 뒤로 = 화면 이탈 → 서버에 방문 종료 기록(다음 방문의 N 기준 시각). iOS onDisappear 대응.
-            QuoteNavBar(title = "견적 모아보기", onBack = { scope.launch { state.endVisit() }; onClose() })
+            if (!embedded) {
+                QuoteNavBar(title = "수강생 찾기", onBack = { scope.launch { state.endVisit() }; onClose() })
+            }
             PrefsBanner(state, onGoLessonSettings) { scope.launch { state.load() } }
             FilterChips(state) { scope.launch { state.load() } }
 
@@ -644,7 +650,7 @@ fun QuoteRequestCard(quote: QuoteFull) {
  *  회당 금액 + 예약금(선택) + 메시지 + 내 프로필 첨부 + 발송 재확인.
  */
 @Composable
-private fun QuoteRespondSheet(
+internal fun QuoteRespondSheet(
     quote: QuoteFull,
     attachmentRole: String,                       // TEACHER | ACADEMY
     onDismiss: () -> Unit,
@@ -788,7 +794,7 @@ private fun QuoteRespondSheet(
 
     if (confirmSend) {
         QuoteDialog(
-            title = "견적을 보내시겠습니까?",
+            title = "제안을 보내시겠습니까?",
             message = if (includeProfile) {
                 if (isAcademy) "학원 기본정보가 견적 카드에 함께 전달돼요." else "기본 이력서가 견적 카드에 함께 전달돼요."
             } else {

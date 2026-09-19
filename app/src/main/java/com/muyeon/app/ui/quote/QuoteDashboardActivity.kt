@@ -19,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.muyeon.app.utils.TokenManager
 import com.muyeon.app.webview.NativeWebRoute
 
@@ -53,31 +54,42 @@ class QuoteDashboardActivity : ComponentActivity() {
             val autoApi = remember { AutoQuoteApi(token) }
 
             if (isPro) {
-                // 자동응답 켜짐/꺼짐을 먼저 조회해 카드 뱃지로 표시(진입 전 상태 확인). 실패해도 화면은 그대로.
-                val autoOn by produceState(initialValue = false, autoApi) {
-                    value = autoApi.activeId() != null
+                // 개인레슨 관리 — 3탭(수강생 상담·찾기·레슨 소개). 카드 그리드 허브를 대체한다.
+                //  기능을 고르는 중간 화면을 없애고 탭을 열면 바로 그 일의 목록이 보인다.
+                val productApi = remember { com.muyeon.app.ui.lesson.LessonProductApi(token) }
+                var sentDetail by remember { mutableStateOf<SentQuoteItem?>(null) }
+                val detail = sentDetail
+                if (detail != null) {
+                    SentQuoteDetailScreen(
+                        api = api,
+                        item = detail,
+                        onBack = { sentDetail = null },
+                        onOpenChat = { roomId ->
+                            com.muyeon.app.ui.chat.ChatActivity.startRoom(this, roomId)
+                        },
+                    )
+                } else {
+                    PersonalLessonManagementScreen(
+                        quoteApi = api,
+                        productApi = productApi,
+                        roleLabel = if (role == "ACADEMY") "학원" else "강사",
+                        onClose = { finish() },
+                        onOpenSent = { sentDetail = it },
+                        onAutoReply = { QuoteAutoTemplatesActivity.start(this) },
+                        onCreateLesson = { com.muyeon.app.ui.lesson.LessonActivity.startCreate(this) },
+                        onEditLesson = { id -> com.muyeon.app.ui.lesson.LessonActivity.startEdit(this, id) },
+                        onSlots = { id -> com.muyeon.app.ui.lesson.LessonActivity.startSlots(this, id) },
+                        onGoGenreSettings = { openWebAndFinish("/lessonGenres") },
+                        // 레슨 설정(노출·장르)은 강사 전용 — 학원에겐 효과가 없는 화면이다.
+                        onGoLessonSettings = if (role == "ACADEMY") null else {
+                            { com.muyeon.app.ui.lesson.LessonActivity.startSettings(this) }
+                        },
+                    )
                 }
-                QuoteDashboardScreen(
-                    api = api,
-                    title = if (role == "ACADEMY") "레슨 관리 (학원)" else "레슨 관리 (강사)",
-                    role = "teacher",
-                    functions = proFunctions(role, autoOn),
-                    onClose = { finish() },
-                    onTileAction = { id ->
-                        when (id) {
-                            "today", "pending" -> openWebAndFinish("/lessonCalendar")
-                            "new" -> QuoteBrowseActivity.start(this)
-                            "sent", "accepted" -> QuoteHubActivity.start(this, isPro = true, initialTab = 1)
-                        }
-                    },
-                    onUpcomingTap = { item ->
-                        item.lessonId?.let { openWebAndFinish("/lessons/$it") }
-                    },
-                )
             } else {
                 QuoteDashboardScreen(
                     api = api,
-                    title = "견적 허브",
+                    title = "레슨 요청 허브",
                     role = "customer",
                     functions = customerFunctions(),
                     onClose = { finish() },
@@ -91,32 +103,6 @@ class QuoteDashboardActivity : ComponentActivity() {
                 )
             }
         }
-    }
-
-    /** 강사·학원 — "레슨 관리"/"견적 관리" 2섹션(iOS presentLessonQuoteHub items 순서 동일). */
-    private fun proFunctions(role: String, autoOn: Boolean): List<QuoteDashFunction> {
-        val gLesson = "레슨 관리"
-        val gQuote = "견적 관리"
-        val list = mutableListOf(
-            QuoteDashFunction(Icons.AutoMirrored.Filled.Note, "내 레슨 관리", "개설·수정·삭제", gLesson) { openWebAndFinish("/myLessons") },
-            QuoteDashFunction(Icons.Filled.CreateNewFolder, "레슨 개설", "새 레슨 등록", gLesson) { openWebAndFinish("/lessons/create") },
-            QuoteDashFunction(Icons.Filled.CalendarMonth, "예약 가능 시간 관리", "요일·시간·정원", gLesson) { openWebAndFinish("/myLessons") },
-            QuoteDashFunction(Icons.Filled.Inbox, "받은 제안 확인하기", "받은 제안·채택", gQuote, activityKey = "receivedQuotes") {
-                QuoteHubActivity.start(this, isPro = true, initialTab = 0)
-            },
-            QuoteDashFunction(Icons.AutoMirrored.Filled.Send, "보낸 제안 확인하기", "보낸 제안 현황", gQuote) {
-                QuoteHubActivity.start(this, isPro = true, initialTab = 1)
-            },
-            QuoteDashFunction(
-                Icons.Outlined.ChatBubbleOutline, "자동응답 설정", "자동 메시지 관리", gQuote,
-                badge = if (autoOn) "켜짐" else "꺼짐", badgeOn = autoOn,
-            ) { QuoteAutoTemplatesActivity.start(this) },
-        )
-        // 레슨 설정(강사프로필 관리 + 레슨 탭 노출 토글)은 강사 전용 — 학원 유형에겐 효과가 없는 화면.
-        if (role != "ACADEMY") {
-            list.add(QuoteDashFunction(Icons.Filled.Settings, "레슨 설정", "노출·장르", gLesson) { com.muyeon.app.ui.lesson.LessonActivity.startSettings(this) })
-        }
-        return list
     }
 
     /** 일반회원 — iOS presentCustomerQuoteDashboard functions 동일(그룹 없음 = 리스트). */

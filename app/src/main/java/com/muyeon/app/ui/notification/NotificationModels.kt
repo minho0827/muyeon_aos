@@ -46,17 +46,57 @@ data class AppNotification(
     }
 }
 
+/** 알림 설정 1줄. locked = 끌 수 없는 것(인증·소속·공지처럼 놓치면 곤란한 알림). */
+data class NotificationCategoryPref(
+    val key: String,
+    val label: String,
+    val desc: String,
+    val locked: Boolean,
+    val enabled: Boolean,
+)
+
+data class NotificationPrefs(
+    val pushEnabled: Boolean,
+    val categories: List<NotificationCategoryPref>,
+) {
+    companion object {
+        fun from(o: JSONObject): NotificationPrefs = NotificationPrefs(
+            pushEnabled = o.optBoolean("pushEnabled", true),
+            categories = o.optJSONArray("categories").let { arr ->
+                (0 until (arr?.length() ?: 0)).map { i ->
+                    val c = arr!!.getJSONObject(i)
+                    NotificationCategoryPref(
+                        key = c.optString("key"),
+                        label = c.optString("label"),
+                        desc = c.optString("desc"),
+                        locked = c.optBoolean("locked", false),
+                        enabled = c.optBoolean("enabled", true),
+                    )
+                }
+            },
+        )
+    }
+}
+
 class NotificationApi(private val token: String?) {
 
     private val client = OkHttpClient()
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
 
-    /** 커서 페이징 — cursor 는 직전 페이지 마지막 id. */
-    suspend fun list(cursor: Int?, limit: Int = 20, unreadOnly: Boolean = false): Result<List<AppNotification>> {
+    /** 커서 페이징 — cursor 는 직전 페이지 마지막 id.
+     *  category 는 서버가 거른다(클라에서 거르면 받아 온 페이지 안에서만 걸러져
+     *  무한스크롤과 만나 목록이 빈 것처럼 보인다). */
+    suspend fun list(
+        cursor: Int?,
+        limit: Int = 20,
+        unreadOnly: Boolean = false,
+        category: String? = null,
+    ): Result<List<AppNotification>> {
         val q = buildList {
             add("limit=$limit")
             cursor?.let { add("cursor=$it") }
             if (unreadOnly) add("unreadOnly=true")
+            if (!category.isNullOrEmpty()) add("category=$category")
         }
         return call("/notifications?" + q.joinToString("&"))
             .map { JSONArray(it.ifBlank { "[]" }).map(AppNotification::from) }
@@ -70,10 +110,33 @@ class NotificationApi(private val token: String?) {
 
     suspend fun markAllRead(): Result<Unit> = call("/notifications/read-all", "PATCH").map { }
 
-    private suspend fun call(path: String, method: String = "GET"): Result<String> =
+    // ── 알림(푸시) 설정 — GET/PATCH /me/notification-prefs ──
+    //  ⚠️ 관심조건 알림(me/alert-prefs)과 다른 것이다. 저쪽은 "어떤 공고를 받을지",
+    //   이쪽은 "어떤 알림을 푸시로 받을지". 카테고리 라벨·설명은 서버가 함께 내려준다 —
+    //   앱이 문구를 들고 있으면 카테고리가 늘 때마다 스토어 심사를 다시 받아야 한다.
+    suspend fun prefs(): Result<NotificationPrefs> =
+        call("/me/notification-prefs").map { NotificationPrefs.from(JSONObject(it)) }
+
+    /** 부분 저장 — 바꾼 것만 보낸다(서버가 나머지를 유지). */
+    suspend fun updatePrefs(
+        pushEnabled: Boolean? = null,
+        category: Pair<String, Boolean>? = null,
+    ): Result<NotificationPrefs> {
+        val body = JSONObject()
+        pushEnabled?.let { body.put("pushEnabled", it) }
+        category?.let { (key, on) -> body.put("categories", JSONObject().put(key, on)) }
+        return call("/me/notification-prefs", "PATCH", body.toString())
+            .map { NotificationPrefs.from(JSONObject(it)) }
+    }
+
+    private suspend fun call(
+        path: String,
+        method: String = "GET",
+        body: String? = null,
+    ): Result<String> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val payload = if (method != "GET") "".toRequestBody(JSON) else null
+                val payload = if (method != "GET") (body ?: "").toRequestBody(JSON) else null
                 val req = Request.Builder().url(apiBase + path).method(method, payload)
                     .addHeader("Content-Type", "application/json")
                     .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
