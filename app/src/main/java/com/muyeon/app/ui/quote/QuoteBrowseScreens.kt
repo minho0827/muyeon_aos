@@ -490,7 +490,7 @@ private fun QuoteDeckScreen(state: QuoteBrowseState, initialIndex: Int, onClose:
             }
 
             Text(
-                "견적 보내기",
+                "제안 보내기",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
                 lineHeight = 19.sp, color = Color.White, textAlign = TextAlign.Center,
                 modifier = Modifier
@@ -518,7 +518,7 @@ private fun QuoteDeckScreen(state: QuoteBrowseState, initialIndex: Int, onClose:
         QuoteDialog(
             title = "전공 외 요청이에요",
             message = "${QuoteUi.categoryLabel(quote.categoryId)} 요청이에요. 등록된 전공과 달라요.\n그래도 견적을 보낼까요?",
-            confirmText = "견적 보내기",
+            confirmText = "제안 보내기",
             onConfirm = { confirmOutside = null; respondFor = quote },
             onDismiss = { confirmOutside = null },
         )
@@ -673,7 +673,7 @@ private fun QuoteRespondSheet(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                "${QuoteUi.categoryLabel(quote.categoryId)} 견적 보내기",
+                "${QuoteUi.categoryLabel(quote.categoryId)} 제안 보내기",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp,
                 lineHeight = 20.sp, color = MuyeonColors.textHead,
             )
@@ -773,7 +773,7 @@ private fun QuoteRespondSheet(
             )
 
             Text(
-                if (sending) "보내는 중…" else "견적 보내기",
+                if (sending) "보내는 중…" else "제안 보내기",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
                 lineHeight = 19.sp, color = Color.White, textAlign = TextAlign.Center,
                 modifier = Modifier
@@ -794,7 +794,7 @@ private fun QuoteRespondSheet(
             } else {
                 "프로필 없이 금액과 메시지만 전달돼요."
             },
-            confirmText = "견적 보내기",
+            confirmText = "제안 보내기",
             onConfirm = {
                 confirmSend = false
                 sending = true

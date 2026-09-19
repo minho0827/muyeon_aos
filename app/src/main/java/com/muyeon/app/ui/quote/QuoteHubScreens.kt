@@ -59,7 +59,7 @@ fun QuoteHubScreen(
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         QuoteNavBar(
-            title = "견적 요청 내역", onClose = onClose,
+            title = "레슨 요청 내역", onClose = onClose,
             trailing = {
                 // 추천 제외 해제 진입점 — 채팅의 '차단한 사용자'와 같은 이유로, 제외가 일어나는
                 //  추천 카드와 같은 화면 계층에 둔다(설정(MY)은 웹이라 여기가 유일한 자리).
@@ -72,7 +72,7 @@ fun QuoteHubScreen(
             },
         )
         if (isPro) {
-            QuoteTabBar(tab = tab, titles = listOf("받은 견적", "보낸 견적"), onSelect = { tab = it })
+            QuoteTabBar(tab = tab, titles = listOf("받은 제안", "보낸 제안"), onSelect = { tab = it })
             HorizontalDivider(color = MuyeonColors.border)
         }
         if (isPro && tab == 1) {
@@ -182,7 +182,7 @@ fun RequestedQuotesList(api: QuoteApi, onOpen: (Int) -> Unit) {
     if (quotes.isEmpty() && !isLoading) {
         QuoteEmptyState(
             icon = Icons.Outlined.Inbox,
-            title = "받은 견적이 없어요",
+            title = "받은 제안이 없어요",
             message = "견적을 요청하면 강사들의 견적이 여기에 쌓여요.",
             modifier = Modifier.fillMaxSize().wrapContentHeight(Alignment.CenterVertically),
         )
@@ -266,7 +266,7 @@ fun MyQuoteRow(quote: MyQuoteSummary, onClick: () -> Unit) {
         }
         listOfNotNull(quote.region, "$name 강사 지정 요청", progress).joinToString(" · ")
     } else {
-        listOfNotNull(quote.region, "받은 견적 ${quote.responseCount ?: 0}").joinToString(" · ")
+        listOfNotNull(quote.region, "받은 제안 ${quote.responseCount ?: 0}").joinToString(" · ")
     }
 
     Row(
@@ -328,8 +328,8 @@ fun SentQuotesList(api: QuoteApi, onOpen: (SentQuoteItem) -> Unit) {
     if (items.isEmpty() && !isLoading) {
         QuoteEmptyState(
             icon = Icons.Outlined.Send,
-            title = "보낸 견적이 없어요",
-            message = "받은 견적요청에 응답하면 여기에 쌓여요.",
+            title = "보낸 제안이 없어요",
+            message = "수강생 요청에 제안을 보내면 여기에 쌓여요.",
             modifier = Modifier.fillMaxSize().wrapContentHeight(Alignment.CenterVertically),
         )
     } else {

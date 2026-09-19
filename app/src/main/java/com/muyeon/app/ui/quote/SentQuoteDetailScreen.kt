@@ -44,7 +44,7 @@ fun SentQuoteDetailScreen(
     val (badgeText, badgeColor) = sentQuoteBadge(item)
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.groupedBg)) {
-        QuoteNavBar(title = "보낸 견적", onBack = onBack)
+        QuoteNavBar(title = "보낸 제안", onBack = onBack)
         Column(
             Modifier.verticalScroll(rememberScrollState()).padding(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -106,7 +106,7 @@ private fun MyQuoteCard(item: SentQuoteItem, badgeText: String, badgeColor: Colo
     SentCard {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                "내가 보낸 견적",
+                "내가 보낸 제안",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
                 lineHeight = 19.sp, color = MuyeonColors.textHead,
             )

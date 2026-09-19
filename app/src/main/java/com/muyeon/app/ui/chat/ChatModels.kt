@@ -41,7 +41,7 @@ data class ChatRoomSummary(
     val roleBadge: String?
         get() = when {
             kind == "quote" && myQuoteRole == "customer" -> "내 요청"
-            kind == "quote" && myQuoteRole == "pro" -> "견적 응답"
+            kind == "quote" && myQuoteRole == "pro" -> "보낸 제안"
             kind == "space" -> "공간 문의"
             else -> null
         }
@@ -66,8 +66,8 @@ data class ChatRoomSummary(
 /** 채팅 리스트 세그먼트 필터 — iOS ChatRoomFilter. */
 enum class ChatRoomFilter(val title: String) {
     ALL("전체"),
-    REQUESTED("내 견적요청"),
-    RESPONDED("견적 응답"),
+    REQUESTED("내 레슨 요청"),
+    RESPONDED("보낸 제안"),
     INQUIRY("일반·문의");
 
     /**
