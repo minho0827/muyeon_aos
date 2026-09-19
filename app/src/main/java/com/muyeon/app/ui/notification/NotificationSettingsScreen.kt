@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +28,7 @@ import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteNavBar
 import com.muyeon.app.utils.TokenManager
+import com.muyeon.app.webview.NativeWebRoute
 import kotlinx.coroutines.launch
 
 /**
@@ -41,7 +43,12 @@ import kotlinx.coroutines.launch
  *  스토어 심사를 다시 받아야 한다.
  */
 @Composable
-fun NotificationSettingsScreen(api: NotificationApi, onClose: () -> Unit) {
+fun NotificationSettingsScreen(
+    api: NotificationApi,
+    onClose: () -> Unit,
+    /** '맞춤 알림'(관심 조건) 진입. 아직 웹 화면이라 호출부가 이동을 맡는다 — null 이면 줄 자체를 감춘다. */
+    onOpenAlerts: (() -> Unit)? = null,
+) {
     var prefs by remember { mutableStateOf<NotificationPrefs?>(null) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -99,6 +106,7 @@ fun NotificationSettingsScreen(api: NotificationApi, onClose: () -> Unit) {
             ) {
                 MasterCard(current.pushEnabled, ::setMaster)
                 CategorySection(current, ::setCategory)
+                if (onOpenAlerts != null) CustomAlertSection(onOpenAlerts)
                 Text(
                     "끈 알림도 앱 안 '알림'에는 그대로 쌓여요. " +
                         "휴대폰 설정에서 무용연 알림을 꺼 두면 여기 설정과 무관하게 푸시가 오지 않아요.",
@@ -159,6 +167,49 @@ private fun CategorySection(prefs: NotificationPrefs, onChange: (String, Boolean
     }
 }
 
+/**
+ * 맞춤 알림(관심 조건) 진입.
+ *
+ * 이 화면은 '어떤 알림을 푸시로 받을지'만 정한다. "대타만 받고 싶다"의 나머지 절반 —
+ * 어떤 새 공고를 알림으로 받을지 — 은 관심 조건에 있다. 두 화면이 떨어져 있어
+ * 한쪽만 끄고 "왜 계속 오지" 하던 자리라, 여기서 바로 건너갈 길을 둔다.
+ */
+@Composable
+private fun CustomAlertSection(onOpen: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            "맞춤 알림",
+            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold,
+            fontSize = 12.sp, lineHeight = 16.sp, color = MuyeonColors.textSub,
+            modifier = Modifier.padding(start = 4.dp),
+        )
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                .background(MuyeonColors.surface).clickable { onOpen() }.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "관심 조건 알림",
+                    fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp, lineHeight = 18.sp, color = MuyeonColors.textHead,
+                )
+                Text(
+                    "받고 싶은 공고 종류(채용·대타·캐스팅)와 지역·장르·수업 대상을 정해요. " +
+                        "대타 공고만 받을 수도 있어요.",
+                    fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp,
+                    color = MuyeonColors.textSub,
+                )
+            }
+            Text(
+                "›",
+                fontFamily = customFontFamily, fontSize = 18.sp,
+                color = MuyeonColors.textSub, modifier = Modifier.padding(start = 8.dp),
+            )
+        }
+    }
+}
+
 @Composable
 private fun CategoryRow(
     category: NotificationCategoryPref,
@@ -213,7 +264,12 @@ class NotificationSettingsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val api = remember { NotificationApi(TokenManager.getAccessToken(this)) }
-            NotificationSettingsScreen(api = api, onClose = { finish() })
+            NotificationSettingsScreen(
+                api = api,
+                onClose = { finish() },
+                // 관심 조건은 아직 웹 화면 — 네이티브를 닫으면서 웹을 그 경로로 보낸다.
+                onOpenAlerts = { NativeWebRoute.openWebAndFinish(this, "/alerts") },
+            )
         }
     }
 }

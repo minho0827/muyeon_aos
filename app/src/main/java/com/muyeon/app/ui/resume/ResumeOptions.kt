@@ -41,7 +41,8 @@ object ResumeOptions {
 
     /** 수업 대상 — 웹 CLASS_TARGETS 와 1:1. */
     val classTargets = listOf(
-        "KIDS" to "유아", "ELEM" to "초등", "TEEN" to "중고등", "ADULT" to "성인", "EXAM" to "입시생",
+        "KIDS" to "유아", "ELEM" to "초등", "TEEN" to "중고등", "ADULT" to "성인",
+        "EXAM" to "입시생", "MAJOR" to "전공",
     )
 
     /** 공개 프로필 시안 그리드: 6버킷 → 오전/오후/저녁 3행 매핑. */

@@ -80,6 +80,8 @@ fun ResumeEditScreen(
     var image by remember { mutableStateOf<String?>(null) }
     var images by remember { mutableStateOf(listOf<String>()) }
     var genres by remember { mutableStateOf(listOf<String>()) }
+    // 가르칠 수 있는 수업 대상(코드). 강사 이력서에만 쓴다.
+    var targets by remember { mutableStateOf(listOf<String>()) }
     // 이름+코드 쌍으로 들고 있는다 — iOS 와 동일. 이름만 두면 첫 지역을 지웠을 때
     //  대표 코드(activeRegionCode)가 사라진 지역을 계속 가리킨다.
     var activeRegions by remember { mutableStateOf(listOf<Pair<String, String?>>()) }   // 최대 3
@@ -128,6 +130,7 @@ fun ResumeEditScreen(
             gender = d.gender.orEmpty(); height = d.height.orEmpty()
             companyCareer = d.companyCareer.orEmpty(); videoUrl = d.videoUrl.orEmpty()
             genres = d.genres ?: emptyList()
+            targets = d.targets ?: emptyList()
             // 다중 지역: activeRegions[] 우선, 없으면 activeRegion 을 콤마 분해(최대 3).
             //  서버가 주는 코드는 단일이라 iOS 처럼 첫 지역에만 붙인다.
             val names = d.activeRegions?.takeIf { it.isNotEmpty() }
@@ -242,6 +245,18 @@ fun ResumeEditScreen(
                     ResumeSection("전공·장르")
                     MultiChips(ResumeOptions.genres.map { it to it }, genres.toSet()) { v ->
                         genres = if (genres.contains(v)) genres - v else genres + v
+                    }
+                }
+
+                // 수업 대상 — 대타는 "유아를 볼 수 있는가"가 지원 여부를 가른다.
+                //  웹 이력서엔 진작 있던 항목인데 앱에만 없어, 앱으로 쓴 이력서는
+                //  '내 조건에 맞는 공고만'이 걸러 주질 못했다.
+                if (!mode.isDancer) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ResumeSection("수업 대상")
+                        MultiChips(ResumeOptions.classTargets, targets.toSet()) { v ->
+                            targets = if (targets.contains(v)) targets - v else targets + v
+                        }
                     }
                 }
 
@@ -459,6 +474,7 @@ fun ResumeEditScreen(
                                 basic = basic.copy(photo = image),
                                 oneLiner = oneLiner, intro = intro,
                                 image = image ?: "", images = images, genres = genres,
+                                targets = if (mode.isDancer) loadedData.targets else targets,
                                 gender = if (mode.isDancer) gender else loadedData.gender,
                                 height = if (mode.isDancer) height else loadedData.height,
                                 companyCareer = if (mode.isDancer) companyCareer else loadedData.companyCareer,
