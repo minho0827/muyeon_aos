@@ -48,6 +48,10 @@ import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.FlowRowScope
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 
 /**
  * 견적 모아보기(강사) — iOS `QuoteBrowseView.swift` 1:1.
@@ -305,54 +309,166 @@ private fun PrefsBanner(state: QuoteBrowseState, onGoLessonSettings: (() -> Unit
 /** 필터 — 1줄: 장르(서버) / 2줄: 지역 시도(클라, 목록에서 추출). */
 @Composable
 private fun FilterChips(state: QuoteBrowseState, onReload: () -> Unit) {
-    // 칩 정렬: 전체 → 내 전공(서버 myCats) → 나머지(카탈로그 순 유지).
-    val ordered = remember(state.myCats) {
-        if (state.myCats.isEmpty()) BROWSE_CATEGORIES
-        else {
-            val mine = BROWSE_CATEGORIES.filter { it.first.isNotEmpty() && state.myCats.contains(it.first) }
-            val rest = BROWSE_CATEGORIES.filter { it.first.isEmpty() || !state.myCats.contains(it.first) }
-            val all = rest.firstOrNull()
-            if (all != null && all.first.isEmpty()) listOf(all) + mine + rest.drop(1) else mine + rest
+    // ⚠️ 가로 스크롤을 쓰지 않는다.
+    //  이 화면은 「개인레슨 관리」의 좌우 스와이프 페이저 안에서 열린다. 가로로 페이징되는
+    //  컨테이너 안에 가로 스크롤 면을 두면 같은 축의 제스처가 겹친다 — 칩 줄에서 밀면 탭이
+    //  넘어가거나 거꾸로 그 영역에서 탭 전환이 먹히지 않는다.
+    //
+    //  그래서 장르 8종·지역 전부를 늘어놓지 않는다. 강사가 실제로 오가는 건 자기 전공 한두 개라
+    //  [전체] + 내 전공 2개 + [필터] 면 한 줄에 들어간다. 나머지 장르와 지역은 시트가 맡는다
+    //  (지금 고른 값은 항상 칩으로 보인다 — 무엇으로 걸러진 목록인지 알 수 있어야 한다).
+    var sheetOpen by remember { mutableStateOf(false) }
+
+    val shown = remember(state.myCats, state.categoryId) {
+        val all = BROWSE_CATEGORIES.firstOrNull { it.first.isEmpty() } ?: ("" to "전체")
+        val mine = BROWSE_CATEGORIES
+            .filter { it.first.isNotEmpty() && state.myCats.contains(it.first) }
+            .take(2)
+            .toMutableList()
+        val current = BROWSE_CATEGORIES.firstOrNull { it.first == state.categoryId }
+        if (state.categoryId.isNotEmpty() && current != null && mine.none { it.first == current.first }) {
+            mine.add(current)
         }
+        listOf(all) + mine
     }
 
-    Column(
-        Modifier.fillMaxWidth().background(MuyeonColors.surface).padding(vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+    Row(
+        Modifier.fillMaxWidth().background(MuyeonColors.surface)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Row(
-            Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            ordered.forEach { (id, label) ->
-                BrowseChip(label, state.categoryId == id) { state.categoryId = id; onReload() }
+        shown.forEach { (id, label) ->
+            BrowseChip(label, state.categoryId == id, Modifier.weight(1f)) {
+                state.categoryId = id
+                onReload()
             }
         }
-        if (state.sidoOptions.size > 1) {
-            Row(
-                Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                BrowseChip("지역 전체", state.regionSido.isEmpty()) { state.regionSido = "" }
-                state.sidoOptions.forEach { sido ->
-                    BrowseChip(sido, state.regionSido == sido) { state.regionSido = sido }
+        BrowseChip(
+            text = if (state.regionSido.isEmpty()) "필터" else state.regionSido,
+            selected = state.regionSido.isNotEmpty(),
+            modifier = Modifier.weight(1f),
+        ) { sheetOpen = true }
+    }
+
+    if (sheetOpen) {
+        QuoteBrowseFilterSheet(
+            categoryId = state.categoryId,
+            regionSido = state.regionSido,
+            sidoOptions = state.sidoOptions,
+            onDismiss = { sheetOpen = false },
+        ) { category, region ->
+            val categoryChanged = state.categoryId != category
+            state.categoryId = category
+            state.regionSido = region
+            sheetOpen = false
+            // 장르는 서버 쿼리, 지역은 클라 필터 — 장르가 바뀔 때만 다시 받는다.
+            if (categoryChanged) onReload()
+        }
+    }
+}
+
+/** 장르 전체 + 지역 고르기. 자주 쓰지 않는 조건이라 한 줄 칩 대신 시트에 둔다. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun QuoteBrowseFilterSheet(
+    categoryId: String,
+    regionSido: String,
+    sidoOptions: List<String>,
+    onDismiss: () -> Unit,
+    onApply: (String, String) -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var draftCategory by remember { mutableStateOf(categoryId) }
+    var draftRegion by remember { mutableStateOf(regionSido) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            Text(
+                "필터",
+                fontFamily = customFontFamily, fontWeight = FontWeight.Bold,
+                fontSize = 18.sp, lineHeight = 22.sp, color = MuyeonColors.textHead,
+            )
+
+            FilterGroup("장르") {
+                BROWSE_CATEGORIES.forEach { (id, label) ->
+                    BrowseChip(label, draftCategory == id) { draftCategory = id }
                 }
             }
+
+            if (sidoOptions.isNotEmpty()) {
+                FilterGroup("지역") {
+                    BrowseChip("전체", draftRegion.isEmpty()) { draftRegion = "" }
+                    sidoOptions.forEach { sido ->
+                        BrowseChip(sido, draftRegion == sido) { draftRegion = sido }
+                    }
+                }
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "초기화",
+                    fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold,
+                    fontSize = 15.sp, color = MuyeonColors.textSub,
+                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFF2F2F7))
+                        .clickable { draftCategory = ""; draftRegion = "" }
+                        .padding(vertical = 14.dp),
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    "적용",
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp, color = Color.White,
+                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
+                        .background(MuyeonColors.primary)
+                        .clickable { onApply(draftCategory, draftRegion) }
+                        .padding(vertical = 14.dp),
+                    textAlign = TextAlign.Center,
+                )
+            }
+            Spacer(Modifier.height(12.dp))
         }
     }
 }
 
 @Composable
-private fun BrowseChip(text: String, selected: Boolean, onClick: () -> Unit) {
+private fun FilterGroup(title: String, content: @Composable FlowRowScope.() -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            title,
+            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold,
+            fontSize = 13.sp, lineHeight = 16.sp, color = MuyeonColors.textSub,
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            content = content,
+        )
+    }
+}
+
+@Composable
+private fun BrowseChip(
+    text: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
     Text(
         text,
         fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
         lineHeight = 16.sp, color = if (selected) Color.White else MuyeonColors.textSub,
-        modifier = Modifier
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        textAlign = TextAlign.Center,
+        modifier = modifier
             .clip(RoundedCornerShape(50))
             .background(if (selected) MuyeonColors.primary else Color(0xFFF2F2F7))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 7.dp),
+            .padding(horizontal = 10.dp, vertical = 7.dp),
     )
 }
 

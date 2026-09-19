@@ -20,6 +20,9 @@ import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.lesson.LessonManageScreen
 import com.muyeon.app.ui.lesson.LessonProductApi
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import kotlinx.coroutines.launch
 
 /**
  * 「개인레슨 관리」 — 강사·학원 원장이 개인레슨 업무를 한 화면에서 처리한다.
@@ -32,10 +35,12 @@ import com.muyeon.app.ui.lesson.LessonProductApi
  *    수강생 찾기 — 레슨을 원하는 수강생의 공개 요청에서 바로 제안
  *    레슨 소개  — 내가 등록한 레슨에서 바로 수정·개설
  *
- * ⚠️ iOS 와 달리 좌우 스와이프로 탭을 넘기지 않는다(HorizontalPager 미사용).
- *   '수강생 찾기' 안의 장르·지역 칩이 가로 스크롤인데(지역은 개수가 가변이라 한 줄 고정 불가),
- *   가로로 페이징되는 컨테이너 안에 가로 스크롤 면을 두면 같은 축의 제스처가 겹친다.
- *   iOS 에서 실제로 그 문제가 나서 칩을 한 줄로 줄여 해결했지만, 여기선 줄일 수가 없다.
+ * 탭은 누르는 것 말고 **좌우로 밀어서도** 오간다(HorizontalPager). 탭 줄과 페이저가
+ *  같은 상태 하나를 보므로 서로를 되받아 왕복하는 일이 없다.
+ *
+ * ⚠️ 이 페이저 안에는 **가로 스크롤 면을 두지 않는다.** 같은 축의 제스처가 겹치면
+ *   칩 줄에서 밀 때 탭이 넘어가거나 거꾸로 그 영역에서 탭 전환이 먹히지 않는다(iOS 에서 겪었다).
+ *   그래서 '수강생 찾기'의 장르·지역 칩도 한 줄 고정 + 필터 시트로 바꿨다(QuoteBrowseScreens).
  */
 enum class LessonStudioTab(val title: String, val guide: String) {
     CONSULT(
@@ -63,7 +68,10 @@ fun PersonalLessonManagementScreen(
     onGoGenreSettings: () -> Unit,
     onGoLessonSettings: (() -> Unit)? = null,
 ) {
-    var tab by remember { mutableStateOf(LessonStudioTab.CONSULT) }
+    val tabs = LessonStudioTab.entries
+    val pagerState = rememberPagerState(pageCount = { tabs.size })
+    val scope = rememberCoroutineScope()
+    val tab = tabs[pagerState.currentPage]
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.groupedBg)) {
         QuoteNavBar(
@@ -81,11 +89,19 @@ fun PersonalLessonManagementScreen(
                 }
             },
         )
-        SubTabRow(tab) { tab = it }
+        SubTabRow(tab) { target ->
+            scope.launch { pagerState.animateScrollToPage(tabs.indexOf(target)) }
+        }
         HorizontalDivider(color = MuyeonColors.border)
 
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            when (tab) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            // 페이지를 넘겨도 다시 그리지 않게 유지 — 목록 스크롤 위치와 로딩 상태가 살아 있어야
+            //  오가는 느낌이 끊기지 않는다(조회도 다시 돌지 않는다).
+            beyondViewportPageCount = 1,
+        ) { page ->
+            when (tabs[page]) {
                 LessonStudioTab.CONSULT -> StudentConsultScreen(api = quoteApi, onOpenSent = onOpenSent)
                 LessonStudioTab.FIND -> QuoteBrowseScreen(
                     api = quoteApi,
