@@ -73,6 +73,42 @@ data class NotiCategory(
     }
 }
 
+/**
+ * 알림 수신 설정의 한 종류. 서버가 목록·라벨·설명·잠금/동의 여부를 준다.
+ *
+ * ⚠️ 종류 표를 앱에 만들지 말 것. 알림함 칩과 **같은 표**이고 원본은 백엔드 코드다
+ *    (common/notification-category.ts). 앱이 표를 들면 칩·웹 설정과 즉시 어긋난다.
+ */
+data class NotiPrefCategory(
+    val key: String,
+    val label: String,
+    val desc: String,
+    val locked: Boolean,   // 끌 수 없는 종류(지원 결과·계정 등)
+    val optIn: Boolean,    // 켜야 받는 종류(광고성) — 사전 동의가 필요하다
+    val enabled: Boolean,
+) {
+    companion object {
+        fun from(o: JSONObject) = NotiPrefCategory(
+            key = o.optString("key"),
+            label = o.optString("label"),
+            desc = o.optString("desc"),
+            locked = o.optBoolean("locked", false),
+            optIn = o.optBoolean("optIn", false),
+            enabled = o.optBoolean("enabled", true),
+        )
+    }
+}
+
+/** GET/PATCH /me/notification-prefs 응답. */
+data class NotiPrefs(val pushEnabled: Boolean, val categories: List<NotiPrefCategory>) {
+    companion object {
+        fun from(o: JSONObject) = NotiPrefs(
+            pushEnabled = o.optBoolean("pushEnabled", true),
+            categories = o.optJSONArray("categories")?.map(NotiPrefCategory::from) ?: emptyList(),
+        )
+    }
+}
+
 class NotificationApi(private val token: String?, private val activeType: String = "GENERAL") {
 
     private val client = OkHttpClient()
@@ -122,10 +158,19 @@ class NotificationApi(private val token: String?, private val activeType: String
         return call("/notifications/read-all$q", "PATCH").map { }
     }
 
-    private suspend fun call(path: String, method: String = "GET"): Result<String> =
+    /** 알림 수신 설정 조회. */
+    suspend fun prefs(): Result<NotiPrefs> =
+        call("/me/notification-prefs").mapCatching { NotiPrefs.from(JSONObject(it)) }
+
+    /** 부분 저장 — 보낸 항목만 바뀐다(전체 스위치 / 종류 하나). */
+    suspend fun updatePrefs(body: JSONObject): Result<NotiPrefs> =
+        call("/me/notification-prefs", "PATCH", body.toString())
+            .mapCatching { NotiPrefs.from(JSONObject(it)) }
+
+    private suspend fun call(path: String, method: String = "GET", json: String? = null): Result<String> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val payload = if (method != "GET") "".toRequestBody(JSON) else null
+                val payload = if (method != "GET") (json ?: "").toRequestBody(JSON) else null
                 val req = Request.Builder().url(apiBase + path).method(method, payload)
                     .addHeader("Content-Type", "application/json")
                     // 활동유형 — 서버가 이 헤더로 칩 구성을 정한다(iOS AppNetwork 와 같은 계약).

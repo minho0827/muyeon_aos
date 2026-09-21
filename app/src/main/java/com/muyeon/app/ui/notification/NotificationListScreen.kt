@@ -17,6 +17,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.Icon
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -92,11 +94,26 @@ fun NotificationListScreen(
     LaunchedEffect(Unit) { loadChips() }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(title = "알림", onClose = onClose)
+        QuoteNavBar(
+            title = "알림",
+            onClose = onClose,
+            // 알림 설정으로 가는 톱니(iOS·PaceERA 와 같은 자리) — 알림이 시끄럽다고 느낀
+            //  사람이 설정을 찾으려고 MY 까지 돌아가지 않게, 느낀 자리에서 바로 연다.
+            trailing = {
+                Icon(
+                    Icons.Outlined.Settings,
+                    contentDescription = "알림 설정",
+                    tint = MuyeonColors.textHead,
+                    modifier = Modifier.size(20.dp)
+                        .clickable { NotificationSettingsActivity.start(ctx) },
+                )
+            },
+        )
 
         // 종류 칩(가로 스크롤) + 안읽음 토글 + 모두 읽음. 칩과 안읽음은 서로 직교한 축이다.
+        //  여백·치수는 PaceERA 알림 목록 칩 줄(h16 v10 · 간격 8)과 같다.
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -132,6 +149,7 @@ fun NotificationListScreen(
                 },
             )
         }
+        HorizontalDivider(color = MuyeonColors.border)
 
         when {
             loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
@@ -187,32 +205,29 @@ fun NotificationListScreen(
     }
 }
 
-/** 종류 칩 하나. 안읽음이 있으면 숫자를 같이 보여준다. */
+/**
+ * 종류 칩 하나 — PaceERA `FilterChip` 치수(14/7 · 13sp) + iOS 무용연 칩 색.
+ *
+ *  ⚠️ 안읽음 수는 별도 뱃지로 얹지 않고 **글자에 붙인다**. 뱃지를 올리면 캡슐 모양이
+ *     깨지고, 같은 화면의 iOS 칩과도 달라진다.
+ *  ※ 미선택 배경은 PaceERA(테두리)가 아니라 iOS 무용연과 같은 연회색으로 둔다 —
+ *     두 무용연 앱을 나란히 놓았을 때 같아 보이는 쪽이 더 중요하다.
+ */
 @Composable
 private fun CategoryChip(label: String, unread: Int, selected: Boolean, onClick: () -> Unit) {
-    Row(
+    Box(
         Modifier.clip(RoundedCornerShape(50))
             .background(if (selected) MuyeonColors.primary else Color(0xFFF2F2F7))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 14.dp, vertical = 7.dp),
     ) {
         Text(
-            label,
+            if (unread > 0) "$label $unread" else label,
             fontFamily = customFontFamily,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
             fontSize = 13.sp, lineHeight = 16.sp,
             color = if (selected) Color.White else MuyeonColors.textSub,
         )
-        if (unread > 0) {
-            Text(
-                "$unread",
-                fontFamily = customFontFamily, fontWeight = FontWeight.Bold,
-                fontSize = 11.sp, lineHeight = 14.sp,
-                color = if (selected) Color.White else MuyeonColors.primary,
-            )
-        }
     }
 }
 
