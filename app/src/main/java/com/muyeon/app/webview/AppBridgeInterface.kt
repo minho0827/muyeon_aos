@@ -108,6 +108,10 @@ class AppBridgeInterface(
 
             // 알림·회원유형 — E 이식 완료
             "openNotifications" -> com.muyeon.app.ui.notification.NotificationActivity.start(activity)
+            // 알림 수신 설정 — 앱에서는 항상 네이티브로 연다. 웹 화면(/notificationSettings)이
+            //  앱에서 열리면 알림함 톱니가 여는 화면과 한 앱 안에 두 모습이 된다.
+            "openNotificationSettings" ->
+                com.muyeon.app.ui.notification.NotificationSettingsActivity.start(activity)
             // ★ 웹은 data.roles 에 **JSON 문자열**로 넣어 보낸다(iOS presentRoleManage 와 동일 계약).
             //   'payload' 키는 존재한 적이 없어 늘 data 전체로 폴백했고, 그 안에서 held/roles 배열을
             //   못 찾아 보유·인증상태가 통째로 비었다 → 사업 역할이 전부 자물쇠로 잠겨 보였다.

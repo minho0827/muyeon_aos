@@ -126,8 +126,10 @@ fun NotificationListScreen(
                     CategoryChip(c.label, category == c.key) { category = c.key }
                 }
             }
+            // 문구는 늘 '모두 읽음'. 종류를 걸러 보고 있으면 **보고 있는 목록의 모두**를 읽는다
+            //  (메일함 관례). 문구를 상황마다 바꾸면 버튼 폭이 흔들리고 읽기만 번거롭다.
             Text(
-                if (category == NotiCategory.ALL) "모두 읽음" else "이 종류 읽음",
+                "모두 읽음",
                 fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
                 lineHeight = 16.sp, color = MuyeonColors.primary,
                 modifier = Modifier.clickable {
