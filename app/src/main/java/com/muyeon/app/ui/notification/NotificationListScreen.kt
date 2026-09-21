@@ -8,6 +8,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -33,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.chat.ChatActivity
 import com.muyeon.app.ui.common.MuyeonColors
+import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.webview.WebCallbacks
 import com.muyeon.app.ui.quote.QuoteEmptyState
 import com.muyeon.app.ui.quote.QuoteHubActivity
@@ -43,7 +46,11 @@ import kotlinx.coroutines.launch
 
 /**
  * 알림 목록 — iOS `NotificationListView.swift` 이식.
- *  전체/안읽음 탭 + 커서 페이징 + 탭 시 읽음 처리 후 딥링크 이동.
+ *  종류 칩 + 안읽음 토글 + 커서 페이징 + 탭 시 읽음 처리 후 딥링크 이동.
+ *
+ * ⚠️ 칩 목록(라벨·순서·무엇을 보여줄지)은 서버가 활동유형 기준으로 내려준다.
+ *    앱에 표를 두지 말 것 — 알림 설정 화면·웹·iOS 와 즉시 어긋난다.
+ * ⚠️ 칩은 목록을 좁힐 뿐이고 '전체'에는 모든 알림이 그대로 있다.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,6 +61,8 @@ fun NotificationListScreen(
 ) {
     var items by remember { mutableStateOf<List<AppNotification>>(emptyList()) }
     var unreadOnly by remember { mutableStateOf(false) }
+    var category by remember { mutableStateOf(NotiCategory.ALL) }
+    var chips by remember { mutableStateOf<List<NotiCategory>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var loadingMore by remember { mutableStateOf(false) }
     var reachedEnd by remember { mutableStateOf(false) }
@@ -64,41 +73,62 @@ fun NotificationListScreen(
     suspend fun reload() {
         loading = items.isEmpty()
         reachedEnd = false
-        api.list(null, 20, unreadOnly).onSuccess { items = it; reachedEnd = it.size < 20 }
+        api.list(null, 20, unreadOnly, category).onSuccess { items = it; reachedEnd = it.size < 20 }
         loading = false
     }
 
-    LaunchedEffect(unreadOnly) { reload() }
+    /** 칩 재조회. 실패하면 기존 칩을 유지한다 — 칩이 통째로 사라지는 쪽이 더 나쁘다. */
+    suspend fun loadChips() {
+        val fresh = api.categories()
+        if (fresh.isEmpty()) return
+        chips = fresh
+        // 보던 칩이 사라졌으면(유형 전환 등) '전체'로 되돌린다 — 빈 목록에 갇히지 않게.
+        if (category != NotiCategory.ALL && fresh.none { it.key == category }) {
+            category = NotiCategory.ALL
+        }
+    }
+
+    LaunchedEffect(unreadOnly, category) { reload() }
+    LaunchedEffect(Unit) { loadChips() }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         QuoteNavBar(title = "알림", onClose = onClose)
 
+        // 종류 칩(가로 스크롤) + 안읽음 토글 + 모두 읽음. 칩과 안읽음은 서로 직교한 축이다.
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            listOf(false to "전체", true to "안 읽음").forEach { (v, label) ->
-                val on = unreadOnly == v
-                Text(
-                    label,
-                    fontFamily = customFontFamily,
-                    fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
-                    fontSize = 13.sp, lineHeight = 16.sp,
-                    color = if (on) Color.White else MuyeonColors.textSub,
-                    modifier = Modifier.clip(RoundedCornerShape(50))
-                        .background(if (on) MuyeonColors.primary else Color(0xFFF2F2F7))
-                        .clickable { unreadOnly = v }.padding(horizontal = 12.dp, vertical = 6.dp),
-                )
+            Row(
+                Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CategoryChip("전체", 0, category == NotiCategory.ALL) { category = NotiCategory.ALL }
+                chips.forEach { c ->
+                    CategoryChip(c.label, c.unread, category == c.key) { category = c.key }
+                }
             }
-            Spacer(Modifier.weight(1f))
             Text(
-                "모두 읽음",
+                if (unreadOnly) "전체 보기" else "안읽음",
+                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                lineHeight = 16.sp,
+                color = if (unreadOnly) MuyeonColors.primary else MuyeonColors.textSub,
+                modifier = Modifier.clickable { unreadOnly = !unreadOnly },
+            )
+            Text(
+                if (category == NotiCategory.ALL) "모두 읽음" else "이 종류 읽음",
                 fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
                 lineHeight = 16.sp, color = MuyeonColors.primary,
                 modifier = Modifier.clickable {
                     // 웹 알림 배지도 같이 내려야 한다(iOS .muyeonNotificationsRead → __onNativeNotificationsRead).
-                    scope.launch { api.markAllRead(); WebCallbacks.notificationsRead(ctx); reload() }
+                    scope.launch {
+                        api.markAllRead(category)
+                        WebCallbacks.notificationsRead(ctx)
+                        reload()
+                        loadChips()
+                    }
                 },
             )
         }
@@ -109,7 +139,13 @@ fun NotificationListScreen(
             }
             items.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                 QuoteEmptyState(
-                    Icons.Outlined.NotificationsNone, "알림이 없어요",
+                    Icons.Outlined.NotificationsNone,
+                    when {
+                        unreadOnly -> "안읽은 알림이 없어요"
+                        category != NotiCategory.ALL ->
+                            "${chips.firstOrNull { it.key == category }?.label ?: "이 종류"} 알림이 없어요"
+                        else -> "알림이 없어요"
+                    },
                     "새 소식이 오면 여기에 모아드려요.",
                 )
             }
@@ -125,6 +161,8 @@ fun NotificationListScreen(
                                 if (!n.isRead) {
                                     api.markRead(n.id)
                                     items = items.map { if (it.id == n.id) it.copy(isRead = true) else it }
+                                    // 어느 칩의 숫자가 줄어야 하는지는 서버만 안다(type→카테고리 매핑이 서버에 있다).
+                                    loadChips()
                                 }
                                 onOpen(n)
                             }
@@ -135,7 +173,7 @@ fun NotificationListScreen(
                         if (idx == items.lastIndex && !reachedEnd && !loadingMore) {
                             LaunchedEffect(n.id) {
                                 loadingMore = true
-                                api.list(n.id, 20, unreadOnly).onSuccess { more ->
+                                api.list(n.id, 20, unreadOnly, category).onSuccess { more ->
                                     items = items + more.filterNot { m -> items.any { it.id == m.id } }
                                     reachedEnd = more.size < 20
                                 }
@@ -145,6 +183,35 @@ fun NotificationListScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+/** 종류 칩 하나. 안읽음이 있으면 숫자를 같이 보여준다. */
+@Composable
+private fun CategoryChip(label: String, unread: Int, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier.clip(RoundedCornerShape(50))
+            .background(if (selected) MuyeonColors.primary else Color(0xFFF2F2F7))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            label,
+            fontFamily = customFontFamily,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            fontSize = 13.sp, lineHeight = 16.sp,
+            color = if (selected) Color.White else MuyeonColors.textSub,
+        )
+        if (unread > 0) {
+            Text(
+                "$unread",
+                fontFamily = customFontFamily, fontWeight = FontWeight.Bold,
+                fontSize = 11.sp, lineHeight = 14.sp,
+                color = if (selected) Color.White else MuyeonColors.primary,
+            )
         }
     }
 }
@@ -198,7 +265,10 @@ class NotificationActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val api = remember { NotificationApi(TokenManager.getAccessToken(this)) }
+            val api = remember {
+                // 활동유형은 서버가 칩 구성을 정하는 기준이다(X-Active-Type).
+                NotificationApi(TokenManager.getAccessToken(this), ActiveRole.current(this))
+            }
             NotificationListScreen(api = api, onClose = { finish() }, onOpen = ::route)
         }
     }
