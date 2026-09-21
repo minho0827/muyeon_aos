@@ -48,7 +48,7 @@ import kotlinx.coroutines.launch
 
 /**
  * 알림 목록 — iOS `NotificationListView.swift` 이식.
- *  종류 칩 + 안읽음 토글 + 커서 페이징 + 탭 시 읽음 처리 후 딥링크 이동.
+ *  종류 칩 + 커서 페이징 + 탭 시 읽음 처리 후 딥링크 이동. 안읽음은 행 배경으로만 표시.
  *
  * ⚠️ 칩 목록(라벨·순서·무엇을 보여줄지)은 서버가 활동유형 기준으로 내려준다.
  *    앱에 표를 두지 말 것 — 알림 설정 화면·웹·iOS 와 즉시 어긋난다.
@@ -62,7 +62,6 @@ fun NotificationListScreen(
     onOpen: (AppNotification) -> Unit,
 ) {
     var items by remember { mutableStateOf<List<AppNotification>>(emptyList()) }
-    var unreadOnly by remember { mutableStateOf(false) }
     var category by remember { mutableStateOf(NotiCategory.ALL) }
     var chips by remember { mutableStateOf<List<NotiCategory>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
@@ -75,7 +74,7 @@ fun NotificationListScreen(
     suspend fun reload() {
         loading = items.isEmpty()
         reachedEnd = false
-        api.list(null, 20, unreadOnly, category).onSuccess { items = it; reachedEnd = it.size < 20 }
+        api.list(null, 20, category).onSuccess { items = it; reachedEnd = it.size < 20 }
         loading = false
     }
 
@@ -90,7 +89,7 @@ fun NotificationListScreen(
         }
     }
 
-    LaunchedEffect(unreadOnly, category) { reload() }
+    LaunchedEffect(category) { reload() }
     LaunchedEffect(Unit) { loadChips() }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
@@ -110,7 +109,7 @@ fun NotificationListScreen(
             },
         )
 
-        // 종류 칩(가로 스크롤) + 안읽음 토글 + 모두 읽음. 칩과 안읽음은 서로 직교한 축이다.
+        // 종류 칩(가로 스크롤) + 모두 읽음.
         //  여백·치수는 PaceERA 알림 목록 칩 줄(h16 v10 · 간격 8)과 같다.
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
@@ -122,18 +121,11 @@ fun NotificationListScreen(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                CategoryChip("전체", 0, category == NotiCategory.ALL) { category = NotiCategory.ALL }
+                CategoryChip("전체", category == NotiCategory.ALL) { category = NotiCategory.ALL }
                 chips.forEach { c ->
-                    CategoryChip(c.label, c.unread, category == c.key) { category = c.key }
+                    CategoryChip(c.label, category == c.key) { category = c.key }
                 }
             }
-            Text(
-                if (unreadOnly) "전체 보기" else "안읽음",
-                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                lineHeight = 16.sp,
-                color = if (unreadOnly) MuyeonColors.primary else MuyeonColors.textSub,
-                modifier = Modifier.clickable { unreadOnly = !unreadOnly },
-            )
             Text(
                 if (category == NotiCategory.ALL) "모두 읽음" else "이 종류 읽음",
                 fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
@@ -159,7 +151,6 @@ fun NotificationListScreen(
                 QuoteEmptyState(
                     Icons.Outlined.NotificationsNone,
                     when {
-                        unreadOnly -> "안읽은 알림이 없어요"
                         category != NotiCategory.ALL ->
                             "${chips.firstOrNull { it.key == category }?.label ?: "이 종류"} 알림이 없어요"
                         else -> "알림이 없어요"
@@ -191,7 +182,7 @@ fun NotificationListScreen(
                         if (idx == items.lastIndex && !reachedEnd && !loadingMore) {
                             LaunchedEffect(n.id) {
                                 loadingMore = true
-                                api.list(n.id, 20, unreadOnly, category).onSuccess { more ->
+                                api.list(n.id, 20, category).onSuccess { more ->
                                     items = items + more.filterNot { m -> items.any { it.id == m.id } }
                                     reachedEnd = more.size < 20
                                 }
@@ -208,13 +199,13 @@ fun NotificationListScreen(
 /**
  * 종류 칩 하나 — PaceERA `FilterChip` 치수(14/7 · 13sp) + iOS 무용연 칩 색.
  *
- *  ⚠️ 안읽음 수는 별도 뱃지로 얹지 않고 **글자에 붙인다**. 뱃지를 올리면 캡슐 모양이
- *     깨지고, 같은 화면의 iOS 칩과도 달라진다.
+ *  ⚠️ 칩에 안읽음 수를 달지 않는다. 안읽음은 **행 배경**으로만 말한다 — 같은 사실을
+ *     숫자·뱃지·행 색 세 군데로 말하면 화면이 시끄럽고 서로 어긋나 보인다.
  *  ※ 미선택 배경은 PaceERA(테두리)가 아니라 iOS 무용연과 같은 연회색으로 둔다 —
  *     두 무용연 앱을 나란히 놓았을 때 같아 보이는 쪽이 더 중요하다.
  */
 @Composable
-private fun CategoryChip(label: String, unread: Int, selected: Boolean, onClick: () -> Unit) {
+private fun CategoryChip(label: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         Modifier.clip(RoundedCornerShape(50))
             .background(if (selected) MuyeonColors.primary else Color(0xFFF2F2F7))
@@ -222,7 +213,7 @@ private fun CategoryChip(label: String, unread: Int, selected: Boolean, onClick:
             .padding(horizontal = 14.dp, vertical = 7.dp),
     ) {
         Text(
-            if (unread > 0) "$label $unread" else label,
+            label,
             fontFamily = customFontFamily,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
             fontSize = 13.sp, lineHeight = 16.sp,
@@ -231,19 +222,24 @@ private fun CategoryChip(label: String, unread: Int, selected: Boolean, onClick:
     }
 }
 
+/**
+ * 알림 한 줄.
+ *
+ *  안읽음은 **행 배경 한 가지**로만 말한다(점·뱃지·숫자를 같이 쓰지 않는다).
+ *  ⚠️ 다만 제목의 굵기는 남긴다. 색만으로 상태를 말하면 색각 이상이 있는 사람과
+ *     밝은 햇빛 아래에서는 아무 표시도 없는 것과 같다(WCAG 1.4.1).
+ *  ⚠️ 배경은 4% 로는 흰 화면에서 거의 사라진다. 6% — "연하게" 를 지키면서 알아볼 수 있는 선.
+ *  iOS `NotificationListView.row` 와 같은 규칙이다.
+ */
 @Composable
 private fun NotificationRow(n: AppNotification, onClick: () -> Unit) {
     Row(
         Modifier.fillMaxWidth()
-            .background(if (n.isRead) MuyeonColors.surface else MuyeonColors.primary.copy(alpha = 0.04f))
+            .background(if (n.isRead) MuyeonColors.surface else MuyeonColors.primary.copy(alpha = 0.06f))
             .clickable(onClick = onClick)
             .padding(horizontal = 20.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Box(
-            Modifier.padding(top = 6.dp).size(7.dp).clip(CircleShape)
-                .background(if (n.isRead) Color.Transparent else MuyeonColors.primary),
-        )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
                 n.title,

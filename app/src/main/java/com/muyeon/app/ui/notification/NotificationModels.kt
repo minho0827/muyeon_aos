@@ -114,17 +114,16 @@ class NotificationApi(private val token: String?, private val activeType: String
     private val client = OkHttpClient()
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
 
-    /** 커서 페이징 — cursor 는 직전 페이지 마지막 id. */
+    /** 커서 페이징 — cursor 는 직전 페이지 마지막 id.
+     *  안읽음 필터는 화면에서 걷어냈다(안읽음은 행 배경으로만 보여준다) — 파라미터도 안 보낸다. */
     suspend fun list(
         cursor: Int?,
         limit: Int = 20,
-        unreadOnly: Boolean = false,
         category: String = NotiCategory.ALL,
     ): Result<List<AppNotification>> {
         val q = buildList {
             add("limit=$limit")
             cursor?.let { add("cursor=$it") }
-            if (unreadOnly) add("unreadOnly=true")
             categoryParam(category)?.let { add("category=$it") }
         }
         return call("/notifications?" + q.joinToString("&"))
