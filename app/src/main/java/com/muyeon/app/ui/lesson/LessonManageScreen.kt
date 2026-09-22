@@ -161,6 +161,8 @@ fun LessonManageScreen(
     onCreate: () -> Unit,
     onEdit: (Int) -> Unit,
     onSlots: (Int) -> Unit,
+    /** 「개인레슨 관리 > 레슨 소개」 탭으로 들어올 때 true — 자체 상단바를 걷어낸다. */
+    embedded: Boolean = false,
 ) {
     var rows by remember { mutableStateOf<List<LessonProduct>?>(null) }   // null = 로딩 전
     var archived by remember { mutableStateOf<List<LessonProduct>>(emptyList()) }
@@ -183,7 +185,7 @@ fun LessonManageScreen(
     LaunchedEffect(Unit) { load() }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(title = "내 레슨 관리", onBack = onClose)
+        if (!embedded) QuoteNavBar(title = "내 레슨 관리", onBack = onClose)
 
         val list = rows
         when {

@@ -84,6 +84,12 @@ data class ResumeData(
     var images: List<String>? = null,
     var genres: List<String>? = null,
     var fields: List<String>? = null,
+    /**
+     * 가르칠 수 있는 수업 대상(KIDS/ELEM/TEEN/ADULT/EXAM/MAJOR).
+     *  웹 이력서는 진작부터 저장하고 있었는데 앱에만 없어, 앱으로 쓴 이력서는 이 축이 빈 채였다.
+     *  대타 목록의 '내 조건에 맞는 공고만'과 관심조건 매칭이 이 값을 본다.
+     */
+    var targets: List<String>? = null,
     var activeRegion: String? = null,
     var activeRegions: List<String>? = null,
     var activeRegionCode: String? = null,
@@ -130,6 +136,7 @@ data class ResumeData(
         images?.let { o.put("images", JSONArray(it)) }
         genres?.let { o.put("genres", JSONArray(it)) }
         fields?.let { o.put("fields", JSONArray(it)) }
+        targets?.let { o.put("targets", JSONArray(it)) }
         o.putOpt("activeRegion", activeRegion)
         activeRegions?.let { o.put("activeRegions", JSONArray(it)) }
         o.putOpt("activeRegionCode", activeRegionCode)
@@ -161,6 +168,7 @@ data class ResumeData(
                 images = o.stringList("images"),
                 genres = o.stringList("genres"),
                 fields = o.stringList("fields"),
+                targets = o.stringList("targets"),
                 activeRegion = o.stringOrNull("activeRegion"),
                 activeRegions = o.stringList("activeRegions"),
                 activeRegionCode = o.stringOrNull("activeRegionCode"),

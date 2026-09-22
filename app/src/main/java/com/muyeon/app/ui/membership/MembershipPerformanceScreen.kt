@@ -423,7 +423,7 @@ private fun ratioData(f: MembershipFunnel, isAcademy: Boolean): RatioData? {
     val accepted = (f.quotesAccepted ?: 0).toDouble()
     if (sent <= 0) return null
     return RatioData(
-        "보낸 견적이 선택된 비율", "보낸 견적 중 회원이 고른 비율이에요.",
+        "보낸 제안이 선택된 비율", "보낸 제안 중 회원이 고른 비율이에요.",
         "선택됨", "미선택", accepted, max(sent - accepted, 0.0), MembershipPalette.lead,
     )
 }

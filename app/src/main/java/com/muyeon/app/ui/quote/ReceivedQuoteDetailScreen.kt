@@ -138,7 +138,7 @@ fun ReceivedQuoteDetailScreen(
 
     Box(Modifier.fillMaxSize().background(MuyeonColors.groupedBg)) {
         Column(Modifier.fillMaxSize()) {
-            QuoteNavBar(title = "받은 견적", onBack = onBack)
+            QuoteNavBar(title = "받은 제안", onBack = onBack)
 
             if (notFound) {
                 QuoteEmptyState(
@@ -173,7 +173,7 @@ fun ReceivedQuoteDetailScreen(
 
                 item {
                     Text(
-                        "받은 견적 ${responses.size}",
+                        "받은 제안 ${responses.size}",
                         fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
                         lineHeight = 19.sp, color = MuyeonColors.textHead,
                         modifier = Modifier.padding(horizontal = 16.dp),
@@ -198,7 +198,7 @@ fun ReceivedQuoteDetailScreen(
                     } else {
                         item {
                             QuoteEmptyState(
-                                Icons.Filled.HourglassEmpty, "아직 받은 견적이 없어요",
+                                Icons.Filled.HourglassEmpty, "아직 받은 제안이 없어요",
                                 "강사의 견적을 기다려 주세요.",
                                 Modifier.height(140.dp).wrapContentHeight(Alignment.CenterVertically),
                             )

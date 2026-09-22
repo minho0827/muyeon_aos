@@ -63,7 +63,7 @@ object TokenAPI {
             val body = response.body()
 
             if (response.isSuccessful && body != null) {
-                Pair(body.accessToken, body.refreshToken)
+                Pair(body.accessToken, body.refreshToken ?: body.accessToken)
             } else {
                 null
             }

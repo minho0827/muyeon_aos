@@ -42,6 +42,7 @@ import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteNavBar
 import com.muyeon.app.utils.TokenManager
 import com.muyeon.app.webview.ActiveRole
+import com.muyeon.app.webview.NativeWebRoute
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
@@ -117,7 +118,12 @@ class NotificationPrefsState {
 }
 
 @Composable
-fun NotificationSettingsScreen(api: NotificationApi, onClose: () -> Unit) {
+fun NotificationSettingsScreen(
+    api: NotificationApi,
+    onClose: () -> Unit,
+    /** '맞춤 알림'(관심 조건) 진입. 아직 웹 화면이라 호출부가 이동을 맡는다 — null 이면 줄 자체를 감춘다. */
+    onOpenAlerts: (() -> Unit)? = null,
+) {
     val state = remember { NotificationPrefsState() }
     val scope = rememberCoroutineScope()
     var detailKey by remember { mutableStateOf<String?>(null) }
@@ -190,6 +196,33 @@ fun NotificationSettingsScreen(api: NotificationApi, onClose: () -> Unit) {
                         }
                     },
                 )
+            }
+
+            // 이 화면은 '어떤 알림을 푸시로 받을지'만 정한다. "대타만 받고 싶다"의 나머지 절반 —
+            //  어떤 새 공고를 알림으로 받을지 — 은 관심 조건에 있다. 두 화면이 떨어져 있어
+            //  한쪽만 끄고 "왜 계속 오지" 하던 자리라, 여기서 바로 건너갈 길을 둔다.
+            if (onOpenAlerts != null) {
+                item(key = "alerts-header") {
+                    Text(
+                        "맞춤 알림",
+                        Modifier.padding(start = 20.dp, top = 20.dp, bottom = 6.dp),
+                        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold,
+                        fontSize = 13.sp, color = MuyeonColors.textSub,
+                    )
+                }
+                item(key = "alerts") {
+                    SettingsRow(
+                        title = "관심 조건 알림",
+                        desc = "받고 싶은 공고 종류(채용·대타·캐스팅)와 지역·장르·수업 대상을 정해요.",
+                        onClick = onOpenAlerts,
+                        trailing = {
+                            Icon(
+                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null, tint = MuyeonColors.secondary,
+                            )
+                        },
+                    )
+                }
             }
         }
     }
@@ -374,7 +407,12 @@ class NotificationSettingsActivity : ComponentActivity() {
             val api = remember {
                 NotificationApi(TokenManager.getAccessToken(this), ActiveRole.current(this))
             }
-            NotificationSettingsScreen(api = api, onClose = { finish() })
+            NotificationSettingsScreen(
+                api = api,
+                onClose = { finish() },
+                // 관심 조건은 아직 웹 화면 — 네이티브를 닫으면서 웹을 그 경로로 보낸다.
+                onOpenAlerts = { NativeWebRoute.openWebAndFinish(this, "/alerts") },
+            )
         }
     }
 }
