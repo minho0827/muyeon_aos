@@ -64,15 +64,23 @@ private val c8E8E8E = Color(0xFF8E8E8E)
 
 // ─────────────────────────────────────────────────────────── 약관 동의
 
-/** 백엔드 REQUIRED_TERMS(terms/privacy/location/over14) + marketing 과 1:1. */
+/**
+ * 백엔드 REQUIRED_TERMS(terms/privacy/contactSharing/location/over14) + 채널별 마케팅 동의와 1:1.
+ *  ★ iOS SignupTermsView · 웹 util/consent.js 와 항목·키·문서가 같아야 한다(3곳 계약).
+ *    종전 안드로이드는 필수인 contactSharing 이 빠져 서버가 가입을 거절할 수 있었고, '개인정보 수집·이용'이
+ *    수집·이용 안내(privacyConsent)가 아니라 처리방침 전문(privacy)으로 열렸다(2026-09-25 수정).
+ */
 private data class TermItem(val key: String, val title: String, val required: Boolean, val doc: String?)
 
 private val TERM_ITEMS = listOf(
     TermItem("terms", "이용약관 동의", true, "terms"),
-    TermItem("privacy", "개인정보 수집·이용 동의", true, "privacy"),
+    TermItem("privacy", "필수 개인정보 수집·이용 동의", true, "privacyConsent"),
+    TermItem("contactSharing", "거래 상대방 개인정보 제공 동의", true, "contactSharing"),
     TermItem("location", "위치기반서비스 이용약관 동의", true, "location"),
     TermItem("over14", "만 14세 이상입니다", true, null),
-    TermItem("marketing", "마케팅 정보 수신 동의 (선택)", false, null),
+    TermItem("marketingEmail", "이메일 광고성 정보 수신", false, null),
+    TermItem("marketingSms", "SMS·알림톡 광고성 정보 수신", false, null),
+    TermItem("marketingPush", "앱 푸시 광고성 정보 수신", false, null),
 )
 
 /**
