@@ -50,6 +50,8 @@ data class ConsultItem(
     val subtitle: String,
     val timeText: String,
     val sortAt: String?,
+    // 채택됨(0) → 진행 항목(1) → 마감(2). 같은 우선순위 안에서는 최신순.
+    val sortPriority: Int,
     val quote: QuoteFull? = null,
     val sent: SentQuoteItem? = null,
 )
@@ -63,6 +65,7 @@ private fun inquiryItem(q: QuoteFull) = ConsultItem(
     subtitle = "수강생이 레슨을 요청했어요.",
     timeText = QuoteUi.relativeTime(q.createdAt),
     sortAt = q.createdAt,
+    sortPriority = 1,
     quote = q,
 )
 
@@ -84,6 +87,7 @@ private fun proposalItem(item: SentQuoteItem): ConsultItem {
         subtitle = if (item.chatRoomId != null) "일정 조율 중이에요." else "내가 조건을 제안했어요.",
         timeText = QuoteUi.relativeTime(item.createdAt),
         sortAt = item.createdAt,
+        sortPriority = if (item.status == "ACCEPTED") 0 else if (closed) 2 else 1,
         sent = item,
     )
 }
@@ -116,7 +120,10 @@ fun StudentConsultScreen(
             ?: items.filter { it.kind == ConsultKind.INQUIRY }
         val proposals = sent?.map(::proposalItem)
             ?: items.filter { it.kind != ConsultKind.INQUIRY }
-        items = (inquiries + proposals).sortedByDescending { it.sortAt.orEmpty() }
+        items = (inquiries + proposals).sortedWith(
+            compareBy<ConsultItem> { it.sortPriority }
+                .thenByDescending { it.sortAt.orEmpty() }
+        )
         loading = false
     }
 
