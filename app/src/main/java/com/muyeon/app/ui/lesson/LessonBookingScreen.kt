@@ -61,6 +61,9 @@ fun LessonBookingScreen(
     // 취소·환불 규정 확인. iOS 와 동일하게 결제 전 필수 게이트.
     var policyAgreed by remember { mutableStateOf(false) }
     var showRefundPolicy by remember { mutableStateOf(false) }
+    // 지금 적용 중인 환불 규정(관리자 관리) — 예약 순간 이 규정이 예약에 찍힌다.
+    var refundPolicy by remember { mutableStateOf(LessonRefundPolicyRepo.current()) }
+    LaunchedEffect(Unit) { refundPolicy = LessonRefundPolicyRepo.get() }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(productId) {
@@ -173,6 +176,7 @@ fun LessonBookingScreen(
             BookingPaymentBlock(
                 product = product,
                 headcount = headcount,
+                refundPolicy = refundPolicy,
                 onOpenPolicy = { showRefundPolicy = true },
                 policyAgreed = policyAgreed,
                 onTogglePolicy = { policyAgreed = it },
@@ -218,8 +222,9 @@ fun LessonBookingScreen(
     }
 
     if (showRefundPolicy) {
+        // 판매자(강사·학원) 취소 정책은 보이지 않는다 — 환불 규정은 무용연이 정한다(2026-09-24).
         LessonRefundPolicySheet(
-            sellerPolicy = product?.cancelPolicy,
+            policy = refundPolicy,
             onDismiss = { showRefundPolicy = false },
         )
     }
@@ -240,6 +245,7 @@ private fun Int.won(): String = "%,d".format(this)
 private fun BookingPaymentBlock(
     product: LessonBookingProduct?,
     headcount: Int,
+    refundPolicy: LessonRefundPolicy,
     onOpenPolicy: () -> Unit,
     policyAgreed: Boolean,
     onTogglePolicy: (Boolean) -> Unit,
@@ -291,7 +297,7 @@ private fun BookingPaymentBlock(
         Text(
             if (product != null && product.depositFor(headcount) == 0)
                 "예약금이 없는 레슨이에요. 앱에서는 결제되지 않으며, 레슨비는 수업 당일 강사·학원에 직접 결제해요."
-            else "예약금은 레슨비에 포함되며, 수업 24시간 전까지 취소하면 전액 환불돼요.",
+            else refundPolicy.summary ?: LessonRefundPolicy.FALLBACK.summary.orEmpty(),
             fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp,
             color = MuyeonColors.textSub,
         )
@@ -354,7 +360,7 @@ private fun AmountRow(label: String, value: String, emphasize: Boolean = false) 
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LessonRefundPolicySheet(sellerPolicy: String?, onDismiss: () -> Unit) {
+fun LessonRefundPolicySheet(policy: LessonRefundPolicy, onDismiss: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color.White) {
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp)
@@ -377,33 +383,19 @@ fun LessonRefundPolicySheet(sellerPolicy: String?, onDismiss: () -> Unit) {
             Column(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color(0xFFF2F2F7)),
             ) {
-                PolicyRow("수업 24시간 전까지", "예약금 전액 환불", accent = true)
-                HorizontalDivider(color = MuyeonColors.border, modifier = Modifier.padding(start = 16.dp))
-                PolicyRow("수업 24시간 이내", "예약금 환불 불가")
-                HorizontalDivider(color = MuyeonColors.border, modifier = Modifier.padding(start = 16.dp))
-                PolicyRow("수업 시작 후·노쇼", "예약금 환불 불가")
-                HorizontalDivider(color = MuyeonColors.border, modifier = Modifier.padding(start = 16.dp))
-                PolicyRow("강사 취소·수업 미제공", "예약금 전액 환불", accent = true)
+                // 규정 줄은 서버가 만든다(관리자가 숫자를 바꾸면 문구도 바뀐다).
+                policy.lines.forEachIndexed { idx, line ->
+                    if (idx > 0) HorizontalDivider(color = MuyeonColors.border, modifier = Modifier.padding(start = 16.dp))
+                    PolicyRow(line.title, line.detail, accent = line.accent)
+                }
             }
 
-            if (!sellerPolicy.isNullOrBlank()) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "판매자 추가 안내",
-                        fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
-                        lineHeight = 19.sp, color = MuyeonColors.textHead,
-                    )
-                    Text(
-                        sellerPolicy,
-                        fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
-                        color = MuyeonColors.textHead,
-                    )
-                    Text(
-                        "공통 기준보다 소비자에게 유리한 경우 적용됩니다.",
-                        fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp,
-                        color = MuyeonColors.textSub,
-                    )
-                }
+            policy.extraNotice?.takeIf { it.isNotBlank() }?.let { extra ->
+                Text(
+                    extra,
+                    fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
+                    color = MuyeonColors.textHead,
+                )
             }
 
             Text(

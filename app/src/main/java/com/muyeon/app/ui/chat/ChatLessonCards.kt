@@ -228,6 +228,44 @@ private suspend fun proposalAction(token: String?, id: Int, action: String, forc
         }.getOrDefault(false)
     }
 
+/** 확정 약속 회원 취소 미리보기 — 서버가 약속에 찍힌 환불 규정으로 계산한다(앱은 계산하지 않음). */
+private data class ProposalCancelPreview(val paidAmount: Int, val expectedRefundAmount: Int)
+
+/** GET /lesson-proposals/:id/cancel-preview — 실패하면 서버 사유 문장을 Result 실패로 준다. */
+private suspend fun proposalCancelPreview(token: String?, id: Int): Result<ProposalCancelPreview> =
+    withContext(Dispatchers.IO) {
+        runCatching {
+            val req = Request.Builder()
+                .url(BuildConfig.API_BASE_URL + "/api/lesson-proposals/$id/cancel-preview")
+                .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
+                .build()
+            OkHttpClient().newCall(req).execute().use { res ->
+                val o = runCatching { JSONObject(res.body?.string().orEmpty()) }.getOrNull() ?: JSONObject()
+                if (!res.isSuccessful) error(o.stringOrNull("message") ?: "취소 정보를 불러오지 못했어요.")
+                ProposalCancelPreview(o.optInt("paidAmount"), o.optInt("expectedRefundAmount"))
+            }
+        }
+    }
+
+/** POST /lesson-proposals/:id/member-cancel — 성공이면 null, 실패면 서버 사유 문장. */
+private suspend fun proposalMemberCancel(token: String?, id: Int): String? =
+    withContext(Dispatchers.IO) {
+        runCatching {
+            val req = Request.Builder()
+                .url(BuildConfig.API_BASE_URL + "/api/lesson-proposals/$id/member-cancel")
+                .post("{}".toRequestBody("application/json".toMediaType()))
+                .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
+                .build()
+            OkHttpClient().newCall(req).execute().use { res ->
+                if (res.isSuccessful) null
+                else runCatching { JSONObject(res.body?.string().orEmpty()).stringOrNull("message") }.getOrNull()
+                    ?: "취소하지 못했어요. 다시 시도해 주세요."
+            }
+        }.getOrElse { "취소하지 못했어요. 다시 시도해 주세요." }
+    }
+
+private fun won(v: Int) = String.format(Locale.KOREA, "%,d", v)
+
 @Composable
 fun LessonProposalBubble(
     contentJson: String,
@@ -237,7 +275,31 @@ fun LessonProposalBubble(
 ) {
     val card = remember(contentJson) { LessonProposalCard.parse(contentJson) } ?: return
     var busy by remember { mutableStateOf(false) }
+    var cancelMessage by remember { mutableStateOf<String?>(null) }   // 회원 취소 확인(예상 환불액)
+    var errorText by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+
+    /** 예상 환불액을 먼저 받아 확인창에 보여 준다(iOS askMemberCancel 과 같은 문구). */
+    fun askMemberCancel() {
+        if (busy) return
+        busy = true
+        errorText = null
+        scope.launch {
+            proposalCancelPreview(token, card.proposalId)
+                .onSuccess { p ->
+                    val base = "취소 후에는 되돌릴 수 없어요."
+                    cancelMessage = when {
+                        p.paidAmount <= 0 -> "$base\n결제한 예약금이 없어 환불할 금액이 없어요."
+                        p.expectedRefundAmount <= 0 -> "$base\n환불 규정에 따라 결제한 예약금은 환불되지 않아요."
+                        p.expectedRefundAmount >= p.paidAmount -> "$base\n결제한 예약금 ${won(p.expectedRefundAmount)}원이 전액 환불돼요."
+                        else -> "$base\n취소 수수료 ${won(p.paidAmount - p.expectedRefundAmount)}원을 제외한 " +
+                            "${won(p.expectedRefundAmount)}원이 환불돼요."
+                    }
+                }
+                .onFailure { errorText = it.message }
+            busy = false
+        }
+    }
 
     fun act(action: String) {
         if (busy) return
@@ -295,6 +357,35 @@ fun LessonProposalBubble(
                 }
             }
         }
+        // 확정 후 회원 본인 취소 — 수업 시작 전에만. 환불은 약속에 찍힌 규정대로 서버가 계산한다.
+        val startMs = QuoteUi.parseDate(card.startAt)
+        if (card.status == "ACCEPTED" && !isTeacherSide && startMs != null && startMs > System.currentTimeMillis()) {
+            ProposalButton(
+                if (busy) "확인 중…" else "약속 취소", filled = false, enabled = !busy,
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            ) { askMemberCancel() }
+        }
+        errorText?.let {
+            Text(it, fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp, color = Color.Red)
+        }
+    }
+
+    cancelMessage?.let { msg ->
+        com.muyeon.app.ui.quote.QuoteDialog(
+            title = "레슨 약속을 취소할까요?",
+            message = msg,
+            confirmText = "약속 취소",
+            onConfirm = {
+                cancelMessage = null
+                busy = true
+                scope.launch {
+                    errorText = proposalMemberCancel(token, card.proposalId)
+                    busy = false
+                    onChanged()   // 카드 상태는 서버 message-updated 로도 갱신된다.
+                }
+            },
+            onDismiss = { cancelMessage = null },
+        )
     }
 }
 

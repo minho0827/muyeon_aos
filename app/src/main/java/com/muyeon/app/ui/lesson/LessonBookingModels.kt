@@ -184,6 +184,10 @@ data class LessonReservationDetail(
     val lesson: LessonResPlace,
     val owner: LessonResPerson,
     val member: LessonResPerson,
+    /** 이 예약에 찍힌 환불 규정(예약 당시 버전)의 문구 — 서버가 만든다. 구 서버는 null. */
+    val refundPolicy: LessonRefundPolicy? = null,
+    /** 무료 취소 마감 시각(ISO) — 수업 시작 - 전액 환불 기준 시간. 구 서버는 null. */
+    val freeCancelDeadline: String? = null,
 ) {
     val dateLine: String
         get() = listOf(
@@ -214,6 +218,8 @@ data class LessonReservationDetail(
             lesson = LessonResPlace.from(o.optJSONObject("lesson")),
             owner = LessonResPerson.from(o.optJSONObject("owner")),
             member = LessonResPerson.from(o.optJSONObject("member")),
+            refundPolicy = LessonRefundPolicy.from(o.optJSONObject("refundPolicy")),
+            freeCancelDeadline = o.stringOrNull("freeCancelDeadline"),
         )
     }
 }

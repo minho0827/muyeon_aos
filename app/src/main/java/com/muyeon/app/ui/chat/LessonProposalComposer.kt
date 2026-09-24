@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import com.muyeon.app.BuildConfig
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
+import com.muyeon.app.ui.lesson.LessonRefundPolicyRepo
 import com.muyeon.app.ui.lesson.UserCalendar
 import com.muyeon.app.ui.lesson.UserCalendarApi
 import com.muyeon.app.ui.quote.QuoteDialog
@@ -140,6 +141,9 @@ fun LessonProposalComposer(
     var calendars by remember { mutableStateOf<List<UserCalendar>>(emptyList()) }
     var calendarId by remember { mutableStateOf(initialCalendarId) }
     var policyAgreed by remember { mutableStateOf(false) }
+    // 규정 문구는 서버(관리자 '환불 규정')가 준다 — 결제 순간의 규정이 약속에 찍힌다.
+    var refundPolicy by remember { mutableStateOf(LessonRefundPolicyRepo.current()) }
+    LaunchedEffect(Unit) { refundPolicy = LessonRefundPolicyRepo.get() }
     var sending by remember { mutableStateOf(false) }
     var errorText by remember { mutableStateOf<String?>(null) }
     var conflictText by remember { mutableStateOf<String?>(null) }
@@ -301,9 +305,7 @@ fun LessonProposalComposer(
                         PriceRow("현장 결제 예정액", maxOf(0, totalPrice - depositAmount))
                         HorizontalDivider(color = MuyeonColors.border)
                         Text(
-                            "예약금은 레슨비에 포함됩니다.\n· 24시간 전까지 예약금 전액 환불\n" +
-                                "· 24시간 이내 취소 시 예약금 미환불\n· 수업 시작 후·노쇼 예약금 미환불\n" +
-                                "· 강사 취소·수업 미제공 전액 환불",
+                            "예약금은 레슨비에 포함됩니다.\n${refundPolicy.bulletText}",
                             fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 20.sp,
                             color = MuyeonColors.textSub,
                         )

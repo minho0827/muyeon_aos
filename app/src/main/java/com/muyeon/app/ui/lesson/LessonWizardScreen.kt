@@ -467,7 +467,8 @@ private fun StepExtra(d: LessonWizardDraft, onChange: (LessonWizardDraft) -> Uni
     WizardField("발렛 안내") { WizardTextField(d.valetInfo, "") { onChange(d.copy(valetInfo = it)) } }
     WizardField("홈페이지") { WizardTextField(d.homepage, "https://") { onChange(d.copy(homepage = it)) } }
     WizardField("공지사항") { WizardMultiline(d.notice, "수강생에게 알릴 내용") { onChange(d.copy(notice = it)) } }
-    WizardField("취소 규정") { WizardMultiline(d.cancelPolicy, "예: 수업 24시간 전까지 취소 가능") { onChange(d.copy(cancelPolicy = it)) } }
+    // 취소 규정 입력칸은 없앴다 — 환불 규정은 무용연이 정한다(관리자 '환불 규정').
+    //  서버도 이 값을 더는 저장하지 않는다. 기존 값은 DB 에 보존.
 }
 
 @Composable

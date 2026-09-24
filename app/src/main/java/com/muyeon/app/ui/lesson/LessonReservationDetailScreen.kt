@@ -256,7 +256,8 @@ private fun finalConfirmationMessage(d: LessonReservationDetail?): String {
     val refund = d.expectedRefundAmount
         ?: d.refundAmount
         ?: maxOf(0, payment - (d.cancelFee ?: 0))
-    if (refund == 0) return "$base\n수업이 시작되어 환불되지 않습니다."
+    // ★ 종전 문구 "수업이 시작되어…"는 수업 전 24시간 이내 취소에도 나와 틀렸다(iOS 와 같이 수정).
+    if (refund == 0) return "$base\n환불 규정에 따라 결제한 예약금은 환불되지 않습니다."
     val fee = d.expectedCancelFee ?: d.cancelFee ?: maxOf(0, payment - refund)
     if (fee == 0) return "$base\n결제한 예약금 ${won(refund)}원이 전액 환불됩니다."
     return "$base\n취소 수수료 ${won(fee)}원을 제외한 ${won(refund)}원이 환불됩니다."
@@ -381,20 +382,20 @@ private fun NoticeSection(notice: String) = Card {
 private fun CancelPolicySection(d: LessonReservationDetail) = Card {
     SectionHeader(Icons.Outlined.Cancel, "취소·변경 정책")
     if (d.freeCancelDays > 0) FreeCancelBanner(d.freeCancelDays)
+    // 이 예약에 찍힌 규정(예약 당시 버전)의 문구 — 구 서버면 기본 문구.
+    //  판매자(강사·학원) 취소 정책은 보이지 않는다 — 환불 규정은 무용연이 정한다(2026-09-24).
+    val policy = d.refundPolicy ?: LessonRefundPolicy.FALLBACK
     Text(
-        if (d.deposit > 0) {
-            "수업 24시간 전까지는 예약금 전액 환불, 24시간 이내에는 예약금이 환불되지 않습니다. " +
-                "수업 시작 후·노쇼도 미환불이며, 강사·학원 취소나 수업 미제공은 전액 환불됩니다."
-        } else {
-            "결제 없는 예약으로 취소 수수료가 없습니다."
-        },
+        if (d.deposit > 0) policy.paragraph else "결제 없는 예약으로 취소 수수료가 없습니다.",
         fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 20.sp, color = MuyeonColors.textHead,
     )
-    d.lesson.cancelPolicy?.takeIf { it.isNotEmpty() }?.let {
-        Text(
-            "판매자 추가 안내 · $it\n공통 기준보다 소비자에게 유리한 경우 적용됩니다.",
-            fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp, color = MuyeonColors.textSub,
-        )
+    if (d.deposit > 0) {
+        policy.extraNotice?.takeIf { it.isNotBlank() }?.let {
+            Text(
+                it,
+                fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp, color = MuyeonColors.textSub,
+            )
+        }
     }
 }
 

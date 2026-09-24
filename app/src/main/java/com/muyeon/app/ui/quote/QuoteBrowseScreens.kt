@@ -31,6 +31,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import com.muyeon.app.ui.lesson.LessonRefundPolicyRepo
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -778,12 +779,17 @@ internal fun QuoteRespondSheet(
     var message by remember { mutableStateOf("") }
     var takesDeposit by remember { mutableStateOf(false) }
     var depositAmount by remember { mutableIntStateOf(10_000) }
+    // 예약금 한도(관리자 '환불 규정') — 선택지·안내·검사가 이 값을 따른다.
+    var refundPolicy by remember { mutableStateOf(LessonRefundPolicyRepo.current()) }
+    LaunchedEffect(Unit) { refundPolicy = LessonRefundPolicyRepo.get() }
     var includeProfile by remember { mutableStateOf(true) }
     var confirmSend by remember { mutableStateOf(false) }
     var sending by remember { mutableStateOf(false) }
     val isAcademy = attachmentRole == "ACADEMY"
     val attachmentType = if (!includeProfile) "NONE" else attachmentRole
-    val canSend = message.trim().isNotEmpty() && !sending
+    // 금액을 비우면(협의) 비율 검사는 서버에 맡긴다.
+    val depositProblem = if (takesDeposit) amountText.trim().toIntOrNull()?.let { refundPolicy.depositError(depositAmount, it) } else null
+    val canSend = message.trim().isNotEmpty() && !sending && depositProblem == null
 
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Column(
@@ -813,7 +819,7 @@ internal fun QuoteRespondSheet(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            // 예약금 — 서버 규칙: 1천원 단위, 금액의 30% 이하, 최대 5만원(quotes.service 검증과 동일 문구)
+            // 예약금 — 한도는 관리자 '환불 규정'(서버 quotes.service 도 같은 값으로 검사)
             Row(
                 Modifier.fillMaxWidth().clickable { takesDeposit = !takesDeposit },
                 verticalAlignment = Alignment.CenterVertically,
@@ -829,8 +835,11 @@ internal fun QuoteRespondSheet(
                 )
             }
             if (takesDeposit) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(10_000, 20_000, 30_000).forEach { v ->
+                Row(
+                    Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    refundPolicy.depositChoices.forEach { v ->
                         val on = depositAmount == v
                         Text(
                             "${String.format(java.util.Locale.KOREA, "%,d", v)}원",
@@ -847,10 +856,17 @@ internal fun QuoteRespondSheet(
                     }
                 }
                 Text(
-                    "예약금은 1천원 단위로 견적 금액의 30% 이하, 최대 5만원까지 설정할 수 있어요.",
+                    refundPolicy.deposit.hint,
                     fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp,
                     color = MuyeonColors.secondary,
                 )
+                depositProblem?.let {
+                    Text(
+                        it,
+                        fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp,
+                        color = Color.Red,
+                    )
+                }
             }
 
             Text(
