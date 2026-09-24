@@ -306,12 +306,22 @@ private fun FreeCancelBanner(days: Int) {
 private fun PaymentSection(d: LessonReservationDetail) = Card {
     SectionHeader(Icons.Filled.CreditCard, "결제 정보")
     Kv("총 레슨비", "${won(d.totalPrice ?: 0)}원")
-    Kv("결제한 예약금", "${won(d.paymentAmount ?: d.deposit)}원")
-    Kv("현장 결제 예정액", "${won(d.remainingAmount ?: 0)}원")
-    Text(
-        "예약금은 별도 수수료가 아니라 전체 레슨비에 포함됩니다.",
-        fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp, color = MuyeonColors.textSub,
-    )
+    if (d.deposit > 0) {
+        Kv("결제한 예약금", "${won(d.paymentAmount ?: d.deposit)}원")
+        Kv("현장 결제 예정액", "${won(d.remainingAmount ?: 0)}원")
+        Text(
+            "예약금은 별도 수수료가 아니라 전체 레슨비에 포함됩니다.",
+            fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp, color = MuyeonColors.textSub,
+        )
+    } else {
+        // 예약금 없는 레슨 — 앱에서 낸 돈이 없고 현장에서 낸다는 걸 분명히(금액 오해 방지, iOS 와 동일).
+        Kv("결제 방식", "방문 시 현장 결제")
+        Kv("앱에서 결제한 금액", "0원")
+        Text(
+            "레슨비는 수업 당일 강사·학원에 직접 결제해 주세요.",
+            fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp, color = MuyeonColors.textSub,
+        )
+    }
 }
 
 @Composable

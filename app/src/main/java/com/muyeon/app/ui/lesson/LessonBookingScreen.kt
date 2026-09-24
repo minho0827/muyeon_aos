@@ -258,7 +258,12 @@ private fun BookingPaymentBlock(
             val remaining = product.remainingFor(headcount)
 
             Text(
-                if (deposit > 0) "예약금을 결제하면 예약이 확정돼요." else "결제 없이 바로 예약이 확정돼요.",
+                // ★ 예약금 없는 레슨은 '지금 결제 안 함 + 현장 결제'를 분명히(금액 오해 방지 — iOS 와 같은 문구).
+                when {
+                    deposit > 0 -> "예약금을 결제하면 예약이 확정돼요."
+                    total > 0 -> "지금은 결제하지 않아요. 레슨비는 수업 당일 현장에서 직접 결제해 주세요."
+                    else -> "무료 레슨이라 결제 없이 예약이 확정돼요."
+                },
                 fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
                 lineHeight = 17.sp, color = MuyeonColors.textHead,
             )
@@ -269,15 +274,24 @@ private fun BookingPaymentBlock(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 AmountRow("총 레슨비", "${total.won()}원")
-                AmountRow("지금 결제할 예약금", "${deposit.won()}원")
-                AmountRow("현장 결제 예정액", "${remaining.won()}원")
-                HorizontalDivider(color = MuyeonColors.border)
-                AmountRow("지금 결제", "${deposit.won()}원", emphasize = true)
+                if (deposit > 0) {
+                    AmountRow("지금 결제할 예약금", "${deposit.won()}원")
+                    AmountRow("현장 결제 예정액", "${remaining.won()}원")
+                    HorizontalDivider(color = MuyeonColors.border)
+                    AmountRow("지금 결제", "${deposit.won()}원", emphasize = true)
+                } else {
+                    // 예약금 없음 — 강조는 '방문 시 현장 결제'. '지금 결제 0원'은 보조로만.
+                    AmountRow("지금 결제", "0원")
+                    HorizontalDivider(color = MuyeonColors.border)
+                    AmountRow("방문 시 현장 결제", "${total.won()}원", emphasize = true)
+                }
             }
         }
 
         Text(
-            "예약금은 레슨비에 포함되며, 수업 24시간 전까지 취소하면 전액 환불돼요.",
+            if (product != null && product.depositFor(headcount) == 0)
+                "예약금이 없는 레슨이에요. 앱에서는 결제되지 않으며, 레슨비는 수업 당일 강사·학원에 직접 결제해요."
+            else "예약금은 레슨비에 포함되며, 수업 24시간 전까지 취소하면 전액 환불돼요.",
             fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp,
             color = MuyeonColors.textSub,
         )
