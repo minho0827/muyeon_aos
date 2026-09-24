@@ -55,6 +55,7 @@ fun LessonReservationDetailScreen(
     onClose: () -> Unit,
     onChange: (Int, Int) -> Unit,   // (productId, reservationId) — 원자적 리스케줄
     onCanceled: (Int) -> Unit,      // 취소 완료 → 웹에 즉시 반영
+    onChanged: (Int) -> Unit = {},  // 취소 외 변경(이의신청 등) → 웹 예약내역 재조회
 ) {
     var detail by remember { mutableStateOf<LessonReservationDetail?>(null) }
     var loading by remember { mutableStateOf(true) }
@@ -138,6 +139,7 @@ fun LessonReservationDetailScreen(
                                         scope.launch {
                                             api.openDispute(reservationId, reason)
                                                 .onSuccess {
+                                                    onChanged(reservationId)
                                                     doneMessage = "이의 신청이 접수되었습니다. 확인 전까지 정산이 보류됩니다."
                                                     load()
                                                 }

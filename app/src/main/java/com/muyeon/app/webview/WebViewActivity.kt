@@ -311,6 +311,11 @@ class WebViewActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // 웹뷰에 '다시 보임'을 알린다 → 웹 document.visibilityState 가 visible 로 바뀌고 visibilitychange 가 난다.
+        //  웹의 예약내역·견적·지원 목록은 이 이벤트로 '화면 복귀 시 재조회'를 한다(콜백을 못 받는 경로의 안전망).
+        //  예전엔 onPause/onResume 을 웹뷰에 넘기지 않아, 네이티브 화면을 닫고 돌아와도 웹은 계속 보이는 중으로 알았다.
+        //  ★ 콜백 대기열을 흘리기 전에 부른다 — 먼저 깨워야 스크립트가 바로 돈다.
+        if (::webView.isInitialized) webView.onResume()
         // 네이티브 화면이 쌓아둔 웹 콜백을 흘려보낸다(WebCallbackQueue).
         //  액티비티가 죽어 인텐트로 못 넘긴 것까지 여기서 회수된다 —
         //  안 하면 "화면엔 반영됐는데 서버는 모르는" 상태로 남는다.
@@ -486,6 +491,13 @@ class WebViewActivity : ComponentActivity() {
         } else {
             super.onBackPressed()
         }
+    }
+
+    override fun onPause() {
+        // 다른 화면(네이티브·카드사 앱)이 덮으면 웹에 '숨김'을 알린다(onResume 의 짝).
+        //  애니메이션·위치 등 웹뷰 부가 처리만 멈추고 JS 타이머는 멈추지 않는다(pauseTimers 는 부르지 않는다).
+        if (::webView.isInitialized) webView.onPause()
+        super.onPause()
     }
 
     override fun onDestroy() {

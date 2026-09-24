@@ -167,7 +167,13 @@ class AppBridgeInterface(
                 val rid = d.optString("reservationId").toIntOrNull() ?: return true
                 com.muyeon.app.ui.lesson.LessonActivity.startReservationDetail(activity, rid)
             }
-            "openLessonCreate" -> com.muyeon.app.ui.lesson.LessonActivity.startCreate(activity)
+            // 웹 LessonManage 의 [수정]은 data.lessonId 를 보낸다 — 있으면 수정 위저드(iOS presentLessonCreate 와 동일).
+            //  예전엔 lessonId 를 버리고 항상 개설 위저드를 열어, 수정을 눌러도 빈 화면이 떴다.
+            "openLessonCreate" -> {
+                val lid = d.optString("lessonId").toIntOrNull()
+                if (lid != null && lid > 0) com.muyeon.app.ui.lesson.LessonActivity.startEdit(activity, lid)
+                else com.muyeon.app.ui.lesson.LessonActivity.startCreate(activity)
+            }
             "openLessonSlotManage" -> com.muyeon.app.ui.lesson.LessonActivity.startSlots(
                 activity, d.optString("lessonProductId").toIntOrNull(),
             )

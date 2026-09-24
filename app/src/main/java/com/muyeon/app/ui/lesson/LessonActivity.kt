@@ -74,6 +74,14 @@ class LessonActivity : ComponentActivity() {
 
             fun back() { if (!nav.popBackStack()) finish() }
 
+            // 레슨 개설·수정 완료. 웹에서 바로 연 경우(시작 화면이 create/edit)는 웹 내 레슨으로 돌아가
+            //  목록을 다시 읽게 한다(iOS presentLessonCreate.onCreated 와 동일). 네이티브 '레슨 관리'
+            //  안에서 연 경우는 그 목록으로 되돌아간다(웹 목록도 대기열 콜백으로 맞춘다).
+            fun lessonSaved() {
+                WebCallbacks.lessonsChanged(this@LessonActivity)
+                if (route == "create" || route == "edit") openWebAndFinish("/myLessons") else back()
+            }
+
             NavHost(nav, startDestination = route) {
                 composable("calendar") {
                     // 배지 상태(신규 예약·조율 중 확인)는 기기 저장 — iOS UserDefaults 대응.
@@ -103,14 +111,14 @@ class LessonActivity : ComponentActivity() {
                     )
                 }
                 composable("create") {
-                    LessonWizardScreen(wizardApi, null, onClose = { back() }, onCreated = { back() })
+                    LessonWizardScreen(wizardApi, null, onClose = { back() }, onCreated = { lessonSaved() })
                 }
                 composable("edit") {
-                    LessonWizardScreen(wizardApi, id.takeIf { it > 0 }, onClose = { back() }, onCreated = { back() })
+                    LessonWizardScreen(wizardApi, id.takeIf { it > 0 }, onClose = { back() }, onCreated = { lessonSaved() })
                 }
                 composable("edit/{id}") { e ->
                     val lid = e.arguments?.getString("id")?.toIntOrNull()
-                    LessonWizardScreen(wizardApi, lid, onClose = { back() }, onCreated = { back() })
+                    LessonWizardScreen(wizardApi, lid, onClose = { back() }, onCreated = { lessonSaved() })
                 }
                 composable("slots") {
                     LessonSlotManageScreen(slotApi, id.takeIf { it > 0 }, onClose = { back() })
@@ -122,7 +130,11 @@ class LessonActivity : ComponentActivity() {
                     LessonBookingScreen(
                         bookingApi, id,
                         onClose = { back() },
-                        onDone = { back() },
+                        // 0원 레슨 예약 확정 — 웹 예약내역을 다시 읽게 하고 내 예약으로 보낸다(iOS 와 같은 결말).
+                        onDone = {
+                            WebCallbacks.reservationsChanged(this@LessonActivity)
+                            openWebAndFinish("/myReservations")
+                        },
                         // 예약금 결제는 웹 결제창으로 넘긴다(iOS 와 동일 경로).
                         //  /reservations/:id?pay=1 이 토스 결제창을 띄우고, 승인되면 예약이 확정된다.
                         onNeedPayment = { rid -> openWebAndFinish("/reservations/$rid?pay=1") },
@@ -153,12 +165,29 @@ class LessonActivity : ComponentActivity() {
                         },
                     )
                 }
+                composable("reschedule/{pid}/{rid}") { e ->
+                    val pid = e.arguments?.getString("pid")?.toIntOrNull() ?: 0
+                    val rid = e.arguments?.getString("rid")?.toIntOrNull()
+                    LessonBookingScreen(
+                        bookingApi, pid, rescheduleReservationId = rid,
+                        onClose = { back() },
+                        // 변경 요청 접수 — 강사 승인 전이지만 '변경 요청 중' 표시가 바뀌므로 웹을 다시 읽게 한다.
+                        onDone = {
+                            WebCallbacks.reservationsChanged(this@LessonActivity, rid)
+                            finish()
+                        },
+                    )
+                }
                 composable("reservation") {
                     LessonReservationDetailScreen(
                         bookingApi, reservationId,
                         onClose = { back() },
-                        // 변경: 같은 레슨상품 예약 화면을 '변경 모드'로 다시 연다(원자적 리스케줄).
-                        onChange = { pid, rid -> openWebAndFinish("/lessons/$pid?reschedule=$rid") },
+                        // 변경: 같은 레슨상품 예약 화면을 '변경 모드'로 연다(원자적 리스케줄).
+                        //  ★ 예전엔 웹 /lessons/{pid}?reschedule={rid} 로 보냈는데 웹은 reschedule 을 읽지 않아,
+                        //    거기서 예약하면 기존 예약이 옮겨지지 않고 **새 예약이 하나 더** 생겼다.
+                        //    변경 모드는 네이티브 예약 화면에 이미 있으므로 앱 안에서 바로 연다.
+                        onChange = { pid, rid -> nav.navigate("reschedule/$pid/$rid") },
+                        onChanged = { rid -> WebCallbacks.reservationsChanged(this@LessonActivity, rid) },
                         onCanceled = { rid ->
                             // 취소 완료 → 웹 예약내역에 즉시 반영(재조회 없이 콜백).
                             WebCallbacks.lessonReservationCanceled(this@LessonActivity, rid)

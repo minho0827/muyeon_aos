@@ -51,6 +51,24 @@ object WebCallbacks {
         enqueue(context, "window.__onNativeAcademyChanged && window.__onNativeAcademyChanged()")
     }
 
+    /**
+     * 예약이 바뀜(예약·변경·이의신청 등) — 웹 예약내역·예약상세가 서버에서 다시 읽는다.
+     *  iOS `notifyWebReservationsChanged` 와 같은 훅. 정본: pages/muyeon/my/MyReservations.js.
+     *  재조회라 멱등 — 대기열에 쌓여 여러 번 실행돼도 안전하다.
+     */
+    fun reservationsChanged(context: Context, reservationId: Int? = null) {
+        val arg = reservationId?.let { "'$it'" } ?: "null"
+        enqueue(
+            context,
+            "if(window.__onNativeReservationsChanged){ window.__onNativeReservationsChanged($arg); }",
+        )
+    }
+
+    /** 레슨 개설·수정 완료 — 웹 내 레슨(/myLessons) 목록 재조회. 정본: pages/muyeon/lessons/LessonManage.js. */
+    fun lessonsChanged(context: Context) {
+        enqueue(context, "if(window.__refreshMyLessons){ window.__refreshMyLessons(); }")
+    }
+
     /** 예약 취소 — 웹 예약내역에 즉시 CANCELED 반영. */
     fun lessonReservationCanceled(context: Context, reservationId: Int) {
         enqueue(
