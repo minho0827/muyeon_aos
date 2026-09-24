@@ -88,15 +88,14 @@ fun JobPostingPreviewScreen(form: JobForm, onClose: () -> Unit) {
                     QuoteUi.imageUrl(it), null, contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxWidth().height(220.dp).background(Color(0xFFF7F7F7)),
                 )
-            }
+            } ?: PreviewPlaceholder("대표 이미지가 표시됩니다", Modifier.fillMaxWidth().height(220.dp), square = true)
             Column(
                 Modifier.fillMaxWidth().padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 // 분야가 많으면 한 줄로 밀리므로 등록폼과 동일하게 줄바꿈시킨다.
-                if (chips.isNotEmpty()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        chips.chunked(3).forEach { row ->
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        (chips.ifEmpty { listOf("장르·모집 분야가 표시됩니다") }).chunked(3).forEach { row ->
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 row.forEach { label ->
                                     Text(
@@ -111,23 +110,21 @@ fun JobPostingPreviewScreen(form: JobForm, onClose: () -> Unit) {
                                 }
                             }
                         }
-                    }
                 }
                 Text(
                     form.title.ifEmpty { "공고 제목" },
                     fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp,
                     lineHeight = 27.sp, color = MuyeonColors.textHead,
                 )
-                form.academy?.takeIf { it.isNotEmpty() }?.let {
-                    Text(
-                        it,
+                Text(
+                        form.academy?.takeIf { it.isNotEmpty() } ?: "학원명이 표시됩니다",
                         fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
                         lineHeight = 17.sp, color = MuyeonColors.textSub,
                     )
-                }
                 HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
 
                 // 공고 상세(JobDetail)에 노출되는 항목과 1:1 — 빠짐 없이 전부 표시.
+                PreviewHead("모집 정보")
                 PreviewRow("장르", form.genre)
                 PreviewRow("모집 분야", (form.fields ?: emptyList()).joinToString(", ") { ResumeOptions.fieldLabel(it) })
                 PreviewRow("근무 지역", listOfNotNull(form.region, form.address).filter { it.isNotEmpty() }.joinToString(" "))
@@ -141,20 +138,21 @@ fun JobPostingPreviewScreen(form: JobForm, onClose: () -> Unit) {
                 PreviewRow("급여", salaryText)
                 PreviewRow("허용 경력", careerText)
 
-                if (preferenceLines.isNotEmpty()) {
-                    HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
-                    PreviewHead("원하는 강사 조건")
+                HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
+                PreviewHead("원하는 강사 조건")
+                if (preferenceLines.isEmpty()) {
+                    PreviewPlaceholder("선택한 우대 조건이 표시됩니다")
+                } else {
                     PreviewBody(preferenceLines.joinToString("\n"))
                 }
-                form.description?.takeIf { it.isNotEmpty() }?.let {
-                    HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
-                    PreviewHead("상세 설명")
-                    PreviewBody(it)
-                }
+                HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
+                PreviewHead("상세 설명")
+                form.description?.takeIf { it.isNotEmpty() }?.let { PreviewBody(it) }
+                    ?: PreviewPlaceholder("공고의 상세 설명이 표시됩니다")
                 // 실제 상세는 캐러셀, 미리보기는 세로 스택으로 전부 확인.
+                HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
+                PreviewHead("상세 이미지")
                 form.images?.takeIf { it.isNotEmpty() }?.let { images ->
-                    HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
-                    PreviewHead("상세 이미지")
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         images.forEach { img ->
                             AsyncImage(
@@ -164,7 +162,7 @@ fun JobPostingPreviewScreen(form: JobForm, onClose: () -> Unit) {
                             )
                         }
                     }
-                }
+                } ?: PreviewPlaceholder("등록한 상세 이미지가 표시됩니다", Modifier.fillMaxWidth().height(160.dp))
             }
         }
     }
@@ -172,19 +170,39 @@ fun JobPostingPreviewScreen(form: JobForm, onClose: () -> Unit) {
 
 @Composable
 private fun PreviewRow(label: String, value: String?) {
-    if (value.isNullOrEmpty()) return
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
             label,
             fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
             lineHeight = 16.sp, color = MuyeonColors.textSub, modifier = Modifier.width(74.dp),
         )
-        Text(
-            value,
-            fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
-            lineHeight = 17.sp, color = MuyeonColors.textHead,
-        )
+        if (value.isNullOrEmpty()) {
+            PreviewPlaceholder("입력한 $label 정보가 표시됩니다", Modifier.weight(1f))
+        } else {
+            Text(
+                value,
+                fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
+                lineHeight = 17.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
+            )
+        }
     }
+}
+
+@Composable
+private fun PreviewPlaceholder(
+    text: String,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    square: Boolean = false,
+) = Box(
+    modifier.clip(if (square) RoundedCornerShape(0.dp) else RoundedCornerShape(8.dp))
+        .background(MuyeonColors.tileIdle).padding(horizontal = 12.dp, vertical = 12.dp),
+    contentAlignment = Alignment.Center,
+) {
+    Text(
+        text,
+        fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
+        lineHeight = 17.sp, color = MuyeonColors.textSub, textAlign = TextAlign.Center,
+    )
 }
 
 @Composable
