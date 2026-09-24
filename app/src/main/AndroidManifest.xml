@@ -12,6 +12,46 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="nmap" />
         </intent>
+        <!-- 결제(토스) 중 이동하는 카드사·간편결제·은행 앱. Android 11+ 패키지 가시성 대응.
+             출처: 토스페이먼츠 웹뷰 연동 가이드(docs.tosspayments.com/guides/v2/webview) 목록 그대로.
+             실제 앱 호출은 WebViewActivity.openExternalScheme 가 한다. -->
+        <package android:name="com.kakao.talk" /> <!-- 카카오톡 -->
+        <package android:name="com.nhn.android.search" /> <!-- 네이버페이 -->
+        <package android:name="com.samsung.android.spay" /> <!-- 삼성페이 -->
+        <package android:name="net.ib.android.smcard" /> <!-- 모니모페이 -->
+        <package android:name="com.mobiletoong.travelwallet" /> <!-- 신한카드 트레블월렛 -->
+        <package android:name="com.samsung.android.spaylite" /> <!-- 삼성페이 -->
+        <package android:name="com.ssg.serviceapp.android.egiftcertificate" /> <!-- SSGPAY -->
+        <package android:name="com.nhnent.payapp" /> <!-- PAYCO -->
+        <package android:name="com.lottemembers.android" /> <!-- L.POINT -->
+        <package android:name="viva.republica.toss" /> <!-- 토스 -->
+        <package android:name="com.shinhan.smartcaremgr" /> <!-- 신한 슈퍼SOL -->
+        <package android:name="com.shinhan.sbanking" /> <!-- 신한 SOL뱅크 -->
+        <package android:name="com.shcard.smartpay" /> <!-- 신한페이판 -->
+        <package android:name="com.shinhancard.smartshinhan" /> <!-- 신한페이판-공동인증서 -->
+        <package android:name="com.hyundaicard.appcard" /> <!-- 현대카드 -->
+        <package android:name="com.lumensoft.touchenappfree" /> <!-- 현대카드-공동인증서 -->
+        <package android:name="kr.co.samsungcard.mpocket" /> <!-- 삼성카드 -->
+        <package android:name="nh.smart.nhallonepay" /> <!-- 올원페이 -->
+        <package android:name="com.kbcard.cxh.appcard" /> <!-- KB Pay -->
+        <package android:name="com.kbstar.liivbank" /> <!-- Liiv(KB국민은행) -->
+        <package android:name="com.kbstar.reboot" /> <!-- Liiv Reboot(KB국민은행) -->
+        <package android:name="com.kbstar.kbbank" /> <!-- 스타뱅킹(KB국민은행) -->
+        <package android:name="kvp.jjy.MispAndroid320" /> <!-- ISP/페이북 -->
+        <package android:name="com.lcacApp" /> <!-- 롯데카드 -->
+        <package android:name="com.hanaskcard.paycla" /> <!-- 하나카드 -->
+        <package android:name="com.hanaskcard.rocomo.potal" /> <!-- 하나카드 -->
+        <package android:name="kr.co.hanamembers.hmscustomer" /> <!-- 하나멤버스 -->
+        <package android:name="kr.co.citibank.citimobile" /> <!-- 씨티모바일 -->
+        <package android:name="com.wooricard.wpay" /> <!-- 우리페이 -->
+        <package android:name="com.wooricard.smartapp" /> <!-- 우리카드 -->
+        <package android:name="com.wooribank.smart.npib" /> <!-- 우리WON뱅킹 -->
+        <package android:name="com.lguplus.paynow" /> <!-- 페이나우 -->
+        <package android:name="com.kftc.bankpay.android" /> <!-- 뱅크페이 -->
+        <package android:name="com.TouchEn.mVaccine.webs" /> <!-- TouchEn mVaccine (신한) -->
+        <package android:name="kr.co.shiftworks.vguardweb" /> <!-- V-Guard (삼성) -->
+        <package android:name="com.ahnlab.v3mobileplus" /> <!-- V3 (NH, 현대) -->
+        <package android:name="com.kakaobank.channel" /> <!-- 카카오뱅크 -->
     </queries>
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
