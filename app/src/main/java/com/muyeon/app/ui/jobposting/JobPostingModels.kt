@@ -89,7 +89,14 @@ object JobPostingOptions {
         else -> ""
     }
 
-    val tabs = listOf("ALL" to "전체", "OPEN" to "채용중", "CLOSED" to "마감", "HOLD" to "보류")
+    fun statusPriority(status: String?): Int = when (status) {
+        "OPEN" -> 0
+        "HOLD" -> 1
+        "CLOSED" -> 2
+        else -> 3
+    }
+
+    val tabs = listOf("ALL" to "전체", "OPEN" to "채용중", "HOLD" to "보류", "CLOSED" to "마감")
 }
 
 /** 등록 폼 옵션 — 웹 jobOptions/subOptions 와 **값 계약**. */

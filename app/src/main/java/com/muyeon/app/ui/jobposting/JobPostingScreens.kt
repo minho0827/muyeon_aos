@@ -84,7 +84,11 @@ fun MyPostingsScreen(
 
     LaunchedEffect(Unit) { load() }
 
-    val filtered = if (tab == "ALL") postings else postings.filter { it.status == tab }
+    val filtered = (if (tab == "ALL") postings else postings.filter { it.status == tab })
+        .sortedWith(
+            compareBy<MyPosting> { JobPostingOptions.statusPriority(it.status) }
+                .thenByDescending { it.updatedAt ?: it.createdAt.orEmpty() }
+        )
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         QuoteNavBar(title = "내 공고", onBack = onClose)
