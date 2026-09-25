@@ -157,13 +157,15 @@ data class JobForm(
     //  한쪽만 바꾸면 저장은 되는데 다른 화면에서 안 보이는 형태로 조용히 어긋난다.
     var pref: JobPref = JobPref(),
 ) {
-    fun toJson(): JSONObject = JSONObject().apply {
+    fun toJson(isEdit: Boolean = false): JSONObject = JSONObject().apply {
         put("title", title)
         putOpt("academy", academy); putOpt("genre", genre)
         putOpt("region", region); putOpt("regionCode", regionCode)
         fields?.let { put("fields", JSONArray(it)) }
-        putOpt("target", target); putOpt("imageUrl", imageUrl)
-        images?.let { put("images", JSONArray(it)) }
+        putOpt("target", target)
+        if (isEdit) put("imageUrl", imageUrl.orEmpty()) else putOpt("imageUrl", imageUrl)
+        if (isEdit) put("images", JSONArray(images ?: emptyList<String>()))
+        else images?.let { put("images", JSONArray(it)) }
         putOpt("address", address); putOpt("subway", subway)
         putOpt("days", days); putOpt("time", time)
         putOpt("employment", employment)
@@ -291,7 +293,9 @@ class JobPostingApi(internal val token: String?) {
     suspend fun saveJob(id: Int?, form: JobForm): Result<Int> {
         val path = if (id != null) "/jobs/$id" else "/jobs"
         val method = if (id != null) "PATCH" else "POST"
-        return call(path, method, form.toJson()).map { JSONObject(it.ifBlank { "{}" }).optInt("id", id ?: 0) }
+        return call(path, method, form.toJson(isEdit = id != null)).map {
+            JSONObject(it.ifBlank { "{}" }).optInt("id", id ?: 0)
+        }
     }
 
     private suspend fun call(path: String, method: String = "GET", body: JSONObject? = null): Result<String> =

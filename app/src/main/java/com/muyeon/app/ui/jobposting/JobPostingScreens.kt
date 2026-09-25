@@ -77,8 +77,12 @@ fun MyPostingsScreen(
     var showArchived by remember { mutableStateOf(false) }
 
     suspend fun load() {
-        postings = api.myPostings().getOrDefault(emptyList())
-        archived = api.archived().getOrDefault(emptyList())
+        api.myPostings()
+            .onSuccess { postings = it }
+            .onFailure { toast = it.message ?: "공고 목록을 불러오지 못했어요." }
+        api.archived()
+            .onSuccess { archived = it }
+            .onFailure { toast = it.message ?: "보관함을 불러오지 못했어요." }
         loading = false
     }
 
