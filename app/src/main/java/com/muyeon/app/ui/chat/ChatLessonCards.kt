@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.chat
 
+import com.muyeon.app.webview.withActiveType
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -222,7 +223,7 @@ private suspend fun proposalAction(token: String?, id: Int, action: String, forc
                 .url(BuildConfig.API_BASE_URL + "/api/lesson-proposals/$id/$action")
                 .post(body.toString().toRequestBody("application/json".toMediaType()))
                 .addHeader("Content-Type", "application/json")
-                .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
+                .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }.withActiveType()
                 .build()
             OkHttpClient().newCall(req).execute().use { it.isSuccessful }
         }.getOrDefault(false)
@@ -237,7 +238,7 @@ private suspend fun proposalCancelPreview(token: String?, id: Int): Result<Propo
         runCatching {
             val req = Request.Builder()
                 .url(BuildConfig.API_BASE_URL + "/api/lesson-proposals/$id/cancel-preview")
-                .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
+                .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }.withActiveType()
                 .build()
             OkHttpClient().newCall(req).execute().use { res ->
                 val o = runCatching { JSONObject(res.body?.string().orEmpty()) }.getOrNull() ?: JSONObject()
@@ -254,7 +255,7 @@ private suspend fun proposalMemberCancel(token: String?, id: Int): String? =
             val req = Request.Builder()
                 .url(BuildConfig.API_BASE_URL + "/api/lesson-proposals/$id/member-cancel")
                 .post("{}".toRequestBody("application/json".toMediaType()))
-                .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
+                .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }.withActiveType()
                 .build()
             OkHttpClient().newCall(req).execute().use { res ->
                 if (res.isSuccessful) null

@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.quote
 
+import com.muyeon.app.webview.withActiveType
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -38,6 +39,7 @@ import com.muyeon.app.BuildConfig
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.utils.TokenManager
+import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.webview.NativeWebRoute
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -72,7 +74,7 @@ class AutoQuoteApi(private val token: String?) {
                     else -> null
                 }
                 val req = Request.Builder().url(base + path).method(method, payload)
-                    .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
+                    .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }.withActiveType()
                     .apply { if (body != null) addHeader("Content-Type", "application/json") }
                     .build()
                 client.newCall(req).execute().use { res ->
@@ -120,6 +122,8 @@ class QuoteAutoTemplatesActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 자동 견적 템플릿은 강사·학원 전용 — 무용수 유형이면 안내 후 종료(2026-09-26 정책).
+        if (!ActiveRole.allowLessonProvider(this)) { finish(); return }
         setContent {
             val api = remember { AutoQuoteApi(TokenManager.getAccessToken(this)) }
             QuoteAutoTemplatesScreen(

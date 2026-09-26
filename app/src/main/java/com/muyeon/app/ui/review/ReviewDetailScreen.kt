@@ -32,6 +32,7 @@ import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteAvatar
 import com.muyeon.app.ui.quote.QuoteNavBar
 import com.muyeon.app.ui.quote.QuoteUi
+import com.muyeon.app.webview.ActiveRole
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -251,6 +252,7 @@ fun ReviewDetailScreen(
                 // 하단 CTA — 프리필 대상이 없으면 누를 게 없다(iOS 와 같이 흐리게).
                 HorizontalDivider(color = MuyeonColors.border)
                 val enabled = !requesting && r.prefillLessonId != null
+                val ctaCtx = androidx.compose.ui.platform.LocalContext.current
                 Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Text(
                         if (requesting) "불러오는 중…" else "같은 조건으로 견적 요청하기",
@@ -261,6 +263,8 @@ fun ReviewDetailScreen(
                             .background(MuyeonColors.primary.copy(alpha = if (enabled) 1f else 0.5f))
                             .clickable(enabled = enabled) {
                                 val lid = r.prefillLessonId ?: return@clickable
+                                // 무용수 유형은 레슨(견적) 요청 불가 — 프리필 조회 전에 안내(2026-09-26 정책).
+                                if (!ActiveRole.allowLessonCustomer(ctaCtx)) return@clickable
                                 requesting = true
                                 scope.launch {
                                     api.quotePrefill(lid).onSuccess(onRequestQuote)

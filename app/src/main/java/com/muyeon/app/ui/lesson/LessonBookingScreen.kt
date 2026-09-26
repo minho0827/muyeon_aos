@@ -187,9 +187,12 @@ fun LessonBookingScreen(
 
         // ★ 규정 확인 없이는, 그리고 금액을 모르는 상태(product == null)에서는 진행하지 않는다.
         //   금액을 모른 채 넘기면 화면(0원)과 실제 청구액이 갈라진다.
-        val canSubmit = selected != null && !busy && product != null && policyAgreed
+        //   서버가 bookable=false 로 준 상품(운영자가 강사·학원이 아님)은 새 예약을 막는다.
+        val notBookable = !isReschedule && product?.bookable == false
+        val canSubmit = selected != null && !busy && product != null && policyAgreed && !notBookable
         Text(
-            if (busy) "처리 중…" else if (isReschedule) "예약 변경하기" else "예약하기",
+            if (busy) "처리 중…" else if (notBookable) "예약할 수 없는 레슨이에요"
+            else if (isReschedule) "예약 변경하기" else "예약하기",
             fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
             lineHeight = 19.sp, color = Color.White, textAlign = TextAlign.Center,
             modifier = Modifier

@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.lesson
 
+import com.muyeon.app.webview.withActiveType
 import com.muyeon.app.BuildConfig
 import com.muyeon.app.ui.quote.doubleOrNull
 import com.muyeon.app.ui.quote.intOrNull
@@ -31,6 +32,8 @@ data class LessonBookingProduct(
     val depositRequired: Boolean?,
     val depositAmount: Int?,
     val cancelPolicy: String?,   // 판매자 추가 안내(공통 기준보다 유리할 때만 적용)
+    /** 예약 가능 여부(서버 판정: 운영자가 강사·학원이 아니면 false). 구서버는 필드 없음 → null = 가능. */
+    val bookable: Boolean? = null,
 ) {
     /** 인원 배수. 예약 건당 과금이면 인원과 무관하게 1. */
     fun multiplier(headcount: Int): Int =
@@ -55,6 +58,7 @@ data class LessonBookingProduct(
             depositRequired = if (o.has("depositRequired")) o.optBoolean("depositRequired") else null,
             depositAmount = o.intOrNull("depositAmount"),
             cancelPolicy = o.stringOrNull("cancelPolicy"),
+            bookable = if (o.has("bookable") && !o.isNull("bookable")) o.optBoolean("bookable") else null,
         )
     }
 }
@@ -303,7 +307,7 @@ class LessonBookingApi(private val token: String?) {
                 }
                 val req = Request.Builder().url(apiBase + path).method(method, payload)
                     .addHeader("Content-Type", "application/json")
-                    .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
+                    .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }.withActiveType()
                     .build()
                 client.newCall(req).execute().use { res ->
                     val text = res.body?.string().orEmpty()

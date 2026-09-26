@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.quote
 
+import com.muyeon.app.webview.withActiveType
 import com.muyeon.app.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -183,7 +184,7 @@ class QuoteApi(private val token: String?) {
                     .url(apiBase + path)
                     .method(method, payload)
                     .addHeader("Content-Type", "application/json")
-                    .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
+                    .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }.withActiveType()
                     .build()
                 client.newCall(req).execute().use { res ->
                     val text = res.body?.string().orEmpty()

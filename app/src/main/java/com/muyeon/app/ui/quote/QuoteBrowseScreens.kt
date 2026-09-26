@@ -115,6 +115,9 @@ class QuoteBrowseState(private val api: QuoteApi) {
             hasPrefs = res.hasPrefs ?: false
             val pageNew = (res.newIds ?: emptyList()).toSet()
             newIds = if (page == 0) pageNew else newIds + pageNew
+        }.onFailure {
+            // 서버 거절 사유(무용수 유형 403 등)는 그대로 노출 — 네트워크 오류는 기존대로 조용히.
+            (it as? ApiMessageException)?.message?.let { m -> toast = m }
         }
         isLoading = false
     }

@@ -164,6 +164,8 @@ fun RequestedQuotesList(api: QuoteApi, onOpen: (Int) -> Unit) {
 
     suspend fun load() {
         api.getMyQuotes().onSuccess { quotes = it }
+            // 서버 거절 사유(403 등)는 그대로 노출 — 네트워크 오류는 기존대로 조용히.
+            .onFailure { (it as? ApiMessageException)?.message?.let { m -> toast = m } }
     }
 
     LaunchedEffect(Unit) { isLoading = true; load(); isLoading = false }

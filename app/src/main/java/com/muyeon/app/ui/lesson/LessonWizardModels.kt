@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.lesson
 
+import com.muyeon.app.webview.withActiveType
 import com.muyeon.app.BuildConfig
 import com.muyeon.app.ui.quote.boolOrNull
 import com.muyeon.app.ui.quote.doubleOrNull
@@ -240,7 +241,7 @@ class LessonWizardApi(internal val token: String?) {
         val path = if (isAcademy) "/academy-teachers/mine" else "/academy-teachers/invites"
         runCatching {
             val req = Request.Builder().url("$apiBase$path?status=ACTIVE")
-                .apply { token?.let { header("Authorization", "Bearer $it") } }.build()
+                .apply { token?.let { header("Authorization", "Bearer $it") } }.withActiveType().build()
             client.newCall(req).execute().use { res ->
                 if (!res.isSuccessful) return@use emptyList()
                 JSONArray(res.body?.string().orEmpty().ifBlank { "[]" })
@@ -252,7 +253,7 @@ class LessonWizardApi(internal val token: String?) {
     suspend fun getProduct(id: Int): Result<LessonProductDetail> = withContext(Dispatchers.IO) {
         runCatching {
             val req = Request.Builder().url("$apiBase/lesson-products/$id")
-                .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
+                .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }.withActiveType()
                 .build()
             client.newCall(req).execute().use { res ->
                 val text = res.body?.string().orEmpty()
@@ -266,7 +267,7 @@ class LessonWizardApi(internal val token: String?) {
     suspend fun hasDetailImage(): Boolean = withContext(Dispatchers.IO) {
         runCatching {
             val req = Request.Builder().url("$apiBase/monetization/entitlements/me")
-                .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
+                .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }.withActiveType()
                 .build()
             client.newCall(req).execute().use { res ->
                 if (!res.isSuccessful) return@use false
@@ -286,7 +287,7 @@ class LessonWizardApi(internal val token: String?) {
                 .addFormDataPart("file", "image.jpg", bytes.toRequestBody("image/jpeg".toMediaType()))
                 .build()
             val req = Request.Builder().url("$apiBase/uploads/image").post(body)
-                .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
+                .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }.withActiveType()
                 .build()
             client.newCall(req).execute().use { res ->
                 val text = res.body?.string().orEmpty()
@@ -302,7 +303,7 @@ class LessonWizardApi(internal val token: String?) {
                 val req = Request.Builder().url(apiBase + path)
                     .method(method, payload.toString().toRequestBody("application/json".toMediaType()))
                     .addHeader("Content-Type", "application/json")
-                    .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
+                    .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }.withActiveType()
                     .build()
                 client.newCall(req).execute().use { res ->
                     val text = res.body?.string().orEmpty()

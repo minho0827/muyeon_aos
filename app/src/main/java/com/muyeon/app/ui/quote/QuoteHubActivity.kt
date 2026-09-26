@@ -15,6 +15,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.muyeon.app.utils.TokenManager
+import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.webview.NativeWebRoute
 
 /**
@@ -51,6 +52,8 @@ class QuoteHubActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val isPro = intent.getBooleanExtra(EXTRA_IS_PRO, false)
+        // 보낸 견적(강사측)은 강사·학원 전용 — 무용수 유형이면 안내 후 종료. 받은 견적(고객측) 조회는 허용.
+        if (isPro && !ActiveRole.allowLessonProvider(this)) { finish(); return }
         val initialTab = intent.getIntExtra(EXTRA_TAB, 0)
         val deepQuoteId = intent.getIntExtra(EXTRA_QUOTE_ID, 0)
         val deepResponseId = intent.getIntExtra(EXTRA_RESPONSE_ID, 0).takeIf { it > 0 }

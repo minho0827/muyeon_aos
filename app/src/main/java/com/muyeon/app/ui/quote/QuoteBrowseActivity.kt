@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.remember
 import com.muyeon.app.utils.TokenManager
+import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.webview.NativeWebRoute
 
 /**
@@ -26,6 +27,8 @@ class QuoteBrowseActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 견적 요청 둘러보기(응답)는 강사·학원 전용 — 무용수 유형이면 안내 후 종료(2026-09-26 정책).
+        if (!ActiveRole.allowLessonProvider(this)) { finish(); return }
         setContent {
             val api = remember { QuoteApi(TokenManager.getAccessToken(this)) }
             QuoteBrowseScreen(

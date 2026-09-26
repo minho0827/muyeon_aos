@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.lesson
 
+import com.muyeon.app.webview.withActiveType
 import com.muyeon.app.BuildConfig
 import com.muyeon.app.ui.quote.map
 import kotlinx.coroutines.Dispatchers
@@ -107,7 +108,7 @@ class LessonApi(private val token: String?) {
                 }
                 val req = Request.Builder().url(apiBase + path).method(method, payload)
                     .addHeader("Content-Type", "application/json")
-                    .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
+                    .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }.withActiveType()
                     .build()
                 client.newCall(req).execute().use { res ->
                     val text = res.body?.string().orEmpty()

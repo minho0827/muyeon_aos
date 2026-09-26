@@ -21,6 +21,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.muyeon.app.utils.TokenManager
+import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.webview.NativeWebRoute
 
 /**
@@ -47,6 +48,8 @@ class QuoteDashboardActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val role = intent.getStringExtra(EXTRA_ROLE).orEmpty()
         val isPro = role == "TEACHER" || role == "ACADEMY"
+        // 레슨 운영 허브는 강사·학원 전용 — 무용수 유형이면 안내 후 종료(2026-09-26 정책).
+        if (isPro && !ActiveRole.allowLessonProvider(this)) { finish(); return }
 
         setContent {
             val token = remember { TokenManager.getAccessToken(this) }
@@ -106,11 +109,13 @@ class QuoteDashboardActivity : ComponentActivity() {
     }
 
     /** 일반회원 — iOS presentCustomerQuoteDashboard functions 동일(그룹 없음 = 리스트). */
-    private fun customerFunctions(): List<QuoteDashFunction> = listOf(
+    //  무용수 유형은 '레슨 요청하기'를 숨긴다(지난 요청 내역·예약 내역 조회는 허용).
+    private fun customerFunctions(): List<QuoteDashFunction> = listOfNotNull(
         QuoteDashFunction(Icons.Filled.Inbox, "레슨 요청 내역", "받은 제안 확인·채택", activityKey = "receivedQuotes") {
             QuoteHubActivity.start(this, isPro = false, initialTab = 0)
         },
-        QuoteDashFunction(Icons.Filled.EditNote, "레슨 요청하기", "새 견적 문진 작성") {
+        if (ActiveRole.isDancer(this)) null
+        else QuoteDashFunction(Icons.Filled.EditNote, "레슨 요청하기", "새 견적 문진 작성") {
             QuoteWizardActivity.start(this, null, null)
         },
         QuoteDashFunction(Icons.Filled.CalendarMonth, "예약 내역", "공간·레슨·취소 내역") {

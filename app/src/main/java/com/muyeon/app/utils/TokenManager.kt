@@ -82,6 +82,8 @@ object TokenManager {
     }
 
     fun getAccessToken(context: Context): String? {
+        // 네이티브 API 가 X-Active-Type 헤더를 붙일 수 있게 앱 컨텍스트를 묶어 둔다(모든 API 가 토큰부터 읽음).
+        com.muyeon.app.webview.ActiveRole.bind(context)
         val encryptedToken = getRegularPrefs(context).getString(KEY_ACCESS_TOKEN, null)
         val iv = getRegularPrefs(context).getString(KEY_ACCESS_TOKEN_IV, null)
 

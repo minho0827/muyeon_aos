@@ -41,6 +41,7 @@ import com.muyeon.app.ui.quote.QuoteUi
 import com.muyeon.app.ui.review.ReviewApi
 import com.muyeon.app.ui.review.ReviewList
 import com.muyeon.app.ui.review.ReviewOptions
+import com.muyeon.app.webview.ActiveRole
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -83,6 +84,8 @@ fun PublicProfileScreen(
     var toast by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
+    // 무용수 유형은 레슨(견적) 요청 불가 — [견적 요청하기] 숨김(2026-09-26 정책).
+    val canRequestQuote = remember { !ActiveRole.isDancer(ctx) }
 
     LaunchedEffect(userId, preview, initialProfile) {
         if (initialProfile != null) {
@@ -234,7 +237,8 @@ fun PublicProfileScreen(
 
             // 하단 CTA — 채용 시점은 무료 [채팅하기] 하나,
             //  일반은 기존 채팅방이 있을 때만 [문의하기] + [견적 요청하기](iOS ctaBar/generalCtas).
-            if (!preview && !hideCta) {
+            val hasGeneralCta = (profile?.chatRoomId ?: 0) > 0 || canRequestQuote
+            if (!preview && !hideCta && (recruitMode || hasGeneralCta)) {
                 Row(
                     Modifier.fillMaxWidth().background(MuyeonColors.surface)
                         .padding(horizontal = 20.dp, vertical = 10.dp),
@@ -247,7 +251,9 @@ fun PublicProfileScreen(
                         if (roomId > 0) {
                             CtaButton("문의하기", filled = false, modifier = Modifier.weight(1f)) { onOpenChat(roomId) }
                         }
-                        CtaButton("견적 요청하기", filled = true, modifier = Modifier.weight(1f), onClick = onRequestQuote)
+                        if (canRequestQuote) {
+                            CtaButton("견적 요청하기", filled = true, modifier = Modifier.weight(1f), onClick = onRequestQuote)
+                        }
                     }
                 }
             }

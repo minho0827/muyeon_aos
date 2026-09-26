@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.chat
 
+import com.muyeon.app.webview.withActiveType
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -86,7 +87,7 @@ class LessonProposalApi(private val token: String?) {
             val req = Request.Builder()
                 .url(BuildConfig.API_BASE_URL + "/api/lesson-proposals")
                 .post(body.toString().toRequestBody(json))
-                .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
+                .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }.withActiveType()
                 .build()
             client.newCall(req).execute().use { res ->
                 val text = res.body?.string().orEmpty()

@@ -21,19 +21,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.muyeon.app.BuildConfig
 import com.muyeon.app.theme.customFontFamily
 import androidx.lifecycle.lifecycleScope
 import com.muyeon.app.utils.TokenManager
+import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.webview.NativeWebRoute
 import com.muyeon.app.webview.WebCallbacks
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -76,6 +70,8 @@ class QuoteWizardActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 무용수 유형은 레슨 요청 불가(2026-09-26 정책) — 모든 진입점을 여기서 한 번에 막는다.
+        if (!ActiveRole.allowLessonCustomer(this)) { finish(); return }
         val categoryId = intent.getStringExtra(EXTRA_CATEGORY).orEmpty()
         val targetTeacherId = intent.getStringExtra(EXTRA_TARGET_TEACHER).orEmpty()
         val seed = seedAnswersOf(
@@ -117,7 +113,25 @@ class QuoteWizardActivity : ComponentActivity() {
             var showExit by remember { mutableStateOf(false) }
             // 단계: wizard → loading(매칭 로딩) → done(완료 안내). iOS 흐름 동일.
             var phase by remember { mutableStateOf("wizard") }
-            var submitOk by remember { mutableStateOf<Boolean?>(null) }
+            // 제출 결과(null=진행중)와 로딩 애니메이션 종료를 둘 다 기다린 뒤에만 완료/실패를 판정한다.
+            //  (예전엔 애니메이션이 먼저 끝나면 결과 미도착(null)을 성공으로 처리해 403 도 완료 화면이 떴다.)
+            var submitResult by remember { mutableStateOf<Result<Int>?>(null) }
+            var loadingDone by remember { mutableStateOf(false) }
+
+            LaunchedEffect(phase, loadingDone, submitResult) {
+                val r = submitResult ?: return@LaunchedEffect
+                if (phase != "loading" || !loadingDone) return@LaunchedEffect
+                r.onSuccess {
+                    // 웹이 받은견적 목록으로 라우팅한다(iOS notifyWebQuoteSubmitted).
+                    WebCallbacks.quoteSubmitted(this@QuoteWizardActivity)
+                    phase = "done"
+                }.onFailure { e ->
+                    // 서버 거절 사유(무용수 SWITCH_REQUIRED·대상 불가 등)를 그대로 노출.
+                    val msg = (e as? ApiMessageException)?.message ?: "요청에 실패했어요. 잠시 후 다시 시도해 주세요."
+                    Toast.makeText(this@QuoteWizardActivity, msg, Toast.LENGTH_LONG).show()
+                    phase = "wizard"
+                }
+            }
 
             // 이탈시트 추천 콘텐츠 — 시트가 뜨기 전에 미리 로드(iOS 프리페치와 동일: 통째로 한번에 노출).
             var exitLessons by remember { mutableStateOf<List<LessonContentItem>>(emptyList()) }
@@ -136,17 +150,8 @@ class QuoteWizardActivity : ComponentActivity() {
                 QuoteSubmitLoadingScreen(
                     categoryTitle = category.title,
                     isDirect = targetTeacherId.isNotEmpty(),
-                    onDone = {
-                        // 로딩(≈2.8s)과 제출을 병렬 진행 — 실패면 안내 후 위저드 복귀(iOS 는 완료로 마감).
-                        if (submitOk == false) {
-                            Toast.makeText(this@QuoteWizardActivity, "요청에 실패했어요. 잠시 후 다시 시도해 주세요.", Toast.LENGTH_SHORT).show()
-                            phase = "wizard"
-                        } else {
-                            // 웹이 받은견적 목록으로 라우팅한다(iOS notifyWebQuoteSubmitted).
-                            WebCallbacks.quoteSubmitted(this@QuoteWizardActivity)
-                            phase = "done"
-                        }
-                    },
+                    // 로딩(≈2.8s)과 제출을 병렬 진행 — 판정은 위 LaunchedEffect 가 결과 도착 후에 한다.
+                    onDone = { loadingDone = true },
                 )
               }
               "done" -> {
@@ -166,8 +171,10 @@ class QuoteWizardActivity : ComponentActivity() {
                         if (vm.currentIndex > 0) showExit = true else finish()
                     },
                     onComplete = { answers ->
+                        submitResult = null
+                        loadingDone = false
                         phase = "loading"
-                        submit(answers, category.id, targetTeacherId) { ok -> submitOk = ok }
+                        submit(answers, category.id, targetTeacherId) { r -> submitResult = r }
                     },
                 )
                 if (showExit) {
@@ -197,10 +204,10 @@ class QuoteWizardActivity : ComponentActivity() {
         answers: Map<String, QuoteAnswer>,
         categoryId: String,
         targetTeacherId: String,
-        onDone: (Boolean) -> Unit,
+        onDone: (Result<Int>) -> Unit,
     ) {
         val token = TokenManager.getAccessToken(this)
-        if (token.isNullOrEmpty()) { onDone(false); return }
+        if (token.isNullOrEmpty()) { onDone(Result.failure(ApiMessageException("로그인이 필요해요."))); return }
 
         val arr = JSONArray()
         var region: String? = null
@@ -223,19 +230,8 @@ class QuoteWizardActivity : ComponentActivity() {
                 targetTeacherId.toIntOrNull()?.let { put("targetTeacherId", it) }
             }
 
-        val req = Request.Builder()
-            .url("${BuildConfig.API_BASE_URL}/api/quotes")
-            .addHeader("Authorization", "Bearer $token")
-            .addHeader("Content-Type", "application/json")
-            .post(body.toString().toRequestBody("application/json".toMediaType()))
-            .build()
-
-        lifecycleScope.launch {
-            val ok = withContext(Dispatchers.IO) {
-                runCatching { OkHttpClient().newCall(req).execute().use { it.isSuccessful } }.getOrDefault(false)
-            }
-            onDone(ok)
-        }
+        // QuoteApi 경유 — X-Active-Type 헤더 부착 + 4xx message(ApiMessageException) 보존.
+        lifecycleScope.launch { onDone(QuoteApi(token).createQuote(body)) }
     }
 }
 
