@@ -86,6 +86,8 @@ class SplashActivity : ComponentActivity() {
         val uri = intent?.data
         android.util.Log.d("QR_DEBUG", "🔗 SplashActivity 딥링크 uri=$uri")
         if (uri == null) return
+        // 알림톡 앱링크 — 웹뷰가 뜰 때 푸시 탭과 같은 경로로 연다(AppLinkManager).
+        if (com.muyeon.app.utils.AppLinkManager.save(uri)) return
         val qrPageValue = uri.getQueryParameter("qrPage")
         android.util.Log.d("QR_DEBUG", "🔗 qrPage 파라미터=$qrPageValue")
         if (qrPageValue == null) return

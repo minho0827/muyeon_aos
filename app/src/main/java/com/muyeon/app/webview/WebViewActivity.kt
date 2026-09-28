@@ -233,6 +233,11 @@ class WebViewActivity : ComponentActivity() {
             webView.restoreState(savedInstanceState)
         } else {
             val baseUrl = com.muyeon.app.utils.Constants.getBaseUrl(this)
+            // 알림톡 앱링크로 들어왔으면 푸시 탭 인텐트처럼 목적지를 옮겨 싣는다.
+            //  푸시로 들어온 경우(notification_url 있음)는 그쪽이 우선.
+            if (intent.getStringExtra("notification_url").isNullOrEmpty()) {
+                com.muyeon.app.utils.AppLinkManager.consumeInto(intent)
+            }
             val notificationUrl = intent.getStringExtra("notification_url")
             if (!notificationUrl.isNullOrEmpty()) {
                 val fullUrl = if (notificationUrl.startsWith("http")) notificationUrl else baseUrl + notificationUrl
