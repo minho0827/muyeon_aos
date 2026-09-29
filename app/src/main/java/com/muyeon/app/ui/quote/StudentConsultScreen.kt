@@ -92,6 +92,8 @@ private fun proposalItem(item: SentQuoteItem): ConsultItem {
 fun StudentConsultScreen(
     api: QuoteApi,
     onOpenSent: (SentQuoteItem) -> Unit,
+    /** 값이 바뀌면 다시 읽는다 — 수강생 찾기 발송·채팅·자동응답에서 돌아오면 부모가 올린다. */
+    reloadSignal: Int = 0,
 ) {
     var items by remember { mutableStateOf<List<ConsultItem>>(emptyList()) }
     var filter by remember { mutableStateOf(ConsultKind.ALL) }
@@ -120,10 +122,9 @@ fun StudentConsultScreen(
         loading = false
     }
 
-    LaunchedEffect(Unit) {
-        attachmentRole = api.myAttachmentType()
-        load()
-    }
+    LaunchedEffect(Unit) { attachmentRole = api.myAttachmentType() }
+    // 최초 + 부모 신호마다. 실패 시 기존 목록을 지키는 load() 규칙은 그대로다.
+    LaunchedEffect(reloadSignal) { load() }
     LaunchedEffect(toast) { if (toast != null) { kotlinx.coroutines.delay(1800); toast = null } }
 
     val shown = if (filter == ConsultKind.ALL) items else items.filter { it.kind == filter }

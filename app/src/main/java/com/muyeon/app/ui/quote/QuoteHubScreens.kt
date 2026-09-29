@@ -54,6 +54,8 @@ fun QuoteHubScreen(
     onOpenReceived: (Int) -> Unit,
     onOpenSent: (SentQuoteItem) -> Unit,
     onOpenRecommendBlocks: () -> Unit,
+    /** 값이 바뀌면 목록을 다시 읽는다 — 상세에서 돌아올 때 부모가 결과 키(QUOTES)로 올린다. */
+    reloadSignal: Int = 0,
 ) {
     var tab by remember { mutableIntStateOf(if (isPro) initialTab else 0) }
 
@@ -76,9 +78,9 @@ fun QuoteHubScreen(
             HorizontalDivider(color = MuyeonColors.border)
         }
         if (isPro && tab == 1) {
-            SentQuotesList(api = api, onOpen = onOpenSent)
+            SentQuotesList(api = api, onOpen = onOpenSent, reloadSignal = reloadSignal)
         } else {
-            RequestedQuotesList(api = api, onOpen = onOpenReceived)
+            RequestedQuotesList(api = api, onOpen = onOpenReceived, reloadSignal = reloadSignal)
         }
     }
 }
@@ -155,7 +157,7 @@ fun QuoteTabBar(tab: Int, titles: List<String>, onSelect: (Int) -> Unit) {
 /** iOS `RequestedQuotesList` 1:1. GET /quotes/me. 행 스와이프 삭제(진행중이면 취소 후 삭제). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RequestedQuotesList(api: QuoteApi, onOpen: (Int) -> Unit) {
+fun RequestedQuotesList(api: QuoteApi, onOpen: (Int) -> Unit, reloadSignal: Int = 0) {
     var quotes by remember { mutableStateOf<List<MyQuoteSummary>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var refreshing by remember { mutableStateOf(false) }
@@ -168,7 +170,8 @@ fun RequestedQuotesList(api: QuoteApi, onOpen: (Int) -> Unit) {
             .onFailure { (it as? ApiMessageException)?.message?.let { m -> toast = m } }
     }
 
-    LaunchedEffect(Unit) { isLoading = true; load(); isLoading = false }
+    // 최초 + 부모 신호(reloadSignal)마다. 목록이 있으면 스켈레톤 없이 조용히 갈아끼운다.
+    LaunchedEffect(reloadSignal) { isLoading = quotes.isEmpty(); load(); isLoading = false }
 
     // iOS delete(): OPEN 이면 먼저 취소한 뒤 삭제. 매칭 건은 서버가 소프트 삭제(내 목록 숨김).
     suspend fun delete(q: MyQuoteSummary) {
@@ -317,7 +320,7 @@ fun MyQuoteRow(quote: MyQuoteSummary, onClick: () -> Unit) {
 /** iOS `SentQuotesList` 1:1. GET /quotes/sent. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SentQuotesList(api: QuoteApi, onOpen: (SentQuoteItem) -> Unit) {
+fun SentQuotesList(api: QuoteApi, onOpen: (SentQuoteItem) -> Unit, reloadSignal: Int = 0) {
     var items by remember { mutableStateOf<List<SentQuoteItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var refreshing by remember { mutableStateOf(false) }
@@ -325,7 +328,8 @@ fun SentQuotesList(api: QuoteApi, onOpen: (SentQuoteItem) -> Unit) {
 
     suspend fun load() { api.getSentQuotes().onSuccess { items = it } }
 
-    LaunchedEffect(Unit) { isLoading = true; load(); isLoading = false }
+    // 최초 + 부모 신호(reloadSignal)마다. 목록이 있으면 스켈레톤 없이 조용히 갈아끼운다.
+    LaunchedEffect(reloadSignal) { isLoading = items.isEmpty(); load(); isLoading = false }
 
     if (items.isEmpty() && !isLoading) {
         QuoteEmptyState(

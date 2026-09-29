@@ -51,6 +51,8 @@ fun ReviewDetailScreen(
     onClose: () -> Unit,
     onSelectTeacher: (Int) -> Unit,
     onRequestQuote: (LessonQuotePrefill) -> Unit,
+    /** 값이 바뀌면 다시 읽는다(강사 프로필에서 후기 작성 후 복귀 — REVIEWS). */
+    reloadSignal: Int = 0,
 ) {
     var review by remember { mutableStateOf<ReviewDetail?>(null) }
     var loading by remember { mutableStateOf(true) }
@@ -58,7 +60,7 @@ fun ReviewDetailScreen(
     var requesting by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(reviewId) {
+    LaunchedEffect(reviewId, reloadSignal) {
         api.detail(reviewId).onSuccess { review = it }
         loading = false
     }

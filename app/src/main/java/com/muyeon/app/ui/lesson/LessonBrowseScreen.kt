@@ -1,10 +1,12 @@
 package com.muyeon.app.ui.lesson
 
-import android.app.Activity
+import com.muyeon.app.result.ResultKeys
+import com.muyeon.app.result.launchScreen
+import com.muyeon.app.result.rememberResultLauncher
+import androidx.compose.runtime.saveable.rememberSaveable
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -53,14 +55,16 @@ fun LessonBrowseScreen(
     onSelectPortfolio: (Int) -> Unit,
     onSelectTeacher: (Int) -> Unit,
     onSelectReview: (Int) -> Unit,
+    /** 값이 바뀌면 다시 읽는다 — 강사 프로필에서 후기를 쓰고 돌아오면(REVIEWS) 부모가 올린다. */
+    reloadSignal: Int = 0,
 ) {
     var filter by remember { mutableStateOf(LessonBrowseFilter()) }
     var items by remember { mutableStateOf<List<BrowseFeedItem>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var facet by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(filter) {
-        loading = true
+    LaunchedEffect(filter, reloadSignal) {
+        loading = items.isEmpty()
         api.feed(filter).onSuccess { items = it }
         loading = false
     }
@@ -227,28 +231,27 @@ private fun BrowseCard(item: BrowseFeedItem, onClick: () -> Unit) {
 }
 
 /** 둘러보기 · 콘텐츠 상세 컨테이너. */
-class LessonBrowseActivity : ComponentActivity() {
+class LessonBrowseActivity : com.muyeon.app.result.ResultActivity() {
 
     companion object {
         private const val EXTRA_ROUTE = "route"
         private const val EXTRA_ID = "id"
 
-        fun startBrowse(context: Context) = context.go(intent(context, "browse"))
+        fun browseIntent(context: Context) = intent(context, "browse")
+        fun detailIntent(context: Context, lessonProductId: Int) =
+            intent(context, "detail").putExtra(EXTRA_ID, lessonProductId)
+        fun reviewIntent(context: Context, reviewId: Int) = intent(context, "review").putExtra(EXTRA_ID, reviewId)
+
+        fun startBrowse(context: Context) = context.launchScreen(browseIntent(context))
 
         fun startDetail(context: Context, lessonProductId: Int) =
-            context.go(intent(context, "detail").putExtra(EXTRA_ID, lessonProductId))
+            context.launchScreen(detailIntent(context, lessonProductId))
 
         /** 리뷰 카드 → 리뷰 상세. */
-        fun startReview(context: Context, reviewId: Int) =
-            context.go(intent(context, "review").putExtra(EXTRA_ID, reviewId))
+        fun startReview(context: Context, reviewId: Int) = context.launchScreen(reviewIntent(context, reviewId))
 
         private fun intent(context: Context, route: String) =
             Intent(context, LessonBrowseActivity::class.java).putExtra(EXTRA_ROUTE, route)
-
-        private fun Context.go(i: Intent) {
-            if (this !is Activity) i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            startActivity(i)
-        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -258,14 +261,20 @@ class LessonBrowseActivity : ComponentActivity() {
 
         setContent {
             val api = remember { LessonBrowseApi(TokenManager.getAccessToken(this)) }
+            // 강사 프로필(ResumeActivity)에서 후기를 쓰고 돌아오면 후기가 보이는 화면을 다시 읽는다.
+            var reviewsReload by rememberSaveable { mutableIntStateOf(0) }
+            val profileLauncher = rememberResultLauncher { keys ->
+                if (ResultKeys.REVIEWS in keys) reviewsReload++
+            }
+            fun openTeacher(tid: Int, src: String) =
+                profileLauncher.launch(com.muyeon.app.ui.resume.ResumeActivity.profileIntent(this, tid, src))
             if (route == "review" && id > 0) {
                 val reviewApi = remember { com.muyeon.app.ui.review.ReviewApi(TokenManager.getAccessToken(this)) }
                 com.muyeon.app.ui.review.ReviewDetailScreen(
                     api = reviewApi, reviewId = id,
                     onClose = { finish() },
-                    onSelectTeacher = { tid ->
-                        com.muyeon.app.ui.resume.ResumeActivity.startProfile(this, tid, "review")
-                    },
+                    onSelectTeacher = { tid -> openTeacher(tid, "review") },
+                    reloadSignal = reviewsReload,
                     onRequestQuote = { p ->
                         com.muyeon.app.ui.quote.QuoteWizardActivity.start(
                             this, p.categoryId, p.targetTeacherId.takeIf { it > 0 }?.toString(),
@@ -278,19 +287,17 @@ class LessonBrowseActivity : ComponentActivity() {
                     api = api, lessonProductId = id,
                     onClose = { finish() },
                     onSelectLesson = { lid -> startDetail(this, lid) },
-                    onSelectTeacher = { tid ->
-                        com.muyeon.app.ui.resume.ResumeActivity.startProfile(this, tid, "lessonContent")
-                    },
+                    onSelectTeacher = { tid -> openTeacher(tid, "lessonContent") },
+                    reloadSignal = reviewsReload,
                 )
             } else {
                 LessonBrowseScreen(
                     api = api,
                     onClose = { finish() },
                     onSelectPortfolio = { pid -> startDetail(this, pid) },
-                    onSelectTeacher = { tid ->
-                        com.muyeon.app.ui.resume.ResumeActivity.startProfile(this, tid, "browse")
-                    },
+                    onSelectTeacher = { tid -> openTeacher(tid, "browse") },
                     onSelectReview = { rid -> startReview(this, rid) },
+                    reloadSignal = reviewsReload,
                 )
             }
         }

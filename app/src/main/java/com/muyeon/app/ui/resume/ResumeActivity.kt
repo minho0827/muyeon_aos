@@ -1,15 +1,22 @@
 package com.muyeon.app.ui.resume
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.muyeon.app.result.OnResultKeys
+import com.muyeon.app.result.ResultActivity
+import com.muyeon.app.result.ResultKeys
+import com.muyeon.app.result.ReturnResultKeys
+import com.muyeon.app.result.launchScreen
 import com.muyeon.app.ui.chat.ChatActivity
 import com.muyeon.app.ui.quote.QuoteWizardActivity
 import com.muyeon.app.ui.review.ReviewApi
@@ -25,8 +32,12 @@ import com.muyeon.app.webview.WebCallbacks
  *  iOS `WebViewModel+ResumeScreens.swift` / `+ReviewWrite.swift` 의 present* 대응.
  *
  *  경로: list ↔ edit / visibility ↔ preview(공개프로필) / profile ↔ reviews ↔ write / applicant
+ *
+ *  결과: RESUME·PROFILE·REVIEWS(이력서·공개범위·후기 어느 것이든 바뀌었을 수 있다).
  */
-class ResumeActivity : ComponentActivity() {
+class ResumeActivity : ResultActivity() {
+
+    override val defaultResultKeys = setOf(ResultKeys.RESUME, ResultKeys.PROFILE, ResultKeys.REVIEWS)
 
     companion object {
         private const val EXTRA_ROUTE = "route"
@@ -47,20 +58,25 @@ class ResumeActivity : ComponentActivity() {
         fun startList(context: Context, mode: String?) =
             context.go(intent(context, "list").putExtra(EXTRA_MODE, mode ?: ""))
 
+        /** 이력서 편집 인텐트 — 네이티브 부모(공개 프로필 등)가 결과 런처로 띄울 때. */
+        fun editIntent(context: Context, resumeId: Int?, mode: String?, seekProfile: Boolean = false): Intent =
+            intent(context, "edit")
+                .putExtra(EXTRA_RESUME_ID, resumeId ?: 0)
+                .putExtra(EXTRA_MODE, mode ?: "")
+                .putExtra(EXTRA_SEEK_PROFILE, seekProfile)
+
         /** 이력서 편집(resumeId 없으면 신규). seekProfile=구직 프로필 등록 모드. */
         fun startEdit(context: Context, resumeId: Int?, mode: String?, seekProfile: Boolean = false) =
-            context.go(
-                intent(context, "edit")
-                    .putExtra(EXTRA_RESUME_ID, resumeId ?: 0)
-                    .putExtra(EXTRA_MODE, mode ?: "")
-                    .putExtra(EXTRA_SEEK_PROFILE, seekProfile),
-            )
+            context.go(editIntent(context, resumeId, mode, seekProfile))
 
         fun startVisibility(context: Context, mode: String?) =
             context.go(intent(context, "visibility").putExtra(EXTRA_MODE, mode ?: ""))
 
+        fun profileIntent(context: Context, userId: Int, src: String? = null): Intent =
+            intent(context, "profile").putExtra(EXTRA_USER_ID, userId).putExtra(EXTRA_SRC, src ?: "")
+
         fun startProfile(context: Context, userId: Int, src: String? = null) =
-            context.go(intent(context, "profile").putExtra(EXTRA_USER_ID, userId).putExtra(EXTRA_SRC, src ?: ""))
+            context.go(profileIntent(context, userId, src))
 
         fun startReviewList(context: Context, teacherId: Int) =
             context.go(intent(context, "reviews").putExtra(EXTRA_USER_ID, teacherId))
@@ -96,10 +112,7 @@ class ResumeActivity : ComponentActivity() {
         private fun intent(context: Context, route: String) =
             Intent(context, ResumeActivity::class.java).putExtra(EXTRA_ROUTE, route)
 
-        private fun Context.go(i: Intent) {
-            if (this !is Activity) i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            startActivity(i)
-        }
+        private fun Context.go(i: Intent) = launchScreen(i)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -137,12 +150,16 @@ class ResumeActivity : ComponentActivity() {
                         onSeekProfile = { id -> nav.navigate("seek/${id ?: 0}") },
                     )
                 }
-                composable("edit") {
+                composable("edit") { e ->
+                    // 공개 범위에서 돌아오면(RESUME) 폼은 그대로 두고 설정 값만 다시 읽는다.
+                    var settingsReload by rememberSaveable { mutableIntStateOf(0) }
+                    e.OnResultKeys { keys -> if (ResultKeys.RESUME in keys) settingsReload++ }
                     ResumeEditScreen(
                         api = api, resumeId = resumeIdExtra.takeIf { it > 0 }, mode = mode,
                         onClose = { back() }, onSaved = { back() },
                         isSeekProfile = seekProfileExtra,
                         onVisibility = { nav.navigate("visibility") },
+                        settingsReload = settingsReload,
                     )
                 }
                 composable("edit/{id}") { e ->
@@ -151,14 +168,18 @@ class ResumeActivity : ComponentActivity() {
                 }
                 composable("seek/{id}") { e ->
                     val id = e.arguments?.getString("id")?.toIntOrNull()?.takeIf { it > 0 }
+                    var settingsReload by rememberSaveable { mutableIntStateOf(0) }
+                    e.OnResultKeys { keys -> if (ResultKeys.RESUME in keys) settingsReload++ }
                     ResumeEditScreen(
                         api = api, resumeId = id, mode = mode,
                         onClose = { back() }, onSaved = { back() },
                         isSeekProfile = true,
                         onVisibility = { nav.navigate("visibility") },
+                        settingsReload = settingsReload,
                     )
                 }
-                composable("visibility") {
+                composable("visibility") { e ->
+                    nav.ReturnResultKeys(e, ResultKeys.RESUME)
                     FieldVisibilityScreen(
                         api = api, mode = mode, prefs = prefs,
                         onClose = { back() },
@@ -194,8 +215,8 @@ class ResumeActivity : ComponentActivity() {
                         teacherName = teacherName, teacherImage = null,
                         lessonDateLine = null, prefillLessonType = lessonType,
                         onClose = { back() },
-                        // 웹 강사 리뷰 목록 재조회(iOS presentReviewWrite onSaved 와 동일 콜백)
-                        onDone = { WebCallbacks.reviewWritten(this@ResumeActivity); back() },
+                        // 웹 강사 리뷰 목록 재조회(iOS presentReviewWrite onSaved 와 동일) — 결과 키 REVIEWS.
+                        onDone = { addResultKeys(ResultKeys.REVIEWS); back() },
                     )
                 }
                 composable("reviewEdit") {

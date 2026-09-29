@@ -73,6 +73,8 @@ fun ReceivedQuoteDetailScreen(
     onOpenProfile: (Int) -> Unit,
     onOpenChat: (Int) -> Unit,
     highlightResponseId: Int? = null,   // 알림 딥링크(?r=)로 방금 온 견적 강조
+    /** 값이 바뀌면 다시 읽는다 — 채팅에서 돌아오면 부모가 결과로 올린다(화면은 composition 에 남아 있다). */
+    reloadSignal: Int = 0,
 ) {
     var quote by remember { mutableStateOf<QuoteFull?>(null) }
     var responses by remember { mutableStateOf<List<QuoteResponseItem>>(emptyList()) }
@@ -131,7 +133,7 @@ fun ReceivedQuoteDetailScreen(
             .onFailure { if (quote == null) notFound = true }
     }
 
-    LaunchedEffect(quoteId) { isLoading = true; load(); isLoading = false }
+    LaunchedEffect(quoteId, reloadSignal) { isLoading = quote == null; load(); isLoading = false }
 
     // 토스트 2초 후 자동 소멸(iOS onAppear asyncAfter 2)
     LaunchedEffect(toast) { if (toast != null) { delay(2000); toast = null } }

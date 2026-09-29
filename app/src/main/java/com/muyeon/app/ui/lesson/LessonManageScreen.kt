@@ -163,6 +163,10 @@ fun LessonManageScreen(
     onSlots: (Int) -> Unit,
     /** 「개인레슨 관리 > 레슨 소개」 탭으로 들어올 때 true — 자체 상단바를 걷어낸다. */
     embedded: Boolean = false,
+    /** 값이 바뀌면 다시 읽는다 — 부모가 결과 키(LESSONS)를 받았을 때 올린다. */
+    reloadSignal: Int = 0,
+    /** 삭제·복원·노출권 신청 등 이 화면에서 레슨이 바뀜 — 부모가 결과 키에 LESSONS 를 싣는다. */
+    onChanged: () -> Unit = {},
 ) {
     var rows by remember { mutableStateOf<List<LessonProduct>?>(null) }   // null = 로딩 전
     var archived by remember { mutableStateOf<List<LessonProduct>>(emptyList()) }
@@ -182,7 +186,8 @@ fun LessonManageScreen(
         archived = api.archivedLessons().getOrDefault(emptyList())
     }
 
-    LaunchedEffect(Unit) { load() }
+    // 최초 + 부모 신호(reloadSignal)마다. 개설·수정 화면에서 돌아오면 부모가 신호를 올린다.
+    LaunchedEffect(reloadSignal) { load() }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         if (!embedded) QuoteNavBar(title = "내 레슨 관리", onBack = onClose)
@@ -272,7 +277,7 @@ fun LessonManageScreen(
                             lineHeight = 16.sp, color = MuyeonColors.primary,
                             modifier = Modifier.clickable {
                                 scope.launch {
-                                    api.restore(a.id).onSuccess { toast = "복원했어요." }.onFailure { toast = it.message }
+                                    api.restore(a.id).onSuccess { toast = "복원했어요."; onChanged() }.onFailure { toast = it.message }
                                     load(); showArchive = false
                                 }
                             },
@@ -305,7 +310,7 @@ fun LessonManageScreen(
                         Modifier.fillMaxWidth().clickable {
                             scope.launch {
                                 api.createOrder(p.code, target.id)
-                                    .onSuccess { toast = "신청했어요." }.onFailure { toast = it.message }
+                                    .onSuccess { toast = "신청했어요."; onChanged() }.onFailure { toast = it.message }
                                 boostTarget = null; load()
                             }
                         }.padding(vertical = 12.dp),
@@ -335,7 +340,7 @@ fun LessonManageScreen(
             onConfirm = {
                 deleteTarget = null
                 scope.launch {
-                    api.delete(t.id).onSuccess { toast = "보관함으로 옮겼어요." }.onFailure { toast = it.message }
+                    api.delete(t.id).onSuccess { toast = "보관함으로 옮겼어요."; onChanged() }.onFailure { toast = it.message }
                     load()
                 }
             },

@@ -67,6 +67,14 @@ fun PersonalLessonManagementScreen(
     onSlots: (Int) -> Unit,
     onGoGenreSettings: () -> Unit,
     onGoLessonSettings: (() -> Unit)? = null,
+    /** 탭별 재조회 신호 — 부모(QuoteDashboardActivity)가 자식 화면 결과 키를 보고 올린다. */
+    lessonReload: Int = 0,
+    prefsReload: Int = 0,
+    consultReload: Int = 0,
+    /** 수강생 찾기에서 제안을 보냄 — 부모가 상담 탭 신호를 올린다. */
+    onResponded: () -> Unit = {},
+    /** 레슨 소개 탭에서 삭제·복원·노출권 — 부모 결과에 LESSONS. */
+    onLessonsChanged: () -> Unit = {},
 ) {
     val tabs = LessonStudioTab.entries
     val pagerState = rememberPagerState(pageCount = { tabs.size })
@@ -102,13 +110,17 @@ fun PersonalLessonManagementScreen(
             beyondViewportPageCount = 1,
         ) { page ->
             when (tabs[page]) {
-                LessonStudioTab.CONSULT -> StudentConsultScreen(api = quoteApi, onOpenSent = onOpenSent)
+                LessonStudioTab.CONSULT -> StudentConsultScreen(
+                    api = quoteApi, onOpenSent = onOpenSent, reloadSignal = consultReload,
+                )
                 LessonStudioTab.FIND -> QuoteBrowseScreen(
                     api = quoteApi,
                     onClose = onClose,
                     onGoGenreSettings = onGoGenreSettings,
                     onGoLessonSettings = onGoLessonSettings,
                     embedded = true,
+                    reloadSignal = prefsReload,
+                    onResponded = onResponded,
                 )
                 LessonStudioTab.LESSON -> LessonManageScreen(
                     api = productApi,
@@ -117,6 +129,8 @@ fun PersonalLessonManagementScreen(
                     onEdit = onEditLesson,
                     onSlots = onSlots,
                     embedded = true,
+                    reloadSignal = lessonReload,
+                    onChanged = onLessonsChanged,
                 )
             }
         }

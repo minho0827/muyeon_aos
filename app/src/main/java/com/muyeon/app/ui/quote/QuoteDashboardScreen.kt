@@ -74,6 +74,8 @@ fun QuoteDashboardScreen(
     onClose: () -> Unit,
     onTileAction: (String) -> Unit,     // today/new/sent/accepted | reservations/unread/open/done
     onUpcomingTap: (QuoteDashUpcoming) -> Unit,
+    /** 값이 바뀌면 다시 읽는다 — 부모가 자식 화면 결과(QUOTES 등)를 받았을 때 올린다. */
+    reloadSignal: Int = 0,
 ) {
     var data by remember { mutableStateOf<QuoteDashboardData?>(null) }
     var refreshing by remember { mutableStateOf(false) }
@@ -81,7 +83,7 @@ fun QuoteDashboardScreen(
 
     suspend fun load() { api.getQuoteDashboard(role).onSuccess { data = it } }
 
-    LaunchedEffect(role) { load() }
+    LaunchedEffect(role, reloadSignal) { load() }
 
     // 기능 카드에 group 이 있으면 시안 섹션 레이아웃(오늘 할 일 카드 + 3열 그리드)
     val isSectioned = functions.any { it.group != null }

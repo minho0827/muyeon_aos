@@ -23,6 +23,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -87,7 +88,15 @@ fun PublicProfileScreen(
     // 무용수 유형은 레슨(견적) 요청 불가 — [견적 요청하기] 숨김(2026-09-26 정책).
     val canRequestQuote = remember { !ActiveRole.isDancer(ctx) }
 
-    LaunchedEffect(userId, preview, initialProfile) {
+    // 본인 프로필 → [수정하기](별도 액티비티)에서 돌아오면 다시 읽는다(결과 키 RESUME/PROFILE).
+    var reloadTick by rememberSaveable { mutableIntStateOf(0) }
+    val editLauncher = com.muyeon.app.result.rememberResultLauncher { keys ->
+        if (com.muyeon.app.result.ResultKeys.RESUME in keys || com.muyeon.app.result.ResultKeys.PROFILE in keys) {
+            reloadTick++
+        }
+    }
+
+    LaunchedEffect(userId, preview, initialProfile, reloadTick) {
         if (initialProfile != null) {
             profile = initialProfile
             scrapped = initialProfile.scrapped == true
@@ -156,7 +165,7 @@ fun PublicProfileScreen(
                                             text = { Text("수정하기", fontFamily = customFontFamily, fontSize = 14.sp) },
                                             onClick = {
                                                 menuOpen = false
-                                                ResumeActivity.startEdit(ctx, myResumeId, null)
+                                                editLauncher.launch(ResumeActivity.editIntent(ctx, myResumeId, null))
                                             },
                                         )
                                         DropdownMenuItem(

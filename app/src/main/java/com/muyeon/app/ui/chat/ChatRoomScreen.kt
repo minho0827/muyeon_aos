@@ -78,6 +78,18 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
 
     LaunchedEffect(vm.roomId) { vm.start() }
 
+    // 방에서 연 네이티브 화면에서 돌아오면 바뀐 것만 다시 읽는다(결과 키 — 타이머 없음).
+    //  · 레슨 상세(LESSONS·LESSON_SCHEDULE): 일정 카드·방 상단 맥락이 바뀔 수 있다 → reloadContext
+    //  · 설문(CHAT_ROOM): 설문 카드 응답 상태가 바뀐다 → 메시지 첫 페이지 + 맥락 재조회
+    val lessonLauncher = com.muyeon.app.result.rememberResultLauncher { keys ->
+        if (com.muyeon.app.result.ResultKeys.LESSONS in keys ||
+            com.muyeon.app.result.ResultKeys.LESSON_SCHEDULE in keys
+        ) vm.reloadContext()
+    }
+    val surveyLauncher = com.muyeon.app.result.rememberResultLauncher { keys ->
+        if (com.muyeon.app.result.ResultKeys.CHAT_ROOM in keys) vm.reloadMessagesAndContext()
+    }
+
     // 새 메시지/전송 → 최하단으로
     LaunchedEffect(vm.messages.size, vm.pending.size) {
         val last = vm.messages.size + vm.pending.size - 1
@@ -154,12 +166,14 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
                             // 네이티브 설문 화면. 내가 보낸 카드(강사)면 열람만, 받은 쪽이면 응답 가능
                             //  — iOS SurveyOpen(canRespond: !isMine) 과 같은 규칙.
                             onOpenSurvey = { did ->
-                                com.muyeon.app.ui.survey.SurveyActivity.start(
-                                    context, did, canRespond = m.senderId != vm.currentUserId,
+                                surveyLauncher.launch(
+                                    com.muyeon.app.ui.survey.SurveyActivity.intent(
+                                        context, did, canRespond = m.senderId != vm.currentUserId,
+                                    ),
                                 )
                             },
                             onOpenLesson = { lid ->
-                                com.muyeon.app.ui.lesson.LessonActivity.startDetail(context, lid)
+                                lessonLauncher.launch(com.muyeon.app.ui.lesson.LessonActivity.detailIntent(context, lid))
                             },
                         )
                     }

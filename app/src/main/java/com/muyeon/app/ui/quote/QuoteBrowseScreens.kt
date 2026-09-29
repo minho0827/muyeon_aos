@@ -142,6 +142,9 @@ class QuoteBrowseState(private val api: QuoteApi) {
     /** 첨부할 내 프로필 종류(TEACHER|ACADEMY) — 시트 문구·발송 payload 공통. */
     var attachmentRole by mutableStateOf("TEACHER")
 
+    /** 발송 성공 통지 — 같은 화면의 다른 탭(상담)이 다시 읽게 한다(QuoteBrowseScreen 이 채운다). */
+    var onResponded: () -> Unit = {}
+
     /** 견적 발송 — 성공 시 목록에서 제거(available 은 응답한 요청을 제외하므로 정합). */
     suspend fun respond(
         quoteId: Int,
@@ -156,6 +159,7 @@ class QuoteBrowseState(private val api: QuoteApi) {
                 items = items.filterNot { it.id == quoteId }
                 toast = "견적을 보냈어요. 고객이 확인하면 알림으로 알려드릴게요."
                 ok = true
+                onResponded()
             }
             .onFailure { toast = it.message?.ifEmpty { null } ?: "견적을 보내지 못했어요. 잠시 후 다시 시도해 주세요." }
         return ok
@@ -183,13 +187,20 @@ fun QuoteBrowseScreen(
      *  방문 종료(N 배지 기준시각)도 컨테이너가 화면을 닫을 때 한 번만 기록한다 —
      *  탭을 오갈 때마다 기록하면 보지도 않은 요청의 N 이 사라진다(iOS 에서 실제로 났던 문제). */
     embedded: Boolean = false,
+    /** 값이 바뀌면 다시 읽는다 — 레슨 설정(견적 수신 조건)에서 돌아오면 부모가 올린다. */
+    reloadSignal: Int = 0,
+    /** 제안 발송 성공 — 개인레슨 관리의 상담 탭이 다시 읽도록 부모에게 알린다. */
+    onResponded: () -> Unit = {},
 ) {
     val state = remember { QuoteBrowseState(api) }
     var deckIndex by remember { mutableStateOf<Int?>(null) }
     var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val respondedCallback by rememberUpdatedState(onResponded)
+    SideEffect { state.onResponded = { respondedCallback() } }
 
-    LaunchedEffect(Unit) { state.load() }
+    // 최초 + 부모 신호(수신 조건 변경)마다.
+    LaunchedEffect(reloadSignal) { state.load() }
 
     // 토스트 1.8초 자동 소멸(iOS showToast)
     LaunchedEffect(state.toast) { if (state.toast != null) { delay(1800); state.toast = null } }

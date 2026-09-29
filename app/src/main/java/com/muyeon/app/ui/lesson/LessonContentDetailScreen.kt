@@ -44,16 +44,18 @@ fun LessonContentDetailScreen(
     onClose: () -> Unit,
     onSelectLesson: (Int) -> Unit,
     onSelectTeacher: (Int) -> Unit,
+    /** 값이 바뀌면 다시 읽는다(강사 프로필에서 후기 작성 후 복귀 — REVIEWS). 조회수는 첫 진입만 센다. */
+    reloadSignal: Int = 0,
 ) {
     var detail by remember { mutableStateOf<LessonContentDetail?>(null) }
     var similar by remember { mutableStateOf<List<BrowseFeedItem>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     val ctx = LocalContext.current
 
-    LaunchedEffect(lessonProductId) {
-        loading = true
+    LaunchedEffect(lessonProductId, reloadSignal) {
+        loading = detail == null
         // view=1 은 첫 진입에만 — 재조회 때마다 조회수가 늘면 통계가 부풀려진다.
-        api.detail(lessonProductId, countView = true).onSuccess { detail = it }
+        api.detail(lessonProductId, countView = detail == null).onSuccess { detail = it }
         similar = api.similar(lessonProductId)
         loading = false
     }

@@ -303,6 +303,25 @@ class ChatRoomViewModel(
     fun reloadContext() { viewModelScope.launch { loadDetail() } }
 
     /**
+     * 설문 등 방 밖 화면에서 돌아왔을 때 — 맥락 + 첫 페이지 메시지를 다시 읽어 **있는 건 교체,
+     *  없는 건 끼워 넣는다**(카드 응답 상태 반영). loadFirstPage 처럼 비우지 않아 스크롤이 튀지 않는다.
+     */
+    fun reloadMessagesAndContext() {
+        viewModelScope.launch {
+            loadDetail()
+            api.getMessages(roomId, page = 1, limit = pageLimit).onSuccess { res ->
+                totalCount = res.total
+                res.messages.forEach { fresh ->
+                    val i = messages.indexOfFirst { it.id == fresh.id }
+                    if (i >= 0) messages[i] = fresh else messages.add(fresh)
+                }
+                messages.sortBy { it.id }
+                scheduleMarkRead()
+            }
+        }
+    }
+
+    /**
      * 사진 전송 — 업로드 후 imageUrl 을 콤마로 join 해 한 건으로 보낸다(iOS sendImage 규약).
      *  여러 장을 개별 메시지로 쪼개면 상대 화면에서 도배가 된다.
      */

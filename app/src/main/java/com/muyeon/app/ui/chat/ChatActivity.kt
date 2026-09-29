@@ -1,10 +1,8 @@
 package com.muyeon.app.ui.chat
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -18,6 +16,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.muyeon.app.chat.socket.ChatSocketLifecycleObserver
 import com.muyeon.app.chat.socket.ChatSocketManager
+import com.muyeon.app.result.OnResultKeys
+import com.muyeon.app.result.ResultActivity
+import com.muyeon.app.result.ResultKeys
+import com.muyeon.app.result.ReturnResultKeys
+import com.muyeon.app.result.launchScreen
 import com.muyeon.app.utils.TokenManager
 
 /**
@@ -26,8 +29,13 @@ import com.muyeon.app.utils.TokenManager
  *
  *  소켓은 앱 전역 단일([ChatSocketManager]) — 화면이 아니라 프로세스 수명에 맞춘다.
  *  진입 시 connect, 백그라운드 전환은 [ChatSocketLifecycleObserver] 가 pause/resume.
+ *
+ *  결과: 닫히면 CHAT_ROOMS·CHAT_ROOM(목록 배지·방 상태가 바뀌었을 수 있다).
+ *  NavHost 안: 방·차단목록 → 목록 복귀 시 CHAT_ROOMS 로 목록 재조회.
  */
-class ChatActivity : ComponentActivity() {
+class ChatActivity : ResultActivity() {
+
+    override val defaultResultKeys = setOf(ResultKeys.CHAT_ROOMS, ResultKeys.CHAT_ROOM)
 
     companion object {
         private const val EXTRA_ROOM_ID = "roomId"
@@ -35,23 +43,20 @@ class ChatActivity : ComponentActivity() {
         private const val EXTRA_FILTER = "filter"
 
         /** 목록부터. filter 는 웹 openChatList 의 세그먼트 문자열(requested|responded|inquiry). */
-        fun startList(context: Context, filter: String? = null) {
-            context.launch(Intent(context, ChatActivity::class.java).putExtra(EXTRA_FILTER, filter ?: ""))
-        }
+        fun listIntent(context: Context, filter: String? = null): Intent =
+            Intent(context, ChatActivity::class.java).putExtra(EXTRA_FILTER, filter ?: "")
 
         /** 특정 방 직행(견적 채택·푸시 딥링크). 뒤로가면 목록. */
-        fun startRoom(context: Context, roomId: Int, title: String? = null) {
-            context.launch(
-                Intent(context, ChatActivity::class.java)
-                    .putExtra(EXTRA_ROOM_ID, roomId)
-                    .putExtra(EXTRA_TITLE, title ?: ""),
-            )
-        }
+        fun roomIntent(context: Context, roomId: Int, title: String? = null): Intent =
+            Intent(context, ChatActivity::class.java)
+                .putExtra(EXTRA_ROOM_ID, roomId)
+                .putExtra(EXTRA_TITLE, title ?: "")
 
-        private fun Context.launch(i: Intent) {
-            if (this !is Activity) i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            startActivity(i)
-        }
+        fun startList(context: Context, filter: String? = null) =
+            context.launchScreen(listIntent(context, filter))
+
+        fun startRoom(context: Context, roomId: Int, title: String? = null) =
+            context.launchScreen(roomIntent(context, roomId, title))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -95,7 +100,11 @@ class ChatActivity : ComponentActivity() {
             val start = if (deepRoomId > 0) "room/$deepRoomId" else "list"
 
             NavHost(nav, startDestination = start) {
-                composable("list") {
+                composable("list") { entry ->
+                    // 방·차단목록에서 돌아오면 목록을 다시 읽는다(ON_RESUME 은 액티비티 복귀만 잡는다).
+                    entry.OnResultKeys { keys ->
+                        if (ResultKeys.CHAT_ROOMS in keys) listState.requestReload()
+                    }
                     ChatListScreen(
                         state = listState,
                         onClose = { finish() },
@@ -103,15 +112,18 @@ class ChatActivity : ComponentActivity() {
                         onOpenBlocked = { nav.navigate("blocked") },
                     )
                 }
-                composable("blocked") {
+                composable("blocked") { entry ->
+                    nav.ReturnResultKeys(entry, ResultKeys.CHAT_ROOMS)
                     BlockedUsersScreen(api = api, onBack = { nav.popBackStack() })
                 }
                 composable("room/{roomId}") { entry ->
+                    nav.ReturnResultKeys(entry, ResultKeys.CHAT_ROOMS)
                     val rid = entry.arguments?.getString("roomId")?.toIntOrNull() ?: 0
                     val vm = remember(rid) { ChatRoomViewModel(rid, deepTitle, api, token) }
                     ChatRoomScreen(vm = vm, onBack = { if (!nav.popBackStack()) finish() })
                 }
                 composable("room/{roomId}?title={title}") { entry ->
+                    nav.ReturnResultKeys(entry, ResultKeys.CHAT_ROOMS)
                     val rid = entry.arguments?.getString("roomId")?.toIntOrNull() ?: 0
                     val t = entry.arguments?.getString("title").orEmpty()
                     val vm = remember(rid) { ChatRoomViewModel(rid, t, api, token) }

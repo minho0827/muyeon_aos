@@ -90,7 +90,9 @@ fun LessonCalendarScreen(
     onManageCalendars: () -> Unit,
     onOpenChat: (Int) -> Unit = {},
 ) {
-    LaunchedEffect(Unit) { state.load() }
+    // 최초 1회만. 복귀 재조회는 LessonActivity 가 결과 키(LESSON_SCHEDULE)로 부른다 —
+    //  NavHost 재진입마다 LaunchedEffect 가 다시 도는 것에 기대지 않는다(상태는 ViewModel 이라 살아 있다).
+    LaunchedEffect(Unit) { if (!state.didLoad) state.load() }
 
     var refreshing by remember { mutableStateOf(false) }
     val refreshScope = rememberCoroutineScope()
