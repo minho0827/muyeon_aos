@@ -27,7 +27,8 @@ import com.muyeon.app.ui.common.MuyeonColors
  * 회원가입 후 회원유형 선택 온보딩(풀스크린, 강제) — iOS `RoleOnboardingView.swift` 1:1.
  *  웹 가입완료 → 브릿지 openRoleOnboarding → 이 화면 → 선택 시 웹에 통지.
  *
- * ⚠️ 강제 화면이라 뒤로가기로 닫히면 안 된다(호출부에서 BackHandler 로 막는다).
+ * ⚠️ 강제 화면이라 뒤로가기로 닫히면 안 된다 — 호출부(OnboardingActivity 의 roleOnboarding 목적지)가
+ *   BackHandler 로 막는다(예전 주석과 달리 실제로는 막혀 있지 않아 시스템 뒤로가기로 빠져나갈 수 있었다).
  */
 @Composable
 fun RoleOnboardingScreen(onSelect: (String) -> Unit) {

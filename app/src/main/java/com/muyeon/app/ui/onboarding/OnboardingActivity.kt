@@ -7,8 +7,10 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.addCallback
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.remember
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -87,11 +89,16 @@ class OnboardingActivity : ComponentActivity() {
     /** 인증 화면 결과(제출 여부)를 관리 화면에 돌려주는 콜백 — iOS onVerify completion 대응. */
     private var verifyCompletion: ((Boolean) -> Unit)? = null
 
+    /** 시스템 뒤로가기가 "지금 어느 화면인지"를 알아야 해서 잡아 둔다([closeAndFlush]). */
+    private var navRef: NavHostController? = null
+    private var startRoute: String = "manage"
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // 시스템 뒤로가기도 닫기와 같은 경로로 — 쌓아둔 웹 콜백을 흘려보내고 나간다.
         onBackPressedDispatcher.addCallback(this) { closeAndFlush() }
         val route = intent.getStringExtra(EXTRA_ROUTE) ?: "manage"
+        startRoute = route
         val payloadJson = intent.getStringExtra(EXTRA_PAYLOAD)
         val hero = intent.getStringExtra(EXTRA_HERO)?.ifEmpty { null }
         val role = intent.getStringExtra(EXTRA_ROLE)?.ifEmpty { null }
@@ -101,6 +108,7 @@ class OnboardingActivity : ComponentActivity() {
 
         setContent {
             val nav = rememberNavController()
+            navRef = nav
             val token = remember { TokenManager.getAccessToken(this) }
             val api = remember { RoleVerificationApi(token) }
             val payload = remember(payloadJson, activeType) { RoleManagePayload.parse(payloadJson, activeType) }
@@ -154,6 +162,8 @@ class OnboardingActivity : ComponentActivity() {
                     )
                 }
                 composable("roleOnboarding") {
+                    // 가입 직후 강제 화면 — 시스템·예측 뒤로가기로 빠져나가면 유형 없이 가입이 끝난다. 막는다.
+                    BackHandler { /* 강제 온보딩: 무시 */ }
                     RoleOnboardingScreen(
                         onSelect = { r ->
                             if (roleRequiresVerification(r)) {
@@ -167,6 +177,9 @@ class OnboardingActivity : ComponentActivity() {
                 }
                 composable("roleOnboardingVerify/{role}") { e ->
                     val code = e.arguments?.getString("role").orEmpty()
+                    // 시스템 뒤로가기 = X(건너뛰기)와 같다 — 유형은 이미 골랐으니 미제출로 완료 통지.
+                    //  NavHost 기본 동작(선택 화면으로 pop)보다 우선하도록 목적지 안에 둔다.
+                    BackHandler { notifyWeb(verifyJs("__onRoleComplete", code, emptyList(), null)) }
                     RoleVerificationScreen(
                         api, code,
                         // 최초 가입 온보딩 — 여기서만 건너뛰기를 허용한다(닫을 다른 수단이 없다).
@@ -252,8 +265,26 @@ class OnboardingActivity : ComponentActivity() {
 
     private fun esc(s: String) = s.replace("\\", "\\\\").replace("'", "\\'")
 
-    /** 닫기·시스템 뒤로가기 공통. 큐는 디스크에 있으므로 여기선 화면만 닫으면 된다. */
-    private fun closeAndFlush() = finish()
+    /**
+     * 닫기·시스템 뒤로가기 공통. 큐는 디스크에 있으므로 여기선 화면만 닫으면 된다.
+     *
+     * ★ 단, 웹이 **답을 기다리는** 게이트 화면은 뒤로가기도 '거절/건너뛰기'로 통지해야 한다.
+     *   그냥 닫으면 웹은 약관·주소·알림 동의 흐름이 끝난 줄 모르고 그 자리에 멈춘다(X 버튼과 같은 결말).
+     *    terms → __onSignupTermsDeclined / address → __onAddressSetupSkipped /
+     *    notification → __onNotificationConsent(false) / roleOnboarding → 강제라 무시
+     *   (roleOnboardingVerify 는 목적지 안의 BackHandler 가 __onRoleComplete 로 처리한다.)
+     */
+    private fun closeAndFlush() {
+        val current = navRef?.currentDestination?.route ?: startRoute
+        when (current) {
+            "terms" -> notifyWeb("if(window.__onSignupTermsDeclined){ window.__onSignupTermsDeclined(); }")
+            "address" -> notifyWeb("if(window.__onAddressSetupSkipped){ window.__onAddressSetupSkipped(); }")
+            "notification" ->
+                notifyWeb("if(window.__onNotificationConsent){ window.__onNotificationConsent(false); }")
+            "roleOnboarding" -> Unit
+            else -> finish()
+        }
+    }
 
     private fun notifyWeb(js: String) = NativeWebRoute.notifyWebAndFinish(this, js)
 
