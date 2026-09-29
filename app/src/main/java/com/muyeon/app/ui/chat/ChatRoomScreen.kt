@@ -1,5 +1,13 @@
 package com.muyeon.app.ui.chat
 
+import android.app.Activity
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import com.muyeon.app.webview.ActiveRole
+import com.muyeon.app.webview.NativeWebRoute
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
@@ -80,6 +88,21 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex }
             .collect { if (it <= 1) vm.loadMore() }
+    }
+
+    // 강사 쪽 견적 채팅방은 강사·학원 유형에서만 연다(알림·채팅 목록 어디서 들어오든 — 웹·iOS 와 같은 규칙).
+    //  AOS 는 유형 전환이 웹에 있으므로, 전환 버튼은 웹 채팅방(같은 전환 화면 + 전환 후 그 방)으로 넘긴다.
+    //  웹에서 전환하면 syncActiveType 브릿지로 ActiveRole 도 갱신된다.
+    if (vm.quoteContext?.isTeacher == true &&
+        ActiveRole.current(context) !in setOf(ActiveRole.TEACHER, ActiveRole.ACADEMY)
+    ) {
+        ProviderSwitchGate(
+            onBack = onBack,
+            onSwitch = {
+                (context as? Activity)?.let { NativeWebRoute.openWebAndFinish(it, "/chat/${vm.roomId}") }
+            },
+        )
+        return
     }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
@@ -695,5 +718,28 @@ private fun openExternal(context: android.content.Context, url: String) {
             android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
                 .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
         )
+    }
+}
+
+/** 강사 유형 전환 안내 — 웹 LessonProviderSwitchView·iOS ChatRoomView 게이트와 같은 문구. */
+@Composable
+private fun ProviderSwitchGate(onBack: () -> Unit, onSwitch: () -> Unit) {
+    Column(
+        Modifier.fillMaxSize().background(MuyeonColors.surface).padding(horizontal = 24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text("이 대화는 강사 유형에서 확인할 수 있어요.", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+        Text(
+            "강사 유형으로 전환한 후 이용해 주세요.",
+            Modifier.padding(top = 8.dp), fontSize = 14.sp, color = MuyeonColors.textSub,
+        )
+        Row(Modifier.padding(top = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedButton(onClick = onBack) { Text("돌아가기") }
+            Button(
+                onClick = onSwitch,
+                colors = ButtonDefaults.buttonColors(containerColor = MuyeonColors.primary),
+            ) { Text("강사 유형으로 전환") }
+        }
     }
 }
