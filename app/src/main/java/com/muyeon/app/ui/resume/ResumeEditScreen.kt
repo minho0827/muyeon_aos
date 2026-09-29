@@ -55,6 +55,44 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
+ * 이력서 편집 폼 상태 — NavHost 항목(ViewModel 소유자) 수명.
+ *  공개 범위·미리보기 화면에 다녀와도 입력이 유지된다. [loaded] = 서버 값으로 한 번 채웠음.
+ */
+class ResumeEditForm(defaultTitle: String, loading: Boolean) : androidx.lifecycle.ViewModel() {
+    var loaded = false
+    var title by mutableStateOf(defaultTitle)
+    var basic by mutableStateOf(ResumeBasic())
+    var oneLiner by mutableStateOf("")
+    var intro by mutableStateOf("")
+    var image by mutableStateOf<String?>(null)
+    var images by mutableStateOf(listOf<String>())
+    var genres by mutableStateOf(listOf<String>())
+    // 가르칠 수 있는 수업 대상(코드). 강사 이력서에만 쓴다.
+    var targets by mutableStateOf(listOf<String>())
+    // 이름+코드 쌍으로 들고 있는다 — iOS 와 동일. 이름만 두면 첫 지역을 지웠을 때
+    //  대표 코드(activeRegionCode)가 사라진 지역을 계속 가리킨다.
+    var activeRegions by mutableStateOf(listOf<Pair<String, String?>>())   // 최대 3
+    var days by mutableStateOf(listOf<String>())
+    var slots by mutableStateOf(listOf<String>())
+    var careerBucket by mutableStateOf("")
+    var educations by mutableStateOf(listOf<EduItem>())
+    var careers by mutableStateOf(listOf<CareerItem>())
+    var performances by mutableStateOf(listOf<PerfItem>())
+    var certificates by mutableStateOf("")
+    var awards by mutableStateOf("")
+    var desired by mutableStateOf(DesiredCond())
+    var desiredRegionCode by mutableStateOf<String?>(null)
+    // 무용수 전용
+    var gender by mutableStateOf("")
+    var height by mutableStateOf("")
+    var companyCareer by mutableStateOf("")
+    var videoUrl by mutableStateOf("")
+
+    var loadedData by mutableStateOf(ResumeData())   // 미지 키 보존용 원본
+    var loading by mutableStateOf(loading)
+}
+
+/**
  * 이력서 작성/수정 — iOS `ResumeEditView.swift` 1:1.
  *  기본 정보 + 전공/활동지역/레슨 가능 시간 + 학력·경력·공연·자격증·수상(반복) +
  *  희망 근무 조건 + 자기소개. 무용수 모드는 희망조건/경력/레슨시간을 빼고 신체정보·포트폴리오를 넣는다.
@@ -72,37 +110,45 @@ fun ResumeEditScreen(
     // 구직 프로필 등록 진입 — 상단 제목/하단 설정 섹션이 바뀌고 저장 시 기본 이력서로 지정한다.
     isSeekProfile: Boolean = false,
     onVisibility: () -> Unit = {},
+    /** 공개 범위 화면에서 돌아옴(RESUME 결과) — 부모가 올린다. 폼은 그대로 두고 설정 값만 다시 읽는다. */
+    settingsReload: Int = 0,
 ) {
-    var title by remember { mutableStateOf(mode.defaultResumeTitle) }
-    var basic by remember { mutableStateOf(ResumeBasic()) }
-    var oneLiner by remember { mutableStateOf("") }
-    var intro by remember { mutableStateOf("") }
-    var image by remember { mutableStateOf<String?>(null) }
-    var images by remember { mutableStateOf(listOf<String>()) }
-    var genres by remember { mutableStateOf(listOf<String>()) }
+    // ★ 폼 상태는 NavHost 항목 수명의 ViewModel 에 둔다(ResumeEditForm).
+    //   예전엔 remember 라 '공개 범위'(visibility) 화면에 다녀오면 이 목적지가 composition 에서 빠지며
+    //   입력 중이던 내용이 통째로 사라지고, 돌아와서 LaunchedEffect(resumeId) 가 서버 값으로 다시 덮었다.
+    val form: ResumeEditForm = androidx.lifecycle.viewmodel.compose.viewModel(
+        key = "resumeEdit:${resumeId ?: 0}:$isSeekProfile",
+    ) { ResumeEditForm(mode.defaultResumeTitle, loading = resumeId != null) }
+    var title by form::title
+    var basic by form::basic
+    var oneLiner by form::oneLiner
+    var intro by form::intro
+    var image by form::image
+    var images by form::images
+    var genres by form::genres
     // 가르칠 수 있는 수업 대상(코드). 강사 이력서에만 쓴다.
-    var targets by remember { mutableStateOf(listOf<String>()) }
+    var targets by form::targets
     // 이름+코드 쌍으로 들고 있는다 — iOS 와 동일. 이름만 두면 첫 지역을 지웠을 때
     //  대표 코드(activeRegionCode)가 사라진 지역을 계속 가리킨다.
-    var activeRegions by remember { mutableStateOf(listOf<Pair<String, String?>>()) }   // 최대 3
-    var days by remember { mutableStateOf(listOf<String>()) }
-    var slots by remember { mutableStateOf(listOf<String>()) }
-    var careerBucket by remember { mutableStateOf("") }
-    var educations by remember { mutableStateOf(listOf<EduItem>()) }
-    var careers by remember { mutableStateOf(listOf<CareerItem>()) }
-    var performances by remember { mutableStateOf(listOf<PerfItem>()) }
-    var certificates by remember { mutableStateOf("") }
-    var awards by remember { mutableStateOf("") }
-    var desired by remember { mutableStateOf(DesiredCond()) }
-    var desiredRegionCode by remember { mutableStateOf<String?>(null) }
+    var activeRegions by form::activeRegions   // 최대 3
+    var days by form::days
+    var slots by form::slots
+    var careerBucket by form::careerBucket
+    var educations by form::educations
+    var careers by form::careers
+    var performances by form::performances
+    var certificates by form::certificates
+    var awards by form::awards
+    var desired by form::desired
+    var desiredRegionCode by form::desiredRegionCode
     // 무용수 전용
-    var gender by remember { mutableStateOf("") }
-    var height by remember { mutableStateOf("") }
-    var companyCareer by remember { mutableStateOf("") }
-    var videoUrl by remember { mutableStateOf("") }
+    var gender by form::gender
+    var height by form::height
+    var companyCareer by form::companyCareer
+    var videoUrl by form::videoUrl
 
-    var loadedData by remember { mutableStateOf(ResumeData()) }   // 미지 키 보존용 원본
-    var loading by remember { mutableStateOf(resumeId != null) }
+    var loadedData by form::loadedData   // 미지 키 보존용 원본
+    var loading by form::loading
     var saving by remember { mutableStateOf(false) }
     var uploading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -114,13 +160,18 @@ fun ResumeEditScreen(
 
     val portfolioMax = if (mode.isDancer) 20 else 10
 
-    LaunchedEffect(isSeekProfile) {
+    // 구직 프로필 설정(열람 알림) — 최초 + 공개 범위 화면에서 돌아올 때(RESUME 결과 → settingsReload).
+    //  폼 입력은 건드리지 않고 이 서버 파생 값만 다시 읽는다.
+    LaunchedEffect(isSeekProfile, settingsReload) {
         if (isSeekProfile) viewAlert = api.getProfileViewAlert() && context.notificationsEnabled()
     }
 
+    // 서버 값으로 폼을 채우는 건 한 번뿐 — 재진입마다 다시 채우면 입력 중이던 내용이 날아간다.
     LaunchedEffect(resumeId) {
         val id = resumeId ?: return@LaunchedEffect
+        if (form.loaded) return@LaunchedEffect
         api.getOne(id).onSuccess { dto ->
+            form.loaded = true
             title = dto.title
             val d = dto.data
             loadedData = d
