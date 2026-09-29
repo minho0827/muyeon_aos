@@ -100,10 +100,16 @@ data class NotiPrefCategory(
 }
 
 /** GET/PATCH /me/notification-prefs 응답. */
-data class NotiPrefs(val pushEnabled: Boolean, val categories: List<NotiPrefCategory>) {
+data class NotiPrefs(
+    val pushEnabled: Boolean,
+    /** 카카오톡 알림 받기(푸시와 별개). 옛 서버 응답엔 없으므로 기본 켜짐. */
+    val alimtalkEnabled: Boolean,
+    val categories: List<NotiPrefCategory>,
+) {
     companion object {
         fun from(o: JSONObject) = NotiPrefs(
             pushEnabled = o.optBoolean("pushEnabled", true),
+            alimtalkEnabled = o.optBoolean("alimtalkEnabled", true),
             categories = o.optJSONArray("categories")?.map(NotiPrefCategory::from) ?: emptyList(),
         )
     }

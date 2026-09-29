@@ -66,6 +66,8 @@ import org.json.JSONObject
 class NotificationPrefsState {
     var pushEnabled by mutableStateOf(true)
         private set
+    var alimtalkEnabled by mutableStateOf(true)
+        private set
     var categories by mutableStateOf<List<NotiPrefCategory>>(emptyList())
         private set
 
@@ -91,6 +93,14 @@ class NotificationPrefsState {
             .onFailure { pushEnabled = prev; error = "저장하지 못했어요." }
     }
 
+    suspend fun setAlimtalkEnabled(api: NotificationApi, on: Boolean) {
+        val prev = alimtalkEnabled
+        alimtalkEnabled = on
+        api.updatePrefs(JSONObject().put("alimtalkEnabled", on))
+            .onSuccess { apply(it) }
+            .onFailure { alimtalkEnabled = prev; error = "저장하지 못했어요." }
+    }
+
     suspend fun setCategory(api: NotificationApi, key: String, on: Boolean) {
         val before = categories
         categories = categories.map { if (it.key == key) it.copy(enabled = on) else it }
@@ -102,6 +112,7 @@ class NotificationPrefsState {
 
     private fun apply(p: NotiPrefs) {
         pushEnabled = p.pushEnabled
+        alimtalkEnabled = p.alimtalkEnabled
         categories = p.categories
     }
 
@@ -160,6 +171,30 @@ fun NotificationSettingsScreen(
                         Switch(
                             checked = state.pushEnabled,
                             onCheckedChange = { v -> scope.launch { state.setPushEnabled(api, v) } },
+                            colors = SwitchDefaults.colors(checkedTrackColor = MuyeonColors.primary),
+                        )
+                    },
+                )
+            }
+
+            // 카카오톡 알림톡은 푸시와 별개 채널 — 푸시를 꺼도 비활성화하지 않는다
+            //  (푸시를 못 받는 사람의 대체 경로라서). 서버 notification_prefs.alimtalkEnabled.
+            item(key = "alimtalk-header") {
+                Text(
+                    "카카오톡",
+                    Modifier.padding(start = 20.dp, top = 20.dp, bottom = 6.dp),
+                    fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp, color = MuyeonColors.textSub,
+                )
+            }
+            item(key = "alimtalk") {
+                SettingsRow(
+                    title = "카카오톡 알림 받기",
+                    desc = "견적 도착·채택, 새 견적 요청 같은 중요한 안내를 카카오톡으로도 보내드려요.",
+                    trailing = {
+                        Switch(
+                            checked = state.alimtalkEnabled,
+                            onCheckedChange = { v -> scope.launch { state.setAlimtalkEnabled(api, v) } },
                             colors = SwitchDefaults.colors(checkedTrackColor = MuyeonColors.primary),
                         )
                     },
