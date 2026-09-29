@@ -20,7 +20,8 @@ import kotlinx.coroutines.launch
  *
  * 갱신 경로는 4가지이고 전부 [requestReload] 로 합류시켜 폭주를 막는다:
  *   1) 최초 진입          2) 화면 복귀(ON_RESUME)
- *   3) 소켓 room-updated  4) 소켓 재연결
+ *   3) 소켓 room-updated·messages-read  4) 소켓 재연결
+ *   5) 방·차단목록에서 NavHost 복귀(ChatActivity — CHAT_ROOMS 결과 키)
  */
 class ChatListState(private val api: ChatApi) {
 
@@ -78,6 +79,9 @@ class ChatListState(private val api: ChatApi) {
                     is ChatEvent.RoomUpdated -> requestReload()
                     // 끊겼다 붙는 동안 온 이벤트는 유실된다(replay=0). 붙자마자 전체를 다시 맞춘다.
                     is ChatEvent.Reconnected -> requestReload()
+                    // 읽음 처리(다른 기기·웹에서 내가 읽었거나 상대가 읽음) — 안읽음 배지가 바뀐다.
+                    //  요약이 안 실려 오므로 재조회로 맞춘다(requestReload 가 몰림을 합친다).
+                    is ChatEvent.MessagesRead -> requestReload()
                     else -> Unit
                 }
             }
