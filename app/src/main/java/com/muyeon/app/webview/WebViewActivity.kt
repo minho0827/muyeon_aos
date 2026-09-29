@@ -26,6 +26,10 @@ import com.muyeon.app.common_components.dialog.ContentAlignment
 import com.muyeon.app.common_components.dialog.CustomDialog
 import com.muyeon.app.data.repository.LocationRepositoryImpl
 import com.muyeon.app.domain.use_cases.RequestNotificationPermissionUseCase
+import com.muyeon.app.result.ResultKeys
+import com.muyeon.app.result.payloadJsonFor
+import com.muyeon.app.result.resultKeys
+import com.muyeon.app.result.resultPayload
 import com.muyeon.app.theme.MuyeonTheme
 import com.muyeon.app.ui.device_info.DeviceInfoViewModel
 import com.muyeon.app.ui.device_info.DeviceInfoViewModelFactory
@@ -36,7 +40,7 @@ import com.muyeon.app.ui.notification.NotificationViewModelFactory
 
 @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
 @RequiresExtension(extension = Build.VERSION_CODES.R, version = 2)
-class WebViewActivity : ComponentActivity() {
+class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
     private lateinit var webView: WebView
     private lateinit var deviceInfoViewModel: DeviceInfoViewModel
     private lateinit var locationWebViewInterface: LocationWebViewInterface
@@ -78,6 +82,33 @@ class WebViewActivity : ComponentActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         fileInterface.handlePermissionResult(permissions)
+    }
+
+    /**
+     * 네이티브 기능 화면(브릿지로 연 화면) 결과 — 닫히면 돌려준 키마다 웹에 재조회를 알린다.
+     *  AppBridgeInterface·플로팅 등 이 액티비티에서 여는 화면은 전부 [launchForResult] 를 거친다
+     *  (각 화면 companion start(...) → Context.launchScreen → ResultHost).
+     */
+    private val nativeResultLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        deliverResults(result.data.resultKeys(), result.data.resultPayload())
+    }
+
+    override fun launchForResult(intent: Intent) {
+        nativeResultLauncher.launch(intent)
+    }
+
+    /**
+     * 결과 키 → 웹. 키마다 __muyeonResult(없으면 레거시 __onX) 한 번씩(WebCallbacks.resultJs).
+     *  채팅·알림이 바뀌었으면 플로팅 배지도 곧바로 다시 읽는다(폴링 대신).
+     */
+    private fun deliverResults(keys: Set<String>, payload: Bundle?) {
+        if (keys.isEmpty()) return
+        keys.forEach { key -> evalWhenReady(readyGuarded(WebCallbacks.resultJs(key, payload.payloadJsonFor(key)))) }
+        if (ResultKeys.CHAT_ROOMS in keys || ResultKeys.CHAT_ROOM in keys || ResultKeys.NOTIFICATIONS in keys) {
+            com.muyeon.app.ui.floating.FloatingState.requestRefresh()
+        }
     }
 
     private val imagePickerLauncher = registerForActivityResult(
@@ -224,7 +255,9 @@ class WebViewActivity : ComponentActivity() {
         webView.addJavascriptInterface(QrPageWebViewInterface(webView), "qrPageBridge")
         // 웹 → 네이티브 단방향 액션 채널(iOS callbackHandler 와 동일 계약).
         //  액션명·데이터 키는 iOS 와 100% 동일. 미이식 화면은 웹 경로 폴백(죽은 버튼 방지).
-        webView.addJavascriptInterface(AppBridgeInterface(this, webView), "AppBridge")
+        webView.addJavascriptInterface(
+            AppBridgeInterface(this, webView, onWebReady = ::onWebReady), "AppBridge",
+        )
 
         android.util.Log.d("QR_DEBUG", "🟢 WebViewActivity onCreate savedInstanceState=${savedInstanceState != null}, QrPageManager.value=${com.muyeon.app.utils.QrPageManager.getValue()}")
         // QR 식사평가(qrPage)가 있으면 복원하지 말고 홈을 새로 로드해 DefaultLayout 폴링이 처리하도록 함
@@ -321,13 +354,15 @@ class WebViewActivity : ComponentActivity() {
         //  예전엔 onPause/onResume 을 웹뷰에 넘기지 않아, 네이티브 화면을 닫고 돌아와도 웹은 계속 보이는 중으로 알았다.
         //  ★ 콜백 대기열을 흘리기 전에 부른다 — 먼저 깨워야 스크립트가 바로 돈다.
         if (::webView.isInitialized) webView.onResume()
+        // 채팅·알림 배지 재조회 — 예전 60초 폴링을 대신한다(돌아올 때마다 한 번).
+        com.muyeon.app.ui.floating.FloatingState.requestRefresh()
         // 네이티브 화면이 쌓아둔 웹 콜백을 흘려보낸다(WebCallbackQueue).
         //  액티비티가 죽어 인텐트로 못 넘긴 것까지 여기서 회수된다 —
         //  안 하면 "화면엔 반영됐는데 서버는 모르는" 상태로 남는다.
         //  ★ 실행 성공을 확인한 뒤에 비운다(콜드 스타트에서 웹이 아직 준비 안 됐을 수 있다).
-        WebCallbackQueue.peek(this)?.let { js ->
-            evalWhenReady(readyGuarded(js)) { WebCallbackQueue.clear(this) }
-        }
+        flushCallbackQueue()
+        // 준비 신호를 못 받은 채 밀려 있던 것도 한 번 더 시도(옛 웹 안전망 — 타이머 없음).
+        flushPendingJs()
     }
 
     /**
@@ -337,11 +372,11 @@ class WebViewActivity : ComponentActivity() {
      *    핸들러가 없던 순간의 통지가 조용히 사라진다.
      */
     private fun readyGuarded(js: String) =
-        "(function(){ if(!window.__nativeGo) return 0; try { $js } catch(e) {} return 1; })()"
+        "(function(){ if(!window.__muyeonResult && !window.__nativeGo) return 0; try { $js } catch(e) {} return 1; })()"
 
     /**
      * 네이티브 화면에서 돌아오며 요청한 SPA 이동/콜백 처리(NativeWebRoute).
-     *  웹이 아직 로드 전이면 __nativeGo 가 없으므로 짧게 재시도한다(최대 3초).
+     *  웹이 아직 로드 전이면 __nativeGo 가 없으므로 준비될 때까지 [pendingJs] 에 둔다.
      */
     private fun consumeNativeRoute(intent: Intent) {
         intent.getStringExtra(NativeWebRoute.EXTRA_GO_PATH)?.takeIf { it.isNotEmpty() }?.let { path ->
@@ -356,11 +391,80 @@ class WebViewActivity : ComponentActivity() {
         }
     }
 
-    private fun evalWhenReady(script: String, attempt: Int = 0, onDone: (() -> Unit)? = null) {
-        webView.evaluateJavascript(script) { result ->
-            if (result == "1") onDone?.invoke()
-            else if (attempt < 10) webView.postDelayed({ evalWhenReady(script, attempt + 1, onDone) }, 300)
+    // ── 웹 준비 전 대기열 ──
+    //  예전엔 300ms × 10회 postDelayed 재시도였다. 이제 웹이 콜백을 다 심은 뒤 브릿지로 `webReady` 를
+    //  1회 보내므로(muyeon-front nativeBridge.notifyWebReady) 그때 한 번에 흘린다. 타이머는 없다.
+    //   · 흘리는 시점: webReady 수신 / onPageFinished(webReady 를 안 보내는 옛 웹 안전망) / onResume.
+    //   · 스크립트는 준비 가드(readyGuarded)를 쓰므로 아직 준비 전이면 0 → 대기열에 그대로 남는다.
+    //   · 순서 보장: 앞에서부터 하나씩, 실패하면 거기서 멈춘다(뒤엣것이 먼저 실행되지 않게).
+    //   · script 는 실행 직전에 만든다 — 콜백 대기열(WebCallbackQueue)은 그 사이 더 쌓일 수 있어서다.
+    private class PendingJs(val key: String, val script: () -> String?, val onDone: (() -> Unit)?)
+
+    private val pendingJs = ArrayDeque<PendingJs>()
+    private var flushing = false
+
+    /** 새 페이지 로드마다 false — webReady 를 받으면 true. */
+    private var webReady = false
+
+    private fun evalWhenReady(script: String, onDone: (() -> Unit)? = null) =
+        enqueuePending(PendingJs(script, { script }, onDone))
+
+    private fun enqueuePending(p: PendingJs) {
+        // 같은 항목이 이미 밀려 있으면 또 쌓지 않는다(onResume 이 여러 번 와도 한 번만 실행).
+        if (pendingJs.any { it.key == p.key }) return
+        pendingJs.addLast(p)
+        flushPendingJs()
+    }
+
+    /**
+     * 디스크 콜백 대기열(WebCallbackQueue) 흘리기 — 항상 한 항목으로만 밀어 두고,
+     *  실행 직전의 대기열 전체를 한 번에 보낸 뒤 **보낸 것만** 지운다.
+     */
+    private fun flushCallbackQueue() {
+        var batch: List<String> = emptyList()
+        enqueuePending(
+            PendingJs(
+                key = QUEUE_KEY,
+                script = {
+                    batch = WebCallbackQueue.items(this)
+                    if (batch.isEmpty()) null else readyGuarded(batch.joinToString("\n"))
+                },
+                onDone = { WebCallbackQueue.remove(this, batch) },
+            ),
+        )
+    }
+
+    private fun flushPendingJs() {
+        if (flushing || pendingJs.isEmpty() || !::webView.isInitialized) return
+        val head = pendingJs.first()
+        val script = head.script()
+        if (script == null) {
+            // 보낼 게 없어졌다(대기열이 이미 비었음) — 버리고 다음으로.
+            pendingJs.removeFirst()
+            flushPendingJs()
+            return
         }
+        flushing = true
+        webView.evaluateJavascript(script) { result ->
+            flushing = false
+            if (result == "1") {
+                // 같은 항목이 아직 맨 앞일 때만 뺀다(그 사이 페이지가 바뀌어 비워졌을 수 있다).
+                if (pendingJs.firstOrNull() === head) pendingJs.removeFirst()
+                head.onDone?.invoke()
+                flushPendingJs()
+            }
+            // 0(준비 전)이면 멈춘다 — 다음 webReady / onPageFinished / onResume 에서 다시 흘린다.
+        }
+    }
+
+    private companion object {
+        const val QUEUE_KEY = "__webCallbackQueue"
+    }
+
+    /** 브릿지 `webReady` — 웹이 __muyeonResult 등 콜백을 전부 심었다. 밀린 것을 흘린다. */
+    private fun onWebReady() {
+        webReady = true
+        flushPendingJs()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -461,6 +565,18 @@ class WebViewActivity : ComponentActivity() {
                 // 외부 앱으로 처리 가능한 스킴(market/tel/mailto/intent 등)만 외부로 넘긴다.
                 openExternalScheme(request.url.toString())
                 return true
+            }
+
+            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                super.onPageStarted(view, url, favicon)
+                // 새 문서 — 콜백을 다시 심을 때까지 준비 전으로 본다(대기열은 유지).
+                webReady = false
+            }
+
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                // webReady 를 안 보내는 옛 웹 안전망. 준비 전이면 가드가 0 을 돌려 그대로 남는다.
+                if (!webReady) flushPendingJs()
             }
         }
         webView.webChromeClient = object : android.webkit.WebChromeClient() {

@@ -13,6 +13,10 @@ import android.content.Intent
  *
  *  이동은 웹이 심어둔 `window.__nativeGo(path)` 사용(전체 리로드 없이 라우팅) —
  *  AppBridgeInterface.navigateWeb 과 동일 규약.
+ *
+ *  ⚠️ CLEAR_TOP 은 웹뷰와 호출 화면 사이의 **네이티브 부모까지 전부 닫는다**(결과도 못 돌려준다).
+ *   네이티브 부모가 띄운 화면(ResultActivity.launchedFromNative)이 "저장 후 목록으로" 같은 복귀를
+ *   할 때는 여기 대신 finish()/finishWithResult 로 부모에게 돌아갈 것 — 부모가 결과 키로 다시 읽는다.
  */
 object NativeWebRoute {
 

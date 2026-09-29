@@ -79,13 +79,10 @@ fun FloatingOverlay(
         unread = api.unreadCount()
     }
 
-    // 60초 폴링(승인 반영) — iOS Timer.publish(every: 60) 대응.
-    LaunchedEffect(Unit) {
-        while (true) {
-            refresh()
-            delay(60_000)
-        }
-    }
+    // ★ 60초 폴링은 없앴다(타이머 금지). 대신 명시적 신호로만 다시 읽는다 —
+    //   ① 최초 표시 ② WebViewActivity.onResume(네이티브 화면·다른 앱에서 복귀)
+    //   ③ 자식 화면 결과에 CHAT_ROOMS·NOTIFICATIONS ④ 아래 소켓 이벤트(서버 알림 = 인증 승인 포함).
+    //   전부 FloatingState.requestRefresh() → 아래 refreshTick 효과로 합류한다.
     // 소켓 이벤트 즉시 반영 — iOS FloatingSocketManager.onEvent 대응.
     //  ⚠️ 모든 이벤트에 반응하면 안 된다. 종전엔 상대가 **타이핑할 때마다**
     //    verificationStatus + unreadCount 를 호출해, 한 문장 입력에 수십 번씩 왕복했다.
@@ -96,7 +93,7 @@ fun FloatingOverlay(
                 // 끊긴 동안의 이벤트는 유실됐다 — 서버 기준으로 다시 맞춘다.
                 is ChatEvent.Reconnected,
                 // 인증 승인 등 서버 알림은 책갈피(role/status)까지 바뀔 수 있어 전체 갱신.
-                is ChatEvent.ServerNotification -> refresh()
+                is ChatEvent.ServerNotification -> FloatingState.requestRefresh()
 
                 is ChatEvent.NewMessage,
                 is ChatEvent.MessagesRead,
@@ -108,7 +105,7 @@ fun FloatingOverlay(
             }
         }
     }
-    // 로그인 변경 등 외부 신호.
+    // 재조회 신호 합류점 — 최초 1회 + requestRefresh() 마다(복귀·결과·소켓·로그인 변경).
     LaunchedEffect(FloatingState.refreshTick) { refresh() }
 
     LaunchedEffect(toast) { if (toast != null) { delay(2000); toast = null } }

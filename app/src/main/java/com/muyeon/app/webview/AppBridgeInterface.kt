@@ -19,6 +19,8 @@ import org.json.JSONObject
 class AppBridgeInterface(
     private val activity: Activity,
     private val webView: WebView,
+    /** 웹이 결과 콜백(__muyeonResult 등)을 다 심었다는 신호 — WebViewActivity 가 밀린 JS 를 흘린다. */
+    private val onWebReady: () -> Unit = {},
 ) {
 
     @JavascriptInterface
@@ -248,6 +250,9 @@ class AppBridgeInterface(
             "routeChanged" -> com.muyeon.app.ui.floating.FloatingState.updateRoute(data.optString("path"))
             "setFloatingHidden" ->
                 com.muyeon.app.ui.floating.FloatingState.updateFloatingHidden(data.optString("hidden") == "1")
+            // 웹이 window.__muyeonResult 를 등록함(페이지 로드당 1회). 예전 300ms 재시도 루프를 대신한다.
+            //  ★ 이 수신부가 없으면 백엔드 배포 스크립트(check-bridge-contract.js)가 죽은 액션으로 막는다.
+            "webReady" -> onWebReady()
         }
     }
 
@@ -285,6 +290,7 @@ class AppBridgeInterface(
             "setFloatingHidden",  // 웹 모달 표시/해제 → 플로팅 숨김
             "syncActiveType",     // 활성 회원유형 동기화(X-Active-Type)
             "closeModal",         // 네이티브 모달 닫기 요청
+            "webReady",           // 웹 결과 콜백 등록 완료(밀린 JS 흘리기)
         )
     }
 }

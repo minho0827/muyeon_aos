@@ -16,6 +16,9 @@ import org.json.JSONArray
  *
  * ★ 여기 쌓는 것은 **부수효과가 있는 통지**다. 중복 실행돼도 안전한 형태여야 한다
  *   (`window.__onRoleManageAdd('TEACHER')` 처럼 멱등한 것만). 결제·전송류는 넣지 말 것.
+ *
+ * ★ "다시 읽어라" 류 재조회 통지는 여기 넣지 않는다 — 결과 키(result/ResultKeys)가 전담한다.
+ *   양쪽에 두면 웹이 같은 재조회를 두 번 돈다(규칙 상세는 WebCallbacks 머리말).
  */
 object WebCallbackQueue {
     private const val PREFS = "muyeon.webcb"
@@ -42,6 +45,22 @@ object WebCallbackQueue {
 
     @Synchronized
     fun clear(context: Context) = write(context, mutableListOf())
+
+    /** 대기열 항목(비우지 않는다). */
+    @Synchronized
+    fun items(context: Context): List<String> = read(context)
+
+    /**
+     * 실행에 성공한 항목만 지운다(앞에서부터 같은 문자열 1건씩).
+     *  ★ clear() 로 통째로 비우면, 실행하는 사이 새로 쌓인 콜백까지 사라진다.
+     */
+    @Synchronized
+    fun remove(context: Context, done: List<String>) {
+        if (done.isEmpty()) return
+        val cur = read(context)
+        done.forEach { js -> cur.indexOf(js).takeIf { it >= 0 }?.let { cur.removeAt(it) } }
+        write(context, cur)
+    }
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
