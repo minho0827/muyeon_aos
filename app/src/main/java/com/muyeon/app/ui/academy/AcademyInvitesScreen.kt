@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.academy
 
+import com.muyeon.app.result.findActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -65,7 +66,9 @@ fun AcademyInvitesScreen(api: AcademyTeacherApi, onClose: () -> Unit) {
                 infoMessage = done
                 if (clearCode) codeInput = ""
                 load()
-                com.muyeon.app.webview.WebCallbacks.academyChanged(ctx)
+                // 결과 키(ACADEMY)로 웹 소속 배지를 갱신 — 닫힐 때 WebViewActivity 가 한 번 보낸다.
+                (ctx.findActivity() as? com.muyeon.app.result.ResultActivity)
+                    ?.addResultKeys(com.muyeon.app.result.ResultKeys.ACADEMY)
             }.onFailure { errorMessage = it.message }
             busy = false
         }

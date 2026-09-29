@@ -1,11 +1,10 @@
 package com.muyeon.app.ui.quote
 
+import com.muyeon.app.result.launchScreen
 import com.muyeon.app.webview.withActiveType
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -40,7 +39,6 @@ import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.utils.TokenManager
 import com.muyeon.app.webview.ActiveRole
-import com.muyeon.app.webview.NativeWebRoute
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -111,13 +109,19 @@ class AutoQuoteApi(private val token: String?) {
     private companion object { val JSON = "application/json".toMediaType() }
 }
 
-class QuoteAutoTemplatesActivity : ComponentActivity() {
+/**
+ * 견적 자동응답 템플릿 — 웹 `openAutoQuoteTemplates` / 개인레슨 관리의 '자동응답'.
+ *  결과: AUTO_QUOTE — X·시스템 뒤로·예측 뒤로가기 어느 쪽으로 닫아도 finish() 가 싣는다(ResultActivity).
+ *  부모가 웹이면 WebViewActivity 가 __muyeonResult('AUTO_QUOTE')(옛 웹은 __onAutoQuoteChanged)로 전한다.
+ */
+class QuoteAutoTemplatesActivity : com.muyeon.app.result.ResultActivity() {
+
+    override val defaultResultKeys = setOf(com.muyeon.app.result.ResultKeys.AUTO_QUOTE)
+
     companion object {
-        fun start(context: Context) {
-            val i = Intent(context, QuoteAutoTemplatesActivity::class.java)
-            if (context !is Activity) i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(i)
-        }
+        fun intent(context: Context): Intent = Intent(context, QuoteAutoTemplatesActivity::class.java)
+
+        fun start(context: Context) = context.launchScreen(intent(context))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -128,14 +132,9 @@ class QuoteAutoTemplatesActivity : ComponentActivity() {
             val api = remember { AutoQuoteApi(TokenManager.getAccessToken(this)) }
             QuoteAutoTemplatesScreen(
                 api = api,
-                // 닫힘 콜백 __onAutoQuoteChanged 로 웹 요약(자동응답 켜짐/꺼짐)을 갱신.
-                //  웹에 핸들러가 없으면 no-op (iOS presentAutoQuoteTemplates 동일).
-                onClose = {
-                    NativeWebRoute.notifyWebAndFinish(
-                        this,
-                        "if(window.__onAutoQuoteChanged){ window.__onAutoQuoteChanged(); }",
-                    )
-                },
+                // 닫기 = 결과(AUTO_QUOTE)를 싣고 부모로 돌아간다(iOS presentAutoQuoteTemplates 닫힘 콜백 대응).
+                //  ★ 예전 notifyWebAndFinish 는 CLEAR_TOP 이라 네이티브 부모(개인레슨 관리)까지 죽였다.
+                onClose = { finish() },
             )
         }
     }

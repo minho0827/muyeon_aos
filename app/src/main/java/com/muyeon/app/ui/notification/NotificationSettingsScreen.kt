@@ -1,11 +1,11 @@
 package com.muyeon.app.ui.notification
 
+import com.muyeon.app.result.launchScreen
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -425,15 +425,15 @@ private fun ErrorToastArea(state: NotificationPrefsState) {
     }
 }
 
-/** 알림함 우측 톱니 진입점. */
-class NotificationSettingsActivity : ComponentActivity() {
+/** 알림함 우측 톱니 진입점. 결과: NOTIFICATION_PREFS. */
+class NotificationSettingsActivity : com.muyeon.app.result.ResultActivity() {
+
+    override val defaultResultKeys = setOf(com.muyeon.app.result.ResultKeys.NOTIFICATION_PREFS)
 
     companion object {
-        fun start(context: Context) {
-            val i = Intent(context, NotificationSettingsActivity::class.java)
-            if (context !is Activity) i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(i)
-        }
+        fun intent(context: Context): Intent = Intent(context, NotificationSettingsActivity::class.java)
+
+        fun start(context: Context) = context.launchScreen(intent(context))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -1,11 +1,10 @@
 package com.muyeon.app.ui.quote
 
-import android.app.Activity
+import com.muyeon.app.result.launchScreen
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -34,8 +33,12 @@ import org.json.JSONObject
 /**
  * 견적 문진 풀스크린 — 웹 `openQuoteWizard` 브릿지로 진입.
  *  iOS `presentQuoteWizardDirect` 대응(카테고리/지정강사/프리필 인자 동일).
+ *
+ *  결과: QUOTES(제출하면 받은 요청 목록·대시보드가 다시 읽는다).
  */
-class QuoteWizardActivity : ComponentActivity() {
+class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
+
+    override val defaultResultKeys = setOf(com.muyeon.app.result.ResultKeys.QUOTES)
 
     companion object {
         private const val EXTRA_CATEGORY = "categoryId"
@@ -48,7 +51,7 @@ class QuoteWizardActivity : ComponentActivity() {
         private const val QUOTE_PREFS = "muyeon.quote"
         private const val KEY_INTRO_SEEN = "muyeon.quoteIntroSeen"
 
-        fun start(
+        fun intent(
             context: Context,
             categoryId: String?,
             targetTeacherId: String?,
@@ -56,16 +59,21 @@ class QuoteWizardActivity : ComponentActivity() {
             prefillJson: String? = null,
             region: String? = null,
             regionCode: String? = null,
-        ) {
-            val i = Intent(context, QuoteWizardActivity::class.java)
-                .putExtra(EXTRA_CATEGORY, categoryId ?: "")
-                .putExtra(EXTRA_TARGET_TEACHER, targetTeacherId ?: "")
-                .putExtra(EXTRA_PREFILL, prefillJson ?: "")
-                .putExtra(EXTRA_REGION, region ?: "")
-                .putExtra(EXTRA_REGION_CODE, regionCode ?: "")
-            if (context !is Activity) i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(i)
-        }
+        ): Intent = Intent(context, QuoteWizardActivity::class.java)
+            .putExtra(EXTRA_CATEGORY, categoryId ?: "")
+            .putExtra(EXTRA_TARGET_TEACHER, targetTeacherId ?: "")
+            .putExtra(EXTRA_PREFILL, prefillJson ?: "")
+            .putExtra(EXTRA_REGION, region ?: "")
+            .putExtra(EXTRA_REGION_CODE, regionCode ?: "")
+
+        fun start(
+            context: Context,
+            categoryId: String?,
+            targetTeacherId: String?,
+            prefillJson: String? = null,
+            region: String? = null,
+            regionCode: String? = null,
+        ) = context.launchScreen(intent(context, categoryId, targetTeacherId, prefillJson, region, regionCode))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

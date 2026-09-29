@@ -1,10 +1,8 @@
 package com.muyeon.app.ui.notification
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -38,7 +36,10 @@ import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.chat.ChatActivity
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.webview.ActiveRole
-import com.muyeon.app.webview.WebCallbacks
+import com.muyeon.app.result.ResultActivity
+import com.muyeon.app.result.ResultKeys
+import com.muyeon.app.result.findActivity
+import com.muyeon.app.result.launchScreen
 import com.muyeon.app.ui.quote.QuoteEmptyState
 import com.muyeon.app.ui.quote.QuoteHubActivity
 import com.muyeon.app.ui.quote.QuoteNavBar
@@ -133,10 +134,10 @@ fun NotificationListScreen(
                 fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
                 lineHeight = 16.sp, color = MuyeonColors.primary,
                 modifier = Modifier.clickable {
-                    // 웹 알림 배지도 같이 내려야 한다(iOS .muyeonNotificationsRead → __onNativeNotificationsRead).
+                    // 웹 알림 배지도 같이 내려야 한다(iOS .muyeonNotificationsRead) — 결과 키 NOTIFICATIONS.
                     scope.launch {
                         api.markAllRead(category)
-                        WebCallbacks.notificationsRead(ctx)
+                        markNotificationsChanged(ctx)
                         reload()
                         loadChips()
                     }
@@ -171,6 +172,8 @@ fun NotificationListScreen(
                             scope.launch {
                                 if (!n.isRead) {
                                     api.markRead(n.id)
+                                    // 한 건만 읽어도 웹 배지 숫자가 바뀐다 — 모두 읽음과 같은 결과 키.
+                                    markNotificationsChanged(ctx)
                                     items = items.map { if (it.id == n.id) it.copy(isRead = true) else it }
                                     // 어느 칩의 숫자가 줄어야 하는지는 서버만 안다(type→카테고리 매핑이 서버에 있다).
                                     loadChips()
@@ -264,15 +267,20 @@ private fun NotificationRow(n: AppNotification, onClick: () -> Unit) {
     }
 }
 
-/** 웹 `openNotifications` 브릿지 진입점. */
-class NotificationActivity : ComponentActivity() {
+/** 알림을 읽음 처리함 — 닫힐 때 웹 알림 배지·플로팅 배지가 다시 읽도록 NOTIFICATIONS 를 싣는다. */
+private fun markNotificationsChanged(ctx: Context) {
+    (ctx.findActivity() as? ResultActivity)?.addResultKeys(ResultKeys.NOTIFICATIONS)
+}
+
+/** 웹 `openNotifications` 브릿지 진입점. 결과: NOTIFICATIONS. */
+class NotificationActivity : ResultActivity() {
+
+    override val defaultResultKeys = setOf(ResultKeys.NOTIFICATIONS)
 
     companion object {
-        fun start(context: Context) {
-            val i = Intent(context, NotificationActivity::class.java)
-            if (context !is Activity) i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(i)
-        }
+        fun intent(context: Context): Intent = Intent(context, NotificationActivity::class.java)
+
+        fun start(context: Context) = context.launchScreen(intent(context))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

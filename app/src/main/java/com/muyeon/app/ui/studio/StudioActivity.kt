@@ -1,10 +1,9 @@
 package com.muyeon.app.ui.studio
 
-import android.app.Activity
+import com.muyeon.app.result.launchScreen
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -39,16 +38,18 @@ import com.muyeon.app.utils.TokenManager
  * 스튜디오 운영 컨테이너 — 웹 `openStudioOps` / `openStudioMembers` / `openStudioSales` /
  *  `openStudioSchedule` 브릿지 진입점. iOS `WebViewModel+Hub.presentStudioOps` 대응.
  */
-class StudioActivity : ComponentActivity() {
+class StudioActivity : com.muyeon.app.result.ResultActivity() {
+
+    /** 결과: STUDIO_MEMBERS(회원·수강권이 바뀌었을 수 있다). */
+    override val defaultResultKeys = setOf(com.muyeon.app.result.ResultKeys.STUDIO_MEMBERS)
 
     companion object {
         private const val EXTRA_ROUTE = "route"
 
-        fun start(context: Context, route: String) {
-            val i = Intent(context, StudioActivity::class.java).putExtra(EXTRA_ROUTE, route)
-            if (context !is Activity) i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(i)
-        }
+        fun intent(context: Context, route: String): Intent =
+            Intent(context, StudioActivity::class.java).putExtra(EXTRA_ROUTE, route)
+
+        fun start(context: Context, route: String) = context.launchScreen(intent(context, route))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

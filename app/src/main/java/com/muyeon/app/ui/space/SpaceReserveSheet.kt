@@ -54,6 +54,8 @@ fun SpaceReserveSheet(
     initialDate: String = "",
     /** 완료(또는 취소) 문구를 상위에 전달하며 닫힌다. null 이면 문구 없이 닫기. */
     onFinish: (String?) -> Unit,
+    /** 예약 요청 성공(서버 접수) — 결과 키 RESERVATIONS 용. */
+    onReserved: () -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
@@ -251,7 +253,7 @@ fun SpaceReserveSheet(
                                         hours = if (bookingType == "HOURLY") hours else null,
                                     ),
                                 )
-                                    .onSuccess { onFinish("예약 요청이 접수되었습니다.") }
+                                    .onSuccess { onReserved(); onFinish("예약 요청이 접수되었습니다.") }
                                     .onFailure { error = "예약 요청에 실패했습니다. 잠시 후 다시 시도해 주세요." }
                                 submitting = false
                             }

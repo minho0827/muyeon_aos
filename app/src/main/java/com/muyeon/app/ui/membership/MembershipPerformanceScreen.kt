@@ -1,10 +1,9 @@
 package com.muyeon.app.ui.membership
 
-import android.app.Activity
+import com.muyeon.app.result.launchScreen
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -433,17 +432,19 @@ private fun ratioData(f: MembershipFunnel, isAcademy: Boolean): RatioData? {
  *  memberType 이 비면 저장된 활동유형을 쓴다 — iOS `MembershipView` 가
  *  `memberType.isEmpty ? RoleGate.activeType : memberType` 로 넘기는 것과 같은 규칙.
  */
-class MembershipPerformanceActivity : ComponentActivity() {
+class MembershipPerformanceActivity : com.muyeon.app.result.ResultActivity() {
+
+    /** 결과: MEMBERSHIP — 성과 화면에서 멤버십 화면으로 넘어가 가입할 수 있다. */
+    override val defaultResultKeys = setOf(com.muyeon.app.result.ResultKeys.MEMBERSHIP)
 
     companion object {
         private const val EXTRA_MEMBER_TYPE = "memberType"
 
-        fun start(context: Context, memberType: String?) {
-            val i = Intent(context, MembershipPerformanceActivity::class.java)
+        fun intent(context: Context, memberType: String?): Intent =
+            Intent(context, MembershipPerformanceActivity::class.java)
                 .putExtra(EXTRA_MEMBER_TYPE, memberType ?: "")
-            if (context !is Activity) i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(i)
-        }
+
+        fun start(context: Context, memberType: String?) = context.launchScreen(intent(context, memberType))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -1,10 +1,9 @@
 package com.muyeon.app.ui.survey
 
-import android.app.Activity
+import com.muyeon.app.result.launchScreen
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -328,28 +327,30 @@ private fun QuestionBlock(
     }
 }
 
-/** 설문 화면 진입점 — 채팅 SURVEY_CARD 탭 등에서 사용. */
-class SurveyActivity : ComponentActivity() {
+/** 설문 화면 진입점 — 채팅 SURVEY_CARD 탭 등에서 사용. 결과: CHAT_ROOM(카드 응답 상태가 바뀐다). */
+class SurveyActivity : com.muyeon.app.result.ResultActivity() {
+
+    override val defaultResultKeys = setOf(com.muyeon.app.result.ResultKeys.CHAT_ROOM)
 
     companion object {
         private const val EXTRA_DISPATCH = "dispatchId"
         private const val EXTRA_CAN_RESPOND = "canRespond"
         private const val EXTRA_RECIPIENT = "recipientId"
 
-        fun start(context: Context, dispatchId: Int, canRespond: Boolean) {
-            val i = Intent(context, SurveyActivity::class.java)
+        fun intent(context: Context, dispatchId: Int, canRespond: Boolean): Intent =
+            Intent(context, SurveyActivity::class.java)
                 .putExtra(EXTRA_DISPATCH, dispatchId)
                 .putExtra(EXTRA_CAN_RESPOND, canRespond)
-            if (context !is Activity) i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(i)
-        }
+
+        fun start(context: Context, dispatchId: Int, canRespond: Boolean) =
+            context.launchScreen(intent(context, dispatchId, canRespond))
 
         /** 회원의 '레슨 전 설문 프로필'(응답 목록) — 강사가 레슨 상세에서 연다. */
-        fun startProfile(context: Context, recipientId: Int) {
-            val i = Intent(context, SurveyActivity::class.java).putExtra(EXTRA_RECIPIENT, recipientId)
-            if (context !is Activity) i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(i)
-        }
+        fun profileIntent(context: Context, recipientId: Int): Intent =
+            Intent(context, SurveyActivity::class.java).putExtra(EXTRA_RECIPIENT, recipientId)
+
+        fun startProfile(context: Context, recipientId: Int) =
+            context.launchScreen(profileIntent(context, recipientId))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

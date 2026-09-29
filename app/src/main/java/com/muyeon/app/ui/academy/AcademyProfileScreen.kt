@@ -1,10 +1,9 @@
 package com.muyeon.app.ui.academy
 
-import android.app.Activity
+import com.muyeon.app.result.launchScreen
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -284,17 +283,19 @@ private fun AcademyChips(labels: List<String>) {
 private val cAFAFAF = Color(0xFFAFAFAF)
 private val cF7F7F7 = Color(0xFFF7F7F7)
 
-/** 웹 `openAcademyProfile` 브릿지 진입점. */
-class AcademyProfileActivity : ComponentActivity() {
+/** 웹 `openAcademyProfile` 브릿지 진입점. 결과: ACADEMY(소속 신청 등 학원 정보가 바뀌었을 수 있다). */
+class AcademyProfileActivity : com.muyeon.app.result.ResultActivity() {
+
+    override val defaultResultKeys = setOf(com.muyeon.app.result.ResultKeys.ACADEMY)
 
     companion object {
         private const val EXTRA_ID = "academyId"
 
-        fun start(context: Context, academyId: Int) {
-            val i = Intent(context, AcademyProfileActivity::class.java).putExtra(EXTRA_ID, academyId)
-            if (context !is Activity) i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(i)
-        }
+        fun intent(context: Context, academyId: Int): Intent =
+            Intent(context, AcademyProfileActivity::class.java).putExtra(EXTRA_ID, academyId)
+
+        fun start(context: Context, academyId: Int) =
+            context.launchScreen(intent(context, academyId))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

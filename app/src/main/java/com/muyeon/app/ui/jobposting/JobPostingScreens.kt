@@ -1,10 +1,9 @@
 package com.muyeon.app.ui.jobposting
 
-import android.app.Activity
+import com.muyeon.app.result.launchScreen
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -479,24 +478,23 @@ internal fun JobButton(text: String, filled: Boolean, enabled: Boolean, modifier
     )
 }
 
-/** 웹 `openMyJobPostings` 브릿지 진입점. */
-class JobPostingActivity : ComponentActivity() {
+/** 웹 `openMyJobPostings` 브릿지 진입점. 결과: JOB_POSTINGS. */
+class JobPostingActivity : com.muyeon.app.result.ResultActivity() {
+
+    override val defaultResultKeys = setOf(com.muyeon.app.result.ResultKeys.JOB_POSTINGS)
 
     companion object {
         private const val EXTRA_ROUTE = "route"
         private const val EXTRA_ID = "id"
 
-        fun startList(context: Context) = context.go(intent(context, "list"))
-        fun startForm(context: Context, jobId: Int?) =
-            context.go(intent(context, "form").putExtra(EXTRA_ID, jobId ?: 0))
+        fun listIntent(context: Context) = intent(context, "list")
+        fun formIntent(context: Context, jobId: Int?) = intent(context, "form").putExtra(EXTRA_ID, jobId ?: 0)
+
+        fun startList(context: Context) = context.launchScreen(listIntent(context))
+        fun startForm(context: Context, jobId: Int?) = context.launchScreen(formIntent(context, jobId))
 
         private fun intent(context: Context, route: String) =
             Intent(context, JobPostingActivity::class.java).putExtra(EXTRA_ROUTE, route)
-
-        private fun Context.go(i: Intent) {
-            if (this !is Activity) i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            startActivity(i)
-        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

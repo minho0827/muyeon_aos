@@ -66,6 +66,10 @@ fun SpaceDetailScreen(
     hideReserve: Boolean = false,
     onClose: () -> Unit,
     onChat: (Int) -> Unit,
+    /** 예약 요청 접수 — 부모가 결과 키 RESERVATIONS 를 싣는다(웹 예약내역 재조회). */
+    onReserved: () -> Unit = {},
+    /** 찜 변경 — 부모가 결과 키 SPACE 를 싣는다(웹 찜 목록 재조회). */
+    onScrapChanged: () -> Unit = {},
 ) {
     var detail by remember { mutableStateOf<SpaceDetail?>(null) }
     var loading by remember { mutableStateOf(true) }
@@ -121,7 +125,7 @@ fun SpaceDetailScreen(
                             val next = !scrapped
                             scrapped = next
                             scope.launch {
-                                api.setScrap(spaceId, next).onFailure {
+                                api.setScrap(spaceId, next).onSuccess { onScrapChanged() }.onFailure {
                                     scrapped = !next
                                     message = "찜 처리에 실패했어요. 잠시 후 다시 시도해 주세요."
                                 }
@@ -223,6 +227,7 @@ fun SpaceDetailScreen(
             SpaceReserveSheet(
                 api = api, space = space, initialDate = initialDate,
                 onFinish = { result -> showReserve = false; message = result },
+                onReserved = onReserved,
             )
         }
     }

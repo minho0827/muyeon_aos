@@ -1,10 +1,9 @@
 package com.muyeon.app.ui.membership
 
-import android.app.Activity
+import com.muyeon.app.result.launchScreen
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -392,17 +391,17 @@ private fun remainText(name: String, limit: Int?, used: Int): String? {
     return "$name ${maxOf(0, limit - used)}회 남음"
 }
 
-/** 웹 `openMembership` 브릿지 진입점. */
-class MembershipActivity : ComponentActivity() {
+/** 웹 `openMembership` 브릿지 진입점. 결과: MEMBERSHIP(가입·해지로 이용권이 바뀐다). */
+class MembershipActivity : com.muyeon.app.result.ResultActivity() {
+
+    override val defaultResultKeys = setOf(com.muyeon.app.result.ResultKeys.MEMBERSHIP)
 
     companion object {
         //  featureType 은 더 이상 쓰지 않는다 — 낱개 기능 상품 판매를 접었고,
         //  멤버십은 계정에 하나라 회원유형으로도 갈리지 않는다(2026-08-30 개편).
-        fun start(context: Context) {
-            val i = Intent(context, MembershipActivity::class.java)
-            if (context !is Activity) i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(i)
-        }
+        fun intent(context: Context): Intent = Intent(context, MembershipActivity::class.java)
+
+        fun start(context: Context) = context.launchScreen(intent(context))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

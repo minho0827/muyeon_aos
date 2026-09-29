@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.academy
 
+import com.muyeon.app.result.findActivity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -66,7 +67,9 @@ fun AcademyTeachersScreen(api: AcademyTeacherApi, onClose: () -> Unit) {
                 infoMessage = done
                 load()
                 // 웹 MY 화면(소속 배지)도 갱신 — iOS presentAcademyFull dismiss 콜백과 동일.
-                com.muyeon.app.webview.WebCallbacks.academyChanged(ctx)
+                // 결과 키(ACADEMY)로 웹 소속 배지를 갱신 — 닫힐 때 WebViewActivity 가 한 번 보낸다.
+                (ctx.findActivity() as? com.muyeon.app.result.ResultActivity)
+                    ?.addResultKeys(com.muyeon.app.result.ResultKeys.ACADEMY)
             }.onFailure { errorMessage = it.message }
             busy = false
         }
