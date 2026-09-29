@@ -253,6 +253,9 @@ class AppBridgeInterface(
             // 웹이 window.__muyeonResult 를 등록함(페이지 로드당 1회). 예전 300ms 재시도 루프를 대신한다.
             //  ★ 이 수신부가 없으면 백엔드 배포 스크립트(check-bridge-contract.js)가 죽은 액션으로 막는다.
             "webReady" -> onWebReady()
+            // 웹이 인증 서류 제출·역할 추가·해제를 끝냄 → 플로팅(인증 책갈피 '심사중') 1회 재조회.
+            //  onResume 재조회는 웹이 서류를 보내기 전에 돌아서 '심사중'을 놓칠 수 있다.
+            "rolesChanged" -> com.muyeon.app.ui.floating.FloatingState.requestRefresh()
         }
     }
 
@@ -291,6 +294,7 @@ class AppBridgeInterface(
             "syncActiveType",     // 활성 회원유형 동기화(X-Active-Type)
             "closeModal",         // 네이티브 모달 닫기 요청
             "webReady",           // 웹 결과 콜백 등록 완료(밀린 JS 흘리기)
+            "rolesChanged",       // 역할 제출·추가·해제 완료 → 플로팅 재조회
         )
     }
 }
