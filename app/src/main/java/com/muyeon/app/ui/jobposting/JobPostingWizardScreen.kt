@@ -76,8 +76,10 @@ fun JobPostingWizardScreen(
     jobId: Int?,
     onClose: () -> Unit,
     onSaved: () -> Unit,
-    /** 무료 회원 공고 1개 제한 — 멤버십 화면으로 보낸다. */
+    /** 공고 공개 한도 — 멤버십 화면(가입·등급 올리기)으로 보낸다. */
     onOpenMembership: () -> Unit = {},
+    /** 공고 공개 한도(이미 멤버) — 내 공고 관리 목록으로 보낸다. */
+    onOpenMyPostings: () -> Unit = {},
 ) {
     var form by remember { mutableStateOf(JobForm()) }
     // 미저장 이탈 가드 기준값 — 로드 직후(신규는 빈 폼) 스냅샷과 비교해 dirty 판정.
@@ -88,7 +90,8 @@ fun JobPostingWizardScreen(
     var uploadingCover by remember { mutableStateOf(false) }
     var uploadingDetail by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var membershipRequired by remember { mutableStateOf(false) }
+    // 공고 공개 한도 초과(403 POSTING_MEMBERSHIP_REQUIRED) — tier 유무로 안내를 나눈다.
+    var postingLimit by remember { mutableStateOf<PostingLimitException?>(null) }
     var showExit by remember { mutableStateOf(false) }
     var showPreview by remember { mutableStateOf(false) }
     var showDeadlinePicker by remember { mutableStateOf(false) }
@@ -160,8 +163,13 @@ fun JobPostingWizardScreen(
                 .onSuccess { baseline = form; onSaved() }
                 .onFailure {
                     val msg = it.message.orEmpty()
-                    if (msg.contains("POSTING_MEMBERSHIP_REQUIRED")) membershipRequired = true
-                    else errorMessage = msg.ifEmpty { "저장에 실패했어요." }
+                    when {
+                        it is PostingLimitException -> postingLimit = it
+                        // 구 서버(message 에 코드만 실어 보내던 시절) 호환 — 종전 무료 회원 안내.
+                        msg.contains(PostingLimitException.CODE) ->
+                            postingLimit = PostingLimitException(null, false, null, null, null, null)
+                        else -> errorMessage = msg.ifEmpty { "저장에 실패했어요." }
+                    }
                 }
             saving = false
         }
@@ -423,14 +431,31 @@ fun JobPostingWizardScreen(
             onCancel = { showExit = false },
         )
     }
-    if (membershipRequired) {
-        QuoteDialog(
-            "공고를 하나 더 등록하시겠어요?",
-            "무료 회원은 공개중인 공고를 1개까지 등록할 수 있어요. 멤버십에 가입하면 추가 공고를 등록할 수 있습니다.",
-            "멤버십 보기",
-            onConfirm = { membershipRequired = false; onOpenMembership() },
-            onDismiss = { membershipRequired = false },
-        )
+    postingLimit?.let { e ->
+        val tier = e.tier
+        if (e.hasData && tier != null) {
+            // 이미 멤버 — 가입 유도가 아니라 공고 정리 / 등급 올리기.
+            val message = e.serverMessage ?: (
+                "$tier 멤버십은 공개 중인 ${e.kindLabel} 공고를 ${e.limit ?: 0}개까지 등록할 수 있어요" +
+                    "(현재 ${e.used ?: 0}개). 마감할 공고를 정리하거나 멤버십 등급을 올려 주세요."
+                )
+            PostingLimitPrompt(
+                message = message,
+                onMyPostings = { postingLimit = null; onOpenMyPostings() },
+                onUpgrade = { postingLimit = null; onOpenMembership() },
+                onClose = { postingLimit = null },
+            )
+        } else {
+            // 무료 회원(tier null) 또는 data 없는 구 응답 — 종전 가입 유도. 문구는 서버 것이 있으면 그것.
+            QuoteDialog(
+                "공고를 하나 더 등록하시겠어요?",
+                e.serverMessage.takeIf { e.hasData }
+                    ?: "무료 회원은 공개중인 공고를 1개까지 등록할 수 있어요. 멤버십에 가입하면 추가 공고를 등록할 수 있습니다.",
+                "멤버십 보기",
+                onConfirm = { postingLimit = null; onOpenMembership() },
+                onDismiss = { postingLimit = null },
+            )
+        }
     }
     errorMessage?.let { msg ->
         QuoteDialog("오류", msg, "확인", onConfirm = { errorMessage = null }, onDismiss = { errorMessage = null })
@@ -713,6 +738,37 @@ private fun JobExitPrompt(
             ExitAction(saveLabel, MuyeonColors.primary, onSave)
             ExitAction("저장 안 하고 나가기", MuyeonColors.danger, onDiscard)
             ExitAction("계속 작성", MuyeonColors.textSub, onCancel)
+        }
+    }
+}
+
+/** 공고 공개 한도(멤버) — [내 공고 관리] / [등급 올리기] / [닫기]. JobExitPrompt 와 같은 세로 액션 시트 모양. */
+@Composable
+private fun PostingLimitPrompt(
+    message: String,
+    onMyPostings: () -> Unit,
+    onUpgrade: () -> Unit,
+    onClose: () -> Unit,
+) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onClose) {
+        Column(
+            Modifier.clip(RoundedCornerShape(16.dp)).background(MuyeonColors.surface).padding(vertical = 20.dp),
+        ) {
+            Text(
+                "공고 등록 한도에 도달했어요",
+                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                lineHeight = 19.sp, color = MuyeonColors.textHead,
+                modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 8.dp),
+            )
+            Text(
+                message,
+                fontFamily = customFontFamily, fontWeight = FontWeight.Normal, fontSize = 14.sp,
+                lineHeight = 20.sp, color = MuyeonColors.textSub,
+                modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 12.dp),
+            )
+            ExitAction("내 공고 관리", MuyeonColors.primary, onMyPostings)
+            ExitAction("등급 올리기", MuyeonColors.primary, onUpgrade)
+            ExitAction("닫기", MuyeonColors.textSub, onClose)
         }
     }
 }

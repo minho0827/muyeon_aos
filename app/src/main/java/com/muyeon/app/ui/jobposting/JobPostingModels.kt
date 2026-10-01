@@ -244,6 +244,39 @@ data class JobPref(
     }
 }
 
+/**
+ * 공고 공개 한도 초과(403 POSTING_MEMBERSHIP_REQUIRED).
+ *  서버 data = { kind: JOB|SUB|CASTING, tier: BASIC|STANDARD|PRO|null, limit, used } — 한도는 종류별(2026-10-01).
+ *  tier == null 이면 무료 회원(가입 유도), 있으면 이미 멤버(공고 정리·등급 올리기 유도).
+ *  data 가 없으면(구 서버) [hasData] = false → 종전 무료 회원 안내 그대로.
+ */
+class PostingLimitException(
+    val serverMessage: String?,
+    val hasData: Boolean,
+    val kind: String?,
+    val tier: String?,
+    val limit: Int?,
+    val used: Int?,
+) : Exception(serverMessage ?: CODE) {
+
+    /** 종류 한글 이름 — 서버 POSTING_KINDS.label 과 같은 표. */
+    val kindLabel: String
+        get() = when (kind) { "SUB" -> "대타"; "CASTING" -> "캐스팅"; else -> "채용" }
+
+    companion object {
+        const val CODE = "POSTING_MEMBERSHIP_REQUIRED"
+
+        fun from(message: String?, data: JSONObject?) = PostingLimitException(
+            serverMessage = message,
+            hasData = data != null,
+            kind = data?.stringOrNull("kind"),
+            tier = data?.stringOrNull("tier"),
+            limit = data?.intOrNull("limit"),
+            used = data?.intOrNull("used"),
+        )
+    }
+}
+
 class JobPostingApi(internal val token: String?) {
 
     private val client = OkHttpClient()
@@ -313,8 +346,13 @@ class JobPostingApi(internal val token: String?) {
                 client.newCall(req).execute().use { res ->
                     val text = res.body?.string().orEmpty()
                     if (!res.isSuccessful) {
-                        val msg = runCatching { JSONObject(text).optString("message") }.getOrNull()
-                        throw IllegalStateException(msg?.ifEmpty { null } ?: "요청에 실패했어요.")
+                        val obj = runCatching { JSONObject(text) }.getOrNull()
+                        val msg = obj?.optString("message")?.ifEmpty { null }
+                        // 공고 공개 한도 — 무료/멤버 구분은 data.tier 로 한다(403, 서버 공통 에러 필터 { code, message, data }).
+                        if (obj?.optString("code") == PostingLimitException.CODE) {
+                            throw PostingLimitException.from(msg, obj.optJSONObject("data"))
+                        }
+                        throw IllegalStateException(msg ?: "요청에 실패했어요.")
                     }
                     text
                 }

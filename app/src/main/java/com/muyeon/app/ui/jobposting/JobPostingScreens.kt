@@ -508,6 +508,15 @@ class JobPostingActivity : com.muyeon.app.result.ResultActivity() {
 
             fun back() { if (!nav.popBackStack()) finish() }
 
+            // 공고 한도(멤버) → 내 공고 관리. 목록에서 들어왔으면 그 목록으로 돌아가고,
+            //  웹에서 폼으로 바로 들어왔으면(startForm) 폼을 걷어내고 목록을 띄운다(같은 Activity 의 list 라우트).
+            fun openMyPostings() {
+                if (!nav.popBackStack("list", inclusive = false)) {
+                    nav.navigate("list") { popUpTo(nav.graph.id) { inclusive = true } }
+                }
+            }
+            fun openMembership() = com.muyeon.app.ui.membership.MembershipActivity.start(this@JobPostingActivity)
+
             NavHost(nav, startDestination = route) {
                 composable("list") {
                     MyPostingsScreen(
@@ -529,18 +538,16 @@ class JobPostingActivity : com.muyeon.app.result.ResultActivity() {
                 composable("form") {
                     JobPostingWizardScreen(
                         api, id.takeIf { it > 0 }, onClose = { back() }, onSaved = { back() },
-                        onOpenMembership = {
-                            com.muyeon.app.ui.membership.MembershipActivity.start(this@JobPostingActivity)
-                        },
+                        onOpenMembership = { openMembership() },
+                        onOpenMyPostings = { openMyPostings() },
                     )
                 }
                 composable("form/{id}") { e ->
                     val jid = e.arguments?.getString("id")?.toIntOrNull()?.takeIf { it > 0 }
                     JobPostingWizardScreen(
                         api, jid, onClose = { back() }, onSaved = { back() },
-                        onOpenMembership = {
-                            com.muyeon.app.ui.membership.MembershipActivity.start(this@JobPostingActivity)
-                        },
+                        onOpenMembership = { openMembership() },
+                        onOpenMyPostings = { openMyPostings() },
                     )
                 }
             }
