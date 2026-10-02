@@ -45,6 +45,8 @@ data class MembershipPerformance(
     val funnel: MembershipFunnel,
     val daily: List<MembershipDailyMetric>,
     val impact: MembershipImpact?,
+    /** 등급 성과 기간(-1 전체). 구 서버엔 없다 → 30일로 표시. */
+    val days: Int? = null,
 )
 
 /** 403 은 고장이 아니라 자격 문제 — 무엇이 없어서 막혔는지 문구로 구분한다(iOS blockedMessage). */
@@ -116,6 +118,7 @@ class MembershipPerformanceApi(private val token: String?) {
                     after = im.optJSONObject("after")?.let(::metrics),
                 )
             },
+            days = o.intOrNull("days"),
         )
     }
 

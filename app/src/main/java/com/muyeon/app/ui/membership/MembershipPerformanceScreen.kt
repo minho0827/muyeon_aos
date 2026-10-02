@@ -166,7 +166,7 @@ private fun PerformanceContent(
                 lineHeight = 30.sp, color = MuyeonColors.textHead,
             )
             Text(
-                "최근 30일 동안 노출된 횟수부터 실제 ${if (isAcademy) "문의와 예약" else "견적과 레슨"}으로 이어진 흐름을 확인해보세요.",
+                "${MembershipBenefits.performancePeriod(d.days)} 동안 노출된 횟수부터 실제 ${if (isAcademy) "문의와 예약" else "견적과 레슨"}으로 이어진 흐름을 확인해보세요.",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
                 lineHeight = 20.sp, color = MuyeonColors.textSub,
             )
@@ -200,7 +200,7 @@ private fun PerformanceContent(
         CardShell(spacing = 18.dp) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "최근 30일 활동",
+                    "${MembershipBenefits.performancePeriod(d.days)} 활동",
                     fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
                     lineHeight = 19.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
                 )

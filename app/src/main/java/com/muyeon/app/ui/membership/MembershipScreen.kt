@@ -85,11 +85,17 @@ data class MembershipPlan(
 data class MembershipLimits(
     val postings: Int?, val lessons: Int?, val resumeViews: Int?,
     val autoQuotes: Int?, val boostWeight: Int?, val performanceDays: Int?,
+    /** 종류별 공고 한도 {JOB,SUB,CASTING}. 구 서버엔 없다 → postings 로 폴백(MembershipBenefits). */
+    val postingsByKind: Map<String, Int>? = null,
 ) {
     companion object {
         fun from(o: JSONObject) = MembershipLimits(
             o.intOrNull("postings"), o.intOrNull("lessons"), o.intOrNull("resumeViews"),
             o.intOrNull("autoQuotes"), o.intOrNull("boostWeight"), o.intOrNull("performanceDays"),
+            o.optJSONObject("postingsByKind")?.let { k ->
+                listOf("JOB", "SUB", "CASTING").mapNotNull { key -> k.intOrNull(key)?.let { key to it } }
+                    .toMap().ifEmpty { null }
+            },
         )
     }
 }
@@ -133,29 +139,14 @@ object TierInfo {
         else -> ""
     }
 
-    /** 혜택 문구는 **서버가 내려준 한도에서 만든다.** 앱에 박아두면 관리자가 숫자를 바꿔도 옛말이 남는다. */
-    fun benefits(l: MembershipLimits?): List<String> {
+    /**
+     * 혜택 문구는 **서버가 내려준 한도에서 만든다**(MembershipBenefits — 웹·iOS 와 같은 규칙).
+     * 앱에 박아두면 관리자가 숫자를 바꿔도 옛말이 남는다.
+     */
+    fun benefits(l: MembershipLimits?, tier: String?, isDancer: Boolean): List<String> {
         if (l == null) return emptyList()
-        val out = mutableListOf<String>()
-        out += "${count("공고", l.postings)} · ${count("레슨", l.lessons)} 등록"
-        l.resumeViews?.takeIf { it != 0 }?.let {
-            out += if (it < 0) "이력서 열람 무제한 (학원·공연팀)" else "이력서 열람 월 ${it}건 (학원·공연팀)"
-        }
-        l.autoQuotes?.takeIf { it != 0 }?.let {
-            out += if (it < 0) "자동견적 발송 무제한" else "자동견적 발송 월 ${it}건"
-        }
-        l.boostWeight?.takeIf { it > 0 }?.let {
-            out += if (it >= 3) "홈·목록 상단 노출 (가장 자주)" else "목록 상단 노출"
-        }
-        l.performanceDays?.takeIf { it != 0 }?.let {
-            out += if (it < 0) "성과 보기 (전체 기간)" else "성과 보기 (최근 ${it}일)"
-        }
-        out += "상세페이지 이미지 · 영상 포트폴리오"
-        return out
+        return MembershipBenefits.lines(l, isDancer) + MembershipBenefits.extras(tier)
     }
-
-    private fun count(name: String, v: Int?): String =
-        when { v == null -> name; v < 0 -> "$name 무제한"; else -> "$name ${v}개" }
 }
 
 class MembershipApi(private val token: String?) {
@@ -223,6 +214,9 @@ fun MembershipScreen(api: MembershipApi, onClose: () -> Unit) {
     val availableTiers = TierInfo.order.filter { t -> plans.any { it.tier == t } }
     val tierPlans = plans.filter { it.tier == selectedTier }.sortedBy { it.durationDays ?: 0 }
     val tierLimits = tierPlans.firstOrNull()?.limits
+    // 무용수 활동 중에는 레슨 활동 불가(2026-09-26) — 레슨·자동견적 혜택 줄은 뺀다.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val isDancer = remember { com.muyeon.app.webview.ActiveRole.isDancer(context) }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         QuoteNavBar(title = "멤버십", onBack = onClose)
@@ -306,7 +300,7 @@ fun MembershipScreen(api: MembershipApi, onClose: () -> Unit) {
                         fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
                         lineHeight = 19.sp, color = MuyeonColors.textHead,
                     )
-                    TierInfo.benefits(tierLimits).forEach { b ->
+                    TierInfo.benefits(tierLimits, selectedTier, isDancer).forEach { b ->
                         Text(
                             "· $b",
                             fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
