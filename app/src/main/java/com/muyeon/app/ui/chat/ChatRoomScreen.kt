@@ -73,6 +73,7 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
     var showProposal by remember { mutableStateOf(false) }
     var showSurveyPicker by remember { mutableStateOf(false) }
     var showReport by remember { mutableStateOf(false) }
+    var reportMessage by remember { mutableStateOf<ChatMessage?>(null) }   // 상대 메시지 길게 누르기 → 메시지 신고
     var confirmBlock by remember { mutableStateOf(false) }
     var reactionTarget by remember { mutableStateOf<ChatMessage?>(null) }
 
@@ -279,6 +280,17 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
             onDismiss = { showReport = false },
         )
     }
+    // 메시지 단위 신고(CHAT_MESSAGE, targetId=메시지 id) — 같은 시트 재사용
+    reportMessage?.let { m ->
+        ChatReportSheet(
+            roomId = vm.roomId,
+            opponentName = vm.title,
+            token = vm.tokenForCards,
+            message = m,
+            onDone = { reportMessage = null; vm.toast = "신고가 접수되었어요." },
+            onDismiss = { reportMessage = null },
+        )
+    }
     reactionTarget?.let { m ->
         MessageActionSheet(
             message = m,
@@ -292,6 +304,9 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
             onReply = { vm.replyingTo = m; reactionTarget = null },
             onEdit = { vm.editingMessage = m; vm.onInputChange(m.content); reactionTarget = null },
             onDelete = { vm.deleteMessage(m); reactionTarget = null },
+            onReport = { reportMessage = m; reactionTarget = null },
+            // 차단은 우상단 메뉴와 같은 확인 다이얼로그를 띄운다(상대 id 를 모르면 숨김).
+            onBlock = if (vm.opponentId > 0) { { confirmBlock = true; reactionTarget = null } } else null,
             onDismiss = { reactionTarget = null },
         )
     }
@@ -317,6 +332,8 @@ private fun MessageActionSheet(
     onReply: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onReport: () -> Unit,
+    onBlock: (() -> Unit)?,
     onDismiss: () -> Unit,
 ) {
     // 삭제된 메시지나 카드형에는 복사·수정이 의미가 없다.
@@ -340,6 +357,9 @@ private fun MessageActionSheet(
             if (!message.isDeleted) MessageAction("답장", MuyeonColors.textHead, onReply)
             if (isMine && isText) MessageAction("수정", MuyeonColors.textHead, onEdit)
             if (isMine && !message.isDeleted) MessageAction("삭제", MuyeonColors.danger, onDelete)
+            // 상대 메시지 — 신고·차단(Apple 1.2 / 구글 UGC 정책: 문제 메시지에서 바로 신고·차단)
+            if (!isMine && !message.isDeleted) MessageAction("신고하기", MuyeonColors.danger, onReport)
+            if (!isMine) onBlock?.let { MessageAction("이 사용자 차단", MuyeonColors.danger, it) }
         }
     }
 }
