@@ -39,33 +39,6 @@ fun JobPostingPreviewScreen(form: JobForm, onClose: () -> Unit) {
         form.genre?.takeIf { it.isNotEmpty() }?.let { add(it) }
         addAll((form.fields ?: emptyList()).map { ResumeOptions.fieldLabel(it) })
     }
-    val deadlineText = form.deadline?.takeIf { it.isNotEmpty() && it != "-" }
-        ?.take(10)?.replace("-", ".") ?: "미정"
-    // 급여 구간 + 부가설명(pay) — 상세와 동일하게 "3만~4만원 (경력별 협의)" 형태
-    val salaryText = run {
-        val range = JobFormOptions.salaryLabel(form.salary)
-        val note = form.pay.orEmpty()
-        when {
-            range.isNotEmpty() && note.isNotEmpty() -> "$range ($note)"
-            range.isEmpty() -> note
-            else -> range
-        }
-    }
-    val careerText = listOf(JobFormOptions.careerLevelsLabel(form.careerLevels), form.careerText.orEmpty())
-        .filter { it.isNotEmpty() }.joinToString(" · ")
-    // 원하는 강사 조건 — 상세의 prefList 와 동일 구성
-    val preferenceLines = buildList {
-        val p = form.pref
-        if (p.artHigh == true) add("예고 출신 우대")
-        if (p.university == true) {
-            val name = p.universityName?.takeIf { it.isNotEmpty() }?.let { " ($it)" }.orEmpty()
-            add("대학 졸업 우대$name")
-        }
-        if (p.company == true) add("무용단 출신 우대")
-        if (p.certRequired == true) add("자격증 필수")
-        if (p.videoRequired == true) add("영상 포트폴리오 필수")
-        p.note?.takeIf { it.isNotEmpty() }?.let { add(it) }
-    }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         Box(
@@ -123,54 +96,108 @@ fun JobPostingPreviewScreen(form: JobForm, onClose: () -> Unit) {
                         lineHeight = 17.sp, color = MuyeonColors.textSub,
                     )
                 HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
-
-                // 공고 상세(JobDetail)에 노출되는 항목과 1:1 — 빠짐 없이 전부 표시.
-                PreviewHead("모집 정보")
-                PreviewRow("장르", form.genre)
-                PreviewRow("모집 분야", (form.fields ?: emptyList()).joinToString(", ") { ResumeOptions.fieldLabel(it) })
-                PreviewRow("근무 지역", listOfNotNull(form.region, form.address).filter { it.isNotEmpty() }.joinToString(" "))
-                PreviewRow("가까운 지하철역", form.subway)
-                PreviewRow("근무 요일", form.days)
-                PreviewRow("근무 시간", form.time)
-                PreviewRow("고용 형태", JobFormOptions.employmentLabel(form.employment))
-                PreviewRow("수업 대상", ResumeOptions.classTargets.firstOrNull { it.first == form.target }?.second)
-                PreviewRow("모집 인원", form.headcount?.let { "${it}명" })
-                PreviewRow("지원 마감일", deadlineText)
-                PreviewRow("급여", salaryText)
-                PreviewRow("허용 경력", careerText)
-
-                HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
-                PreviewHead("원하는 강사 조건")
-                if (preferenceLines.isEmpty()) {
-                    PreviewPlaceholder("선택한 우대 조건이 표시됩니다")
-                } else {
-                    PreviewBody(preferenceLines.joinToString("\n"))
-                }
-                HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
-                PreviewHead("상세 설명")
-                form.description?.takeIf { it.isNotEmpty() }?.let { PreviewBody(it) }
-                    ?: PreviewPlaceholder("공고의 상세 설명이 표시됩니다")
-                // 실제 상세는 캐러셀, 미리보기는 세로 스택으로 전부 확인.
-                HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
-                PreviewHead("상세 이미지")
-                form.images?.takeIf { it.isNotEmpty() }?.let { images ->
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        images.forEach { img ->
-                            AsyncImage(
-                                QuoteUi.imageUrl(img), null, contentScale = ContentScale.FillWidth,
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                                    .background(Color(0xFFF7F7F7)),
-                            )
-                        }
-                    }
-                } ?: PreviewPlaceholder("등록한 상세 이미지가 표시됩니다", Modifier.fillMaxWidth().height(160.dp))
+                JobPostingDetailContent(form, showPlaceholders = true)
             }
         }
     }
 }
 
+/**
+ * 채용공고 본문(모집 정보 → 원하는 강사 조건 → 상세 설명 → 상세 이미지) — 미리보기와 내 공고 상세가 공유.
+ *  ★ 2026-10-04 내 공고 관리 네이티브 상세(PostingDetailScreen)용으로 미리보기에서 떼어냈다.
+ *   showPlaceholders = true(미리보기): 빈 값 자리에 '…가 표시됩니다' 안내를 그린다.
+ *   showPlaceholders = false(상세): 빈 줄·빈 섹션은 아예 그리지 않는다(웹 상세 Field 와 동일).
+ */
 @Composable
-private fun PreviewRow(label: String, value: String?) {
+internal fun JobPostingDetailContent(form: JobForm, showPlaceholders: Boolean) {
+    val deadlineText = form.deadline?.takeIf { it.isNotEmpty() && it != "-" }
+        ?.take(10)?.replace("-", ".") ?: "미정"
+    // 급여 구간 + 부가설명(pay) — 상세와 동일하게 "3만~4만원 (경력별 협의)" 형태
+    val salaryText = run {
+        val range = JobFormOptions.salaryLabel(form.salary)
+        val note = form.pay.orEmpty()
+        when {
+            range.isNotEmpty() && note.isNotEmpty() -> "$range ($note)"
+            range.isEmpty() -> note
+            else -> range
+        }
+    }
+    val careerText = listOf(JobFormOptions.careerLevelsLabel(form.careerLevels), form.careerText.orEmpty())
+        .filter { it.isNotEmpty() }.joinToString(" · ")
+    // 원하는 강사 조건 — 상세의 prefList 와 동일 구성
+    val preferenceLines = buildList {
+        val p = form.pref
+        if (p.artHigh == true) add("예고 출신 우대")
+        if (p.university == true) {
+            val name = p.universityName?.takeIf { it.isNotEmpty() }?.let { " ($it)" }.orEmpty()
+            add("대학 졸업 우대$name")
+        }
+        if (p.company == true) add("무용단 출신 우대")
+        if (p.certRequired == true) add("자격증 필수")
+        if (p.videoRequired == true) add("영상 포트폴리오 필수")
+        p.note?.takeIf { it.isNotEmpty() }?.let { add(it) }
+    }
+    val description = form.description?.takeIf { it.isNotEmpty() }
+    val images = form.images?.takeIf { it.isNotEmpty() }
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // 공고 상세(JobDetail)에 노출되는 항목과 1:1 — 빠짐 없이 전부 표시.
+        PostingHead("모집 정보")
+        PostingRow("장르", form.genre, showPlaceholders)
+        PostingRow("모집 분야", (form.fields ?: emptyList()).joinToString(", ") { ResumeOptions.fieldLabel(it) }, showPlaceholders)
+        PostingRow("근무 지역", listOfNotNull(form.region, form.address).filter { it.isNotEmpty() }.joinToString(" "), showPlaceholders)
+        PostingRow("가까운 지하철역", form.subway, showPlaceholders)
+        PostingRow("근무 요일", form.days, showPlaceholders)
+        PostingRow("근무 시간", form.time, showPlaceholders)
+        PostingRow("고용 형태", JobFormOptions.employmentLabel(form.employment), showPlaceholders)
+        PostingRow("수업 대상", ResumeOptions.classTargets.firstOrNull { it.first == form.target }?.second, showPlaceholders)
+        PostingRow("모집 인원", form.headcount?.let { "${it}명" }, showPlaceholders)
+        PostingRow("지원 마감일", deadlineText, showPlaceholders)
+        PostingRow("급여", salaryText, showPlaceholders)
+        PostingRow("허용 경력", careerText, showPlaceholders)
+
+        if (showPlaceholders || preferenceLines.isNotEmpty()) {
+            HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
+            PostingHead("원하는 강사 조건")
+            if (preferenceLines.isEmpty()) {
+                PreviewPlaceholder("선택한 우대 조건이 표시됩니다")
+            } else {
+                PostingBody(preferenceLines.joinToString("\n"))
+            }
+        }
+        if (showPlaceholders || description != null) {
+            HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
+            PostingHead("상세 설명")
+            description?.let { PostingBody(it) } ?: PreviewPlaceholder("공고의 상세 설명이 표시됩니다")
+        }
+        // 실제 상세(웹)는 캐러셀, 앱은 세로 스택으로 전부 확인.
+        if (showPlaceholders || images != null) {
+            HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
+            PostingHead("상세 이미지")
+            images?.let { PostingImageStack(it) }
+                ?: PreviewPlaceholder("등록한 상세 이미지가 표시됩니다", Modifier.fillMaxWidth().height(160.dp))
+        }
+    }
+}
+
+/** 상세 이미지 세로 스택 — 채용·대타·공연 상세 공용. */
+@Composable
+internal fun PostingImageStack(images: List<String>) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        images.forEach { img ->
+            AsyncImage(
+                QuoteUi.imageUrl(img), null, contentScale = ContentScale.FillWidth,
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                    .background(Color(0xFFF7F7F7)),
+            )
+        }
+    }
+}
+
+/** 라벨-값 한 줄. placeholders=false 면 값이 비었을 때 줄을 그리지 않는다. */
+@Composable
+internal fun PostingRow(label: String, value: String?, placeholders: Boolean = false) {
+    if (value.isNullOrEmpty() && !placeholders) return
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
             label,
@@ -207,14 +234,14 @@ private fun PreviewPlaceholder(
 }
 
 @Composable
-private fun PreviewHead(text: String) = Text(
+internal fun PostingHead(text: String) = Text(
     text,
     fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
     lineHeight = 18.sp, color = MuyeonColors.textHead,
 )
 
 @Composable
-private fun PreviewBody(text: String) = Text(
+internal fun PostingBody(text: String) = Text(
     text,
     fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
     lineHeight = 22.sp, color = MuyeonColors.body,

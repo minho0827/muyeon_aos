@@ -39,6 +39,8 @@ data class MyPosting(
     val views: Int?,
     val updatedAt: String?,
     val createdAt: String?,
+    // 본인 전용 작성값 원본(서버 postingCard.preview) — 상세 화면을 GET 응답 전에 바로 그린다(2026-10-04).
+    val preview: JSONObject? = null,
 ) {
     /** kind 가 달라도 id 가 겹칠 수 있어 목록 key 는 조합. */
     val uid: String get() = "$kind-$id"
@@ -74,6 +76,7 @@ data class MyPosting(
             o.stringOrNull("target"), o.stringOrNull("deadline"),
             o.intOrNull("applicants"), o.intOrNull("views"),
             o.stringOrNull("updatedAt"), o.stringOrNull("createdAt"),
+            o.optJSONObject("preview"),
         )
     }
 }
@@ -278,6 +281,14 @@ class PostingLimitException(
     }
 }
 
+/** 서버 공통 에러 { code, message, data } — message 는 그대로 사용자 문구로 쓴다. */
+class PostingApiException(val code: String?, message: String, val data: JSONObject?) : IllegalStateException(message)
+
+/** 공고 종류 → 웹·API 경로 조각(웹 KIND_PATH 와 같은 규약). */
+object PostingKind {
+    fun seg(kind: String): String = when (kind) { "SUB" -> "subs"; "CASTING" -> "casting"; else -> "jobs" }
+}
+
 class JobPostingApi(internal val token: String?) {
 
     private val client = OkHttpClient()
@@ -306,6 +317,30 @@ class JobPostingApi(internal val token: String?) {
         call("/me/postings/$kind/$id/restore", "POST").map { }
 
     suspend fun loadJob(id: Int): Result<JobForm> = call("/jobs/$id").map { JobForm.from(JSONObject(it)) }
+
+    /**
+     * 공고 상세 원본 — 종류별 GET /{jobs|subs|casting}/:id (인증 헤더 포함).
+     *  ⚠️ 대타(SUB)는 토큰이 있어야 올린 분 전용 dispatchStats 가 붙는다.
+     */
+    suspend fun loadPosting(kind: String, id: Int): Result<JSONObject> =
+        call("/${PostingKind.seg(kind)}/$id").map { JSONObject(it.ifBlank { "{}" }) }
+
+    /** 마감 시 미선정 처리될 대기 지원자 수 — 채용·대타만(iOS pendingApplicantCount 동일). */
+    suspend fun pendingApplicantCount(kind: String, id: Int): Result<Int> =
+        call("/${PostingKind.seg(kind)}/$id/pending-applicants/count")
+            .map { JSONObject(it.ifBlank { "{}" }).optInt("count", 0) }
+
+    /** 마감 + 남은 지원자 일괄 미선정 안내 → 미선정 처리된 인원. */
+    suspend fun closeWithApplicantResults(kind: String, id: Int): Result<Int> =
+        call("/${PostingKind.seg(kind)}/$id/close", "PATCH", JSONObject().put("rejectPending", true))
+            .map { JSONObject(it.ifBlank { "{}" }).optInt("rejectedCount", 0) }
+
+    /** 긴급 대타 — 금액 올려 다시 보내기. amount 없으면 서버가 payStep 만큼 올린다. */
+    suspend fun raiseDispatch(id: Int, amount: Int?): Result<Unit> =
+        call("/subs/$id/dispatch/raise", "POST", JSONObject().apply { amount?.let { put("amount", it) } }).map { }
+
+    /** 긴급 대타 — 발송 중지(자동 인상·재발송 멈춤). */
+    suspend fun stopDispatch(id: Int): Result<Unit> = call("/subs/$id/dispatch/stop", "POST").map { }
 
     /** 공고 대표·상세 이미지 업로드 — 이력서·견적과 같은 /uploads/image. */
     suspend fun uploadImage(bytes: ByteArray): Result<String> = withContext(Dispatchers.IO) {
@@ -353,7 +388,10 @@ class JobPostingApi(internal val token: String?) {
                         if (obj?.optString("code") == PostingLimitException.CODE) {
                             throw PostingLimitException.from(msg, obj.optJSONObject("data"))
                         }
-                        throw IllegalStateException(msg ?: "요청에 실패했어요.")
+                        // 긴급 대타 등 코드로 분기하는 화면이 있어 code·data 를 함께 싣는다.
+                        throw PostingApiException(
+                            obj?.optString("code")?.ifEmpty { null }, msg ?: "요청에 실패했어요.", obj?.optJSONObject("data"),
+                        )
                     }
                     text
                 }

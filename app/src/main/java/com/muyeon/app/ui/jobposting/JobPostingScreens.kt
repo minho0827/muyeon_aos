@@ -58,13 +58,13 @@ import kotlinx.coroutines.launch
 fun MyPostingsScreen(
     api: JobPostingApi,
     onClose: () -> Unit,
-    onEdit: (Int) -> Unit,
+    onEdit: (String, Int) -> Unit,
     onCreate: () -> Unit,
-    onApplicants: (Int) -> Unit,
-    onView: (String, Int) -> Unit,
+    onApplicants: (String, Int) -> Unit,
+    onView: (MyPosting) -> Unit,
+    onChanged: () -> Unit = {},
 ) {
     var postings by remember { mutableStateOf<List<MyPosting>>(emptyList()) }
-    var deleteTarget by remember { mutableStateOf<MyPosting?>(null) }
     var tab by remember { mutableStateOf("ALL") }
     var loading by remember { mutableStateOf(true) }
     var toast by remember { mutableStateOf<String?>(null) }
@@ -86,6 +86,9 @@ fun MyPostingsScreen(
     }
 
     LaunchedEffect(Unit) { load() }
+
+    // 상태 변경·마감·복사·삭제 — 상세와 같은 PostingActions(2026-10-04).
+    val actions = rememberPostingActions(api) { _, _ -> onChanged(); scope.launch { load() } }
 
     val filtered = (if (tab == "ALL") postings else postings.filter { it.status == tab })
         .sortedWith(
@@ -135,23 +138,15 @@ fun MyPostingsScreen(
                     items(filtered, key = { it.uid }) { p ->
                         PostingCard(
                             p = p,
-                            onClick = { if (p.kind == "JOB") onEdit(p.id) },
-                            onApplicants = { onApplicants(p.id) },
-                            onView = { onView(p.kind, p.id) },
-                            onEdit = { if (p.kind == "JOB") onEdit(p.id) else onView(p.kind, p.id) },
-                            onDuplicate = {
-                                scope.launch {
-                                    api.duplicate(p.kind, p.id).onSuccess { toast = "임시저장으로 복사했어요." }
-                                        .onFailure { toast = it.message }
-                                    load()
-                                }
-                            },
-                            onDelete = { deleteTarget = p },
+                            // ★ 2026-10-04 카드 탭 = 네이티브 상세(종전: 채용만 수정 위저드, 나머지는 무반응).
+                            onClick = { onView(p) },
+                            onApplicants = { onApplicants(p.kind, p.id) },
+                            onView = { onView(p) },
+                            onEdit = { onEdit(p.kind, p.id) },
+                            onDuplicate = { actions.duplicate(p.ref) },
+                            onDelete = { actions.requestDelete(p.ref) },
                             onStatus = { s ->
-                                scope.launch {
-                                    api.setStatus(p.kind, p.id, s).onFailure { toast = it.message }
-                                    load()
-                                }
+                                if (s == "CLOSED") actions.requestClose(p.ref) else actions.setStatus(p.ref, s)
                             },
                         )
                     }
@@ -218,24 +213,7 @@ fun MyPostingsScreen(
         )
     }
 
-    // 삭제 확인 — 되돌릴 수 없어 한 번 더 묻는다. 신고 확인창과 같은 QuoteDialog 재사용.
-    deleteTarget?.let { target ->
-        QuoteDialog(
-            title = "이 공고를 삭제할까요?",
-            message = "목록에서 사라집니다. 이미 받은 지원 내역은 그대로 남아요.",
-            confirmText = "삭제",
-            onConfirm = {
-                deleteTarget = null
-                scope.launch {
-                    api.remove(target.kind, target.id).onSuccess { toast = "공고를 삭제했어요." }
-                        .onFailure { toast = it.message }
-                    load()
-                }
-            },
-            onDismiss = { deleteTarget = null },
-        )
-    }
-
+    actions.Dialogs()
     toast?.let { msg ->
         QuoteDialog("알림", msg, "확인", onConfirm = { toast = null }, onDismiss = { toast = null })
     }
@@ -292,7 +270,8 @@ private fun PostingCard(
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     val menu = buildList<Pair<String, () -> Unit>> {
                         add("공고 보기" to onView)
-                        add("수정" to onEdit)
+                        // 공연(CASTING)은 수정 화면이 없다 — 숨긴다.
+                        if (p.kind != "CASTING") add("수정" to onEdit)
                         if (p.status == "OPEN") add("보류" to { onStatus("HOLD") })
                         else add("다시 열기" to { onStatus("OPEN") })
                         add("복사" to onDuplicate)
@@ -517,22 +496,53 @@ class JobPostingActivity : com.muyeon.app.result.ResultActivity() {
             }
             fun openMembership() = com.muyeon.app.ui.membership.MembershipActivity.start(this@JobPostingActivity)
 
+            // 목록 → 상세로 넘길 카드(preview·지원/조회 수). 상세는 이걸로 먼저 그리고 서버로 갱신한다.
+            val postingCache = remember { HashMap<String, MyPosting>() }
+
+            // 공고가 바뀌면 웹(공고 목록)도 다시 읽게 — 기본 키와 같지만 '바뀌었다'를 명시해 둔다.
+            fun changed() = addResultKeys(com.muyeon.app.result.ResultKeys.JOB_POSTINGS)
+
+            // 수정 — 채용은 네이티브 위저드, 대타는 웹 수정 화면, 공연은 수정 화면이 없다(메뉴에서 숨김).
+            fun openEdit(kind: String, pid: Int) {
+                when (kind) {
+                    "JOB" -> nav.navigate("form/$pid")
+                    "SUB" -> com.muyeon.app.webview.NativeWebRoute.openWebAndFinish(this@JobPostingActivity, "/subs/$pid/edit")
+                }
+            }
+
+            // 받은 지원자 — 목록은 웹(이력서 열람은 네이티브). 공고 하나로 걸러 연다(웹 SubDetail 과 같은 쿼리).
+            fun openApplicants(kind: String, pid: Int) =
+                com.muyeon.app.webview.NativeWebRoute.openWebAndFinish(
+                    this@JobPostingActivity, "/receivedApplications?kind=$kind&postingId=$pid",
+                )
+
             NavHost(nav, startDestination = route) {
                 composable("list") {
                     MyPostingsScreen(
                         api = api,
                         onClose = { finish() },
-                        onEdit = { jid -> nav.navigate("form/$jid") },
+                        onEdit = { kind, pid -> openEdit(kind, pid) },
                         onCreate = { nav.navigate("form/0") },
-                        // 지원자 목록은 미이식 — 지원자 상세(C)로 바로 가려면 applicationId 가 필요해 웹 폴백.
-                        onApplicants = {
-                            com.muyeon.app.webview.NativeWebRoute.openWebAndFinish(this@JobPostingActivity, "/receivedApplications")
+                        onApplicants = { kind, pid -> openApplicants(kind, pid) },
+                        // ★ 2026-10-04 공고 보기 = 네이티브 상세(종전엔 웹 상세로 나가며 이 화면을 닫았다).
+                        onView = { p ->
+                            postingCache[p.uid] = p
+                            nav.navigate("detail/${p.kind}/${p.id}")
                         },
-                        // 공고 상세는 네이티브 미이식 — 종류별 웹 경로로 보낸다(웹 KIND_PATH 와 같은 규약).
-                        onView = { kind, pid ->
-                            val seg = when (kind) { "SUB" -> "subs"; "CASTING" -> "casting"; else -> "jobs" }
-                            com.muyeon.app.webview.NativeWebRoute.openWebAndFinish(this@JobPostingActivity, "/$seg/$pid")
-                        },
+                        onChanged = { changed() },
+                    )
+                }
+                composable("detail/{kind}/{id}") { e ->
+                    val kind = e.arguments?.getString("kind") ?: "JOB"
+                    val pid = e.arguments?.getString("id")?.toIntOrNull() ?: 0
+                    PostingDetailScreen(
+                        api = api, kind = kind, id = pid,
+                        initial = postingCache["$kind-$pid"],
+                        onBack = { back() },
+                        onEdit = { k, i -> openEdit(k, i) },
+                        onApplicants = { k, i -> openApplicants(k, i) },
+                        onOpenMembership = { openMembership() },
+                        onChanged = { changed() },
                     )
                 }
                 composable("form") {
