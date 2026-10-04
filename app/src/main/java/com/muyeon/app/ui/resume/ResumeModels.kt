@@ -436,16 +436,11 @@ data class Applicant(
 }
 
 /**
- * 긴급 대타 알림 키워드 — iOS `SubDispatchPrefs` 1:1. 비어 있는 항목은 "상관없음"으로 매칭된다.
- *  timeSlots/days 는 이력서 availableTimeSlots/availableDays 와 같은 키(ResumeOptions)다.
+ * 긴급 대타 알림 조건 — iOS `SubDispatchPrefs` 1:1. 지역·장르·대상·시간대는 서버가 프로필 본문으로 매칭하고
+ *  요일은 보지 않으므로 앱은 타임 수·타임당 최소 금액만 다룬다. null = 상관없음. GET 의 그 밖의 키는 무시한다.
  */
 data class SubDispatchPrefs(
     val enabled: Boolean = false,
-    val regionCodes: List<String> = emptyList(),
-    val genres: List<String> = emptyList(),
-    val targets: List<String> = emptyList(),
-    val timeSlots: List<String> = emptyList(),
-    val days: List<String> = emptyList(),
     val minClassCount: Int? = null,
     val maxClassCount: Int? = null,
     val minPayPerSession: Int? = null,
@@ -453,11 +448,6 @@ data class SubDispatchPrefs(
     /** PUT 본문 — '상관없음'(null)은 키를 빼지 않고 null 로 보내야 서버가 이전 값을 지운다. */
     fun toJson(): JSONObject = JSONObject()
         .put("enabled", enabled)
-        .put("regionCodes", JSONArray(regionCodes))
-        .put("genres", JSONArray(genres))
-        .put("targets", JSONArray(targets))
-        .put("timeSlots", JSONArray(timeSlots))
-        .put("days", JSONArray(days))
         .put("minClassCount", minClassCount ?: JSONObject.NULL)
         .put("maxClassCount", maxClassCount ?: JSONObject.NULL)
         .put("minPayPerSession", minPayPerSession ?: JSONObject.NULL)
@@ -465,11 +455,6 @@ data class SubDispatchPrefs(
     companion object {
         fun from(o: JSONObject) = SubDispatchPrefs(
             enabled = o.optBoolean("enabled", false),
-            regionCodes = o.stringList("regionCodes") ?: emptyList(),
-            genres = o.stringList("genres") ?: emptyList(),
-            targets = o.stringList("targets") ?: emptyList(),
-            timeSlots = o.stringList("timeSlots") ?: emptyList(),
-            days = o.stringList("days") ?: emptyList(),
             minClassCount = o.intOrNull("minClassCount"),
             maxClassCount = o.intOrNull("maxClassCount"),
             minPayPerSession = o.intOrNull("minPayPerSession"),

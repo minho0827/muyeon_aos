@@ -80,7 +80,7 @@ class ResumeApi(internal val token: String?) {
 
     // ── 긴급 대타 알림 설정 — iOS ResumeService.get/setSubDispatchPrefs ──
 
-    /** GET /me/sub-dispatch-prefs. 처음이면 서버가 기본값(꺼짐 + 지역·장르·대상은 프로필)을 준다. 실패 시 null. */
+    /** GET /me/sub-dispatch-prefs. 처음이면 서버가 기본값(꺼짐)을 준다. 실패 시 null. */
     suspend fun getSubDispatchPrefs(): SubDispatchPrefs? =
         call("/me/sub-dispatch-prefs").getOrNull()
             ?.let { runCatching { SubDispatchPrefs.from(JSONObject(it.ifBlank { "{}" })) }.getOrNull() }
