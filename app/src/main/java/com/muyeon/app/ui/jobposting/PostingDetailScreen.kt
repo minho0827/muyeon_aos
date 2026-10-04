@@ -472,7 +472,8 @@ private fun DispatchCard(
 
     val classCount = s.num("classCount")
     val currentPay = s.num("currentPay")?.takeIf { it > 0 } ?: s.num("payPerSession")
-    val payMax = s.num("payMax")
+    // ★ 2026-10-05 최대 금액·인상폭은 더 이상 받지 않는다(자동 인상 없음). payMax 는 옛 글에만 남아 있어 상한으로만 쓴다.
+    val payMax = s.num("payMax")?.takeIf { it > 0 }
     val agreedPay = s.num("agreedPay")
     val stats = s.optJSONObject("dispatchStats")
     val pendingOffers = stats?.num("pendingOffers") ?: 0
@@ -480,16 +481,12 @@ private fun DispatchCard(
     val confirmed = (s.num("confirmedApplicationId") ?: 0) > 0
     val closed = status == "CLOSED"
     val active = enabled && !confirmed && !closed   // 발송 중지 = dispatchEnabled false
-    val atMax = (currentPay ?: 0) > 0 && (payMax ?: 0) > 0 && (currentPay ?: 0) >= (payMax ?: 0)
+    val atMax = payMax != null && (currentPay ?: 0) > 0 && (currentPay ?: 0) >= payMax
     val hasOffers = pendingOffers > 0
-    // ★ 2026-10-04 수락이 한 명이라도 있으면 금액 인상(자동·수동)이 멈춘다 — 서버 DISPATCH_HAS_OFFERS 와 같은 규칙.
-    val nextRaiseText = when {
-        confirmed -> "확정돼서 발송을 멈췄어요"
-        !enabled -> "발송을 멈췄어요"
-        hasOffers -> "수락이 들어와 금액 인상을 멈췄어요"
-        atMax -> "최대 금액이에요 · 더 올리지 않아요"
-        else -> SubDispatch.kstDateTime(s.stringOrNull("nextRaiseAt"))
-    }
+    // ★ 2026-10-04 수락이 한 명이라도 있으면 금액 인상이 멈춘다 — 서버 DISPATCH_HAS_OFFERS 와 같은 규칙.
+    // ★ 2026-10-05 아무도 수락하지 않으면 서버가 dispatchNudge 를 켠다 — 금액을 올려 보라고 권한다.
+    //  nextRaiseAt 은 이제 다음 권유 시각이라 화면에 보이지 않는다('다음 재발송' 행 제거).
+    val nudge = active && !hasOffers && !atMax && s.optBoolean("dispatchNudge")
 
     fun handle(e: Throwable, fallback: String) {
         val dialog = SubDispatch.errorDialog(e)
@@ -499,8 +496,6 @@ private fun DispatchCard(
     PostingHead("긴급 발송 현황")
     PostingRow("현재 금액", SubDispatch.payText(currentPay, classCount))
     if ((agreedPay ?: 0) > 0) PostingRow("확정 금액", SubDispatch.payText(agreedPay, classCount))
-    PostingRow("최대 금액", payMax?.takeIf { it > 0 }?.let { "타임당 ${SubDispatch.won(it)}" })
-    PostingRow("다음 재발송", nextRaiseText)
     stats?.let {
         PostingRow("알림 받은 강사", "${it.num("recipients") ?: 0}명")
         PostingRow("이 금액에 수락", "${it.num("accepts") ?: 0}명")
@@ -522,6 +517,20 @@ private fun DispatchCard(
         }
         JobButton("수락한 강사 보기", filled = false, enabled = true, modifier = Modifier.fillMaxWidth(), onClick = onApplicants)
     }
+    // '다음 재발송' 행이 빠져 멈춘 상태를 따로 알린다(확정·마감은 상단 상태 문장이 알린다).
+    if (!enabled && !confirmed && !closed) {
+        Text(
+            "발송을 멈췄어요",
+            fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 16.sp, color = MuyeonColors.textSub,
+        )
+    }
+    if (nudge) {
+        Text(
+            "아직 수락한 강사가 없어요. 금액을 올려 보시는 건 어때요?",
+            fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
+            lineHeight = 18.sp, color = MuyeonColors.primary,
+        )
+    }
     if (active) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             JobButton("발송 중지", filled = false, enabled = !busy, modifier = Modifier.weight(1f)) { stopOpen = true }
@@ -530,7 +539,8 @@ private fun DispatchCard(
                 // 잠긴 상태가 눈에 보이게 흐리게 — JobButton 은 비활성 모양이 따로 없다.
                 modifier = Modifier.weight(1f).alpha(if (atMax || hasOffers) 0.4f else 1f),
             ) {
-                raiseAmount = s.num("payStep")?.takeIf { it > 0 }?.toString().orEmpty()
+                // ★ 2026-10-05 기본값 = 옛 글의 인상폭, 없으면 5,000원.
+                raiseAmount = (s.num("payStep")?.takeIf { it > 0 } ?: 5000).toString()
                 raiseOpen = true
             }
         }
@@ -538,10 +548,16 @@ private fun DispatchCard(
 
     if (raiseOpen) {
         val amount = raiseAmount.toIntOrNull()
-        val preview = amount?.let {
-            val max = payMax?.takeIf { m -> m > 0 } ?: Int.MAX_VALUE
-            "${SubDispatch.payText(minOf((currentPay ?: 0) + it, max), classCount)}으로 다시 보내요."
-        } ?: "올릴 금액을 입력해 주세요."
+        // ★ 2026-10-05 1,000원 단위 양수만 — 상한은 없다(옛 글에 payMax 가 있으면 그것만 상한).
+        val validAmount = amount?.takeIf { it > 0 && it % 1000 == 0 }
+        val preview = when {
+            amount == null -> "올릴 금액을 입력해 주세요."
+            validAmount == null -> "1,000원 단위로 입력해 주세요."
+            else -> {
+                val next = (currentPay ?: 0) + validAmount
+                "${SubDispatch.payText(payMax?.let { minOf(next, it) } ?: next, classCount)}으로 다시 보내요."
+            }
+        }
         AlertDialog(
             onDismissRequest = { if (!busy) raiseOpen = false },
             title = { DialogTitle("금액을 올려 다시 보낼까요?") },
@@ -557,16 +573,16 @@ private fun DispatchCard(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     DialogMessage(preview)
-                    DialogMessage("최대 금액을 넘을 수 없고, 직전 발송 30분 뒤부터 다시 보낼 수 있어요.")
+                    DialogMessage("직전 발송 30분 뒤부터 다시 보낼 수 있어요.")
                 }
             },
             confirmButton = {
                 TextButton(
-                    enabled = !busy && amount != null,
+                    enabled = !busy && validAmount != null,
                     onClick = {
                         busy = true
                         scope.launch {
-                            api.raiseDispatch(id, amount)
+                            api.raiseDispatch(id, validAmount)
                                 .onSuccess { raiseOpen = false; info = "금액을 올려 다시 보냈어요."; onChanged() }
                                 .onFailure { raiseOpen = false; handle(it, "다시 보내지 못했어요. 잠시 후 다시 시도해 주세요.") }
                             busy = false
@@ -580,7 +596,7 @@ private fun DispatchCard(
     if (stopOpen) {
         QuoteDialog(
             title = "긴급 발송을 멈출까요?",
-            message = "자동 인상·재발송이 멈춰요. 이미 수락한 강사는 그대로 확정할 수 있어요.",
+            message = "더 이상 강사에게 알림을 보내지 않아요. 이미 수락한 강사는 그대로 확정할 수 있어요.",
             confirmText = "발송 중지",
             onConfirm = {
                 stopOpen = false

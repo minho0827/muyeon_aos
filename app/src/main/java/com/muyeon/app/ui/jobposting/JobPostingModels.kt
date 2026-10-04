@@ -335,11 +335,14 @@ class JobPostingApi(internal val token: String?) {
         call("/${PostingKind.seg(kind)}/$id/close", "PATCH", JSONObject().put("rejectPending", true))
             .map { JSONObject(it.ifBlank { "{}" }).optInt("rejectedCount", 0) }
 
-    /** 긴급 대타 — 금액 올려 다시 보내기. amount 없으면 서버가 payStep 만큼 올린다. */
+    /**
+     * 긴급 대타 — 금액 올려 다시 보내기. amount = 타임당 올릴 금액(1,000원 단위 양수).
+     *  ★ 2026-10-05 자동 인상 폐지 — 화면은 항상 amount 를 보낸다(없으면 옛 서버 규칙대로 payStep).
+     */
     suspend fun raiseDispatch(id: Int, amount: Int?): Result<Unit> =
         call("/subs/$id/dispatch/raise", "POST", JSONObject().apply { amount?.let { put("amount", it) } }).map { }
 
-    /** 긴급 대타 — 발송 중지(자동 인상·재발송 멈춤). */
+    /** 긴급 대타 — 발송 중지(재발송·금액 권유 멈춤). */
     suspend fun stopDispatch(id: Int): Result<Unit> = call("/subs/$id/dispatch/stop", "POST").map { }
 
     /**
