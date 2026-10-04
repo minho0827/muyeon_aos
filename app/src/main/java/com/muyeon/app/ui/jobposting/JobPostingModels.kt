@@ -102,8 +102,9 @@ object JobPostingOptions {
 /** 등록 폼 옵션 — 웹 jobOptions/subOptions 와 **값 계약**. */
 object JobFormOptions {
     val genres = listOf("발레", "한국무용", "현대무용", "실용무용", "바레", "발레핏")
+    // ANY(상관없음)는 채용공고 허용 경력 전용 — 고르면 다른 경력은 해제된다(iOS·웹과 동일).
     val careerLevels = listOf(
-        "NEW" to "신입", "Y1_3" to "1~3년", "Y3_5" to "3~5년", "Y5_10" to "5~10년", "Y10" to "10년 이상",
+        "ANY" to "상관없음", "NEW" to "신입", "Y1_3" to "1~3년", "Y3_5" to "3~5년", "Y5_10" to "5~10년", "Y10" to "10년 이상",
     )
     val salaryRanges = listOf(
         "W1_2" to "1만~2만원", "W2_3" to "2만~3만원", "W3_4" to "3만~4만원",

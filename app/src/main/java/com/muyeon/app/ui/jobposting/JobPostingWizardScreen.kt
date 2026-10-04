@@ -304,7 +304,13 @@ fun JobPostingWizardScreen(
                     JobField("급여 부가설명", form.pay.orEmpty(), "예) 경력에 따라 협의") { form = form.copy(pay = it) }
                     JobChips("허용 경력", JobFormOptions.careerLevels, (form.careerLevels ?: emptyList()).toSet()) { v ->
                         val cur = form.careerLevels ?: emptyList()
-                        form = form.copy(careerLevels = (if (cur.contains(v)) cur - v else cur + v).ifEmpty { null })
+                        // 상관없음(ANY)은 단독 — 고르면 나머지 해제, 다른 경력을 고르면 상관없음 해제.
+                        val next = when {
+                            v == "ANY" -> if (cur.contains("ANY")) emptyList() else listOf("ANY")
+                            cur.contains(v) -> cur - v
+                            else -> (cur - "ANY") + v
+                        }
+                        form = form.copy(careerLevels = next.ifEmpty { null })
                     }
                     JobField(
                         "필요 경력 직접입력", form.careerText.orEmpty(),
