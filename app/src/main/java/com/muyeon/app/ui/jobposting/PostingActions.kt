@@ -57,7 +57,7 @@ class PostingActions internal constructor(
                 // 대타는 보류해도 수락한 강사(후보)를 유지하고 서버가 보류·재개를 알린다(2026-10-05).
                 message = when {
                     status == "CLOSED" -> "공고가 마감되었습니다."
-                    status == "HOLD" && ref.kind == "SUB" -> "공고를 보류했어요. 수락한 강사들에게 보류를 알렸어요."
+                    status == "HOLD" && ref.kind == "SUB" -> "공고를 보류했어요. 지원한 강사들에게 보류를 알렸어요."
                     status == "HOLD" -> "공고가 보류되었습니다."
                     ref.kind == "SUB" -> "공고를 다시 열었어요."
                     else -> "공고가 다시 등록되었습니다."

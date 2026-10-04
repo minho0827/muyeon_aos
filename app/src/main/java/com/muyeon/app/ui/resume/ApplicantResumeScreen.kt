@@ -338,10 +338,10 @@ internal object ApplicantState {
     }
 
     fun chipLabel(a: Applicant, kind: ApplicantPostingKind): String = when (a.status) {
-        "OFFERED" -> if (kind == ApplicantPostingKind.SUB && a.viaDispatch == true) "수락함" else "채팅 진행중"
+        "OFFERED" -> if (kind == ApplicantPostingKind.SUB && a.viaDispatch == true) "지원함" else "채팅 진행중"
         "ACCEPTED" -> kind.confirmTitle
         "REJECTED" -> "지원 종료"
-        "CANCELED" -> if (a.canceledBy == "WITHDRAW") "수락 철회" else "확정 취소"
+        "CANCELED" -> if (a.canceledBy == "WITHDRAW") "지원 취소" else "확정 취소"
         else -> "검토중"
     }
 
@@ -350,7 +350,7 @@ internal object ApplicantState {
         val sub = kind == ApplicantPostingKind.SUB
         return when (a.status) {
             "ACCEPTED" -> if (sub) "확정한 강사예요" else "채용을 확정한 지원자예요"
-            "CANCELED" -> if (a.canceledBy == "WITHDRAW") "이 강사는 수락을 철회했어요" else "확정이 취소됐어요"
+            "CANCELED" -> if (a.canceledBy == "WITHDRAW") "이 강사는 지원을 취소했어요" else "확정이 취소됐어요"
             "REJECTED" -> when (a.resultReason) {
                 "CONFIRMED_OTHER" -> if (sub) "다른 강사로 확정했어요" else "다른 지원자로 확정했어요"
                 "CLOSED" -> "공고를 마감했어요"

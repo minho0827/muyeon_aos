@@ -359,7 +359,7 @@ private fun SubStatusLine(api: JobPostingApi, id: Int, s: JSONObject, status: St
         ).joinToString(" · ")
         status == "HOLD" -> "잠시 보류한 공고예요. 다시 열면 이어서 진행돼요"
         status == "CLOSED" || status == "ARCHIVED" || started -> "마감된 공고예요"
-        pendingOffers > 0 -> "수락한 강사 ${pendingOffers}명 · 확정해 주세요"
+        pendingOffers > 0 -> "지원한 강사 ${pendingOffers}명 · 확정해 주세요"
         else -> null
     } ?: return
     val highlight = confirmedId != null || pendingOffers > 0 && status == "OPEN"
@@ -498,7 +498,7 @@ private fun DispatchCard(
     if ((agreedPay ?: 0) > 0) PostingRow("확정 금액", SubDispatch.payText(agreedPay, classCount))
     stats?.let {
         PostingRow("알림 받은 강사", "${it.num("recipients") ?: 0}명")
-        PostingRow("이 금액에 수락", "${it.num("accepts") ?: 0}명")
+        PostingRow("지원한 강사", "${it.num("accepts") ?: 0}명")
     }
     s.stringOrNull("lastDispatchedAt")?.let { at ->
         Text(
@@ -510,12 +510,12 @@ private fun DispatchCard(
     if (hasOffers && !confirmed) {
         if (active) {
             Text(
-                "수락한 강사가 있어 금액을 올릴 수 없어요. 수락한 강사 중에서 확정해 주세요.",
+                "지원한 강사가 있어 금액을 올릴 수 없어요. 지원한 강사 중에서 확정해 주세요.",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
                 lineHeight = 18.sp, color = MuyeonColors.primary,
             )
         }
-        JobButton("수락한 강사 보기", filled = false, enabled = true, modifier = Modifier.fillMaxWidth(), onClick = onApplicants)
+        JobButton("지원한 강사 보기", filled = false, enabled = true, modifier = Modifier.fillMaxWidth(), onClick = onApplicants)
     }
     // '다음 재발송' 행이 빠져 멈춘 상태를 따로 알린다(확정·마감은 상단 상태 문장이 알린다).
     if (!enabled && !confirmed && !closed) {
@@ -526,7 +526,7 @@ private fun DispatchCard(
     }
     if (nudge) {
         Text(
-            "아직 수락한 강사가 없어요. 금액을 올려 보시는 건 어때요?",
+            "아직 지원한 강사가 없어요. 금액을 올려 보시는 건 어때요?",
             fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
             lineHeight = 18.sp, color = MuyeonColors.primary,
         )
@@ -596,7 +596,7 @@ private fun DispatchCard(
     if (stopOpen) {
         QuoteDialog(
             title = "긴급 발송을 멈출까요?",
-            message = "더 이상 강사에게 알림을 보내지 않아요. 이미 수락한 강사는 그대로 확정할 수 있어요.",
+            message = "더 이상 강사에게 알림을 보내지 않아요. 이미 지원한 강사는 그대로 확정할 수 있어요.",
             confirmText = "발송 중지",
             onConfirm = {
                 stopOpen = false
@@ -709,8 +709,8 @@ internal object SubDispatch {
             }
             "DISPATCH_MAX_REACHED" -> ErrorDialog("최대 금액이에요", msg ?: "정해 둔 최대 금액까지 올렸어요.")
             "DISPATCH_HAS_OFFERS" -> ErrorDialog(
-                "수락한 강사가 있어요",
-                msg ?: "수락한 강사가 있어 금액을 올릴 수 없어요. 수락한 강사 중에서 확정해 주세요.",
+                "지원한 강사가 있어요",
+                msg ?: "지원한 강사가 있어 금액을 올릴 수 없어요. 지원한 강사 중에서 확정해 주세요.",
             )
             "SUB_DISPATCH_LIMIT" -> ErrorDialog("이번 달 긴급 발송 한도를 다 썼어요", msg ?: "다음 달에 다시 이용할 수 있어요.")
             else -> null
