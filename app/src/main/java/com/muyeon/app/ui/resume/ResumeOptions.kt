@@ -45,6 +45,16 @@ object ResumeOptions {
         "EXAM" to "입시생", "MAJOR" to "전공",
     )
 
+    /** 긴급 대타 알림 — 타임 수 범위(칩 키 → min/max). iOS dispatchClassCounts 동일. */
+    val dispatchClassCounts = listOf(
+        Triple("1-2", "1~2타임", 1 to 2), Triple("3-4", "3~4타임", 3 to 4), Triple("5+", "5타임 이상", 5 to null),
+    )
+
+    /** 긴급 대타 알림 — 타임당 최소 금액(원). 선택 안 함 = 상관없음. */
+    val dispatchMinPays = listOf(
+        30000 to "3만원 이상", 40000 to "4만원 이상", 50000 to "5만원 이상", 60000 to "6만원 이상",
+    )
+
     /** 공개 프로필 시안 그리드: 6버킷 → 오전/오후/저녁 3행 매핑. */
     val gridRows = listOf(
         "오전" to listOf("dawn", "morning"),

@@ -50,6 +50,7 @@ import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteDialog
 import com.muyeon.app.ui.quote.QuoteNavBar
 import com.muyeon.app.ui.quote.QuoteUi
+import com.muyeon.app.ui.quote.RegionRepo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -90,6 +91,11 @@ class ResumeEditForm(defaultTitle: String, loading: Boolean) : androidx.lifecycl
 
     var loadedData by mutableStateOf(ResumeData())   // 미지 키 보존용 원본
     var loading by mutableStateOf(loading)
+
+    // 긴급 대타 알림 — null = 아직 못 불러옴(서버 미배포·실패). 그땐 섹션을 그리지도, 저장하지도 않는다.
+    var dispatch by mutableStateOf<SubDispatchPrefs?>(null)
+    var regionNames by mutableStateOf(mapOf<String, String>())   // 지역코드 → 이름("서울 강남구", "서울 전체")
+    var dispatchRegionPool by mutableStateOf(listOf<String>())   // 지역 칩 후보 — 불러온 값 + 이번에 추가한 지역
 }
 
 /**
@@ -154,6 +160,9 @@ fun ResumeEditScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var viewAlert by remember { mutableStateOf(true) }   // 구직 프로필 — 내 프로필 열람 알림
     var awaitingNotificationSettings by remember { mutableStateOf(false) }
+    // 설정 앱에서 알림을 허용하고 돌아왔을 때 켜 줄 토글(true = 긴급 대타, false = 열람 알림)
+    var pendingDispatchAlert by remember { mutableStateOf(false) }
+    var dispatch by form::dispatch
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
@@ -164,6 +173,21 @@ fun ResumeEditScreen(
     //  폼 입력은 건드리지 않고 이 서버 파생 값만 다시 읽는다.
     LaunchedEffect(isSeekProfile, settingsReload) {
         if (isSeekProfile) viewAlert = api.getProfileViewAlert() && context.notificationsEnabled()
+    }
+
+    // 긴급 대타 알림 설정 + 지역 이름표 — 한 번만 읽는다(공개 범위 화면에 다녀와도 편집 중인 값 유지).
+    LaunchedEffect(isSeekProfile) {
+        if (!isSeekProfile || dispatch != null) return@LaunchedEffect
+        val prefs = api.getSubDispatchPrefs() ?: return@LaunchedEffect
+        val names = mutableMapOf<String, String>()
+        RegionRepo.fetchRegions(api.token).forEach { r ->
+            names[r.code] = r.name
+            // 시/도 전체 코드(법정동 앞 2자리) — 지역 선택 시트의 "{시도} 전체"와 같은 이름
+            names.putIfAbsent(r.code.take(2), "${r.sido} 전체")
+        }
+        form.regionNames = names + form.regionNames
+        form.dispatchRegionPool = prefs.regionCodes
+        dispatch = prefs.copy(enabled = prefs.enabled && context.notificationsEnabled())
     }
 
     // 서버 값으로 폼을 채우는 건 한 번뿐 — 재진입마다 다시 채우면 입력 중이던 내용이 날아간다.
@@ -208,7 +232,9 @@ fun ResumeEditScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME && awaitingNotificationSettings) {
                 awaitingNotificationSettings = false
-                if (context.notificationsEnabled()) viewAlert = true
+                if (context.notificationsEnabled()) {
+                    if (pendingDispatchAlert) dispatch = dispatch?.copy(enabled = true) else viewAlert = true
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -485,22 +511,51 @@ fun ResumeEditScreen(
                 }
 
                 if (isSeekProfile) {
+                    // 켤 때 시스템 알림 권한 확인 — 꺼져 있으면 켜도 푸시가 안 오므로 알림 설정으로 보낸다.
+                    fun enableAlert(isDispatch: Boolean, apply: () -> Unit) {
+                        if (context.notificationsEnabled()) {
+                            apply()
+                        } else {
+                            pendingDispatchAlert = isDispatch
+                            awaitingNotificationSettings = true
+                            context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                            })
+                        }
+                    }
                     SeekProfileSettings(
                         viewAlert = viewAlert,
                         onViewAlert = { enabled ->
-                            if (!enabled) {
-                                viewAlert = false
-                            } else if (context.notificationsEnabled()) {
-                                viewAlert = true
-                            } else {
-                                awaitingNotificationSettings = true
-                                context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-                                })
-                            }
+                            if (!enabled) viewAlert = false else enableAlert(false) { viewAlert = true }
                         },
                         onVisibility = onVisibility,
                     )
+                    dispatch?.let { prefs ->
+                        SubDispatchSettings(
+                            prefs = prefs,
+                            regionOptions = (form.dispatchRegionPool +
+                                activeRegions.mapNotNull { it.second } + prefs.regionCodes)
+                                .filter { it.isNotEmpty() }.distinct()
+                                .map { code ->
+                                    code to (form.regionNames[code]
+                                        ?: activeRegions.firstOrNull { it.second == code }?.first ?: code)
+                                },
+                            token = api.token,
+                            onEnabled = { enabled ->
+                                if (!enabled) dispatch = prefs.copy(enabled = false)
+                                else enableAlert(true) { dispatch = dispatch?.copy(enabled = true) }
+                            },
+                            onChange = { dispatch = it },
+                            onAddRegion = { name, code ->
+                                if (!code.isNullOrEmpty()) {
+                                    form.regionNames = form.regionNames + (code to name)
+                                    if (code !in form.dispatchRegionPool) form.dispatchRegionPool += code
+                                    val cur = dispatch ?: prefs
+                                    if (code !in cur.regionCodes) dispatch = cur.copy(regionCodes = cur.regionCodes + code)
+                                }
+                            },
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(8.dp))
@@ -550,6 +605,7 @@ fun ResumeEditScreen(
                                         // 구직 프로필은 기본 이력서가 원본이다(iOS ResumeEditVM.save).
                                         if (resumeId == null) api.setDefault(newId)
                                         api.setProfileViewAlert(viewAlert)
+                                        dispatch?.let { api.setSubDispatchPrefs(it) }
                                     }
                                     if (mode.isDancer) {
                                         // 유형은 인증 절차에서만 부여한다 — 이력서 저장이 유형 인증을 우회하면 안 된다.
@@ -620,6 +676,135 @@ private fun SeekProfileSettings(viewAlert: Boolean, onViewAlert: (Boolean) -> Un
                 colors = SwitchDefaults.colors(checkedTrackColor = MuyeonColors.primary),
             )
         }
+    }
+}
+
+/**
+ * 긴급 대타 알림 — iOS `ResumeEditView.subDispatchSection` 1:1.
+ *  켜면 키워드 칩. 비워 둔 항목은 '상관없음'으로 매칭된다.
+ */
+@Composable
+private fun SubDispatchSettings(
+    prefs: SubDispatchPrefs,
+    regionOptions: List<Pair<String, String>>,
+    token: String?,
+    onEnabled: (Boolean) -> Unit,
+    onChange: (SubDispatchPrefs) -> Unit,
+    onAddRegion: (name: String, code: String?) -> Unit,
+) {
+    fun List<String>.toggled(v: String) = if (contains(v)) minus(v) else plus(v)
+    var regionSheetOpen by remember { mutableStateOf(false) }
+
+    Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            Modifier.fillMaxWidth().clickable { onEnabled(!prefs.enabled) },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    "긴급 대타 알림 받기",
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
+                    lineHeight = 17.sp, color = MuyeonColors.textHead,
+                )
+                Text(
+                    "조건에 맞는 긴급 대타 공고가 올라오면 바로 알려드려요",
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp,
+                    lineHeight = 14.sp, color = MuyeonColors.textSub,
+                )
+            }
+            Switch(
+                checked = prefs.enabled, onCheckedChange = onEnabled,
+                colors = SwitchDefaults.colors(checkedTrackColor = MuyeonColors.primary),
+            )
+        }
+        if (prefs.enabled) {
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFF7F7F7)).padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Text(
+                    "선택하지 않은 항목은 '상관없음'으로 알려드려요.",
+                    fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 14.sp, color = MuyeonColors.chevron,
+                )
+                DispatchKeyword("지역") {
+                    if (regionOptions.isNotEmpty()) {
+                        MultiChips(regionOptions, prefs.regionCodes.toSet()) { v ->
+                            onChange(prefs.copy(regionCodes = prefs.regionCodes.toggled(v)))
+                        }
+                    }
+                    Row(
+                        Modifier.clickable { regionSheetOpen = true }.padding(vertical = 2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Filled.Add, null, tint = MuyeonColors.primary, modifier = Modifier.size(12.dp))
+                        Text(
+                            "지역 추가",
+                            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                            lineHeight = 16.sp, color = MuyeonColors.primary,
+                        )
+                    }
+                }
+                DispatchKeyword("장르") {
+                    MultiChips(ResumeOptions.genres.map { it to it }, prefs.genres.toSet()) { v ->
+                        onChange(prefs.copy(genres = prefs.genres.toggled(v)))
+                    }
+                }
+                DispatchKeyword("대상") {
+                    MultiChips(ResumeOptions.classTargets, prefs.targets.toSet()) { v ->
+                        onChange(prefs.copy(targets = prefs.targets.toggled(v)))
+                    }
+                }
+                DispatchKeyword("시간대") {
+                    MultiChips(ResumeOptions.timeSlots, prefs.timeSlots.toSet()) { v ->
+                        onChange(prefs.copy(timeSlots = prefs.timeSlots.toggled(v)))
+                    }
+                }
+                DispatchKeyword("요일") {
+                    MultiChips(ResumeOptions.weekDays.map { it to it }, prefs.days.toSet()) { v ->
+                        onChange(prefs.copy(days = prefs.days.toggled(v)))
+                    }
+                }
+                DispatchKeyword("타임 수") {
+                    // 단일 선택 — 같은 칩을 다시 누르면 해제(상관없음)
+                    val current = ResumeOptions.dispatchClassCounts.firstOrNull {
+                        it.third.first == prefs.minClassCount && it.third.second == prefs.maxClassCount
+                    }?.first
+                    MultiChips(ResumeOptions.dispatchClassCounts.map { it.first to it.second }, setOfNotNull(current)) { v ->
+                        val range = ResumeOptions.dispatchClassCounts.firstOrNull { it.first == v && v != current }?.third
+                        onChange(prefs.copy(minClassCount = range?.first, maxClassCount = range?.second))
+                    }
+                }
+                DispatchKeyword("타임당 최소 금액") {
+                    MultiChips(
+                        ResumeOptions.dispatchMinPays.map { it.first.toString() to it.second },
+                        setOfNotNull(prefs.minPayPerSession?.toString()),
+                    ) { v ->
+                        val pay = v.toIntOrNull()
+                        onChange(prefs.copy(minPayPerSession = if (pay == prefs.minPayPerSession) null else pay))
+                    }
+                }
+            }
+        }
+    }
+    if (regionSheetOpen) {
+        com.muyeon.app.ui.quote.RegionPickerSheet(
+            token = token, title = "알림 받을 지역", allowSidoAll = true,
+            onPick = onAddRegion, onDismiss = { regionSheetOpen = false },
+        )
+    }
+}
+
+@Composable
+private fun DispatchKeyword(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            title,
+            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+            lineHeight = 16.sp, color = MuyeonColors.textHead,
+        )
+        content()
     }
 }
 

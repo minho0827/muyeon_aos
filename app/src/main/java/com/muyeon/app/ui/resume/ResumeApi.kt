@@ -1,6 +1,7 @@
 package com.muyeon.app.ui.resume
 
 import com.muyeon.app.BuildConfig
+import com.muyeon.app.ui.quote.boolOrNull
 import com.muyeon.app.ui.quote.map
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -61,13 +62,31 @@ class ResumeApi(internal val token: String?) {
 
     // ── 구직 프로필(열람 알림) — iOS ResumeService.get/setProfileViewAlert ──
 
-    /** GET /auth/me/profile → viewAlert. 실패 시 iOS 와 같이 true(기본 켜짐). */
+    /**
+     * GET /auth/me/profile → profileViewAlert(구 이름 resumeViewAlert). 실패 시 iOS 와 같이 true(기본 켜짐).
+     *  예전엔 서버가 모르는 viewAlert 를 읽고 써서 앱에서 꺼도 실제로는 안 꺼졌다.
+     */
     suspend fun getProfileViewAlert(): Boolean =
         call("/auth/me/profile").getOrNull()
-            ?.let { runCatching { JSONObject(it).optBoolean("viewAlert", true) }.getOrNull() } ?: true
+            ?.let { text ->
+                runCatching {
+                    val o = JSONObject(text)
+                    o.boolOrNull("profileViewAlert") ?: o.boolOrNull("resumeViewAlert") ?: true
+                }.getOrNull()
+            } ?: true
 
     suspend fun setProfileViewAlert(enabled: Boolean): Result<Unit> =
-        call("/auth/me/profile", "PATCH", JSONObject().put("viewAlert", enabled)).map { }
+        call("/auth/me/profile", "PATCH", JSONObject().put("profileViewAlert", enabled)).map { }
+
+    // ── 긴급 대타 알림 설정 — iOS ResumeService.get/setSubDispatchPrefs ──
+
+    /** GET /me/sub-dispatch-prefs. 처음이면 서버가 기본값(꺼짐 + 지역·장르·대상은 프로필)을 준다. 실패 시 null. */
+    suspend fun getSubDispatchPrefs(): SubDispatchPrefs? =
+        call("/me/sub-dispatch-prefs").getOrNull()
+            ?.let { runCatching { SubDispatchPrefs.from(JSONObject(it.ifBlank { "{}" })) }.getOrNull() }
+
+    suspend fun setSubDispatchPrefs(prefs: SubDispatchPrefs): Result<Unit> =
+        call("/me/sub-dispatch-prefs", "PUT", prefs.toJson()).map { }
 
     // ── 공개범위 ──
 
