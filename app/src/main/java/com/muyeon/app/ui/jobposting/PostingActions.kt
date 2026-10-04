@@ -54,9 +54,12 @@ class PostingActions internal constructor(
     fun setStatus(ref: PostingRef, status: String) = run {
         api.setStatus(ref.kind, ref.id, status)
             .onSuccess {
-                message = when (status) {
-                    "CLOSED" -> "공고가 마감되었습니다."
-                    "HOLD" -> "공고가 보류되었습니다."
+                // 대타는 보류해도 수락한 강사(후보)를 유지하고 서버가 보류·재개를 알린다(2026-10-05).
+                message = when {
+                    status == "CLOSED" -> "공고가 마감되었습니다."
+                    status == "HOLD" && ref.kind == "SUB" -> "공고를 보류했어요. 수락한 강사들에게 보류를 알렸어요."
+                    status == "HOLD" -> "공고가 보류되었습니다."
+                    ref.kind == "SUB" -> "공고를 다시 열었어요."
                     else -> "공고가 다시 등록되었습니다."
                 }
                 changed(ref, PostingChange.STATUS)
@@ -100,7 +103,8 @@ class PostingActions internal constructor(
                 message = "공고를 삭제했어요."
                 changed(ref, PostingChange.DELETED)
             }
-            .onFailure { message = it.message ?: "삭제에 실패했어요." }
+            // 확정된 강사가 있는 대타(400 SUB_HAS_CONFIRMED) 등 — 서버 문구를 그대로 보여 준다.
+            .onFailure { message = it.message?.takeIf { m -> m.isNotBlank() } ?: "삭제에 실패했어요." }
     }
 
     /** 확인창·안내창 — 화면 아무 곳에 한 번 그린다. */

@@ -368,6 +368,14 @@ data class Applicant(
     val phoneUnlocked: Boolean?,
     val status: String?,
     val appliedAt: String?,
+    // ★ 2026-10-05 지금 상태 안내용 — 서버가 결과를 정하고 화면은 문장만 고른다.
+    val canceledBy: String? = null,          // WITHDRAW(확정 전 수락 철회) / TEACHER / POSTER
+    val resultReason: String? = null,        // CONFIRMED_OTHER / CLOSED / EXPIRED / DELETED
+    val acceptedPay: Int? = null,
+    val viaDispatch: Boolean? = null,
+    val postingStatus: String? = null,
+    val postingConfirmedApplicationId: Int? = null,
+    val postingClassStartAt: String? = null,
     val applicantProfile: ResumeData?,
     val resumeTitle: String?,
     val resumeData: ResumeData?,
@@ -427,6 +435,13 @@ data class Applicant(
                 applicantPhone = o.stringOrNull("applicantPhone"),
                 phoneUnlocked = o.boolOrNull("phoneUnlocked"),
                 status = o.stringOrNull("status"), appliedAt = o.stringOrNull("appliedAt"),
+                canceledBy = o.stringOrNull("canceledBy"),
+                resultReason = o.stringOrNull("resultReason"),
+                acceptedPay = o.intOrNull("acceptedPay"),
+                viaDispatch = o.boolOrNull("viaDispatch"),
+                postingStatus = o.stringOrNull("postingStatus"),
+                postingConfirmedApplicationId = o.intOrNull("postingConfirmedApplicationId"),
+                postingClassStartAt = o.stringOrNull("postingClassStartAt"),
                 applicantProfile = o.optJSONObject("applicantProfile")?.let { ResumeData.from(it) },
                 resumeTitle = r?.stringOrNull("title"),
                 resumeData = r?.optJSONObject("data")?.let { ResumeData.from(it) },

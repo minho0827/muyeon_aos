@@ -342,6 +342,16 @@ class JobPostingApi(internal val token: String?) {
     /** 긴급 대타 — 발송 중지(자동 인상·재발송 멈춤). */
     suspend fun stopDispatch(id: Int): Result<Unit> = call("/subs/$id/dispatch/stop", "POST").map { }
 
+    /**
+     * 대타 지원자 한 명의 이름 — 공고 상세 '○○ 강사로 확정' 문장용.
+     *  지원자 상세(/applicants/:appId)는 열람 시각을 찍으므로 목록에서 찾는다.
+     */
+    suspend fun subApplicantName(postingId: Int, applicationId: Int): Result<String?> =
+        call("/subs/$postingId/applicants").map { text ->
+            JSONArray(text.ifBlank { "[]" }).map { it }
+                .firstOrNull { it.optInt("id") == applicationId }?.stringOrNull("applicantName")
+        }
+
     /** 공고 대표·상세 이미지 업로드 — 이력서·견적과 같은 /uploads/image. */
     suspend fun uploadImage(bytes: ByteArray): Result<String> = withContext(Dispatchers.IO) {
         runCatching {

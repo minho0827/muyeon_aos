@@ -83,7 +83,11 @@ fun ApplicantResumeScreen(
                         else -> ApplicantDecisionPrompt.JobConfirmed(applicantName(), remaining)
                     }
                 }
-                .onFailure { errorMessage = it.message }
+                .onFailure {
+                    errorMessage = it.message
+                    // 그사이 다른 강사 확정·마감 등으로 막혔으면(SUB_CONFIRM_UNAVAILABLE) 지금 상태로 다시 그린다.
+                    api.applicant(postingId, applicationId, kind).onSuccess { fresh -> applicant = fresh }
+                }
             deciding = false
         }
     }
@@ -136,6 +140,8 @@ fun ApplicantResumeScreen(
             return@Column
         }
 
+        ApplicantStatusBanner(a, kind)
+
         if (a.profileMembershipActive == true) {
             // 프로필 노출 이용권 보유 — 공개 프로필 그대로(채용 시점, 자체 뒤로가기·CTA 없음)
             Box(Modifier.weight(1f)) {
@@ -156,13 +162,15 @@ fun ApplicantResumeScreen(
 
         BottomBar(
             confirmTitle = kind.confirmTitle,
+            showConfirm = ApplicantState.canConfirm(a, kind),
             enabled = !deciding,
             onChat = {
                 deciding = true
                 scope.launch {
                     api.directRoom(a.applicantId, kind.raw, applicationId)
                         .onSuccess { rid ->
-                            applicant = applicant?.copy(status = "OFFERED")
+                            // 대기 중일 때만 '채팅 진행중'으로 올린다 — 확정·종료된 지원의 상태를 덮지 않게.
+                            if (ApplicantState.isPending(applicant?.status)) applicant = applicant?.copy(status = "OFFERED")
                             if (rid > 0) onOpenChat(rid, a.applicantName ?: "지원자")
                             else errorMessage = "채팅방을 여는 데 실패했어요."
                         }
@@ -288,6 +296,7 @@ private fun ResumeBody(a: Applicant) {
 @Composable
 private fun BottomBar(
     confirmTitle: String,
+    showConfirm: Boolean,
     enabled: Boolean,
     onChat: () -> Unit,
     onConfirm: () -> Unit,
@@ -299,8 +308,97 @@ private fun BottomBar(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             ActionButton("채팅하기", filled = false, enabled = enabled, modifier = Modifier.weight(1f), onClick = onChat)
-            ActionButton(confirmTitle, filled = true, enabled = enabled, modifier = Modifier.weight(1f), onClick = onConfirm)
+            if (showConfirm) {
+                ActionButton(confirmTitle, filled = true, enabled = enabled, modifier = Modifier.weight(1f), onClick = onConfirm)
+            }
         }
+    }
+}
+
+/**
+ * 지원 상태 판정 — 웹 ApplicantResume.js 와 같은 규칙. ★ 2026-10-05
+ *  서버가 결과(REJECTED·CANCELED + resultReason·canceledBy)를 정하고, 화면은 칩·문장·[확정] 노출만 고른다.
+ */
+internal object ApplicantState {
+    private val PENDING = setOf("APPLIED", "REVIEWING", "OFFERED")
+
+    fun isPending(status: String?) = status == null || status in PENDING
+
+    private fun classStarted(a: Applicant): Boolean =
+        QuoteUi.parseDate(a.postingClassStartAt)?.let { it <= System.currentTimeMillis() } ?: false
+
+    private fun otherConfirmed(a: Applicant): Boolean =
+        (a.postingConfirmedApplicationId ?: 0).let { it > 0 && it != a.id }
+
+    /** 대타: 대기 중 + 공고 OPEN + 다른 확정 없음 + 수업 시작 전. 채용: 대기 중이면. */
+    fun canConfirm(a: Applicant, kind: ApplicantPostingKind): Boolean {
+        if (!isPending(a.status)) return false
+        if (kind != ApplicantPostingKind.SUB) return true
+        return (a.postingStatus == null || a.postingStatus == "OPEN") && !otherConfirmed(a) && !classStarted(a)
+    }
+
+    fun chipLabel(a: Applicant, kind: ApplicantPostingKind): String = when (a.status) {
+        "OFFERED" -> if (kind == ApplicantPostingKind.SUB && a.viaDispatch == true) "수락함" else "채팅 진행중"
+        "ACCEPTED" -> kind.confirmTitle
+        "REJECTED" -> "지원 종료"
+        "CANCELED" -> if (a.canceledBy == "WITHDRAW") "수락 철회" else "확정 취소"
+        else -> "검토중"
+    }
+
+    /** 지금 상태 문장 — 대기 중이고 확정할 수 있으면 null(안내할 것 없음). */
+    fun sentence(a: Applicant, kind: ApplicantPostingKind): String? {
+        val sub = kind == ApplicantPostingKind.SUB
+        return when (a.status) {
+            "ACCEPTED" -> if (sub) "확정한 강사예요" else "채용을 확정한 지원자예요"
+            "CANCELED" -> if (a.canceledBy == "WITHDRAW") "이 강사는 수락을 철회했어요" else "확정이 취소됐어요"
+            "REJECTED" -> when (a.resultReason) {
+                "CONFIRMED_OTHER" -> if (sub) "다른 강사로 확정했어요" else "다른 지원자로 확정했어요"
+                "CLOSED" -> "공고를 마감했어요"
+                "EXPIRED" -> "수업 시작 시각이 지나 마감됐어요"
+                "DELETED" -> "삭제한 공고예요"
+                else -> "지원이 종료됐어요"
+            }
+            else -> if (!sub || canConfirm(a, kind)) null else when {
+                // 대기 중인데 확정할 수 없는 이유 — 공고 쪽 상태.
+                otherConfirmed(a) -> "다른 강사로 확정했어요"
+                a.postingStatus == "ARCHIVED" -> "삭제한 공고예요"
+                a.postingStatus == "HOLD" -> "잠시 보류한 공고예요. 다시 열면 확정할 수 있어요"
+                classStarted(a) -> "수업 시작 시각이 지나 마감됐어요"
+                else -> "공고를 마감했어요"
+            }
+        }
+    }
+}
+
+/** 상단 상태 줄 — 칩 + 지금 상태 문장(있을 때). */
+@Composable
+private fun ApplicantStatusBanner(a: Applicant, kind: ApplicantPostingKind) {
+    val pending = ApplicantState.isPending(a.status)
+    val positive = a.status == "ACCEPTED" || (pending && ApplicantState.canConfirm(a, kind))
+    Column(Modifier.fillMaxWidth().background(MuyeonColors.surface)) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                ApplicantState.chipLabel(a, kind),
+                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 11.sp, lineHeight = 13.sp,
+                color = if (positive) MuyeonColors.primary else MuyeonColors.secondary,
+                modifier = Modifier.clip(RoundedCornerShape(50))
+                    .background(if (positive) MuyeonColors.primary.copy(alpha = 0.12f) else Color(0xFFF2F2F7))
+                    .padding(horizontal = 7.dp, vertical = 3.dp),
+            )
+            ApplicantState.sentence(a, kind)?.let {
+                Text(
+                    it,
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
+                    lineHeight = 17.sp, color = MuyeonColors.textHead,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        HorizontalDivider(color = MuyeonColors.border)
     }
 }
 

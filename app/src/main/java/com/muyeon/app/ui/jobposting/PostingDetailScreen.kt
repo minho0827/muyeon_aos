@@ -148,6 +148,7 @@ fun PostingDetailScreen(
                         HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
                         when (kind) {
                             "SUB" -> {
+                                SubStatusLine(api, id, d, status)
                                 SubBody(d)
                                 if (SubDispatch.isDispatch(d)) {
                                     HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
@@ -338,6 +339,40 @@ private fun SubBody(s: JSONObject) {
     }
 }
 
+// MARK: 대타 지금 상태 문장 — 웹 SubDetail(올린 분) 상태 안내와 같은 우선순위. ★ 2026-10-05
+
+@Composable
+private fun SubStatusLine(api: JobPostingApi, id: Int, s: JSONObject, status: String?) {
+    val confirmedId = s.num("confirmedApplicationId")?.takeIf { it > 0 }
+    var confirmedName by remember(confirmedId) { mutableStateOf<String?>(null) }
+    LaunchedEffect(confirmedId) {
+        if (confirmedId != null) api.subApplicantName(id, confirmedId).onSuccess { confirmedName = it }
+    }
+    val agreedPay = s.num("agreedPay")?.takeIf { it > 0 }
+    val pendingOffers = s.optJSONObject("dispatchStats")?.num("pendingOffers") ?: 0
+    val started = QuoteUi.parseDate(s.stringOrNull("classStartAt"))?.let { it <= System.currentTimeMillis() } ?: false
+
+    val text = when {
+        confirmedId != null -> listOfNotNull(
+            confirmedName?.let { "$it 강사로 확정" } ?: "강사 확정 완료",
+            agreedPay?.let { "타임당 ${SubDispatch.won(it)}" },
+        ).joinToString(" · ")
+        status == "HOLD" -> "잠시 보류한 공고예요. 다시 열면 이어서 진행돼요"
+        status == "CLOSED" || status == "ARCHIVED" || started -> "마감된 공고예요"
+        pendingOffers > 0 -> "수락한 강사 ${pendingOffers}명 · 확정해 주세요"
+        else -> null
+    } ?: return
+    val highlight = confirmedId != null || pendingOffers > 0 && status == "OPEN"
+    Text(
+        text,
+        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 19.sp,
+        color = if (highlight) MuyeonColors.primary else MuyeonColors.textHead,
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+            .background(if (highlight) MuyeonColors.primary.copy(alpha = 0.08f) else Color(0xFFF7F7F7))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+    )
+}
+
 // MARK: 공연(CASTING) 본문 — 웹 CastingDetail 과 같은 항목(등록폼 확장 필드는 details 안)
 
 @Composable
@@ -476,15 +511,18 @@ private fun DispatchCard(
             fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 16.sp, color = MuyeonColors.textSub,
         )
     }
-    if (active) {
-        if (hasOffers) {
+    // ★ 2026-10-05 수락한 강사 보기는 발송을 멈춘 뒤에도(확정 전 수락자가 남아 있으면) 보인다 — iOS 와 동일.
+    if (hasOffers && !confirmed) {
+        if (active) {
             Text(
                 "수락한 강사가 있어 금액을 올릴 수 없어요. 수락한 강사 중에서 확정해 주세요.",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
                 lineHeight = 18.sp, color = MuyeonColors.primary,
             )
-            JobButton("수락한 강사 보기", filled = false, enabled = true, modifier = Modifier.fillMaxWidth(), onClick = onApplicants)
         }
+        JobButton("수락한 강사 보기", filled = false, enabled = true, modifier = Modifier.fillMaxWidth(), onClick = onApplicants)
+    }
+    if (active) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             JobButton("발송 중지", filled = false, enabled = !busy, modifier = Modifier.weight(1f)) { stopOpen = true }
             JobButton(
