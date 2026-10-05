@@ -320,7 +320,17 @@ private fun SubBody(s: JSONObject) {
     PostingRow("세부 분야", s.stringList("fields")?.joinToString(", ") { SubOptions.fieldLabel(it) })
     PostingRow("수업 대상", s.stringOrNull("target")?.let { SubOptions.targetLabel(it) })
     PostingRow("급여", JobFormOptions.salaryLabel(s.stringOrNull("salary")).ifEmpty { s.stringOrNull("pay").orEmpty() })
+    // ★ 2026-10-05 금액 변경 표시(당근마켓처럼) — 직전 금액 대비 올렸어요/내렸어요(웹 급여 줄 취소선과 같은 정보).
+    SubDispatch.payChangeText(s)?.let {
+        Text(it, fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp, color = MuyeonColors.textSub)
+    }
     PostingRow("필요 경력", careerText)
+    val history = SubDispatch.payHistoryLines(s)
+    if (history.isNotEmpty()) {
+        HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
+        PostingHead("금액 변경 이력")
+        history.forEach { PostingBody(it) }
+    }
 
     val materials = s.stringOrNull("materials") ?: s.stringOrNull("prepare")
     val notice = s.stringOrNull("notice") ?: s.stringOrNull("caution")
@@ -464,16 +474,12 @@ private fun DispatchCard(
 ) {
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
-    var raiseOpen by remember { mutableStateOf(false) }
-    var raiseAmount by remember { mutableStateOf("") }
     var stopOpen by remember { mutableStateOf(false) }
     var info by remember { mutableStateOf<String?>(null) }
     var errorDialog by remember { mutableStateOf<SubDispatch.ErrorDialog?>(null) }
 
     val classCount = s.num("classCount")
     val currentPay = s.num("currentPay")?.takeIf { it > 0 } ?: s.num("payPerSession")
-    // ★ 2026-10-05 최대 금액·인상폭은 더 이상 받지 않는다(자동 인상 없음). payMax 는 옛 글에만 남아 있어 상한으로만 쓴다.
-    val payMax = s.num("payMax")?.takeIf { it > 0 }
     val agreedPay = s.num("agreedPay")
     val stats = s.optJSONObject("dispatchStats")
     val pendingOffers = stats?.num("pendingOffers") ?: 0
@@ -481,12 +487,9 @@ private fun DispatchCard(
     val confirmed = (s.num("confirmedApplicationId") ?: 0) > 0
     val closed = status == "CLOSED"
     val active = enabled && !confirmed && !closed   // 발송 중지 = dispatchEnabled false
-    val atMax = payMax != null && (currentPay ?: 0) > 0 && (currentPay ?: 0) >= payMax
     val hasOffers = pendingOffers > 0
-    // ★ 2026-10-04 수락이 한 명이라도 있으면 금액 인상이 멈춘다 — 서버 DISPATCH_HAS_OFFERS 와 같은 규칙.
-    // ★ 2026-10-05 아무도 수락하지 않으면 서버가 dispatchNudge 를 켠다 — 금액을 올려 보라고 권한다.
-    //  nextRaiseAt 은 이제 다음 권유 시각이라 화면에 보이지 않는다('다음 재발송' 행 제거).
-    val nudge = active && !hasOffers && !atMax && s.optBoolean("dispatchNudge")
+    // ★ 2026-10-05 금액 올리기(raise)·인상 권유(dispatchNudge) 폐지 — 금액은 [수정]으로 올리거나 내린다(확정 전까지).
+    //  바꾸면 새로 조건에 맞게 된 강사에게만 알림, 이미 지원한 강사에게는 금액 변경 알림(서버 10분 묶음).
 
     fun handle(e: Throwable, fallback: String) {
         val dialog = SubDispatch.errorDialog(e)
@@ -510,7 +513,7 @@ private fun DispatchCard(
     if (hasOffers && !confirmed) {
         if (active) {
             Text(
-                "지원한 강사가 있어 금액을 올릴 수 없어요. 지원한 강사 중에서 확정해 주세요.",
+                "지원한 강사가 있어요. 지원한 강사 중에서 확정해 주세요.",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
                 lineHeight = 18.sp, color = MuyeonColors.primary,
             )
@@ -524,75 +527,17 @@ private fun DispatchCard(
             fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 16.sp, color = MuyeonColors.textSub,
         )
     }
-    if (nudge) {
+    if (active && !hasOffers) {
         Text(
-            "아직 지원한 강사가 없어요. 금액을 올려 보시는 건 어때요?",
+            "금액은 [수정]에서 바꿀 수 있어요. 바꾸면 새로 조건에 맞게 된 강사에게만 알림이 가고, 이미 지원한 강사에게는 금액 변경을 알려 드려요.",
             fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
             lineHeight = 18.sp, color = MuyeonColors.primary,
         )
     }
     if (active) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            JobButton("발송 중지", filled = false, enabled = !busy, modifier = Modifier.weight(1f)) { stopOpen = true }
-            JobButton(
-                "금액 올려 다시 보내기", filled = true, enabled = !busy && !atMax && !hasOffers,
-                // 잠긴 상태가 눈에 보이게 흐리게 — JobButton 은 비활성 모양이 따로 없다.
-                modifier = Modifier.weight(1f).alpha(if (atMax || hasOffers) 0.4f else 1f),
-            ) {
-                // ★ 2026-10-05 기본값 = 옛 글의 인상폭, 없으면 5,000원.
-                raiseAmount = (s.num("payStep")?.takeIf { it > 0 } ?: 5000).toString()
-                raiseOpen = true
-            }
-        }
+        JobButton("발송 중지", filled = false, enabled = !busy, modifier = Modifier.fillMaxWidth()) { stopOpen = true }
     }
 
-    if (raiseOpen) {
-        val amount = raiseAmount.toIntOrNull()
-        // ★ 2026-10-05 1,000원 단위 양수만 — 상한은 없다(옛 글에 payMax 가 있으면 그것만 상한).
-        val validAmount = amount?.takeIf { it > 0 && it % 1000 == 0 }
-        val preview = when {
-            amount == null -> "올릴 금액을 입력해 주세요."
-            validAmount == null -> "1,000원 단위로 입력해 주세요."
-            else -> {
-                val next = (currentPay ?: 0) + validAmount
-                "${SubDispatch.payText(payMax?.let { minOf(next, it) } ?: next, classCount)}으로 다시 보내요."
-            }
-        }
-        AlertDialog(
-            onDismissRequest = { if (!busy) raiseOpen = false },
-            title = { DialogTitle("금액을 올려 다시 보낼까요?") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = amount?.let { SubDispatch.number(it) }.orEmpty(),
-                        onValueChange = { v -> raiseAmount = v.filter { it.isDigit() }.take(9).trimStart('0') },
-                        singleLine = true,
-                        label = { Text("올릴 금액 (타임당, 원)", fontFamily = customFontFamily, fontSize = 13.sp) },
-                        placeholder = { Text("예: 5,000", fontFamily = customFontFamily, fontSize = 14.sp) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    DialogMessage(preview)
-                    DialogMessage("직전 발송 30분 뒤부터 다시 보낼 수 있어요.")
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = !busy && validAmount != null,
-                    onClick = {
-                        busy = true
-                        scope.launch {
-                            api.raiseDispatch(id, validAmount)
-                                .onSuccess { raiseOpen = false; info = "금액을 올려 다시 보냈어요."; onChanged() }
-                                .onFailure { raiseOpen = false; handle(it, "다시 보내지 못했어요. 잠시 후 다시 시도해 주세요.") }
-                            busy = false
-                        }
-                    },
-                ) { DialogAction("다시 보내기") }
-            },
-            dismissButton = { TextButton(onClick = { raiseOpen = false }) { DialogAction("취소") } },
-        )
-    }
     if (stopOpen) {
         QuoteDialog(
             title = "긴급 발송을 멈출까요?",
@@ -680,6 +625,36 @@ internal object SubDispatch {
             .apply { timeZone = TimeZone.getTimeZone("Asia/Seoul") }.format(Date(ms))
     }
 
+    /** ★ 2026-10-05 직전 금액 대비 — "이전 타임당 40,000원 → 50,000원 · 올렸어요". 바뀐 적 없으면 null. */
+    fun payChangeText(s: JSONObject): String? {
+        if (s.stringOrNull("payChangedAt") == null) return null
+        val prev = s.num("prevPay")?.takeIf { it > 0 }
+        val cur = s.num("currentPay")?.takeIf { it > 0 } ?: s.num("payPerSession")
+        if (prev != null && cur != null && cur > 0 && prev != cur) {
+            return "이전 타임당 ${won(prev)} → ${won(cur)} · ${if (cur > prev) "올렸어요" else "내렸어요"}"
+        }
+        return s.stringOrNull("prevPayText")?.let { "이전 급여: $it" }
+    }
+
+    /** ★ 2026-10-05 금액 변경 이력 줄들(최근 순) — 웹 payHistoryLine 과 같은 형식. */
+    fun payHistoryLines(s: JSONObject): List<String> {
+        val arr = s.optJSONArray("payHistory") ?: return emptyList()
+        return (0 until arr.length()).mapNotNull { i ->
+            val h = arr.optJSONObject(i) ?: return@mapNotNull null
+            val when_ = kstDateTime(h.stringOrNull("changedAt"))
+            val f = h.num("fromPay"); val t = h.num("toPay")
+            val pay = when {
+                f != null && t != null && f != t -> "타임당 ${won(f)} → ${won(t)}"
+                f == null && (h.stringOrNull("fromText") ?: "") != (h.stringOrNull("toText") ?: "") ->
+                    "${h.stringOrNull("fromText") ?: "미정"} → ${h.stringOrNull("toText") ?: "미정"}"
+                else -> ""
+            }
+            val fc = h.num("fromClassCount"); val tc = h.num("toClassCount")
+            val count = if (fc != tc) "타임 수 ${fc?.let { "${it}타임" } ?: "미정"} → ${tc?.let { "${it}타임" } ?: "미정"}" else ""
+            listOf(when_, pay, count).filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { null }
+        }
+    }
+
     data class ErrorDialog(val title: String, val body: String, val membership: Boolean = false)
 
     /** 서버 오류 코드 → 안내. 해당 코드가 아니면 null. 문구는 서버 메시지를 우선한다. */
@@ -690,7 +665,7 @@ internal object SubDispatch {
         return when (ex.code) {
             "SUB_DISPATCH_MEMBERSHIP_REQUIRED" -> ErrorDialog(
                 "긴급 발송은 유료 멤버십 전용이에요",
-                msg ?: "멤버십에 가입하면 조건에 맞는 강사에게 바로 알림을 보내고, 안 잡히면 금액을 올려 다시 보낼 수 있어요.",
+                msg ?: "멤버십에 가입하면 조건에 맞는 강사에게 바로 알림을 보낼 수 있어요.",
                 membership = true,
             )
             "SUB_DISPATCH_RESTRICTED" -> {
@@ -700,17 +675,11 @@ internal object SubDispatch {
                     msg ?: "확정 취소 누적으로 ${if (until.isNotEmpty()) "${until}까지 " else ""}긴급 대타를 이용할 수 없어요.",
                 )
             }
-            "DISPATCH_COOLDOWN" -> {
-                val at = kstDateTime(extra?.stringOrNull("nextAvailableAt"))
-                ErrorDialog(
-                    "조금 뒤에 다시 보낼 수 있어요",
-                    msg ?: "직전 발송 30분 뒤부터 다시 보낼 수 있어요.${if (at.isNotEmpty()) " (${at}부터)" else ""}",
-                )
-            }
-            "DISPATCH_MAX_REACHED" -> ErrorDialog("최대 금액이에요", msg ?: "정해 둔 최대 금액까지 올렸어요.")
-            "DISPATCH_HAS_OFFERS" -> ErrorDialog(
-                "지원한 강사가 있어요",
-                msg ?: "지원한 강사가 있어 금액을 올릴 수 없어요. 지원한 강사 중에서 확정해 주세요.",
+            // ★ 2026-10-05 금액 올리기 폐지 — COOLDOWN·MAX·HAS_OFFERS 는 더 오지 않는다.
+            "SUB_DISPATCH_RAISE_REMOVED" -> ErrorDialog("금액 올리기는 없어졌어요", msg ?: "공고 수정으로 금액을 바꿔 주세요.")
+            "SUB_PAY_LOCKED" -> ErrorDialog(
+                "금액을 바꿀 수 없어요",
+                msg ?: "확정된 뒤에는 금액을 바꿀 수 없어요. 확정 취소 후 수정해 주세요.",
             )
             "SUB_DISPATCH_LIMIT" -> ErrorDialog("이번 달 긴급 발송 한도를 다 썼어요", msg ?: "다음 달에 다시 이용할 수 있어요.")
             else -> null
