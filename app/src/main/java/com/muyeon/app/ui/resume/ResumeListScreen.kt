@@ -57,11 +57,14 @@ fun ResumeListScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var deleteTarget by remember { mutableStateOf<ResumeListItem?>(null) }
     var refreshing by remember { mutableStateOf(false) }
+    // 구직 프로필이 이미 등록돼 있는지 — 카드 문구 '등록/수정' 분기용(강사만 조회).
+    var seekPublished by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     suspend fun load() {
         loading = true
         items = api.list(mode).getOrDefault(emptyList())
+        if (!mode.isDancer) seekPublished = api.getSeekPublished()
         loading = false
     }
 
@@ -86,7 +89,7 @@ fun ResumeListScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     if (mode.isDancer) VisibilityEntry(onVisibility)
-                    else SeekProfileEntry { onSeekProfile((items.firstOrNull { it.isDefault } ?: items.firstOrNull())?.id) }
+                    else SeekProfileEntry(seekPublished) { onSeekProfile((items.firstOrNull { it.isDefault } ?: items.firstOrNull())?.id) }
                     items.forEach { item ->
                         ResumeRow(
                             item = item,
@@ -140,9 +143,9 @@ fun ResumeListScreen(
     }
 }
 
-/** 구직 프로필 등록 카드(강사) — iOS `ResumeListView.seekProfileEntry` 1:1. */
+/** 구직 프로필 등록/수정 카드(강사) — iOS `ResumeListView.seekProfileEntry` 1:1. published = 이미 구직 목록에 등록됨. */
 @Composable
-private fun SeekProfileEntry(onClick: () -> Unit) {
+private fun SeekProfileEntry(published: Boolean, onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -161,12 +164,13 @@ private fun SeekProfileEntry(onClick: () -> Unit) {
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
-                "구직 프로필 등록",
+                if (published) "구직 프로필 수정" else "구직 프로필 등록",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
                 lineHeight = 19.sp, color = MuyeonColors.textHead,
             )
             Text(
-                "이력서를 바탕으로 구직 프로필을 등록하고\n원장님에게 나를 알려보세요.",
+                if (published) "등록한 구직 프로필을 최신 내용으로\n고쳐 보세요."
+                else "이력서를 바탕으로 구직 프로필을 등록하고\n원장님에게 나를 알려보세요.",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
                 lineHeight = 18.sp, color = MuyeonColors.textSub,
             )

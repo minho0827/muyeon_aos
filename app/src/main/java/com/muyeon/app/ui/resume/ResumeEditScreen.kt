@@ -168,8 +168,13 @@ fun ResumeEditScreen(
 
     // 구직 프로필 설정(열람 알림) — 최초 + 공개 범위 화면에서 돌아올 때(RESUME 결과 → settingsReload).
     //  폼 입력은 건드리지 않고 이 서버 파생 값만 다시 읽는다.
+    // 이미 구직 목록에 등록된 프로필이면 제목을 '수정'으로(값이 채워진 채 '등록'으로 보여 헷갈리던 문제).
+    var seekPublished by remember { mutableStateOf(false) }
     LaunchedEffect(isSeekProfile, settingsReload) {
-        if (isSeekProfile) viewAlert = api.getProfileViewAlert() && context.notificationsEnabled()
+        if (isSeekProfile) {
+            viewAlert = api.getProfileViewAlert() && context.notificationsEnabled()
+            seekPublished = api.getSeekPublished()
+        }
     }
 
     // 긴급 대타 알림 설정 — 한 번만 읽는다(공개 범위 화면에 다녀와도 편집 중인 값 유지).
@@ -258,7 +263,7 @@ fun ResumeEditScreen(
     }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(title = if (isSeekProfile) "구직 프로필 등록" else mode.navTitle, onBack = onClose)
+        QuoteNavBar(title = if (isSeekProfile) (if (seekPublished) "구직 프로필 수정" else "구직 프로필 등록") else mode.navTitle, onBack = onClose)
 
         if (loading) {
             Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
