@@ -75,6 +75,15 @@ class ResumeApi(internal val token: String?) {
                 }.getOrNull()
             } ?: true
 
+    /**
+     * 구직 목록에 이미 올라가 있는지(users.profile.seekPublishedAt) — iOS ResumeService.getSeekPublished.
+     *  화면 문구 '등록/수정' 분기용. 실패하면 false(문구만 '등록'으로 남는다).
+     */
+    suspend fun getSeekPublished(): Boolean =
+        call("/auth/me/profile").getOrNull()
+            ?.let { text -> runCatching { JSONObject(text).let { !it.isNull("seekPublishedAt") && it.optString("seekPublishedAt").isNotEmpty() } }.getOrNull() }
+            ?: false
+
     suspend fun setProfileViewAlert(enabled: Boolean): Result<Unit> =
         call("/auth/me/profile", "PATCH", JSONObject().put("profileViewAlert", enabled)).map { }
 
