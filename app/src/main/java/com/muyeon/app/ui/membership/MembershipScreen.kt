@@ -133,9 +133,9 @@ object TierInfo {
     }
 
     fun tagline(tier: String?) = when (tier) {
-        "BASIC" -> "제한 없이 등록부터 시작하기"
-        "STANDARD" -> "회원이 먼저 찾아오게 만들기"
-        "PRO" -> "가장 앞자리에서 영업하기"
+        "BASIC" -> "부담 없이 시작하기"
+        "STANDARD" -> "회원이 강사에게 직접 견적을 요청하게"
+        "PRO" -> "가장 먼저 눈에 띄기"
         else -> ""
     }
 
@@ -253,7 +253,6 @@ fun MembershipScreen(api: MembershipApi, onClose: () -> Unit) {
                     }
                     // 이번 달 남은 횟수 — 다 쓰기 전에 알아야 등급을 올릴지 판단할 수 있다.
                     val remains = listOfNotNull(
-                        remainText("이력서 열람", m.limits?.resumeViews, m.resumeViewsUsed),
                         remainText("자동견적", m.limits?.autoQuotes, m.autoQuotesUsed),
                     )
                     if (remains.isNotEmpty()) {
@@ -330,7 +329,7 @@ fun MembershipScreen(api: MembershipApi, onClose: () -> Unit) {
                             )
                             if (p.months > 1 && p.priceKrw != null) {
                                 Text(
-                                    String.format(Locale.KOREA, "월 %,d원 꼴", p.priceKrw / p.months),
+                                    String.format(Locale.KOREA, "월 평균 %,d원", p.priceKrw / p.months),
                                     fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp,
                                     color = MuyeonColors.textSub,
                                 )
