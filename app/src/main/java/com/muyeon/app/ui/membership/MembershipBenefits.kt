@@ -16,25 +16,23 @@ object MembershipBenefits {
         val out = mutableListOf<String>()
         postingLine(l)?.let { out += it }
         if (!isDancer) l.lessons?.takeIf { it != 0 }?.let {
-            out += if (it < 0) "레슨 무제한" else "레슨 ${it}개"
+            out += if (it < 0) "레슨 마음껏 올리기" else "레슨 ${it}개까지 올리기"
         }
-        l.resumeViews?.takeIf { it != 0 }?.let {
-            out += if (it < 0) "이력서 열람 무제한" else "이력서 열람 월 ${it}건"
-        }
+        // 이력서 열람은 무료라 혜택 목록에 넣지 않는다(2026-10-07).
         if (!isDancer) l.autoQuotes?.takeIf { it != 0 }?.let {
-            out += if (it < 0) "자동견적 무제한" else "자동견적 월 ${it}건"
+            out += if (it < 0) "견적 자동으로 보내기 (제한 없이)" else "견적 자동으로 보내기 (한 달 ${it}건)"
         }
-        if ((l.boostWeight ?: 0) > 0) out += "목록 상단 노출"
+        if ((l.boostWeight ?: 0) > 0) out += "목록에서 위쪽에 보이기"
         l.performanceDays?.takeIf { it != 0 }?.let {
-            out += if (it < 0) "성과 분석 전체 기간" else "성과 분석 최근 ${it}일"
+            out += if (it < 0) "전체 기간 내 활동 통계 보기" else "최근 ${it}일 내 활동 통계 보기"
         }
         return out
     }
 
     /** 등급이 여는 기능 중 한도(숫자)가 아닌 것 — 혜택 목록 끝에 붙인다. 웹 TIER_EXTRA_BENEFITS 와 같다. */
     fun extras(tier: String?): List<String> = when (tier) {
-        "PRO" -> listOf("상세페이지 이미지", "학원 운영 도구 (수강생·수강권·매출·시간표)")
-        "BASIC", "STANDARD" -> listOf("상세페이지 이미지")
+        "PRO" -> listOf("레슨 소개를 이미지로 꾸미기", "학원 관리 기능 (수강생·수강권·매출·시간표)")
+        "BASIC", "STANDARD" -> listOf("레슨 소개를 이미지로 꾸미기")
         else -> emptyList()
     }
 
@@ -52,7 +50,7 @@ object MembershipBenefits {
         val first = known.first()
         if (known.all { it == first }) {
             if (first == 0) return null
-            return if (first < 0) "공고 무제한" else "공고 종류별 ${first}개씩"
+            return if (first < 0) "채용·대타·캐스팅 공고 마음껏 올리기" else "채용·대타·캐스팅 공고 각각 ${first}개까지"
         }
         return postingKinds.zip(known).joinToString(" · ") { (kind, v) ->
             if (v < 0) "${kind.second} 무제한" else "${kind.second} $v"
