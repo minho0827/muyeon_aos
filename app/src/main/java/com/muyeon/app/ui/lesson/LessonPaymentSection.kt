@@ -39,7 +39,7 @@ internal fun LessonPaymentSection(d: LessonWizardDraft, onChange: (LessonWizardD
     LaunchedEffect(Unit) { policy = LessonRefundPolicyRepo.get() }
     val takesDeposit = d.paymentMode == "DEPOSIT"
     // 이 레슨 가격에서 받을 수 있는 금액만 보여 준다(한도 밖 금액을 고르고 제출 단계에서 막히지 않게).
-    val choices = policy.depositChoices.filter { policy.depositError(it, d.price) == null }
+    val choices = lessonDepositChoices(policy, d.price)
 
     WizardField("가격 기준") {
         WizardMenu(
@@ -59,7 +59,10 @@ internal fun LessonPaymentSection(d: LessonWizardDraft, onChange: (LessonWizardD
         return
     }
     if (choices.isEmpty()) {
-        PaymentHint("레슨 가격이 낮아 받을 수 있는 예약금이 없어요. ${policy.deposit.hint}")
+        PaymentHint(
+            if (d.price == 0) "무료 레슨은 예약금을 받을 수 없어요."
+            else "레슨 가격이 낮아 받을 수 있는 예약금이 없어요. ${policy.deposit.hint}",
+        )
         return
     }
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -83,6 +86,23 @@ internal fun LessonPaymentSection(d: LessonWizardDraft, onChange: (LessonWizardD
         (if (d.priceUnit == "PER_PERSON") "예약 인원수만큼 곱해서 받아요. " else "") +
             "예약금은 전체 레슨비에 포함돼요. ${policy.deposit.hint}",
     )
+}
+
+/**
+ * 레슨 가격 기준 예약금 선택지 — 상한(최대 금액·레슨비의 N%) 안에서 고르기 좋은 간격으로(iOS 와 같은 규칙).
+ *  공용 depositChoices(1만원 단위)를 그대로 쓰면 레슨비 3만 3천원 미만은 고를 금액이 하나도 없다
+ *  (30% 한도 < 1만원). 웹은 1천원 단위로 직접 입력하므로 같은 한도 안에서 맞춘다.
+ */
+private fun lessonDepositChoices(policy: LessonRefundPolicy, price: Int): List<Int> {
+    val unit = maxOf(policy.deposit.unit, 1)
+    val byPercent = price * policy.deposit.maxPercent / 100
+    val cap = minOf(policy.deposit.maxAmount, byPercent, price) / unit * unit
+    if (cap < unit) return emptyList()
+    val base = if (cap <= 10_000) unit else if (cap <= 30_000) 5_000 else 10_000
+    val step = (base + unit - 1) / unit * unit
+    val values = (step..cap step step).toMutableList()
+    if (values.lastOrNull() != cap) values.add(cap)
+    return values.filter { policy.depositError(it, price) == null }
 }
 
 /** 미리보기 '예약 결제' 행 문구. */
