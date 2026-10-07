@@ -59,6 +59,8 @@ data class MembershipPlan(
     val durationDays: Int?,
     val tier: String?,
     val limits: MembershipLimits?,
+    // PASS(기간권) | SUBSCRIPTION(월 자동결제) — 안내 문구를 판매 방식에 맞춘다(웹 MembershipPlans 와 같은 판정).
+    val planKind: String? = null,
 ) {
     val months: Int get() = maxOf(1, Math.round((durationDays ?: 30) / 30.0).toInt())
     val discountPct: Int
@@ -76,6 +78,7 @@ data class MembershipPlan(
                 o.intOrNull("listPriceKrw"), o.intOrNull("durationDays"),
                 meta?.stringOrNull("tier"),
                 meta?.optJSONObject("limits")?.let(MembershipLimits::from),
+                o.stringOrNull("planKind"),
             )
         }
     }
@@ -358,7 +361,9 @@ fun MembershipScreen(api: MembershipApi, onClose: () -> Unit) {
                     listOf(
                         "멤버십은 계정에 하나이며, 인증받은 회원유형의 혜택이 함께 열립니다.",
                         "회원유형을 바꾸거나 추가해도 이용 기간은 그대로 유지됩니다.",
-                        "멤버십은 30일마다 자동결제되며, 해지 후에도 남은 기간은 혜택이 유지됩니다.",
+                        // 운영은 기간권 판매 중 — 자동결제 상품이 있을 때만 자동결제 문구를 보인다.
+                        if (plans.any { it.planKind == "SUBSCRIPTION" }) "멤버십은 30일마다 자동결제되며, 해지 후에도 남은 기간은 혜택이 유지됩니다."
+                        else "기간권은 자동으로 갱신되지 않으며, 구매한 기간이 끝나면 멤버십이 종료됩니다.",
                     ).forEach {
                         Text(
                             "- $it",
