@@ -195,6 +195,12 @@ fun LessonWizardScreen(
             val enabled = if (isLast) !submitting else canProceed
             WizardButton(label, filled = true, enabled = enabled, modifier = Modifier.weight(1f)) {
                 if (!isLast) { step += 1; return@WizardButton }
+                // 예약금 한도는 관리자 '환불 규정' 값으로 검사한다(iOS submit() 과 같은 규칙, 최종 검사는 서버).
+                if (draft.paymentMode == "DEPOSIT") {
+                    val policy = LessonRefundPolicyRepo.current()
+                    val problem = if (draft.price > 0) policy.depositError(draft.depositAmount, draft.price) else policy.deposit.hint
+                    if (problem != null) { errorMessage = problem; return@WizardButton }
+                }
                 submitting = true
                 scope.launch {
                     // 명의 키는 개설에만 붙인다(수정은 서버가 명의를 바꾸지 않는다).
@@ -446,6 +452,7 @@ private fun StepSchedule(d: LessonWizardDraft, onChange: (LessonWizardDraft) -> 
     WizardField("가격") {
         WizardIntMenu(d.price, LessonOptions.prices, LessonOptions::priceLabel) { onChange(d.copy(price = it)) }
     }
+    LessonPaymentSection(d, onChange)
     WizardField("예약 반복") {
         WizardIntMenu(d.weeksAhead, LessonOptions.weeks, LessonOptions::weeksLabel) { onChange(d.copy(weeksAhead = it)) }
     }
@@ -493,6 +500,7 @@ private fun StepPreview(d: LessonWizardDraft) {
         PreviewRow("장소", if (d.isOnline) "온라인 레슨" else listOf(d.place, d.address).filter { it.isNotEmpty() }.joinToString(" · "))
         PreviewRow("정원", "${d.capacity}명")
         PreviewRow("가격", LessonOptions.priceLabel(d.price))
+        PreviewRow("예약 결제", paymentSummary(d))
         if (d.intro.isNotEmpty()) PreviewRow("소개", d.intro)
     }
 }
@@ -511,7 +519,7 @@ private fun scheduleSummary(d: LessonWizardDraft): String {
 // ============================================================
 
 @Composable
-private fun WizardField(label: String, required: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+internal fun WizardField(label: String, required: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(label, fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 17.sp, color = MuyeonColors.textHead)
@@ -546,7 +554,7 @@ private fun WizardMultiline(value: String, placeholder: String, onChange: (Strin
 }
 
 @Composable
-private fun WizardMenu(value: String, placeholder: String, options: List<String>, onSelect: (String) -> Unit) {
+internal fun WizardMenu(value: String, placeholder: String, options: List<String>, onSelect: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
         Row(
@@ -603,7 +611,7 @@ private fun WizardIntMenu(value: Int, options: List<Int>, label: (Int) -> String
 }
 
 @Composable
-private fun WizardToggle(label: String, on: Boolean, onChange: (Boolean) -> Unit) {
+internal fun WizardToggle(label: String, on: Boolean, onChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
             label,

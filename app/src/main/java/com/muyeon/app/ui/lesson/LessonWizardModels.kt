@@ -84,6 +84,11 @@ data class LessonWizardDraft(
     var duration: Int = 60,
     var capacity: Int = 8,
     var price: Int = 20000,
+    // 가격 기준·예약 결제 방식 — 서버 lesson_products.priceUnit/paymentMode/depositAmount(iOS·웹과 같은 키).
+    //  NONE = 결제 없이 예약 즉시 확정, DEPOSIT = 예약금 결제 후 확정. 예약금은 PER_PERSON 이면 인원수만큼 곱해진다.
+    var priceUnit: String = "PER_PERSON",
+    var paymentMode: String = "NONE",
+    var depositAmount: Int = 0,
     var weeksAhead: Int = 8,
     var phone: String = "",
     var parkingInfo: String = "",
@@ -122,6 +127,9 @@ data class LessonWizardDraft(
         put("duration", duration)
         put("maxParticipants", capacity)
         put("price", price)
+        put("priceUnit", priceUnit)
+        put("paymentMode", paymentMode)
+        put("depositAmount", if (paymentMode == "DEPOSIT") depositAmount else 0)
         put("weeksAhead", weeksAhead)
         put("phone", phone)
         put("parkingInfo", parkingInfo)
@@ -170,6 +178,10 @@ data class LessonProductDetail(
     val duration: Int?,
     val maxParticipants: Int?,
     val price: Int?,
+    val priceUnit: String?,
+    val paymentMode: String?,
+    val depositRequired: Boolean?,
+    val depositAmount: Int?,
     val phone: String?,
     val parkingInfo: String?,
     val valetInfo: String?,
@@ -194,6 +206,10 @@ data class LessonProductDetail(
         days = schedule?.map { it.first }?.distinct() ?: emptyList(),
         startTime = schedule?.firstOrNull()?.second ?: "19:00",
         duration = duration ?: 60, capacity = maxParticipants ?: 8, price = price ?: 20000,
+        // 예전 상품은 depositRequired 만 있다 — iOS LessonWizardModels 와 같은 규칙(있으면 DEPOSIT·2만원).
+        priceUnit = priceUnit ?: "PER_PERSON",
+        paymentMode = paymentMode ?: if (depositRequired == true) "DEPOSIT" else "NONE",
+        depositAmount = depositAmount ?: if (depositRequired == true) 20_000 else 0,
         phone = phone.orEmpty(), parkingInfo = parkingInfo.orEmpty(), valetInfo = valetInfo.orEmpty(),
         homepage = homepage.orEmpty(), notice = notice.orEmpty(), cancelPolicy = cancelPolicy.orEmpty(),
     )
@@ -208,7 +224,10 @@ data class LessonProductDetail(
             lat = o.doubleOrNull("lat"), lng = o.doubleOrNull("lng"),
             schedule = o.optJSONArray("schedule")?.map { it.optInt("dayOfWeek") to it.optString("startTime") },
             duration = o.intOrNull("duration"), maxParticipants = o.intOrNull("maxParticipants"),
-            price = o.intOrNull("price"), phone = o.stringOrNull("phone"),
+            price = o.intOrNull("price"),
+            priceUnit = o.stringOrNull("priceUnit"), paymentMode = o.stringOrNull("paymentMode"),
+            depositRequired = o.boolOrNull("depositRequired"), depositAmount = o.intOrNull("depositAmount"),
+            phone = o.stringOrNull("phone"),
             parkingInfo = o.stringOrNull("parkingInfo"), valetInfo = o.stringOrNull("valetInfo"),
             homepage = o.stringOrNull("homepage"), notice = o.stringOrNull("notice"),
             cancelPolicy = o.stringOrNull("cancelPolicy"), calendarId = o.intOrNull("calendarId"),
