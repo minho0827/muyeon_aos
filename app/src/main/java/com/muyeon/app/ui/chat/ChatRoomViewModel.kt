@@ -64,6 +64,8 @@ class ChatRoomViewModel(
     var quoteContext by mutableStateOf<ChatQuoteContext?>(null)
     var lessonSchedule by mutableStateOf<ChatLessonSchedule?>(null)
     var lessonCycles by mutableStateOf<List<ChatLessonCycle>>(emptyList())
+    var progress by mutableStateOf<ChatLessonProgress?>(null)              // 대표 진행(구백엔드 폴백 카드)
+    var pendingProposal by mutableStateOf<ChatPendingProposal?>(null)      // 재입장으로 숨겨진 대기 중 약속 제안
 
     /** 채택(매칭)된 견적 방인지 — 회원도 레슨 약속 제안을 보낼 수 있다(iOS isQuoteMatched). */
     val isQuoteMatched: Boolean get() = quoteContext?.matched == true
@@ -75,6 +77,68 @@ class ChatRoomViewModel(
     val memberBookingContext: ChatQuoteContext?
         get() = lessonCycles.firstOrNull { !it.isTeacher && it.progress.step == "ACCEPTED" }?.asContext
             ?: quoteContext?.takeIf { !it.isTeacher }
+
+    // ── 상단 레슨 컨텍스트 판정 — iOS ChatRoomViewModel 과 같은 조건 ──
+
+    /** 고객(강사 아님)이고 아직 미채택이면 '이 강사로 진행하기' 노출. */
+    val canAcceptQuote: Boolean get() = quoteContext?.let { !it.isTeacher && !it.matched } ?: false
+
+    /**
+     * 채택된 견적의 일반회원이며 아직 일정이 확정되지 않은 경우(상단 '레슨 일정 잡기' 고정 버튼).
+     *  단일/양방향/구백엔드 응답 모두 같은 조건으로 흡수한다.
+     */
+    val memberNeedsSchedule: Boolean
+        get() {
+            if (lessonCycles.any { !it.isTeacher && it.progress.step == "ACCEPTED" }) return true
+            return lessonCycles.isEmpty() &&
+                quoteContext?.isTeacher == false &&
+                quoteContext?.matched == true &&
+                progress?.step == "ACCEPTED"
+        }
+
+    /** 견적요청이 마감(14일 경과)됐는지 — 헤더 '견적 마감' 표시. */
+    val isQuoteExpired: Boolean get() = quoteContext?.quoteStatus == "EXPIRED"
+
+    /** 내가 이 방의 강사 측인지. */
+    val isTeacherSide: Boolean get() = quoteContext?.isTeacher == true
+
+    /** 방에 도착한 견적 수 — 서버 컨텍스트 우선(재입장 시 카드가 숨겨져도 유지), 없으면 메시지 카드 수. */
+    val quoteCount: Int
+        get() = quoteContext?.quoteCount?.takeIf { it > 0 } ?: messages.count { it.type == "QUOTE_CARD" }
+
+    /** 컨텍스트 헤더 과목명("발레 레슨") — 서버 컨텍스트(categoryId) 우선, 메시지 견적 카드 폴백. */
+    val contextCategory: String?
+        get() {
+            quoteContext?.categoryId?.let { cid -> GENRE_LABELS[cid]?.let { return "$it 레슨" } }
+            val card = messages.firstOrNull { it.type == "QUOTE_CARD" } ?: return null
+            val service = runCatching { org.json.JSONObject(card.content).optString("service") }.getOrNull()
+            return service?.takeIf { it.isNotEmpty() }?.let { "$it 레슨" }
+        }
+
+    /** 재입장 방: 견적 카드 메시지는 없는데 견적 컨텍스트는 있음 → 헤더 탭 시 요약 시트로. */
+    val quoteCardHiddenByRejoin: Boolean
+        get() = quoteContext != null && messages.none { it.type == "QUOTE_CARD" }
+
+    /** 컨텍스트 헤더 탭 → 스크롤할 첫 견적 카드 id. */
+    val firstQuoteCardId: Int? get() = messages.firstOrNull { it.type == "QUOTE_CARD" }?.id
+
+    /**
+     * 고객: 이 강사 채택. 성공하면 상태·시스템 메시지를 다시 읽는다(iOS acceptQuote → loadInitial).
+     *  이미 채택됐거나 강사 측이면 요청하지 않고 실패로 돌려준다.
+     */
+    suspend fun acceptQuote(): Boolean {
+        val q = quoteContext ?: return false
+        if (q.isTeacher || q.matched) return false
+        return api.acceptQuote(q.quoteId, q.responseId).fold(
+            onSuccess = {
+                loadDetail()
+                fetchLatest().onSuccess { res -> merge(res.messages); scheduleGapFillIfNeeded() }
+                true
+            },
+            onFailure = { false },
+        )
+    }
+
     var quickReplies by mutableStateOf<List<ChatQuickReply>>(emptyList())
     var replyingTo by mutableStateOf<ChatMessage?>(null)
     var editingMessage by mutableStateOf<ChatMessage?>(null)
@@ -171,6 +235,8 @@ class ChatRoomViewModel(
             quoteContext = d.quoteContext
             lessonSchedule = d.lessonSchedule
             lessonCycles = d.lessonCycles ?: emptyList()
+            progress = d.progress
+            pendingProposal = d.pendingProposal
         }
     }
 
@@ -285,6 +351,8 @@ class ChatRoomViewModel(
     /** 받은 메시지 반영 — 합치기 → 빈 순번 확인 → 읽음. */
     private fun receive(batch: List<ChatMessage>) {
         if (batch.isEmpty()) return
+        // 채택·일정 확정 등 상태 변화 메시지(SYSTEM·카드류) → 상단 진행 카드 즉시 갱신(iOS bindSocket 과 같다).
+        if (batch.any { it.type in CONTEXT_MESSAGE_TYPES }) reloadContext()
         merge(batch)
         scheduleGapFillIfNeeded()
         scheduleMarkRead()
@@ -661,6 +729,15 @@ class ChatRoomViewModel(
         const val TYPING_SEND_INTERVAL_MS = 3_000L
         const val TYPING_IDLE_MS = 4_000L
         const val TYPING_EXPIRY_MS = 6_000L
+
+        /** 도착하면 방 상단 맥락을 다시 읽어야 하는 메시지 종류. */
+        val CONTEXT_MESSAGE_TYPES = setOf("SYSTEM", "QUOTE_CARD", "LESSON_CARD")
+
+        /** 과목 코드 → 표시명(iOS ChatRoomViewModel.genreLabel 과 같은 표). */
+        val GENRE_LABELS = mapOf(
+            "ballet" to "발레", "barre" to "바레", "korean" to "한국무용", "modern" to "현대무용",
+            "practical" to "실용무용", "balletfit" to "발레핏", "musical" to "뮤지컬",
+        )
     }
 }
 

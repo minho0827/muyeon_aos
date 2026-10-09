@@ -87,6 +87,13 @@ class ChatApi(private val token: String?) {
     suspend fun getQuickReplies(roomId: Int): Result<List<ChatQuickReply>> =
         call("/chat/rooms/$roomId/quick-replies").map { JSONArray(it.ifBlank { "[]" }).map(ChatQuickReply::from) }
 
+    /**
+     * POST /quotes/:quoteId/responses/:responseId/accept — 고객: 이 강사 채택(iOS ChatService.acceptQuote).
+     *  견적 화면과 같은 요청(X-Active-Type 헤더 포함)을 쓰도록 QuoteApi 에 위임한다.
+     */
+    suspend fun acceptQuote(quoteId: Int, responseId: Int): Result<Unit> =
+        com.muyeon.app.ui.quote.QuoteApi(token).acceptQuote(quoteId, responseId).map { }
+
     /** POST /quotes/lesson-complete { memberId } — 강사: 레슨 완료 확인(회원 리뷰 가능해짐). */
     suspend fun confirmLesson(memberId: Int): Result<Unit> =
         call("/quotes/lesson-complete", "POST", JSONObject().put("memberId", memberId)).map { }

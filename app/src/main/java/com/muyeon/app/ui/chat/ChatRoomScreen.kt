@@ -76,6 +76,14 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
     var reportMessage by remember { mutableStateOf<ChatMessage?>(null) }   // 상대 메시지 길게 누르기 → 메시지 신고
     var confirmBlock by remember { mutableStateOf(false) }
     var reactionTarget by remember { mutableStateOf<ChatMessage?>(null) }
+    // ── 상단 레슨 컨텍스트(iOS lessonContextArea) 시트·확인창 상태 ──
+    var showCyclesSheet by remember { mutableStateOf(false) }
+    var showLegacyTimeline by remember { mutableStateOf(false) }               // 레거시 대표 진행 타임라인
+    var timelineCycle by remember { mutableStateOf<ChatLessonCycle?>(null) }   // 사이클별 타임라인
+    var showQuoteSummary by remember { mutableStateOf(false) }
+    var showAcceptConfirm by remember { mutableStateOf(false) }
+    var showReviewSwitch by remember { mutableStateOf(false) }
+    var teacherReviewInfo by remember { mutableStateOf(false) }
 
     LaunchedEffect(vm.roomId) { vm.start() }
 
@@ -99,6 +107,57 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
     }
     val surveyLauncher = com.muyeon.app.result.rememberResultLauncher { keys ->
         if (com.muyeon.app.result.ResultKeys.CHAT_ROOM in keys) vm.reloadMessagesAndContext()
+    }
+    // 받은 견적 상세(채택·재요청 등)에서 돌아오면 방 맥락(진행 카드·배너)을 다시 읽는다.
+    val quoteLauncher = com.muyeon.app.result.rememberResultLauncher { vm.reloadContext() }
+
+    // ── 상단 레슨 컨텍스트 동작 — iOS ChatRoomView+Rendering 의 handleProgressPrimary 등과 같은 분기 ──
+
+    /** 레슨 일정 상세(확정·완료·취소는 상세 화면이 담당). */
+    fun openLesson(lessonId: Int) {
+        lessonLauncher.launch(com.muyeon.app.ui.lesson.LessonActivity.detailIntent(context, lessonId))
+    }
+
+    /**
+     * 강사 [일정 확정하기/일정 정하기] — iOS 는 일정 확정 폼(LessonEditView)을 띄운다.
+     *  AOS 는 같은 확정 기능(PENDING → SCHEDULED)이 레슨 일정 상세에 있으므로 상세로 연다.
+     */
+    fun openProgressSchedule(prog: ChatLessonProgress) {
+        prog.lessonId?.let { openLesson(it) }
+    }
+
+    /** 고객 [후기 쓰기] — 채팅을 닫고 웹 강사 상세의 후기 폼(?review=1)으로 이동한다. */
+    fun openReviewPage() {
+        val teacherId = vm.opponentId
+        if (teacherId == 0) return
+        (context as? Activity)?.let { NativeWebRoute.openWebAndFinish(it, "/teachers/$teacherId?review=1") }
+    }
+
+    /** 후기 진입 — 활성유형이 일반이 아니면 전환 안내를 먼저 띄운다. */
+    fun startReviewFlow() {
+        if (ActiveRole.current(context) == "GENERAL") openReviewPage() else showReviewSwitch = true
+    }
+
+    fun handleProgressPrimary(prog: ChatLessonProgress, isTeacher: Boolean) {
+        when (prog.step) {
+            "DONE" -> if (isTeacher) teacherReviewInfo = true else startReviewFlow()
+            "SCHEDULED" -> prog.lessonId?.let { openLesson(it) }
+            "ACCEPTED" -> if (isTeacher) openProgressSchedule(prog) else showProposal = true
+            else -> if (!isTeacher) showAcceptConfirm = true   // 채팅방을 나가지 않고 바로 채택
+        }
+    }
+
+    /** 견적 헤더 탭 — 견적 카드로 스크롤. 재입장으로 카드가 숨겨진 방은 서버 컨텍스트 요약 시트. */
+    fun onQuoteHeader() {
+        if (vm.quoteCardHiddenByRejoin) {
+            showQuoteSummary = true
+            return
+        }
+        val id = vm.firstQuoteCardId ?: return
+        val i = vm.messages.indexOfFirst { it.id == id }
+        if (i < 0) return
+        val offset = if (vm.isLoadingMore) 1 else 0
+        scope.launch { listState.animateScrollToItem(i + offset) }
     }
 
     // 새 메시지/전송 → 최하단으로.
@@ -131,6 +190,29 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         RoomNavBar(vm, onBack, onReport = { showReport = true }, onBlock = { confirmBlock = true })
+
+        // 상단 레슨 컨텍스트(진행 카드·헤더·배너·CTA) — iOS 와 같이 상단바와 메시지 목록 사이.
+        LessonContextArea(
+            vm = vm,
+            onOpenCycles = { showCyclesSheet = true },
+            onCycleTimeline = { timelineCycle = it },
+            onCyclePrimary = { handleProgressPrimary(it.progress, it.isTeacher) },
+            onLegacyTimeline = { showLegacyTimeline = true },
+            onLegacyPrimary = { handleProgressPrimary(it, vm.quoteContext?.isTeacher == true) },
+            onProposalChanged = { vm.reloadContext() },
+            onOpenProposalPayment = { pid ->
+                (context as? Activity)?.let { NativeWebRoute.openWebAndFinish(it, "/lesson-proposals/$pid/payment") }
+            },
+            onMemberSchedule = { showProposal = true },
+            onQuoteHeader = { onQuoteHeader() },
+            onOpenLesson = { openLesson(it) },
+            onAcceptQuote = { showAcceptConfirm = true },
+            onMatchedAction = {
+                // iOS 와 같은 분기 — 이 배너는 progress 가 없을 때만 보이므로 실제로는 약속 제안 작성이 열린다.
+                val p = vm.progress
+                if (vm.isTeacherSide && p != null) openProgressSchedule(p) else showProposal = true
+            },
+        )
 
         Box(Modifier.weight(1f).fillMaxWidth().background(Color(0xFFF7F7F8))) {
             if (vm.isLoading && vm.messages.isEmpty()) {
@@ -282,7 +364,129 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
             totalPrice = vm.memberBookingContext?.priceAmount ?: 0,
             depositAmount = vm.memberBookingContext?.takeIf { it.paymentMode == "DEPOSIT" }?.depositAmount ?: 0,
             onSent = { showProposal = false; vm.toast = "약속을 제안했어요."; vm.reloadContext() },
-            onDismiss = { showProposal = false },
+            onDismiss = { showProposal = false; vm.reloadContext() },
+        )
+    }
+    if (showCyclesSheet) {
+        LessonCyclesSheet(
+            cycles = vm.lessonCycles,
+            opponentImage = vm.opponentImage,
+            onTimeline = { c -> showCyclesSheet = false; timelineCycle = c },
+            onPrimary = { c -> showCyclesSheet = false; handleProgressPrimary(c.progress, c.isTeacher) },
+            onDismiss = { showCyclesSheet = false },
+        )
+    }
+    // 레거시 대표 진행 타임라인 — 역할은 방 단위 quoteContext 기준.
+    val legacyProgress = vm.progress
+    if (showLegacyTimeline && legacyProgress != null) {
+        val qc = vm.quoteContext
+        LessonTimelineSheet(
+            progress = legacyProgress,
+            context = qc,
+            category = vm.contextCategory,
+            onQuoteDetail = if (qc?.isTeacher == false) { { showLegacyTimeline = false; showAcceptConfirm = true } } else null,
+            onSetSchedule = if (qc?.isTeacher == true) {
+                { showLegacyTimeline = false; openProgressSchedule(legacyProgress) }
+            } else null,
+            onOpenCalendar = legacyProgress.lessonId?.let { lid -> { showLegacyTimeline = false; openLesson(lid) } },
+            onReview = if (qc?.isTeacher == false) {
+                { showLegacyTimeline = false; startReviewFlow() }
+            } else {
+                { showLegacyTimeline = false; teacherReviewInfo = true }
+            },
+            reviewDisabledStyle = qc?.isTeacher == true,
+            onDismiss = { showLegacyTimeline = false },
+        )
+    }
+    // 사이클별 타임라인 — 역할(강사/회원)은 사이클 기준으로 판정.
+    timelineCycle?.let { cycle ->
+        LessonTimelineSheet(
+            progress = cycle.progress,
+            context = cycle.asContext,
+            category = cycle.title,
+            isProposal = cycle.isProposal,
+            onQuoteDetail = if (!cycle.isTeacher && !cycle.isProposal) {
+                { timelineCycle = null; showAcceptConfirm = true }
+            } else null,
+            onSetSchedule = if (cycle.isTeacher && !cycle.isProposal) {
+                { timelineCycle = null; openProgressSchedule(cycle.progress) }
+            } else null,
+            onOpenCalendar = cycle.progress.lessonId?.let { lid -> { timelineCycle = null; openLesson(lid) } },
+            onReview = if (!cycle.isTeacher) {
+                { timelineCycle = null; startReviewFlow() }
+            } else {
+                { timelineCycle = null; teacherReviewInfo = true }
+            },
+            reviewDisabledStyle = cycle.isTeacher,
+            onDismiss = { timelineCycle = null },
+        )
+    }
+    // 재입장 방 견적 요약 — 고객이면 받은 견적 상세(네이티브 견적 허브)로 이어진다.
+    if (showQuoteSummary) {
+        val qc = vm.quoteContext
+        QuoteContextSummarySheet(
+            context = qc,
+            category = vm.contextCategory,
+            onOpenDetail = if (qc != null && !qc.isTeacher) {
+                {
+                    showQuoteSummary = false
+                    quoteLauncher.launch(
+                        com.muyeon.app.ui.quote.QuoteHubActivity.intent(context, isPro = false, quoteId = qc.quoteId),
+                    )
+                }
+            } else null,
+            onDismiss = { showQuoteSummary = false },
+        )
+    }
+    // 강사 채택(고객)
+    if (showAcceptConfirm) {
+        com.muyeon.app.ui.quote.QuoteDialog(
+            title = "이 강사로 진행할까요?",
+            message = "채택하면 이 요청은 마감되고 다른 견적은 받을 수 없어요.",
+            confirmText = "채택하기",
+            onConfirm = {
+                showAcceptConfirm = false
+                scope.launch {
+                    val ok = vm.acceptQuote()
+                    vm.toast = if (ok) "강사를 채택했어요. 채팅에서 일정을 확정해 주세요."
+                    else "채택에 실패했어요. 잠시 후 다시 시도해 주세요."
+                }
+            },
+            onDismiss = { showAcceptConfirm = false },
+        )
+    }
+    // 후기 — 활성유형이 일반이 아니면 전환 안내.
+    //  AOS 에는 네이티브 유형 전환 API 가 없어, 확인 시 웹 후기 화면으로 이동하고 유형 확인은 웹이 처리한다.
+    if (showReviewSwitch) {
+        com.muyeon.app.ui.quote.QuoteDialog(
+            title = "후기는 일반 회원 화면에서 작성해요",
+            message = "일반 유형으로 전환한 뒤 후기 작성 화면으로 이동합니다.",
+            confirmText = "일반 유형으로 전환하고 후기 쓰기",
+            onConfirm = { showReviewSwitch = false; openReviewPage() },
+            onDismiss = { showReviewSwitch = false },
+        )
+    }
+    // 강사 방향 레슨 — 후기 대상 아님 안내(확인 버튼 하나).
+    if (teacherReviewInfo) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { teacherReviewInfo = false },
+            title = {
+                Text(
+                    "이 레슨에서는 후기를 쓸 수 없어요",
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp,
+                )
+            },
+            text = {
+                Text(
+                    "이 레슨에서 회원님은 강사예요. 후기는 수강한 회원이 남길 수 있어요.",
+                    fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { teacherReviewInfo = false }) {
+                    Text("확인", fontFamily = customFontFamily, color = MuyeonColors.primary)
+                }
+            },
         )
     }
     if (confirmBlock) {

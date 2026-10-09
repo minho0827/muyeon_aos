@@ -317,6 +317,7 @@ data class ChatRoomDetail(
     val progress: ChatLessonProgress?,
     val lessonCycles: List<ChatLessonCycle>?,   // 있으면 이걸 우선 렌더(양방향)
     val lastSeq: Int?,                          // 방의 마지막 메시지 순번(구버전 서버는 null)
+    val pendingProposal: ChatPendingProposal? = null,   // 재입장으로 카드가 숨겨진 대기 중 약속 제안(상단 고정용)
 ) {
     companion object {
         fun from(o: JSONObject) = ChatRoomDetail(
@@ -331,6 +332,22 @@ data class ChatRoomDetail(
             progress = o.optJSONObject("progress")?.let { ChatLessonProgress.from(it) },
             lessonCycles = o.optJSONArray("lessonCycles")?.map { ChatLessonCycle.from(it) },
             lastSeq = o.intOrNull("lastSeq"),
+            pendingProposal = o.optJSONObject("pendingProposal")?.let { ChatPendingProposal.from(it) },
+        )
+    }
+}
+
+/**
+ * 대기 중 레슨 약속 제안(GET /chat/rooms/:id 의 pendingProposal) — iOS ChatRoomDetail.pendingProposal.
+ *  본문은 LESSON_PROPOSAL 메시지 content 와 같은 형식이라 [LessonProposalBubble] 에 JSON 원문 그대로 넘긴다.
+ *  [isProposer] 는 서버가 판정한 "열람자가 제안자인지" 값이다(견적 없는 방에서 역할 오판 방지).
+ */
+data class ChatPendingProposal(val json: String, val proposalId: Int, val isProposer: Boolean) {
+    companion object {
+        fun from(o: JSONObject) = ChatPendingProposal(
+            json = o.toString(),
+            proposalId = o.optInt("proposalId"),
+            isProposer = o.optBoolean("isProposer", false),
         )
     }
 }

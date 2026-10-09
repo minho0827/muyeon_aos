@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Icon
@@ -49,8 +50,11 @@ import java.util.Locale
 // 레슨 진행 카드 — 5단계 스테퍼(요청→견적→채택→확정→완료)
 // ============================================================
 
-private val PROGRESS_STEPS = listOf("요청", "견적", "채택", "확정", "완료")
-
+/**
+ * 진행 카드(접힌 한 줄) — iOS LessonProgressCard.
+ *  카드 탭 → 타임라인 시트([onTimeline]), 우측 캡슐 버튼 → 단계·역할별 주 액션([onPrimary]).
+ *  배경·모서리는 호출부가 정한다(상단 고정은 회색 띠, 목록 시트는 둥근 테두리 카드).
+ */
 @Composable
 fun LessonProgressCard(
     progress: ChatLessonProgress,
@@ -61,17 +65,18 @@ fun LessonProgressCard(
     personName: String? = null,
     personImage: String? = null,
     personRole: String? = null, // "강사" | "수강생"
+    modifier: Modifier = Modifier,
+    onTimeline: () -> Unit,
     onPrimary: () -> Unit,
 ) {
     val isTeacher = context?.isTeacher ?: false
 
     Column(
-        Modifier
+        modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(MuyeonColors.surface)
-            .border(1.dp, MuyeonColors.border, RoundedCornerShape(14.dp))
-            .padding(14.dp),
+            .background(MuyeonColors.groupedBg)
+            .clickable(onClick = onTimeline)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         // 상대 프로필 헤더 — [아바타] 이름 [강사/수강생]. 역할칩이 레슨 방향을 잡아준다.
@@ -100,76 +105,94 @@ fun LessonProgressCard(
             }
         }
 
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 category ?: "레슨",
-                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
-                lineHeight = 18.sp, color = MuyeonColors.textHead,
+                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                lineHeight = 17.sp, color = MuyeonColors.textHead,
             )
             if (isProposal) Chip("약속", MuyeonColors.primary)
-            if (isExpired) Chip("마감", MuyeonColors.secondary)
+            if (isExpired) QuoteExpiredPill()
             Spacer(Modifier.weight(1f))
-            context?.priceText?.let {
+            // 5점 스테퍼 — 현재 단계까지 채움
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                repeat(5) { i ->
+                    Box(
+                        Modifier.size(6.dp).clip(CircleShape)
+                            .background(if (i <= progress.stepIndex) MuyeonColors.primary else Color(0xFFD1D1D6)),
+                    )
+                }
+            }
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
+                tint = MuyeonColors.secondary, modifier = Modifier.size(14.dp),
+            )
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                progressStatusLine(progress, context, isTeacher),
+                fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 16.sp,
+                color = MuyeonColors.secondary, maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            primaryCta(progress.step, isTeacher)?.let { label ->
                 Text(
-                    it,
-                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
-                    lineHeight = 17.sp, color = MuyeonColors.textHead,
+                    label,
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                    lineHeight = 15.sp, color = Color.White,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(MuyeonColors.primary)
+                        .clickable(onClick = onPrimary)
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
                 )
             }
-        }
-
-        // 5단계 스테퍼
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            PROGRESS_STEPS.forEachIndexed { i, label ->
-                val done = i <= progress.stepIndex
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(
-                        Modifier.size(8.dp).clip(CircleShape)
-                            .background(if (done) MuyeonColors.primary else MuyeonColors.border),
-                    )
-                    Text(
-                        label,
-                        fontFamily = customFontFamily,
-                        fontWeight = if (done) FontWeight.SemiBold else FontWeight.Normal,
-                        fontSize = 10.sp, lineHeight = 12.sp,
-                        color = if (done) MuyeonColors.textHead else MuyeonColors.secondary,
-                        modifier = Modifier.padding(top = 3.dp),
-                    )
-                }
-                if (i != PROGRESS_STEPS.lastIndex) {
-                    Box(
-                        Modifier.weight(1f).height(2.dp).padding(horizontal = 2.dp)
-                            .background(if (i < progress.stepIndex) MuyeonColors.primary else MuyeonColors.border),
-                    )
-                }
-            }
-        }
-
-        // 단계·역할별 한 줄 CTA
-        val cta = primaryCta(progress.step, isTeacher)
-        if (cta != null) {
-            Text(
-                cta,
-                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
-                lineHeight = 17.sp, color = Color.White, textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MuyeonColors.primary)
-                    .clickable(onClick = onPrimary)
-                    .padding(vertical = 10.dp),
-            )
         }
     }
 }
 
-/** iOS 단계·역할별 주 액션 라벨. */
+/** iOS LessonProgressCard.statusLine — 단계·역할별 한 줄 상태. */
+private fun progressStatusLine(progress: ChatLessonProgress, context: ChatQuoteContext?, isTeacher: Boolean): String =
+    when (progress.step) {
+        "DONE" -> "레슨 완료"
+        "SCHEDULED" -> lessonProgressDateTime(progress.scheduleStartAt)?.let { "일정 확정 · $it" } ?: "일정 확정"
+        "ACCEPTED" -> if (isTeacher) "채택 완료 — 일정을 확정해 주세요" else "채택 완료 — 원하는 일정을 제안해 주세요"
+        else -> {
+            var line = "견적 ${progress.responseCount ?: 1}건 도착"
+            context?.priceText?.let { line += " · $it" }
+            line
+        }
+    }
+
+/** iOS LessonProgressCard.primaryLabel — 단계·역할별 주 액션 라벨(null 이면 버튼 없음). */
 private fun primaryCta(step: String, isTeacher: Boolean): String? = when (step) {
-    "RESPONDED" -> if (isTeacher) null else "견적 보기"
-    "ACCEPTED" -> if (isTeacher) "일정 정하기" else "일정 확정 기다리는 중"
+    "DONE" -> if (isTeacher) null else "후기 쓰기"   // 후기는 수강생만 — 강사 방향엔 버튼 미노출
     "SCHEDULED" -> "일정 보기"
-    "DONE" -> if (isTeacher) null else "후기 쓰기"
-    else -> null
+    "ACCEPTED" -> if (isTeacher) "일정 확정하기" else "일정 잡기"
+    else -> if (isTeacher) null else "채택하기"
+}
+
+/** 견적요청 마감(14일 경과) 배지 — iOS ChatRoomView.quoteExpiredPill. */
+@Composable
+internal fun QuoteExpiredPill() {
+    Text(
+        "견적 마감",
+        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 10.sp, lineHeight = 12.sp,
+        color = MuyeonColors.secondary,
+        modifier = Modifier
+            .clip(RoundedCornerShape(50)).background(MuyeonColors.placeholder)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+    )
+}
+
+/** ISO → "7월 26일 (토) 오후 4:58" — iOS ChatLessonProgressFormat.dateTime. */
+internal fun lessonProgressDateTime(iso: String?): String? {
+    val t = QuoteUi.parseDate(iso) ?: return null
+    return SimpleDateFormat("M월 d일 (E) a h:mm", Locale.KOREA)
+        .apply { timeZone = java.util.TimeZone.getTimeZone("Asia/Seoul") }
+        .format(Date(t))
 }
 
 @Composable
