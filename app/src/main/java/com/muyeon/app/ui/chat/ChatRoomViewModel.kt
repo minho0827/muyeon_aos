@@ -139,6 +139,22 @@ class ChatRoomViewModel(
         )
     }
 
+    /**
+     * 상단 부제 — 상대 최근 읽음 시각으로 접속·활동 상태를 표시한다(iOS presenceText).
+     *  5분 미만 "접속 중", 1시간 미만 "N분 전 활동", 24시간 미만 "N시간 전 활동", 그 외 표시 없음.
+     *  [now] 는 화면이 1분마다 갱신해 넘긴다(시간 경과에 따라 문구가 바뀌어야 하므로).
+     */
+    fun presenceText(now: Long): String? {
+        val lr = opponentLastReadAt ?: return null
+        val diffSec = ((now - lr) / 1000).coerceAtLeast(0)
+        return when {
+            diffSec < 300 -> PRESENCE_ONLINE
+            diffSec < 3600 -> "${diffSec / 60}분 전 활동"
+            diffSec < 86400 -> "${diffSec / 3600}시간 전 활동"
+            else -> null
+        }
+    }
+
     var quickReplies by mutableStateOf<List<ChatQuickReply>>(emptyList())
     var replyingTo by mutableStateOf<ChatMessage?>(null)
     var editingMessage by mutableStateOf<ChatMessage?>(null)
@@ -719,22 +735,24 @@ class ChatRoomViewModel(
         }
     }
 
-    private companion object {
-        const val TAG = "ChatRoomVM"
-        const val INCOMING_BATCH_MS = 50L
-        const val GAP_CHECK_DELAY_MS = 500L
-        const val GAP_FILL_LIMIT = 100
-        const val GAP_FILL_MAX_ROUNDS = 10
-        const val MARK_READ_INTERVAL_MS = 1_000L
-        const val TYPING_SEND_INTERVAL_MS = 3_000L
-        const val TYPING_IDLE_MS = 4_000L
-        const val TYPING_EXPIRY_MS = 6_000L
+    companion object {
+        /** 접속 중 문구 — 화면이 초록 점 표시 여부를 이 값으로 판정한다. */
+        const val PRESENCE_ONLINE = "접속 중"
+        private const val TAG = "ChatRoomVM"
+        private const val INCOMING_BATCH_MS = 50L
+        private const val GAP_CHECK_DELAY_MS = 500L
+        private const val GAP_FILL_LIMIT = 100
+        private const val GAP_FILL_MAX_ROUNDS = 10
+        private const val MARK_READ_INTERVAL_MS = 1_000L
+        private const val TYPING_SEND_INTERVAL_MS = 3_000L
+        private const val TYPING_IDLE_MS = 4_000L
+        private const val TYPING_EXPIRY_MS = 6_000L
 
         /** 도착하면 방 상단 맥락을 다시 읽어야 하는 메시지 종류. */
-        val CONTEXT_MESSAGE_TYPES = setOf("SYSTEM", "QUOTE_CARD", "LESSON_CARD")
+        private val CONTEXT_MESSAGE_TYPES = setOf("SYSTEM", "QUOTE_CARD", "LESSON_CARD")
 
         /** 과목 코드 → 표시명(iOS ChatRoomViewModel.genreLabel 과 같은 표). */
-        val GENRE_LABELS = mapOf(
+        private val GENRE_LABELS = mapOf(
             "ballet" to "발레", "barre" to "바레", "korean" to "한국무용", "modern" to "현대무용",
             "practical" to "실용무용", "balletfit" to "발레핏", "musical" to "뮤지컬",
         )

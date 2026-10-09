@@ -110,6 +110,18 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
     }
     // 받은 견적 상세(채택·재요청 등)에서 돌아오면 방 맥락(진행 카드·배너)을 다시 읽는다.
     val quoteLauncher = com.muyeon.app.result.rememberResultLauncher { vm.reloadContext() }
+    // 전체 알림 설정에서 돌아오면 방 상세(음소거 상태 등)를 다시 읽는다.
+    val notiSettingsLauncher = com.muyeon.app.result.rememberResultLauncher { vm.reloadContext() }
+
+    /**
+     * 상대 공개 프로필 — iOS PublicProfileView(userId: recipientId, src: "chat", hideCta: true).
+     *  강사가 아니면 서버가 404 를 돌려주고 프로필 화면이 "불러오지 못했어요" 를 표시한다(iOS 와 같다).
+     */
+    fun openOpponentProfile() {
+        val uid = vm.opponentId
+        if (uid <= 0) return
+        com.muyeon.app.ui.resume.ResumeActivity.startProfile(context, uid, "chat")
+    }
 
     // ── 상단 레슨 컨텍스트 동작 — iOS ChatRoomView+Rendering 의 handleProgressPrimary 등과 같은 분기 ──
 
@@ -189,7 +201,17 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        RoomNavBar(vm, onBack, onReport = { showReport = true }, onBlock = { confirmBlock = true })
+        RoomNavBar(
+            vm, onBack,
+            onOpenProfile = { openOpponentProfile() },
+            onOpenNotificationSettings = {
+                notiSettingsLauncher.launch(
+                    com.muyeon.app.ui.notification.NotificationSettingsActivity.intent(context),
+                )
+            },
+            onReport = { showReport = true },
+            onBlock = { confirmBlock = true },
+        )
 
         // 상단 레슨 컨텍스트(진행 카드·헤더·배너·CTA) — iOS 와 같이 상단바와 메시지 목록 사이.
         LessonContextArea(
@@ -241,6 +263,7 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
                             message = m,
                             isMine = m.senderId == vm.currentUserId,
                             opponentImage = vm.opponentImage,
+                            onOpenProfile = { openOpponentProfile() },
                             read = isReadByOpponent(m, vm.opponentLastReadAt),
                             currentUserId = vm.currentUserId,
                             // 예약금 결제는 웹 결제 화면(iOS LessonPaymentWebView 와 같은 경로)으로 넘긴다.
@@ -280,15 +303,6 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
                         PendingBubble(vm.pending[i]) { vm.retry(vm.pending[i]) }
                     }
                 }
-            }
-
-            if (vm.isOtherTyping) {
-                Text(
-                    "입력 중…",
-                    fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 14.sp,
-                    color = MuyeonColors.textSub,
-                    modifier = Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 4.dp),
-                )
             }
 
             if (vm.isUploadingMedia) {
@@ -626,18 +640,60 @@ private fun copyToClipboard(context: android.content.Context, text: String) {
 private fun RoomNavBar(
     vm: ChatRoomViewModel,
     onBack: () -> Unit,
+    onOpenProfile: () -> Unit,
+    onOpenNotificationSettings: () -> Unit,
     onReport: () -> Unit,
     onBlock: () -> Unit,
 ) {
+    // 활동 상태 문구는 시간이 지나면 바뀐다(접속 중 → N분 전) — 1분마다 기준 시각을 갱신한다.
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(60_000)
+            now = System.currentTimeMillis()
+        }
+    }
+    val presence = vm.presenceText(maxOf(now, System.currentTimeMillis()))
+
     Box(
-        Modifier.fillMaxWidth().height(44.dp).background(MuyeonColors.surface),
+        Modifier.fillMaxWidth().height(48.dp).background(MuyeonColors.surface),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            vm.title.ifBlank { "채팅" },
-            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp,
-            lineHeight = 20.sp, color = MuyeonColors.textHead,
-        )
+        // 이름 + 부제(입력 중 / 접속·활동 상태). 탭 → 상대 공개 프로필(iOS 상단바와 같다).
+        Column(
+            Modifier
+                .padding(horizontal = 96.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(enabled = vm.opponentId > 0, onClick = onOpenProfile)
+                .padding(horizontal = 8.dp, vertical = 2.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                vm.title.ifBlank { "채팅" },
+                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                lineHeight = 19.sp, color = MuyeonColors.textHead, maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
+            if (vm.isOtherTyping) {
+                Text(
+                    "입력 중…",
+                    fontFamily = customFontFamily, fontSize = 11.sp, lineHeight = 13.sp,
+                    color = MuyeonColors.primary,
+                )
+            } else if (presence != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (presence == ChatRoomViewModel.PRESENCE_ONLINE) {
+                        Box(Modifier.size(6.dp).clip(RoundedCornerShape(50)).background(Color(0xFF34C759)))
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    Text(
+                        presence,
+                        fontFamily = customFontFamily, fontSize = 11.sp, lineHeight = 13.sp,
+                        color = MuyeonColors.secondary,
+                    )
+                }
+            }
+        }
         Box(
             Modifier.align(Alignment.CenterStart).padding(start = 4.dp).size(44.dp).clickable(onClick = onBack),
             contentAlignment = Alignment.Center,
@@ -665,6 +721,13 @@ private fun RoomNavBar(
                     Icon(Icons.Filled.MoreVert, "더보기", tint = MuyeonColors.textHead, modifier = Modifier.size(18.dp))
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    // 전체 알림 설정 — iOS 방 설정 시트의 '전체 알림 설정'과 같은 화면.
+                    DropdownMenuItem(
+                        text = {
+                            Text("전체 알림 설정", fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.textHead)
+                        },
+                        onClick = { menuOpen = false; onOpenNotificationSettings() },
+                    )
                     DropdownMenuItem(
                         text = {
                             Text("신고하기", fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.danger)
@@ -784,6 +847,7 @@ private fun MessageBubble(
     message: ChatMessage,
     isMine: Boolean,
     opponentImage: String?,
+    onOpenProfile: () -> Unit,
     read: Boolean,
     currentUserId: Int,
     onOpenProposalPayment: (Int) -> Unit,
@@ -859,7 +923,11 @@ private fun MessageBubble(
         verticalAlignment = Alignment.Top,
     ) {
         if (!isMine) {
-            QuoteAvatar(opponentImage, message.sender?.displayName ?: "상대", 32.dp)
+            // 아바타 탭 → 상대 공개 프로필(iOS 상단바·말풍선 아바타와 같은 목적지).
+            QuoteAvatar(
+                opponentImage, message.sender?.displayName ?: "상대", 32.dp,
+                modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onOpenProfile),
+            )
             Spacer(Modifier.width(6.dp))
         }
 

@@ -196,6 +196,8 @@ class ResumeActivity : ResultActivity() {
                 composable("profile") {
                     PublicProfileScreen(
                         api = api, reviewApi = reviewApi, userId = userId, src = src,
+                        // 채팅방에서 연 프로필은 열람 전용 — 하단 CTA 숨김(iOS src:"chat", hideCta:true)
+                        hideCta = src == "chat",
                         onClose = { back() },
                         onOpenChat = { roomId -> ChatActivity.startRoom(this@ResumeActivity, roomId) },
                         // 지정 견적요청 — 이 강사에게만(iOS presentQuoteWizardDirect targetTeacherId)
