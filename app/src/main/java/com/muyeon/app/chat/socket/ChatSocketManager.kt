@@ -57,6 +57,7 @@ object ChatSocketManager {
     @Volatile
     private var everConnected = false
 
+    private const val CHAT_NAMESPACE = "/chat"
     private const val EV_JOIN_ROOM = "join-room"
     private const val EV_LEAVE_ROOM = "leave-room"
     private const val EV_SEND_MESSAGE = "send-message"
@@ -108,7 +109,9 @@ object ChatSocketManager {
         socket = null
         desired = true
 
-        val s = IO.socket(URI.create(BuildConfig.API_BASE_URL.trimEnd('/')), buildOptions(t))
+        // 네임스페이스는 URI 경로로 정해진다. 서버 게이트웨이는 /chat 이므로 경로를 붙여야 한다.
+        //  경로가 없으면 기본 네임스페이스(/)에 연결되어 연결은 성공하지만 채팅 이벤트를 아무도 처리하지 않는다.
+        val s = IO.socket(URI.create(BuildConfig.API_BASE_URL.trimEnd('/') + CHAT_NAMESPACE), buildOptions(t))
         socket = s
 
         s.on(Socket.EVENT_CONNECT) {
