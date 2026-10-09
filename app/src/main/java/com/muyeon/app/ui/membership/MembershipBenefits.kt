@@ -29,7 +29,8 @@ object MembershipBenefits {
         return out
     }
 
-    /** 등급이 여는 기능 중 한도(숫자)가 아닌 것 — 혜택 목록 끝에 붙인다. 웹 TIER_EXTRA_BENEFITS 와 같다. */
+    /** 등급이 여는 기능 중 한도(숫자)가 아닌 것 — 혜택 목록 끝에 붙인다. 웹 TIER_EXTRA_BENEFITS 와 같다.
+     *  서버 문구(MembershipCopy.extras)가 없을 때 쓰는 기본값이다. */
     fun extras(tier: String?): List<String> = when (tier) {
         "PRO" -> listOf("레슨 소개를 이미지로 꾸미기", "학원 관리 기능 (수강생·수강권·매출·시간표)")
         "BASIC", "STANDARD" -> listOf("레슨 소개를 이미지로 꾸미기")
