@@ -527,7 +527,8 @@ class ChatRoomViewModel(
 
     fun onInputChange(text: String) {
         input = text
-        ChatDrafts.save(roomId, text)
+        // 수정 중인 문구는 드래프트로 남기지 않는다(취소하면 사라져야 한다).
+        if (editingMessage == null) ChatDrafts.save(roomId, text)
         handleTypingChanged(text)
     }
 
@@ -578,6 +579,44 @@ class ChatRoomViewModel(
         replyingTo = null
         clearInput()
         dispatch(p)
+    }
+
+    /** 빠른 답변 칩 탭 → 그 문구를 바로 전송(입력창·드래프트는 건드리지 않는다 — iOS sendQuick). */
+    fun sendQuick(text: String) {
+        val t = text.trim()
+        if (t.isEmpty()) return
+        val p = Pending(type = "TEXT", content = t, imageUrl = null, replyToId = null)
+        pending.add(p)
+        dispatch(p)
+    }
+
+    /**
+     * 빠른 답변 칩 노출 조건 — 내가 이 방에서 아직 한마디도 하지 않았을 때만(iOS hasMyMessage).
+     *  한 번이라도 보내면 숨긴다. 재입장한 새 대화에서는 이전 메시지가 안 보이므로 다시 나타난다.
+     */
+    val hasMyMessage: Boolean
+        get() = pending.isNotEmpty() || messages.any { it.senderId == currentUserId && it.type != "SYSTEM" }
+
+    // ── 길게 누르기 메뉴의 답장·수정 시작/취소(iOS startReply·startEdit·cancelCompose) ──
+
+    fun startReply(m: ChatMessage) {
+        if (editingMessage != null) cancelCompose()
+        replyingTo = m
+    }
+
+    /** 수정 시작 — 입력값을 원문으로 채운다(드래프트에는 남기지 않는다). */
+    fun startEdit(m: ChatMessage) {
+        replyingTo = null
+        editingMessage = m
+        input = m.content
+    }
+
+    /** 답장·수정 취소. 수정 중이었다면 원문으로 채운 입력값도 비운다. */
+    fun cancelCompose() {
+        val wasEditing = editingMessage != null
+        replyingTo = null
+        editingMessage = null
+        if (wasEditing) clearInput()
     }
 
     /** 실패한 말풍선 재전송 — 같은 clientMsgId 로 보낸다(이미 저장됐으면 서버가 처음 메시지를 돌려준다). */
@@ -663,13 +702,16 @@ class ChatRoomViewModel(
     /**
      * 사진 전송 — 업로드 후 imageUrl 을 콤마로 join 해 한 건으로 보낸다(iOS sendImage 규약).
      *  여러 장을 개별 메시지로 쪼개면 상대 화면에서 도배가 된다.
+     *  앨범·카메라 모두 긴 변 1200px·JPEG 품질 60% 로 줄여 올린다(iOS compressJPEG 와 같은 기준).
+     *  디코딩할 수 없는 형식이면 원본을 그대로 올린다.
      */
     fun sendImages(context: android.content.Context, uris: List<android.net.Uri>) {
         if (uris.isEmpty()) return
         isUploadingMedia = true
         viewModelScope.launch {
             val urls = uris.mapNotNull { uri ->
-                readBytes(context, uri)?.let { api.uploadImage(it).getOrNull() }
+                val bytes = ChatImageCompressor.compress(context, uri) ?: readBytes(context, uri)
+                bytes?.let { api.uploadImage(it).getOrNull() }
             }
             isUploadingMedia = false
             if (urls.isEmpty()) { toast = "사진을 올리지 못했어요."; return@launch }

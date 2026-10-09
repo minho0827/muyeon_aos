@@ -14,6 +14,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NotificationsOff
@@ -82,6 +85,7 @@ fun ChatRoomScreen(
     var reportMessage by remember { mutableStateOf<ChatMessage?>(null) }   // 상대 메시지 길게 누르기 → 메시지 신고
     var confirmBlock by remember { mutableStateOf(false) }
     var reactionTarget by remember { mutableStateOf<ChatMessage?>(null) }
+    var selectCopyText by remember { mutableStateOf<String?>(null) }   // 선택복사 대상(iOS SelectCopySheet)
     // ── 상단 레슨 컨텍스트(iOS lessonContextArea) 시트·확인창 상태 ──
     var showCyclesSheet by remember { mutableStateOf(false) }
     var showLegacyTimeline by remember { mutableStateOf(false) }               // 레거시 대표 진행 타임라인
@@ -221,11 +225,47 @@ fun ChatRoomScreen(
         scope.launch { scrollToMessage(id) }
     }
 
-    // 새 메시지/전송 → 최하단으로.
-    //  메시지 수가 아니라 마지막 메시지 id 를 기준으로 한다 — 이전 메시지를 위에 붙일 때는 내려가지 않는다.
+    // ── 하단 자동 스크롤 ──
+    //  · 마지막 메시지 id 기준 — 이전 메시지를 위에 붙일 때(id 변화 없음)는 내려가지 않는다.
+    //  · 내 전송·전송 대기 말풍선 → 항상 하단으로.
+    //  · 상대 새 메시지 → 이미 하단 근처를 보고 있을 때만 따라 내려간다(위 기록을 읽는 중이면 위치 유지).
+    //  · 첫 로드 → 하단으로 즉시 이동.
+    var prevLastId by remember { mutableStateOf<Int?>(null) }
+    var prevPendingCount by remember { mutableIntStateOf(0) }
     LaunchedEffect(vm.messages.lastOrNull()?.id, vm.pending.size) {
-        val last = vm.messages.size + vm.pending.size - 1
-        if (last >= 0) scope.launch { listState.animateScrollToItem(last) }
+        val lastMsg = vm.messages.lastOrNull()
+        val total = vm.messages.size + vm.pending.size
+        val before = prevLastId
+        val pendingGrew = vm.pending.size > prevPendingCount
+        prevLastId = lastMsg?.id
+        prevPendingCount = vm.pending.size
+        if (total == 0) return@LaunchedEffect
+        val offset = if (vm.isLoadingMore) 1 else 0
+        val lastIndex = total - 1 + offset
+        if (before == null) {
+            listState.scrollToItem(lastIndex)
+            return@LaunchedEffect
+        }
+        val mine = pendingGrew || (lastMsg != null && lastMsg.id != before && lastMsg.senderId == vm.currentUserId)
+        // 직전 마지막 메시지가 화면 하단 근처(2칸 이내)에 보였으면 '하단을 보고 있던 중' 으로 본다.
+        val prevIndex = vm.messages.indexOfFirst { it.id == before }.takeIf { it >= 0 }?.plus(offset)
+        val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+        val nearBottom = prevIndex == null || lastVisible >= prevIndex - 2
+        if (mine || nearBottom) listState.animateScrollToItem(lastIndex)
+    }
+
+    // 키보드가 열리면(adjustResize 로 목록 높이가 줄어듦) 하단으로 — iOS 와 같다.
+    //  답장 배너·칩 정도의 작은 변화는 무시하도록 일정 높이 이상 줄었을 때만 반응한다.
+    val keyboardThresholdPx = with(androidx.compose.ui.platform.LocalDensity.current) { 120.dp.roundToPx() }
+    LaunchedEffect(listState) {
+        var prevHeight = 0
+        snapshotFlow { listState.layoutInfo.viewportSize.height }
+            .collect { h ->
+                val shrunk = prevHeight > 0 && prevHeight - h >= keyboardThresholdPx
+                prevHeight = h
+                val total = listState.layoutInfo.totalItemsCount
+                if (shrunk && total > 0) listState.animateScrollToItem(total - 1)
+            }
     }
 
     // 위로 끝까지 → 이전 페이지
@@ -371,7 +411,10 @@ fun ChatRoomScreen(
         }
 
         // 빠른 답변 칩 — 상대(강사)가 등록해둔 질문을 탭 한 번으로 전송.
-        if (vm.quickReplies.isNotEmpty() && vm.input.isEmpty()) {
+        //  내 첫 메시지 전·입력창 비어 있음·답장/수정 중 아님일 때만(iOS 와 같은 조건).
+        if (vm.quickReplies.isNotEmpty() && !vm.hasMyMessage && vm.input.isEmpty() &&
+            vm.editingMessage == null && vm.replyingTo == null
+        ) {
             Row(
                 Modifier
                     .horizontalScroll(rememberScrollState())
@@ -386,15 +429,27 @@ fun ChatRoomScreen(
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
                             .background(MuyeonColors.primary.copy(alpha = 0.08f))
-                            .clickable { vm.onInputChange(q.text); vm.send() }
+                            .clickable { vm.sendQuick(q.text) }
                             .padding(horizontal = 12.dp, vertical = 7.dp),
                     )
                 }
             }
         }
 
-        ReplyOrEditBanner(vm)
-        ChatInputBar(vm, onAttach = { showAttach = true })
+        // 수정 중이면 입력바 대신 수정 카드(iOS MessageEditCard), 아니면 답장 배너 + 입력바.
+        val editing = vm.editingMessage
+        if (editing != null) {
+            MessageEditCard(
+                original = editing.content,
+                text = vm.input,
+                onTextChange = vm::onInputChange,
+                onCancel = { vm.cancelCompose() },
+                onSave = { vm.send() },
+            )
+        } else {
+            ReplyBanner(vm)
+            ChatInputBar(vm, onAttach = { showAttach = true })
+        }
     }
 
     if (showAttach) {
@@ -409,6 +464,7 @@ fun ChatRoomScreen(
             onSurvey = { showSurveyPicker = true },
             onProposal = { showProposal = true },
             onDismiss = { showAttach = false },
+            onCameraDenied = { vm.toast = "카메라 권한을 허용해 주세요." },
         )
     }
     if (showSurveyPicker) {
@@ -607,14 +663,18 @@ fun ChatRoomScreen(
                 }
                 reactionTarget = null
             },
-            onReply = { vm.replyingTo = m; reactionTarget = null },
-            onEdit = { vm.editingMessage = m; vm.onInputChange(m.content); reactionTarget = null },
+            onSelectCopy = { selectCopyText = m.content; reactionTarget = null },
+            onReply = { vm.startReply(m); reactionTarget = null },
+            onEdit = { vm.startEdit(m); reactionTarget = null },
             onDelete = { vm.deleteMessage(m); reactionTarget = null },
             onReport = { reportMessage = m; reactionTarget = null },
             // 차단은 우상단 메뉴와 같은 확인 다이얼로그를 띄운다(상대 id 를 모르면 숨김).
             onBlock = if (vm.opponentId > 0) { { confirmBlock = true; reactionTarget = null } } else null,
             onDismiss = { reactionTarget = null },
         )
+    }
+    selectCopyText?.let { text ->
+        SelectCopyDialog(text = text, onDismiss = { selectCopyText = null })
     }
     vm.toast?.let { msg ->
         LaunchedEffect(msg) { kotlinx.coroutines.delay(2000); vm.toast = null }
@@ -635,6 +695,7 @@ private fun MessageActionSheet(
     isMine: Boolean,
     onPickEmoji: (String) -> Unit,
     onCopy: () -> Unit,
+    onSelectCopy: () -> Unit,
     onReply: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -660,6 +721,7 @@ private fun MessageActionSheet(
         HorizontalDivider(color = MuyeonColors.border)
         Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
             if (isText) MessageAction("복사", MuyeonColors.textHead, onCopy)
+            if (isText) MessageAction("선택복사", MuyeonColors.textHead, onSelectCopy)
             if (!message.isDeleted) MessageAction("답장", MuyeonColors.textHead, onReply)
             if (isMine && isText) MessageAction("수정", MuyeonColors.textHead, onEdit)
             if (isMine && !message.isDeleted) MessageAction("삭제", MuyeonColors.danger, onDelete)
@@ -800,33 +862,139 @@ private fun RoomNavBar(
     }
 }
 
-/** 답장/수정 대상 배너 — 입력바 위에 붙는다. */
+/** 답장 대상 배너 — 입력바 위에 붙는다. 수정은 [MessageEditCard] 가 담당한다. */
 @Composable
-private fun ReplyOrEditBanner(vm: ChatRoomViewModel) {
-    val reply = vm.replyingTo
-    val edit = vm.editingMessage
-    if (reply == null && edit == null) return
+private fun ReplyBanner(vm: ChatRoomViewModel) {
+    val reply = vm.replyingTo ?: return
     Row(
         Modifier.fillMaxWidth().background(Color(0xFFF2F2F7)).padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
             Text(
-                if (edit != null) "메시지 수정" else "답장",
+                "답장",
                 fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 12.sp,
                 lineHeight = 14.sp, color = MuyeonColors.primary,
             )
             Text(
-                (edit ?: reply)?.content.orEmpty(),
+                reply.content,
                 fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 16.sp,
                 color = MuyeonColors.textSub, maxLines = 1,
             )
         }
         Icon(
             Icons.Filled.Close, "취소", tint = MuyeonColors.secondary,
-            modifier = Modifier.size(16.dp).clickable { vm.replyingTo = null; vm.editingMessage = null },
+            modifier = Modifier.size(16.dp).clickable { vm.cancelCompose() },
         )
     }
+}
+
+/**
+ * 메시지 수정 카드 — iOS MessageEditCard. 입력바 자리에 원문 + 수정 입력 + 원형 ✕/✓.
+ *  ✓ 는 내용이 바뀌었고 비어 있지 않을 때만 누를 수 있다. 열리면 입력칸에 바로 포커스.
+ */
+@Composable
+private fun MessageEditCard(
+    original: String,
+    text: String,
+    onTextChange: (String) -> Unit,
+    onCancel: () -> Unit,
+    onSave: () -> Unit,
+) {
+    val trimmed = text.trim()
+    val changed = trimmed.isNotEmpty() && trimmed != original
+    val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
+    // 커서를 문장 끝에 두기 위해 TextFieldValue 로 다룬다(원문으로 채운 직후 커서가 맨 앞에 오지 않게).
+    var field by remember {
+        mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(text, androidx.compose.ui.text.TextRange(text.length)))
+    }
+    if (field.text != text) {
+        field = androidx.compose.ui.text.input.TextFieldValue(text, androidx.compose.ui.text.TextRange(text.length))
+    }
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(MuyeonColors.surface)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color(0xFFF2F2F7))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "메시지 수정",
+                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                lineHeight = 18.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
+            )
+            Box(
+                Modifier.size(28.dp).clip(RoundedCornerShape(50)).background(Color(0xFFE5E5EA))
+                    .clickable(onClick = onCancel),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Close, "수정 취소", tint = MuyeonColors.textSub, modifier = Modifier.size(14.dp))
+            }
+        }
+        Text(
+            original,
+            fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 18.sp,
+            color = MuyeonColors.textSub, maxLines = 2,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+        )
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            BasicTextField(
+                value = field,
+                onValueChange = { field = it; if (it.text != text) onTextChange(it.text) },
+                textStyle = TextStyle(
+                    fontFamily = customFontFamily, fontSize = 16.sp, lineHeight = 21.sp,
+                    color = MuyeonColors.textHead,
+                ),
+                cursorBrush = SolidColor(MuyeonColors.primary),
+                maxLines = 5,
+                modifier = Modifier.weight(1f).padding(vertical = 6.dp)
+                    .focusRequester(focusRequester),
+            )
+            Box(
+                Modifier
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(if (changed) Color.Black else Color(0xFFD1D1D6))
+                    .clickable(enabled = changed, onClick = onSave),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Check, "수정 완료", tint = Color.White, modifier = Modifier.size(17.dp))
+            }
+        }
+    }
+}
+
+/** 선택복사 — 원문 일부만 골라 복사할 수 있는 창(iOS SelectCopySheet). */
+@Composable
+private fun SelectCopyDialog(text: String, onDismiss: () -> Unit) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("선택복사", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+        },
+        text = {
+            Box(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
+                androidx.compose.foundation.text.selection.SelectionContainer {
+                    Text(
+                        text,
+                        fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 21.sp,
+                        color = MuyeonColors.textHead,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text("완료", fontFamily = customFontFamily, color = MuyeonColors.primary)
+            }
+        },
+    )
 }
 
 @Composable
