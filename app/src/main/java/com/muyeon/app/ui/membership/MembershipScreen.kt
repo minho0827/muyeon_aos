@@ -124,31 +124,91 @@ data class MyMembership(
     }
 }
 
-/** 등급 표기 + 혜택 문구. iOS `MembershipTierInfo` 와 같은 규칙. */
+/**
+ * 멤버십 화면 문구(/monetization/public/membership-copy) — 관리자가 정한 등급 이름·한 줄 소개·추가 혜택·안내.
+ *
+ * 비어 있거나 없는 필드는 null 로 둔다 → TierInfo 가 필드 단위로 앱 기본 문구를 쓴다.
+ * 구 서버(404)·네트워크 오류·형식 오류도 같은 방식으로 기본 문구가 된다(화면을 막지 않는다).
+ */
+data class MembershipTierCopy(
+    val label: String?,
+    val tagline: String?,
+    val extras: List<String>?,
+    val footnote: String?,
+) {
+    companion object {
+        fun from(o: JSONObject) = MembershipTierCopy(
+            o.textOrNull("label"), o.textOrNull("tagline"),
+            o.optJSONArray("extras").textLines(), o.textOrNull("footnote"),
+        )
+    }
+}
+
+data class MembershipCopy(
+    val tiers: Map<String, MembershipTierCopy>,
+    val notices: List<String>?,
+) {
+    companion object {
+        fun from(o: JSONObject): MembershipCopy {
+            val t = o.optJSONObject("tiers")
+            val tiers = TierInfo.order.mapNotNull { key ->
+                t?.optJSONObject(key)?.let { key to MembershipTierCopy.from(it) }
+            }.toMap()
+            return MembershipCopy(tiers, o.optJSONArray("notices").textLines())
+        }
+    }
+}
+
+/** 공백뿐인 문자열·null 은 '값 없음'으로 본다. */
+private fun JSONObject.textOrNull(key: String): String? =
+    stringOrNull(key)?.takeIf { it.isNotBlank() }
+
+/** 문자열 배열 중 비어 있지 않은 줄만. 남는 줄이 없으면 null(기본 문구 사용). */
+private fun JSONArray?.textLines(): List<String>? {
+    if (this == null) return null
+    return (0 until length()).mapNotNull { i -> (opt(i) as? String)?.takeIf { it.isNotBlank() } }
+        .ifEmpty { null }
+}
+
+/** 등급 표기 + 혜택 문구. iOS `MembershipTierInfo` 와 같은 규칙. copy 가 있으면 서버 문구가 우선이다. */
 object TierInfo {
     val order = listOf("BASIC", "STANDARD", "PRO")
 
-    fun label(tier: String?) = when (tier) {
+    const val DEFAULT_FOOTNOTE = "회원유형을 바꿔도 멤버십은 그대로 유지돼요. 인증받은 유형의 혜택이 함께 열려요."
+    val DEFAULT_NOTICES = listOf(
+        "멤버십은 계정에 하나이며, 인증받은 회원유형의 혜택이 함께 열립니다.",
+        "회원유형을 바꾸거나 추가해도 이용 기간은 그대로 유지됩니다.",
+    )
+
+    fun label(tier: String?, copy: MembershipCopy? = null) = copy?.tiers?.get(tier)?.label ?: when (tier) {
         "BASIC" -> "베이직"
         "STANDARD" -> "스탠다드"
         "PRO" -> "프로"
         else -> "멤버십"   // 옛 유형별 멤버십을 쓰던 회원
     }
 
-    fun tagline(tier: String?) = when (tier) {
+    fun tagline(tier: String?, copy: MembershipCopy? = null) = copy?.tiers?.get(tier)?.tagline ?: when (tier) {
         "BASIC" -> "부담 없이 시작하기"
         "STANDARD" -> "회원이 강사에게 직접 견적을 요청하게"
         "PRO" -> "가장 먼저 눈에 띄기"
         else -> ""
     }
 
+    fun footnote(tier: String?, copy: MembershipCopy? = null) =
+        copy?.tiers?.get(tier)?.footnote ?: DEFAULT_FOOTNOTE
+
+    /** '멤버십 안내' 고정 줄. 판매 방식(자동결제/기간권) 줄은 화면이 뒤에 붙인다. */
+    fun notices(copy: MembershipCopy? = null) = copy?.notices ?: DEFAULT_NOTICES
+
     /**
      * 혜택 문구는 **서버가 내려준 한도에서 만든다**(MembershipBenefits — 웹·iOS 와 같은 규칙).
      * 앱에 박아두면 관리자가 숫자를 바꿔도 옛말이 남는다.
+     * 한도가 아닌 추가 혜택(extras)은 서버 문구가 있으면 그것을, 없으면 앱 기본 목록을 붙인다.
      */
-    fun benefits(l: MembershipLimits?, tier: String?, isDancer: Boolean): List<String> {
+    fun benefits(l: MembershipLimits?, tier: String?, isDancer: Boolean, copy: MembershipCopy? = null): List<String> {
         if (l == null) return emptyList()
-        return MembershipBenefits.lines(l, isDancer) + MembershipBenefits.extras(tier)
+        val extras = copy?.tiers?.get(tier)?.extras ?: MembershipBenefits.extras(tier)
+        return MembershipBenefits.lines(l, isDancer) + extras
     }
 }
 
@@ -160,13 +220,20 @@ class MembershipApi(private val token: String?) {
         call("/monetization/plans?featureType=MEMBERSHIP")
             .map { JSONArray(it.ifBlank { "[]" }).map(MembershipPlan::from) }
 
+    /** 멤버십 화면 문구 — 비로그인 공개 API. 실패하면 화면은 앱 기본 문구를 쓴다. */
+    suspend fun membershipCopy(): Result<MembershipCopy> =
+        call("/monetization/public/membership-copy", auth = false)
+            .map { MembershipCopy.from(JSONObject(it.ifBlank { "{}" })) }
+
     suspend fun myMembership(): Result<MyMembership> =
         call("/monetization/membership/me").map { MyMembership.from(JSONObject(it.ifBlank { "{}" })) }
 
     // ★ 구매 API 는 부르지 않는다. 앱에서 디지털 상품을 팔면 스토어 결제를 요구받는다.
     //   결제는 웹에서만 받는다(2026-08-30 개편).
 
-    private suspend fun call(path: String, method: String = "GET", body: JSONObject? = null): Result<String> =
+    private suspend fun call(
+        path: String, method: String = "GET", body: JSONObject? = null, auth: Boolean = true,
+    ): Result<String> =
         withContext(Dispatchers.IO) {
             runCatching {
                 val payload = when {
@@ -176,7 +243,7 @@ class MembershipApi(private val token: String?) {
                 }
                 val req = Request.Builder().url(apiBase + path).method(method, payload)
                     .addHeader("Content-Type", "application/json")
-                    .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
+                    .apply { if (auth && !token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
                     .build()
                 client.newCall(req).execute().use { res ->
                     val text = res.body?.string().orEmpty()
@@ -206,8 +273,12 @@ fun MembershipScreen(api: MembershipApi, onClose: () -> Unit) {
     var loading by remember { mutableStateOf(true) }
     var selectedTier by remember { mutableStateOf("STANDARD") }
     var toast by remember { mutableStateOf<String?>(null) }
+    // 서버 문구 — 받기 전·실패 시 null 이면 TierInfo 기본 문구를 쓴다.
+    var copy by remember { mutableStateOf<MembershipCopy?>(null) }
 
     LaunchedEffect(Unit) {
+        // 문구는 상품 목록과 동시에 받는다. 로딩 표시를 기다리게 하지 않고, 실패는 조용히 무시한다.
+        launch { api.membershipCopy().onSuccess { copy = it } }
         api.plans().onSuccess { plans = it }.onFailure { toast = it.message }
         api.myMembership().onSuccess { mine = it }
         loading = false
@@ -243,7 +314,7 @@ fun MembershipScreen(api: MembershipApi, onClose: () -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
-                        "${TierInfo.label(m.tier)} 멤버십 이용중",
+                        "${TierInfo.label(m.tier, copy)} 멤버십 이용중",
                         fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
                         lineHeight = 18.sp, color = MuyeonColors.textHead,
                     )
@@ -279,7 +350,7 @@ fun MembershipScreen(api: MembershipApi, onClose: () -> Unit) {
                     availableTiers.forEach { t ->
                         val on = t == selectedTier
                         Text(
-                            TierInfo.label(t),
+                            TierInfo.label(t, copy),
                             fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
                             lineHeight = 17.sp, textAlign = TextAlign.Center,
                             color = if (on) Color.White else MuyeonColors.textSub,
@@ -298,11 +369,11 @@ fun MembershipScreen(api: MembershipApi, onClose: () -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        "${TierInfo.label(selectedTier)} · ${TierInfo.tagline(selectedTier)}",
+                        "${TierInfo.label(selectedTier, copy)} · ${TierInfo.tagline(selectedTier, copy)}",
                         fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
                         lineHeight = 19.sp, color = MuyeonColors.textHead,
                     )
-                    TierInfo.benefits(tierLimits, selectedTier, isDancer).forEach { b ->
+                    TierInfo.benefits(tierLimits, selectedTier, isDancer, copy).forEach { b ->
                         Text(
                             "· $b",
                             fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
@@ -310,7 +381,7 @@ fun MembershipScreen(api: MembershipApi, onClose: () -> Unit) {
                         )
                     }
                     Text(
-                        "회원유형을 바꿔도 멤버십은 그대로 유지돼요. 인증받은 유형의 혜택이 함께 열려요.",
+                        TierInfo.footnote(selectedTier, copy),
                         fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp,
                         color = MuyeonColors.textSub,
                     )
@@ -358,13 +429,11 @@ fun MembershipScreen(api: MembershipApi, onClose: () -> Unit) {
 
                 // 안내 — 결제 링크는 두지 않는다(스토어 정책).
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(
-                        "멤버십은 계정에 하나이며, 인증받은 회원유형의 혜택이 함께 열립니다.",
-                        "회원유형을 바꾸거나 추가해도 이용 기간은 그대로 유지됩니다.",
+                    (TierInfo.notices(copy) + listOf(
                         // 운영은 기간권 판매 중 — 자동결제 상품이 있을 때만 자동결제 문구를 보인다.
                         if (plans.any { it.planKind == "SUBSCRIPTION" }) "멤버십은 30일마다 자동결제되며, 해지 후에도 남은 기간은 혜택이 유지됩니다."
                         else "기간권은 자동으로 갱신되지 않으며, 구매한 기간이 끝나면 멤버십이 종료됩니다.",
-                    ).forEach {
+                    )).forEach {
                         Text(
                             "- $it",
                             fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp,
