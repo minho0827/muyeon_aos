@@ -79,6 +79,16 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
 
     LaunchedEffect(vm.roomId) { vm.start() }
 
+    // 화면 복귀(다른 화면·백그라운드에서 돌아옴) — 그 사이 놓친 메시지를 순번 기준으로 채운다.
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) vm.onResume()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     // 방에서 연 네이티브 화면에서 돌아오면 바뀐 것만 다시 읽는다(결과 키 — 타이머 없음).
     //  · 레슨 상세(LESSONS·LESSON_SCHEDULE): 일정 카드·방 상단 맥락이 바뀔 수 있다 → reloadContext
     //  · 설문(CHAT_ROOM): 설문 카드 응답 상태가 바뀐다 → 메시지 첫 페이지 + 맥락 재조회
@@ -91,8 +101,9 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
         if (com.muyeon.app.result.ResultKeys.CHAT_ROOM in keys) vm.reloadMessagesAndContext()
     }
 
-    // 새 메시지/전송 → 최하단으로
-    LaunchedEffect(vm.messages.size, vm.pending.size) {
+    // 새 메시지/전송 → 최하단으로.
+    //  메시지 수가 아니라 마지막 메시지 id 를 기준으로 한다 — 이전 메시지를 위에 붙일 때는 내려가지 않는다.
+    LaunchedEffect(vm.messages.lastOrNull()?.id, vm.pending.size) {
         val last = vm.messages.size + vm.pending.size - 1
         if (last >= 0) scope.launch { listState.animateScrollToItem(last) }
     }
@@ -135,13 +146,14 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     if (vm.isLoadingMore) {
-                        item {
+                        item(key = "loading-more") {
                             Box(Modifier.fillMaxWidth().padding(8.dp), Alignment.Center) {
                                 CircularProgressIndicator(Modifier.size(20.dp), color = MuyeonColors.primary, strokeWidth = 2.dp)
                             }
                         }
                     }
-                    items(vm.messages.size) { i ->
+                    // key = 메시지 id — 위에 이전 메시지가 붙어도 보고 있던 위치가 유지된다.
+                    items(vm.messages.size, key = { vm.messages[it].id }) { i ->
                         val m = vm.messages[i]
                         MessageBubble(
                             message = m,
@@ -178,7 +190,9 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
                             },
                         )
                     }
-                    items(vm.pending.size) { i -> PendingBubble(vm.pending[i]) { vm.retry(vm.pending[i]) } }
+                    items(vm.pending.size, key = { "pending-" + vm.pending[it].localId }) { i ->
+                        PendingBubble(vm.pending[i]) { vm.retry(vm.pending[i]) }
+                    }
                 }
             }
 
@@ -736,7 +750,13 @@ private fun PendingBubble(p: ChatRoomViewModel.Pending, onRetry: () -> Unit) {
                 .padding(horizontal = 14.dp, vertical = 9.dp),
         ) {
             Text(
-                p.content,
+                p.content.ifEmpty {
+                    when (p.type) {
+                        "IMAGE" -> "사진"
+                        "VIDEO" -> "동영상"
+                        else -> ""
+                    }
+                },
                 fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 20.sp,
                 color = Color.White, textAlign = TextAlign.Start,
             )
