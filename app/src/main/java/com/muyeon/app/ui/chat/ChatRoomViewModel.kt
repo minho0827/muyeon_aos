@@ -597,6 +597,18 @@ class ChatRoomViewModel(
     val hasMyMessage: Boolean
         get() = pending.isNotEmpty() || messages.any { it.senderId == currentUserId && it.type != "SYSTEM" }
 
+    /**
+     * 상대 메시지 묶음의 첫 말풍선에만 아바타를 보인다(iOS showAvatar — 카톡 방식).
+     *  직전 메시지가 내 것이거나 시스템 안내면 새 묶음으로 본다. 견적 카드에는 아바타가 없다.
+     */
+    fun showAvatar(index: Int): Boolean {
+        val m = messages.getOrNull(index) ?: return false
+        if (m.senderId == currentUserId || m.type == "SYSTEM" || m.type == "QUOTE_CARD") return false
+        if (index == 0) return true
+        val prev = messages[index - 1]
+        return prev.senderId == currentUserId || prev.type == "SYSTEM"
+    }
+
     // ── 길게 누르기 메뉴의 답장·수정 시작/취소(iOS startReply·startEdit·cancelCompose) ──
 
     fun startReply(m: ChatMessage) {

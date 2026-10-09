@@ -66,7 +66,7 @@ import kotlinx.coroutines.launch
  *  말풍선(좌/우) · 낙관 전송 · 읽음표시 · 입력중 · 답장/수정 · 위로 스크롤 페이징.
  *
  * ⚠️ iOS 수치: 버블 라운드 18 / 내 버블 primary·흰글씨 / 상대 버블 F2F2F7 / 본문 15 /
- *   시간 11 secondary / 아바타 32 / 입력바 상단 구분선 + 전송 버튼 원형 34.
+ *   시간 11 secondary / 아바타 34(상대 묶음 첫 말풍선만) / 입력바 상단 구분선 + 전송 버튼 원형 34.
  */
 @Composable
 fun ChatRoomScreen(
@@ -353,6 +353,7 @@ fun ChatRoomScreen(
                             isMine = m.senderId == vm.currentUserId,
                             opponentImage = vm.opponentImage,
                             onOpenProfile = { openOpponentProfile() },
+                            showAvatar = vm.showAvatar(i),
                             read = isReadByOpponent(m, vm.opponentLastReadAt),
                             currentUserId = vm.currentUserId,
                             // 예약금 결제는 웹 결제 화면(iOS LessonPaymentWebView 와 같은 경로)으로 넘긴다.
@@ -1068,6 +1069,7 @@ private fun MessageBubble(
     isMine: Boolean,
     opponentImage: String?,
     onOpenProfile: () -> Unit,
+    showAvatar: Boolean,
     read: Boolean,
     currentUserId: Int,
     onOpenProposalPayment: (Int) -> Unit,
@@ -1151,11 +1153,16 @@ private fun MessageBubble(
         verticalAlignment = Alignment.Top,
     ) {
         if (!isMine) {
-            // 아바타 탭 → 상대 공개 프로필(iOS 상단바·말풍선 아바타와 같은 목적지).
-            QuoteAvatar(
-                opponentImage, message.sender?.displayName ?: "상대", 32.dp,
-                modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onOpenProfile),
-            )
+            // 연속된 상대 메시지는 첫 말풍선에만 아바타(34dp), 나머지는 같은 너비만큼 비워 왼쪽 선을 맞춘다.
+            if (showAvatar) {
+                // 아바타 탭 → 상대 공개 프로필(iOS 상단바·말풍선 아바타와 같은 목적지).
+                QuoteAvatar(
+                    opponentImage, message.sender?.displayName ?: "상대", 34.dp,
+                    modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onOpenProfile),
+                )
+            } else {
+                Spacer(Modifier.width(34.dp))
+            }
             Spacer(Modifier.width(6.dp))
         }
 
