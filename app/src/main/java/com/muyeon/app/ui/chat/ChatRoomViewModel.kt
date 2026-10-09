@@ -64,6 +64,17 @@ class ChatRoomViewModel(
     var quoteContext by mutableStateOf<ChatQuoteContext?>(null)
     var lessonSchedule by mutableStateOf<ChatLessonSchedule?>(null)
     var lessonCycles by mutableStateOf<List<ChatLessonCycle>>(emptyList())
+
+    /** 채택(매칭)된 견적 방인지 — 회원도 레슨 약속 제안을 보낼 수 있다(iOS isQuoteMatched). */
+    val isQuoteMatched: Boolean get() = quoteContext?.matched == true
+
+    /**
+     * 회원으로서 예약을 잡는 견적 맥락 — 약속 제안 작성의 금액·예약금 안내에 쓴다(iOS memberBookingContext).
+     *  여러 레슨이 있으면 회원 쪽 ACCEPTED 사이클을 우선한다.
+     */
+    val memberBookingContext: ChatQuoteContext?
+        get() = lessonCycles.firstOrNull { !it.isTeacher && it.progress.step == "ACCEPTED" }?.asContext
+            ?: quoteContext?.takeIf { !it.isTeacher }
     var quickReplies by mutableStateOf<List<ChatQuickReply>>(emptyList())
     var replyingTo by mutableStateOf<ChatMessage?>(null)
     var editingMessage by mutableStateOf<ChatMessage?>(null)

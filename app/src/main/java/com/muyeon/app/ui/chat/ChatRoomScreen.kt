@@ -160,11 +160,15 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
                             isMine = m.senderId == vm.currentUserId,
                             opponentImage = vm.opponentImage,
                             read = isReadByOpponent(m, vm.opponentLastReadAt),
-                            isTeacherSide = vm.quoteContext?.isTeacher == true,
+                            currentUserId = vm.currentUserId,
+                            // 예약금 결제는 웹 결제 화면(iOS LessonPaymentWebView 와 같은 경로)으로 넘긴다.
+                            onOpenProposalPayment = { pid ->
+                                (context as? Activity)?.let {
+                                    NativeWebRoute.openWebAndFinish(it, "/lesson-proposals/$pid/payment")
+                                }
+                            },
                             token = vm.tokenForCards,
-                            onReply = { vm.replyingTo = m },
                             onLongPress = { reactionTarget = m },
-                            onEdit = { vm.editingMessage = m; vm.onInputChange(m.content) },
                             onToggleReaction = { emoji -> vm.toggleReaction(m, emoji) },
                             onOpenLink = { url -> openExternal(context, url) },
                             onProposalChanged = { vm.reloadContext() },
@@ -204,6 +208,18 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
                     modifier = Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 4.dp),
                 )
             }
+
+            if (vm.isUploadingMedia) {
+                Text(
+                    "사진 보내는 중…",
+                    fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 14.sp,
+                    color = MuyeonColors.textSub,
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 4.dp),
+                )
+            }
+
+            // 안내 문구(복사·신고·전송 거절 사유 등) — 견적 화면과 같은 하단 캡슐 토스트.
+            vm.toast?.let { com.muyeon.app.ui.quote.ToastBubble(it, Modifier.align(Alignment.BottomCenter)) }
         }
 
         // 빠른 답변 칩 — 상대(강사)가 등록해둔 질문을 탭 한 번으로 전송.
@@ -236,7 +252,10 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
     if (showAttach) {
         ChatAttachSheet(
             showSurvey = vm.quoteContext?.isTeacher == true,
-            showProposal = vm.quoteContext?.isTeacher == true,
+            // 채택된 견적 방은 회원·강사 모두, 그 밖의 방은 강사·학원 유형만 약속 제안 가능(iOS 와 같은 조건).
+            //  최종 검증은 서버가 한다.
+            showProposal = vm.isQuoteMatched || vm.quoteContext?.isTeacher == true ||
+                ActiveRole.current(context) in setOf(ActiveRole.TEACHER, ActiveRole.ACADEMY),
             onPickImages = { uris -> vm.sendImages(context, uris) },
             onPickVideo = { uri -> vm.sendVideo(context, uri) },
             onSurvey = { showSurveyPicker = true },
@@ -259,9 +278,9 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
             calendarApi = remember { com.muyeon.app.ui.lesson.UserCalendarApi(vm.tokenForCards) },
             roomId = vm.roomId,
             isTeacher = vm.quoteContext?.isTeacher == true,
-            // 금액은 방의 견적 컨텍스트에서 가져온다(회원 화면의 예약금 안내에만 쓰인다).
-            totalPrice = vm.quoteContext?.priceAmount ?: 0,
-            depositAmount = 0,
+            // 금액·예약금은 회원 쪽 견적 맥락에서 가져온다(회원 화면의 예약금 안내에만 쓰인다).
+            totalPrice = vm.memberBookingContext?.priceAmount ?: 0,
+            depositAmount = vm.memberBookingContext?.takeIf { it.paymentMode == "DEPOSIT" }?.depositAmount ?: 0,
             onSent = { showProposal = false; vm.toast = "약속을 제안했어요."; vm.reloadContext() },
             onDismiss = { showProposal = false },
         )
@@ -312,7 +331,10 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
             onPickEmoji = { emoji -> vm.toggleReaction(m, emoji); reactionTarget = null },
             onCopy = {
                 copyToClipboard(context, m.content)
-                vm.toast = "메시지를 복사했어요."
+                // Android 13 이상은 시스템이 복사 확인을 띄우므로 앱 문구는 생략한다(중복 표시 방지).
+                if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) {
+                    vm.toast = "메시지를 복사했어요."
+                }
                 reactionTarget = null
             },
             onReply = { vm.replyingTo = m; reactionTarget = null },
@@ -559,11 +581,10 @@ private fun MessageBubble(
     isMine: Boolean,
     opponentImage: String?,
     read: Boolean,
-    isTeacherSide: Boolean,
+    currentUserId: Int,
+    onOpenProposalPayment: (Int) -> Unit,
     token: String?,
-    onReply: () -> Unit,
     onLongPress: () -> Unit,
-    onEdit: () -> Unit,
     onToggleReaction: (String) -> Unit,
     onOpenLink: (String) -> Unit,
     onProposalChanged: () -> Unit,
@@ -613,7 +634,14 @@ private fun MessageBubble(
             // 레슨 약속 제안은 전용 카드로 렌더(iOS LessonProposalCardBubble).
             "LESSON_PROPOSAL" -> {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
-                    LessonProposalBubble(message.content, isTeacherSide, token, onProposalChanged)
+                    LessonProposalBubble(
+                        contentJson = message.content,
+                        isProposer = isMine,
+                        currentUserId = currentUserId,
+                        token = token,
+                        onChanged = onProposalChanged,
+                        onOpenPayment = onOpenProposalPayment,
+                    )
                 }
                 return
             }
@@ -656,8 +684,9 @@ private fun MessageBubble(
                             else Modifier
                                 .clip(RoundedCornerShape(18.dp))
                                 .background(if (isMine) MuyeonColors.primary else Color(0xFFF2F2F7))
+                                // 탭은 동작 없음, 길게 누르면 반응·복사·답장·수정·삭제 메뉴(iOS 컨텍스트 메뉴와 같다).
                                 .combinedClickable(
-                                    onClick = { if (isMine) onEdit() else onReply() },
+                                    onClick = {},
                                     onLongClick = onLongPress,
                                 )
                                 .padding(horizontal = 14.dp, vertical = 10.dp),

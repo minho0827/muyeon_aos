@@ -201,6 +201,8 @@ data class ChatQuoteContext(
     val priceAmount: Int?,
     val priceUnit: String?,
     val price: String?,
+    val paymentMode: String? = null,    // DEPOSIT | FULL 등(예약금 방식) — 회원 약속 제안 작성의 예약금 안내용
+    val depositAmount: Int? = null,
     val quoteCount: Int?,
 ) {
     /** "회당 60,000원" 등 금액 요약(구조화 금액 우선, 없으면 자유 메모). */
@@ -226,6 +228,7 @@ data class ChatQuoteContext(
                 isTeacher = it.optBoolean("isTeacher", false), matched = it.optBoolean("matched", false),
                 categoryId = it.stringOrNull("categoryId"), priceAmount = it.intOrNull("priceAmount"),
                 priceUnit = it.stringOrNull("priceUnit"), price = it.stringOrNull("price"),
+                paymentMode = it.stringOrNull("paymentMode"), depositAmount = it.intOrNull("depositAmount"),
                 quoteCount = it.intOrNull("quoteCount"),
             )
         }
@@ -250,6 +253,8 @@ data class ChatLessonCycle(
     val priceAmount: Int?,
     val priceUnit: String?,
     val price: String?,
+    val paymentMode: String? = null,
+    val depositAmount: Int? = null,
     val progress: ChatLessonProgress,
     val lessonSchedule: ChatLessonSchedule?,
     val kind: String?,           // "PROPOSAL"=약속잡기 레슨(견적 없음)
@@ -278,7 +283,8 @@ data class ChatLessonCycle(
             responseStatus = if (matched) "ACCEPTED" else "SENT",
             isTeacher = isTeacher, matched = matched,
             categoryId = categoryId, priceAmount = priceAmount,
-            priceUnit = priceUnit, price = price, quoteCount = progress.responseCount,
+            priceUnit = priceUnit, price = price, paymentMode = paymentMode,
+            depositAmount = depositAmount, quoteCount = progress.responseCount,
         )
 
     companion object {
@@ -290,6 +296,7 @@ data class ChatLessonCycle(
             matched = o.optBoolean("matched", false),
             priceAmount = o.intOrNull("priceAmount"), priceUnit = o.stringOrNull("priceUnit"),
             price = o.stringOrNull("price"),
+            paymentMode = o.stringOrNull("paymentMode"), depositAmount = o.intOrNull("depositAmount"),
             progress = ChatLessonProgress.from(o.optJSONObject("progress") ?: JSONObject()),
             lessonSchedule = ChatLessonSchedule.from(o.optJSONObject("lessonSchedule")),
             kind = o.stringOrNull("kind"),
