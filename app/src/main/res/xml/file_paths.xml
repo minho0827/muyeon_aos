@@ -2,4 +2,6 @@
 <!-- 공유용 임시 파일 경로. SurveyPdf 가 cacheDir/shared 에 PDF 를 쓴다. -->
 <paths>
     <cache-path name="shared" path="shared/" />
+    <!-- 채팅 카메라 촬영 임시 파일. ChatAttachSheet 가 cacheDir/camera 에 쓰고 업로드 후에도 다음 촬영 때 정리한다. -->
+    <cache-path name="camera" path="camera/" />
 </paths>

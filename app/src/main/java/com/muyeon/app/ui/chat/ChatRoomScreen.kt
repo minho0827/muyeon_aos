@@ -14,6 +14,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NotificationsOff
@@ -40,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -62,10 +66,15 @@ import kotlinx.coroutines.launch
  *  말풍선(좌/우) · 낙관 전송 · 읽음표시 · 입력중 · 답장/수정 · 위로 스크롤 페이징.
  *
  * ⚠️ iOS 수치: 버블 라운드 18 / 내 버블 primary·흰글씨 / 상대 버블 F2F2F7 / 본문 15 /
- *   시간 11 secondary / 아바타 32 / 입력바 상단 구분선 + 전송 버튼 원형 34.
+ *   시간 11 secondary / 아바타 34(상대 묶음 첫 말풍선만) / 입력바 상단 구분선 + 전송 버튼 원형 34.
  */
 @Composable
-fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
+fun ChatRoomScreen(
+    vm: ChatRoomViewModel,
+    onBack: () -> Unit,
+    initialSurveyDispatchId: Int? = null,   // 설문 응답 푸시 진입 — 이 설문 카드로 스크롤·강조
+    initialProposalId: Int? = null,         // 약속 제안 푸시·웹 진입 — 이 제안 카드로 스크롤·강조
+) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -76,8 +85,28 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
     var reportMessage by remember { mutableStateOf<ChatMessage?>(null) }   // 상대 메시지 길게 누르기 → 메시지 신고
     var confirmBlock by remember { mutableStateOf(false) }
     var reactionTarget by remember { mutableStateOf<ChatMessage?>(null) }
+    var selectCopyText by remember { mutableStateOf<String?>(null) }   // 선택복사 대상(iOS SelectCopySheet)
+    // ── 상단 레슨 컨텍스트(iOS lessonContextArea) 시트·확인창 상태 ──
+    var showCyclesSheet by remember { mutableStateOf(false) }
+    var showLegacyTimeline by remember { mutableStateOf(false) }               // 레거시 대표 진행 타임라인
+    var timelineCycle by remember { mutableStateOf<ChatLessonCycle?>(null) }   // 사이클별 타임라인
+    var showQuoteSummary by remember { mutableStateOf(false) }
+    var showAcceptConfirm by remember { mutableStateOf(false) }
+    var showReviewSwitch by remember { mutableStateOf(false) }
+    var teacherReviewInfo by remember { mutableStateOf(false) }
 
     LaunchedEffect(vm.roomId) { vm.start() }
+
+    // ── 카드 찾아가기(iOS attemptSurveyJump·attemptProposalJump·highlightSurveyCard) ──
+    //  대상이 아직 로드되지 않았으면 이전 메시지를 더 불러오며 찾고, 찾으면 스크롤 후 잠깐 흔들어 강조한다.
+    var jumpTarget by remember {
+        mutableStateOf(
+            initialSurveyDispatchId?.let { CardJumpTarget.Survey(it) }
+                ?: initialProposalId?.let { CardJumpTarget.Proposal(it) },
+        )
+    }
+    var jumpLoadCount by remember { mutableIntStateOf(0) }   // 실패 반복 시 무한 재조회 방지
+    var highlightId by remember { mutableStateOf<Int?>(null) }
 
     // 화면 복귀(다른 화면·백그라운드에서 돌아옴) — 그 사이 놓친 메시지를 순번 기준으로 채운다.
     val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
@@ -100,12 +129,143 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
     val surveyLauncher = com.muyeon.app.result.rememberResultLauncher { keys ->
         if (com.muyeon.app.result.ResultKeys.CHAT_ROOM in keys) vm.reloadMessagesAndContext()
     }
+    // 받은 견적 상세(채택·재요청 등)에서 돌아오면 방 맥락(진행 카드·배너)을 다시 읽는다.
+    val quoteLauncher = com.muyeon.app.result.rememberResultLauncher { vm.reloadContext() }
+    // 전체 알림 설정에서 돌아오면 방 상세(음소거 상태 등)를 다시 읽는다.
+    val notiSettingsLauncher = com.muyeon.app.result.rememberResultLauncher { vm.reloadContext() }
 
-    // 새 메시지/전송 → 최하단으로.
-    //  메시지 수가 아니라 마지막 메시지 id 를 기준으로 한다 — 이전 메시지를 위에 붙일 때는 내려가지 않는다.
+    /**
+     * 상대 공개 프로필 — iOS PublicProfileView(userId: recipientId, src: "chat", hideCta: true).
+     *  강사가 아니면 서버가 404 를 돌려주고 프로필 화면이 "불러오지 못했어요" 를 표시한다(iOS 와 같다).
+     */
+    fun openOpponentProfile() {
+        val uid = vm.opponentId
+        if (uid <= 0) return
+        com.muyeon.app.ui.resume.ResumeActivity.startProfile(context, uid, "chat")
+    }
+
+    // ── 상단 레슨 컨텍스트 동작 — iOS ChatRoomView+Rendering 의 handleProgressPrimary 등과 같은 분기 ──
+
+    /** 레슨 일정 상세(확정·완료·취소는 상세 화면이 담당). */
+    fun openLesson(lessonId: Int) {
+        lessonLauncher.launch(com.muyeon.app.ui.lesson.LessonActivity.detailIntent(context, lessonId))
+    }
+
+    /**
+     * 강사 [일정 확정하기/일정 정하기] — iOS 는 일정 확정 폼(LessonEditView)을 띄운다.
+     *  AOS 는 같은 확정 기능(PENDING → SCHEDULED)이 레슨 일정 상세에 있으므로 상세로 연다.
+     */
+    fun openProgressSchedule(prog: ChatLessonProgress) {
+        prog.lessonId?.let { openLesson(it) }
+    }
+
+    /** 고객 [후기 쓰기] — 채팅을 닫고 웹 강사 상세의 후기 폼(?review=1)으로 이동한다. */
+    fun openReviewPage() {
+        val teacherId = vm.opponentId
+        if (teacherId == 0) return
+        (context as? Activity)?.let { NativeWebRoute.openWebAndFinish(it, "/teachers/$teacherId?review=1") }
+    }
+
+    /** 후기 진입 — 활성유형이 일반이 아니면 전환 안내를 먼저 띄운다. */
+    fun startReviewFlow() {
+        if (ActiveRole.current(context) == "GENERAL") openReviewPage() else showReviewSwitch = true
+    }
+
+    fun handleProgressPrimary(prog: ChatLessonProgress, isTeacher: Boolean) {
+        when (prog.step) {
+            "DONE" -> if (isTeacher) teacherReviewInfo = true else startReviewFlow()
+            "SCHEDULED" -> prog.lessonId?.let { openLesson(it) }
+            "ACCEPTED" -> if (isTeacher) openProgressSchedule(prog) else showProposal = true
+            else -> if (!isTeacher) showAcceptConfirm = true   // 채팅방을 나가지 않고 바로 채택
+        }
+    }
+
+    /** 메시지 id 로 목록 위치를 찾아 스크롤한다(상단 '이전 메시지 로딩' 줄이 있으면 한 칸 밀린다). */
+    suspend fun scrollToMessage(id: Int): Boolean {
+        val i = vm.messages.indexOfFirst { it.id == id }
+        if (i < 0) return false
+        val offset = if (vm.isLoadingMore) 1 else 0
+        listState.animateScrollToItem(i + offset)
+        return true
+    }
+
+    LaunchedEffect(jumpTarget, vm.messages.size, vm.isLoadingMore, vm.initialLoaded) {
+        val target = jumpTarget ?: return@LaunchedEffect
+        if (!vm.initialLoaded || vm.isLoadingMore) return@LaunchedEffect
+        val id = vm.messages.firstOrNull { target.matches(it) }?.id
+        when {
+            id != null -> {
+                jumpTarget = null
+                jumpLoadCount = 0
+                // 키 변경으로 이 효과가 취소돼도 스크롤·강조는 끝까지 진행되도록 화면 범위에서 실행한다.
+                scope.launch {
+                    kotlinx.coroutines.delay(450)   // 첫 로드 직후 하단 스크롤과 겹치지 않게(iOS 0.45초)
+                    if (!scrollToMessage(id)) return@launch
+                    kotlinx.coroutines.delay(350)
+                    highlightId = id
+                    kotlinx.coroutines.delay(700)
+                    if (highlightId == id) highlightId = null
+                }
+            }
+            vm.hasMore && jumpLoadCount < MAX_JUMP_LOADS -> {
+                jumpLoadCount++
+                vm.loadMore()
+            }
+            else -> { jumpTarget = null; jumpLoadCount = 0 }   // 못 찾으면 포기(방은 이미 열려 있다)
+        }
+    }
+
+    /** 견적 헤더 탭 — 견적 카드로 스크롤. 재입장으로 카드가 숨겨진 방은 서버 컨텍스트 요약 시트. */
+    fun onQuoteHeader() {
+        if (vm.quoteCardHiddenByRejoin) {
+            showQuoteSummary = true
+            return
+        }
+        val id = vm.firstQuoteCardId ?: return
+        scope.launch { scrollToMessage(id) }
+    }
+
+    // ── 하단 자동 스크롤 ──
+    //  · 마지막 메시지 id 기준 — 이전 메시지를 위에 붙일 때(id 변화 없음)는 내려가지 않는다.
+    //  · 내 전송·전송 대기 말풍선 → 항상 하단으로.
+    //  · 상대 새 메시지 → 이미 하단 근처를 보고 있을 때만 따라 내려간다(위 기록을 읽는 중이면 위치 유지).
+    //  · 첫 로드 → 하단으로 즉시 이동.
+    var prevLastId by remember { mutableStateOf<Int?>(null) }
+    var prevPendingCount by remember { mutableIntStateOf(0) }
     LaunchedEffect(vm.messages.lastOrNull()?.id, vm.pending.size) {
-        val last = vm.messages.size + vm.pending.size - 1
-        if (last >= 0) scope.launch { listState.animateScrollToItem(last) }
+        val lastMsg = vm.messages.lastOrNull()
+        val total = vm.messages.size + vm.pending.size
+        val before = prevLastId
+        val pendingGrew = vm.pending.size > prevPendingCount
+        prevLastId = lastMsg?.id
+        prevPendingCount = vm.pending.size
+        if (total == 0) return@LaunchedEffect
+        val offset = if (vm.isLoadingMore) 1 else 0
+        val lastIndex = total - 1 + offset
+        if (before == null) {
+            listState.scrollToItem(lastIndex)
+            return@LaunchedEffect
+        }
+        val mine = pendingGrew || (lastMsg != null && lastMsg.id != before && lastMsg.senderId == vm.currentUserId)
+        // 직전 마지막 메시지가 화면 하단 근처(2칸 이내)에 보였으면 '하단을 보고 있던 중' 으로 본다.
+        val prevIndex = vm.messages.indexOfFirst { it.id == before }.takeIf { it >= 0 }?.plus(offset)
+        val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+        val nearBottom = prevIndex == null || lastVisible >= prevIndex - 2
+        if (mine || nearBottom) listState.animateScrollToItem(lastIndex)
+    }
+
+    // 키보드가 열리면(adjustResize 로 목록 높이가 줄어듦) 하단으로 — iOS 와 같다.
+    //  답장 배너·칩 정도의 작은 변화는 무시하도록 일정 높이 이상 줄었을 때만 반응한다.
+    val keyboardThresholdPx = with(androidx.compose.ui.platform.LocalDensity.current) { 120.dp.roundToPx() }
+    LaunchedEffect(listState) {
+        var prevHeight = 0
+        snapshotFlow { listState.layoutInfo.viewportSize.height }
+            .collect { h ->
+                val shrunk = prevHeight > 0 && prevHeight - h >= keyboardThresholdPx
+                prevHeight = h
+                val total = listState.layoutInfo.totalItemsCount
+                if (shrunk && total > 0) listState.animateScrollToItem(total - 1)
+            }
     }
 
     // 위로 끝까지 → 이전 페이지
@@ -130,7 +290,40 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        RoomNavBar(vm, onBack, onReport = { showReport = true }, onBlock = { confirmBlock = true })
+        RoomNavBar(
+            vm, onBack,
+            onOpenProfile = { openOpponentProfile() },
+            onOpenNotificationSettings = {
+                notiSettingsLauncher.launch(
+                    com.muyeon.app.ui.notification.NotificationSettingsActivity.intent(context),
+                )
+            },
+            onReport = { showReport = true },
+            onBlock = { confirmBlock = true },
+        )
+
+        // 상단 레슨 컨텍스트(진행 카드·헤더·배너·CTA) — iOS 와 같이 상단바와 메시지 목록 사이.
+        LessonContextArea(
+            vm = vm,
+            onOpenCycles = { showCyclesSheet = true },
+            onCycleTimeline = { timelineCycle = it },
+            onCyclePrimary = { handleProgressPrimary(it.progress, it.isTeacher) },
+            onLegacyTimeline = { showLegacyTimeline = true },
+            onLegacyPrimary = { handleProgressPrimary(it, vm.quoteContext?.isTeacher == true) },
+            onProposalChanged = { vm.reloadContext() },
+            onOpenProposalPayment = { pid ->
+                (context as? Activity)?.let { NativeWebRoute.openWebAndFinish(it, "/lesson-proposals/$pid/payment") }
+            },
+            onMemberSchedule = { showProposal = true },
+            onQuoteHeader = { onQuoteHeader() },
+            onOpenLesson = { openLesson(it) },
+            onAcceptQuote = { showAcceptConfirm = true },
+            onMatchedAction = {
+                // iOS 와 같은 분기 — 이 배너는 progress 가 없을 때만 보이므로 실제로는 약속 제안 작성이 열린다.
+                val p = vm.progress
+                if (vm.isTeacherSide && p != null) openProgressSchedule(p) else showProposal = true
+            },
+        )
 
         Box(Modifier.weight(1f).fillMaxWidth().background(Color(0xFFF7F7F8))) {
             if (vm.isLoading && vm.messages.isEmpty()) {
@@ -159,12 +352,18 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
                             message = m,
                             isMine = m.senderId == vm.currentUserId,
                             opponentImage = vm.opponentImage,
+                            onOpenProfile = { openOpponentProfile() },
+                            showAvatar = vm.showAvatar(i),
                             read = isReadByOpponent(m, vm.opponentLastReadAt),
-                            isTeacherSide = vm.quoteContext?.isTeacher == true,
+                            currentUserId = vm.currentUserId,
+                            // 예약금 결제는 웹 결제 화면(iOS LessonPaymentWebView 와 같은 경로)으로 넘긴다.
+                            onOpenProposalPayment = { pid ->
+                                (context as? Activity)?.let {
+                                    NativeWebRoute.openWebAndFinish(it, "/lesson-proposals/$pid/payment")
+                                }
+                            },
                             token = vm.tokenForCards,
-                            onReply = { vm.replyingTo = m },
                             onLongPress = { reactionTarget = m },
-                            onEdit = { vm.editingMessage = m; vm.onInputChange(m.content) },
                             onToggleReaction = { emoji -> vm.toggleReaction(m, emoji) },
                             onOpenLink = { url -> openExternal(context, url) },
                             onProposalChanged = { vm.reloadContext() },
@@ -188,6 +387,9 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
                             onOpenLesson = { lid ->
                                 lessonLauncher.launch(com.muyeon.app.ui.lesson.LessonActivity.detailIntent(context, lid))
                             },
+                            // 설문 응답·수정 알림 탭 → 같은 설문 카드로 스크롤·강조(iOS SurveyUpdateBubble).
+                            onSurveyUpdate = { did -> jumpTarget = CardJumpTarget.Survey(did) },
+                            highlighted = highlightId == m.id,
                         )
                     }
                     items(vm.pending.size, key = { "pending-" + vm.pending[it].localId }) { i ->
@@ -196,18 +398,24 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
                 }
             }
 
-            if (vm.isOtherTyping) {
+            if (vm.isUploadingMedia) {
                 Text(
-                    "입력 중…",
+                    "사진 보내는 중…",
                     fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 14.sp,
                     color = MuyeonColors.textSub,
-                    modifier = Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 4.dp),
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 4.dp),
                 )
             }
+
+            // 안내 문구(복사·신고·전송 거절 사유 등) — 견적 화면과 같은 하단 캡슐 토스트.
+            vm.toast?.let { com.muyeon.app.ui.quote.ToastBubble(it, Modifier.align(Alignment.BottomCenter)) }
         }
 
         // 빠른 답변 칩 — 상대(강사)가 등록해둔 질문을 탭 한 번으로 전송.
-        if (vm.quickReplies.isNotEmpty() && vm.input.isEmpty()) {
+        //  내 첫 메시지 전·입력창 비어 있음·답장/수정 중 아님일 때만(iOS 와 같은 조건).
+        if (vm.quickReplies.isNotEmpty() && !vm.hasMyMessage && vm.input.isEmpty() &&
+            vm.editingMessage == null && vm.replyingTo == null
+        ) {
             Row(
                 Modifier
                     .horizontalScroll(rememberScrollState())
@@ -222,26 +430,42 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
                             .background(MuyeonColors.primary.copy(alpha = 0.08f))
-                            .clickable { vm.onInputChange(q.text); vm.send() }
+                            .clickable { vm.sendQuick(q.text) }
                             .padding(horizontal = 12.dp, vertical = 7.dp),
                     )
                 }
             }
         }
 
-        ReplyOrEditBanner(vm)
-        ChatInputBar(vm, onAttach = { showAttach = true })
+        // 수정 중이면 입력바 대신 수정 카드(iOS MessageEditCard), 아니면 답장 배너 + 입력바.
+        val editing = vm.editingMessage
+        if (editing != null) {
+            MessageEditCard(
+                original = editing.content,
+                text = vm.input,
+                onTextChange = vm::onInputChange,
+                onCancel = { vm.cancelCompose() },
+                onSave = { vm.send() },
+            )
+        } else {
+            ReplyBanner(vm)
+            ChatInputBar(vm, onAttach = { showAttach = true })
+        }
     }
 
     if (showAttach) {
         ChatAttachSheet(
             showSurvey = vm.quoteContext?.isTeacher == true,
-            showProposal = vm.quoteContext?.isTeacher == true,
+            // 채택된 견적 방은 회원·강사 모두, 그 밖의 방은 강사·학원 유형만 약속 제안 가능(iOS 와 같은 조건).
+            //  최종 검증은 서버가 한다.
+            showProposal = vm.isQuoteMatched || vm.quoteContext?.isTeacher == true ||
+                ActiveRole.current(context) in setOf(ActiveRole.TEACHER, ActiveRole.ACADEMY),
             onPickImages = { uris -> vm.sendImages(context, uris) },
             onPickVideo = { uri -> vm.sendVideo(context, uri) },
             onSurvey = { showSurveyPicker = true },
             onProposal = { showProposal = true },
             onDismiss = { showAttach = false },
+            onCameraDenied = { vm.toast = "카메라 권한을 허용해 주세요." },
         )
     }
     if (showSurveyPicker) {
@@ -259,11 +483,133 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
             calendarApi = remember { com.muyeon.app.ui.lesson.UserCalendarApi(vm.tokenForCards) },
             roomId = vm.roomId,
             isTeacher = vm.quoteContext?.isTeacher == true,
-            // 금액은 방의 견적 컨텍스트에서 가져온다(회원 화면의 예약금 안내에만 쓰인다).
-            totalPrice = vm.quoteContext?.priceAmount ?: 0,
-            depositAmount = 0,
+            // 금액·예약금은 회원 쪽 견적 맥락에서 가져온다(회원 화면의 예약금 안내에만 쓰인다).
+            totalPrice = vm.memberBookingContext?.priceAmount ?: 0,
+            depositAmount = vm.memberBookingContext?.takeIf { it.paymentMode == "DEPOSIT" }?.depositAmount ?: 0,
             onSent = { showProposal = false; vm.toast = "약속을 제안했어요."; vm.reloadContext() },
-            onDismiss = { showProposal = false },
+            onDismiss = { showProposal = false; vm.reloadContext() },
+        )
+    }
+    if (showCyclesSheet) {
+        LessonCyclesSheet(
+            cycles = vm.lessonCycles,
+            opponentImage = vm.opponentImage,
+            onTimeline = { c -> showCyclesSheet = false; timelineCycle = c },
+            onPrimary = { c -> showCyclesSheet = false; handleProgressPrimary(c.progress, c.isTeacher) },
+            onDismiss = { showCyclesSheet = false },
+        )
+    }
+    // 레거시 대표 진행 타임라인 — 역할은 방 단위 quoteContext 기준.
+    val legacyProgress = vm.progress
+    if (showLegacyTimeline && legacyProgress != null) {
+        val qc = vm.quoteContext
+        LessonTimelineSheet(
+            progress = legacyProgress,
+            context = qc,
+            category = vm.contextCategory,
+            onQuoteDetail = if (qc?.isTeacher == false) { { showLegacyTimeline = false; showAcceptConfirm = true } } else null,
+            onSetSchedule = if (qc?.isTeacher == true) {
+                { showLegacyTimeline = false; openProgressSchedule(legacyProgress) }
+            } else null,
+            onOpenCalendar = legacyProgress.lessonId?.let { lid -> { showLegacyTimeline = false; openLesson(lid) } },
+            onReview = if (qc?.isTeacher == false) {
+                { showLegacyTimeline = false; startReviewFlow() }
+            } else {
+                { showLegacyTimeline = false; teacherReviewInfo = true }
+            },
+            reviewDisabledStyle = qc?.isTeacher == true,
+            onDismiss = { showLegacyTimeline = false },
+        )
+    }
+    // 사이클별 타임라인 — 역할(강사/회원)은 사이클 기준으로 판정.
+    timelineCycle?.let { cycle ->
+        LessonTimelineSheet(
+            progress = cycle.progress,
+            context = cycle.asContext,
+            category = cycle.title,
+            isProposal = cycle.isProposal,
+            onQuoteDetail = if (!cycle.isTeacher && !cycle.isProposal) {
+                { timelineCycle = null; showAcceptConfirm = true }
+            } else null,
+            onSetSchedule = if (cycle.isTeacher && !cycle.isProposal) {
+                { timelineCycle = null; openProgressSchedule(cycle.progress) }
+            } else null,
+            onOpenCalendar = cycle.progress.lessonId?.let { lid -> { timelineCycle = null; openLesson(lid) } },
+            onReview = if (!cycle.isTeacher) {
+                { timelineCycle = null; startReviewFlow() }
+            } else {
+                { timelineCycle = null; teacherReviewInfo = true }
+            },
+            reviewDisabledStyle = cycle.isTeacher,
+            onDismiss = { timelineCycle = null },
+        )
+    }
+    // 재입장 방 견적 요약 — 고객이면 받은 견적 상세(네이티브 견적 허브)로 이어진다.
+    if (showQuoteSummary) {
+        val qc = vm.quoteContext
+        QuoteContextSummarySheet(
+            context = qc,
+            category = vm.contextCategory,
+            onOpenDetail = if (qc != null && !qc.isTeacher) {
+                {
+                    showQuoteSummary = false
+                    quoteLauncher.launch(
+                        com.muyeon.app.ui.quote.QuoteHubActivity.intent(context, isPro = false, quoteId = qc.quoteId),
+                    )
+                }
+            } else null,
+            onDismiss = { showQuoteSummary = false },
+        )
+    }
+    // 강사 채택(고객)
+    if (showAcceptConfirm) {
+        com.muyeon.app.ui.quote.QuoteDialog(
+            title = "이 강사로 진행할까요?",
+            message = "채택하면 이 요청은 마감되고 다른 견적은 받을 수 없어요.",
+            confirmText = "채택하기",
+            onConfirm = {
+                showAcceptConfirm = false
+                scope.launch {
+                    val ok = vm.acceptQuote()
+                    vm.toast = if (ok) "강사를 채택했어요. 채팅에서 일정을 확정해 주세요."
+                    else "채택에 실패했어요. 잠시 후 다시 시도해 주세요."
+                }
+            },
+            onDismiss = { showAcceptConfirm = false },
+        )
+    }
+    // 후기 — 활성유형이 일반이 아니면 전환 안내.
+    //  AOS 에는 네이티브 유형 전환 API 가 없어, 확인 시 웹 후기 화면으로 이동하고 유형 확인은 웹이 처리한다.
+    if (showReviewSwitch) {
+        com.muyeon.app.ui.quote.QuoteDialog(
+            title = "후기는 일반 회원 화면에서 작성해요",
+            message = "일반 유형으로 전환한 뒤 후기 작성 화면으로 이동합니다.",
+            confirmText = "일반 유형으로 전환하고 후기 쓰기",
+            onConfirm = { showReviewSwitch = false; openReviewPage() },
+            onDismiss = { showReviewSwitch = false },
+        )
+    }
+    // 강사 방향 레슨 — 후기 대상 아님 안내(확인 버튼 하나).
+    if (teacherReviewInfo) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { teacherReviewInfo = false },
+            title = {
+                Text(
+                    "이 레슨에서는 후기를 쓸 수 없어요",
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp,
+                )
+            },
+            text = {
+                Text(
+                    "이 레슨에서 회원님은 강사예요. 후기는 수강한 회원이 남길 수 있어요.",
+                    fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { teacherReviewInfo = false }) {
+                    Text("확인", fontFamily = customFontFamily, color = MuyeonColors.primary)
+                }
+            },
         )
     }
     if (confirmBlock) {
@@ -312,17 +658,24 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
             onPickEmoji = { emoji -> vm.toggleReaction(m, emoji); reactionTarget = null },
             onCopy = {
                 copyToClipboard(context, m.content)
-                vm.toast = "메시지를 복사했어요."
+                // Android 13 이상은 시스템이 복사 확인을 띄우므로 앱 문구는 생략한다(중복 표시 방지).
+                if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) {
+                    vm.toast = "메시지를 복사했어요."
+                }
                 reactionTarget = null
             },
-            onReply = { vm.replyingTo = m; reactionTarget = null },
-            onEdit = { vm.editingMessage = m; vm.onInputChange(m.content); reactionTarget = null },
+            onSelectCopy = { selectCopyText = m.content; reactionTarget = null },
+            onReply = { vm.startReply(m); reactionTarget = null },
+            onEdit = { vm.startEdit(m); reactionTarget = null },
             onDelete = { vm.deleteMessage(m); reactionTarget = null },
             onReport = { reportMessage = m; reactionTarget = null },
             // 차단은 우상단 메뉴와 같은 확인 다이얼로그를 띄운다(상대 id 를 모르면 숨김).
             onBlock = if (vm.opponentId > 0) { { confirmBlock = true; reactionTarget = null } } else null,
             onDismiss = { reactionTarget = null },
         )
+    }
+    selectCopyText?.let { text ->
+        SelectCopyDialog(text = text, onDismiss = { selectCopyText = null })
     }
     vm.toast?.let { msg ->
         LaunchedEffect(msg) { kotlinx.coroutines.delay(2000); vm.toast = null }
@@ -343,6 +696,7 @@ private fun MessageActionSheet(
     isMine: Boolean,
     onPickEmoji: (String) -> Unit,
     onCopy: () -> Unit,
+    onSelectCopy: () -> Unit,
     onReply: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -368,6 +722,7 @@ private fun MessageActionSheet(
         HorizontalDivider(color = MuyeonColors.border)
         Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
             if (isText) MessageAction("복사", MuyeonColors.textHead, onCopy)
+            if (isText) MessageAction("선택복사", MuyeonColors.textHead, onSelectCopy)
             if (!message.isDeleted) MessageAction("답장", MuyeonColors.textHead, onReply)
             if (isMine && isText) MessageAction("수정", MuyeonColors.textHead, onEdit)
             if (isMine && !message.isDeleted) MessageAction("삭제", MuyeonColors.danger, onDelete)
@@ -400,18 +755,60 @@ private fun copyToClipboard(context: android.content.Context, text: String) {
 private fun RoomNavBar(
     vm: ChatRoomViewModel,
     onBack: () -> Unit,
+    onOpenProfile: () -> Unit,
+    onOpenNotificationSettings: () -> Unit,
     onReport: () -> Unit,
     onBlock: () -> Unit,
 ) {
+    // 활동 상태 문구는 시간이 지나면 바뀐다(접속 중 → N분 전) — 1분마다 기준 시각을 갱신한다.
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(60_000)
+            now = System.currentTimeMillis()
+        }
+    }
+    val presence = vm.presenceText(maxOf(now, System.currentTimeMillis()))
+
     Box(
-        Modifier.fillMaxWidth().height(44.dp).background(MuyeonColors.surface),
+        Modifier.fillMaxWidth().height(48.dp).background(MuyeonColors.surface),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            vm.title.ifBlank { "채팅" },
-            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp,
-            lineHeight = 20.sp, color = MuyeonColors.textHead,
-        )
+        // 이름 + 부제(입력 중 / 접속·활동 상태). 탭 → 상대 공개 프로필(iOS 상단바와 같다).
+        Column(
+            Modifier
+                .padding(horizontal = 96.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(enabled = vm.opponentId > 0, onClick = onOpenProfile)
+                .padding(horizontal = 8.dp, vertical = 2.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                vm.title.ifBlank { "채팅" },
+                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                lineHeight = 19.sp, color = MuyeonColors.textHead, maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
+            if (vm.isOtherTyping) {
+                Text(
+                    "입력 중…",
+                    fontFamily = customFontFamily, fontSize = 11.sp, lineHeight = 13.sp,
+                    color = MuyeonColors.primary,
+                )
+            } else if (presence != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (presence == ChatRoomViewModel.PRESENCE_ONLINE) {
+                        Box(Modifier.size(6.dp).clip(RoundedCornerShape(50)).background(Color(0xFF34C759)))
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    Text(
+                        presence,
+                        fontFamily = customFontFamily, fontSize = 11.sp, lineHeight = 13.sp,
+                        color = MuyeonColors.secondary,
+                    )
+                }
+            }
+        }
         Box(
             Modifier.align(Alignment.CenterStart).padding(start = 4.dp).size(44.dp).clickable(onClick = onBack),
             contentAlignment = Alignment.Center,
@@ -439,6 +836,13 @@ private fun RoomNavBar(
                     Icon(Icons.Filled.MoreVert, "더보기", tint = MuyeonColors.textHead, modifier = Modifier.size(18.dp))
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    // 전체 알림 설정 — iOS 방 설정 시트의 '전체 알림 설정'과 같은 화면.
+                    DropdownMenuItem(
+                        text = {
+                            Text("전체 알림 설정", fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.textHead)
+                        },
+                        onClick = { menuOpen = false; onOpenNotificationSettings() },
+                    )
                     DropdownMenuItem(
                         text = {
                             Text("신고하기", fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.danger)
@@ -459,33 +863,139 @@ private fun RoomNavBar(
     }
 }
 
-/** 답장/수정 대상 배너 — 입력바 위에 붙는다. */
+/** 답장 대상 배너 — 입력바 위에 붙는다. 수정은 [MessageEditCard] 가 담당한다. */
 @Composable
-private fun ReplyOrEditBanner(vm: ChatRoomViewModel) {
-    val reply = vm.replyingTo
-    val edit = vm.editingMessage
-    if (reply == null && edit == null) return
+private fun ReplyBanner(vm: ChatRoomViewModel) {
+    val reply = vm.replyingTo ?: return
     Row(
         Modifier.fillMaxWidth().background(Color(0xFFF2F2F7)).padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
             Text(
-                if (edit != null) "메시지 수정" else "답장",
+                "답장",
                 fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 12.sp,
                 lineHeight = 14.sp, color = MuyeonColors.primary,
             )
             Text(
-                (edit ?: reply)?.content.orEmpty(),
+                reply.content,
                 fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 16.sp,
                 color = MuyeonColors.textSub, maxLines = 1,
             )
         }
         Icon(
             Icons.Filled.Close, "취소", tint = MuyeonColors.secondary,
-            modifier = Modifier.size(16.dp).clickable { vm.replyingTo = null; vm.editingMessage = null },
+            modifier = Modifier.size(16.dp).clickable { vm.cancelCompose() },
         )
     }
+}
+
+/**
+ * 메시지 수정 카드 — iOS MessageEditCard. 입력바 자리에 원문 + 수정 입력 + 원형 ✕/✓.
+ *  ✓ 는 내용이 바뀌었고 비어 있지 않을 때만 누를 수 있다. 열리면 입력칸에 바로 포커스.
+ */
+@Composable
+private fun MessageEditCard(
+    original: String,
+    text: String,
+    onTextChange: (String) -> Unit,
+    onCancel: () -> Unit,
+    onSave: () -> Unit,
+) {
+    val trimmed = text.trim()
+    val changed = trimmed.isNotEmpty() && trimmed != original
+    val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
+    // 커서를 문장 끝에 두기 위해 TextFieldValue 로 다룬다(원문으로 채운 직후 커서가 맨 앞에 오지 않게).
+    var field by remember {
+        mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(text, androidx.compose.ui.text.TextRange(text.length)))
+    }
+    if (field.text != text) {
+        field = androidx.compose.ui.text.input.TextFieldValue(text, androidx.compose.ui.text.TextRange(text.length))
+    }
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(MuyeonColors.surface)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color(0xFFF2F2F7))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "메시지 수정",
+                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                lineHeight = 18.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
+            )
+            Box(
+                Modifier.size(28.dp).clip(RoundedCornerShape(50)).background(Color(0xFFE5E5EA))
+                    .clickable(onClick = onCancel),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Close, "수정 취소", tint = MuyeonColors.textSub, modifier = Modifier.size(14.dp))
+            }
+        }
+        Text(
+            original,
+            fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 18.sp,
+            color = MuyeonColors.textSub, maxLines = 2,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+        )
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            BasicTextField(
+                value = field,
+                onValueChange = { field = it; if (it.text != text) onTextChange(it.text) },
+                textStyle = TextStyle(
+                    fontFamily = customFontFamily, fontSize = 16.sp, lineHeight = 21.sp,
+                    color = MuyeonColors.textHead,
+                ),
+                cursorBrush = SolidColor(MuyeonColors.primary),
+                maxLines = 5,
+                modifier = Modifier.weight(1f).padding(vertical = 6.dp)
+                    .focusRequester(focusRequester),
+            )
+            Box(
+                Modifier
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(if (changed) Color.Black else Color(0xFFD1D1D6))
+                    .clickable(enabled = changed, onClick = onSave),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Check, "수정 완료", tint = Color.White, modifier = Modifier.size(17.dp))
+            }
+        }
+    }
+}
+
+/** 선택복사 — 원문 일부만 골라 복사할 수 있는 창(iOS SelectCopySheet). */
+@Composable
+private fun SelectCopyDialog(text: String, onDismiss: () -> Unit) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("선택복사", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+        },
+        text = {
+            Box(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
+                androidx.compose.foundation.text.selection.SelectionContainer {
+                    Text(
+                        text,
+                        fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 21.sp,
+                        color = MuyeonColors.textHead,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text("완료", fontFamily = customFontFamily, color = MuyeonColors.primary)
+            }
+        },
+    )
 }
 
 @Composable
@@ -558,18 +1068,21 @@ private fun MessageBubble(
     message: ChatMessage,
     isMine: Boolean,
     opponentImage: String?,
+    onOpenProfile: () -> Unit,
+    showAvatar: Boolean,
     read: Boolean,
-    isTeacherSide: Boolean,
+    currentUserId: Int,
+    onOpenProposalPayment: (Int) -> Unit,
     token: String?,
-    onReply: () -> Unit,
     onLongPress: () -> Unit,
-    onEdit: () -> Unit,
     onToggleReaction: (String) -> Unit,
     onOpenLink: (String) -> Unit,
     onProposalChanged: () -> Unit,
     onOpenProvider: (Int, Boolean) -> Unit,
     onOpenSurvey: (Int) -> Unit,
     onOpenLesson: (Int) -> Unit,
+    onSurveyUpdate: (Int) -> Unit,
+    highlighted: Boolean,
 ) {
     // ── 말풍선이 아니라 전용 카드/안내로 그리는 타입들 ──
     //  ⚠️ 여기서 안 받으면 `else -> Text(content)` 로 떨어져 JSON 원문이 그대로 노출된다.
@@ -581,7 +1094,7 @@ private fun MessageBubble(
             }
             "SURVEY_UPDATE" -> {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    SurveyUpdateBubble(message.content, onOpenSurvey)
+                    SurveyUpdateBubble(message.content, onSurveyUpdate)
                 }
                 return
             }
@@ -598,7 +1111,10 @@ private fun MessageBubble(
                 return
             }
             "SURVEY_CARD" -> {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
+                Row(
+                    Modifier.fillMaxWidth().shake(highlighted),
+                    horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start,
+                ) {
                     SurveyCardBubble(
                         json = message.content,
                         done = message.surveyDone == true,
@@ -612,8 +1128,18 @@ private fun MessageBubble(
             }
             // 레슨 약속 제안은 전용 카드로 렌더(iOS LessonProposalCardBubble).
             "LESSON_PROPOSAL" -> {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
-                    LessonProposalBubble(message.content, isTeacherSide, token, onProposalChanged)
+                Row(
+                    Modifier.fillMaxWidth().shake(highlighted),
+                    horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start,
+                ) {
+                    LessonProposalBubble(
+                        contentJson = message.content,
+                        isProposer = isMine,
+                        currentUserId = currentUserId,
+                        token = token,
+                        onChanged = onProposalChanged,
+                        onOpenPayment = onOpenProposalPayment,
+                    )
                 }
                 return
             }
@@ -627,7 +1153,16 @@ private fun MessageBubble(
         verticalAlignment = Alignment.Top,
     ) {
         if (!isMine) {
-            QuoteAvatar(opponentImage, message.sender?.displayName ?: "상대", 32.dp)
+            // 연속된 상대 메시지는 첫 말풍선에만 아바타(34dp), 나머지는 같은 너비만큼 비워 왼쪽 선을 맞춘다.
+            if (showAvatar) {
+                // 아바타 탭 → 상대 공개 프로필(iOS 상단바·말풍선 아바타와 같은 목적지).
+                QuoteAvatar(
+                    opponentImage, message.sender?.displayName ?: "상대", 34.dp,
+                    modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onOpenProfile),
+                )
+            } else {
+                Spacer(Modifier.width(34.dp))
+            }
             Spacer(Modifier.width(6.dp))
         }
 
@@ -656,8 +1191,9 @@ private fun MessageBubble(
                             else Modifier
                                 .clip(RoundedCornerShape(18.dp))
                                 .background(if (isMine) MuyeonColors.primary else Color(0xFFF2F2F7))
+                                // 탭은 동작 없음, 길게 누르면 반응·복사·답장·수정·삭제 메뉴(iOS 컨텍스트 메뉴와 같다).
                                 .combinedClickable(
-                                    onClick = { if (isMine) onEdit() else onReply() },
+                                    onClick = {},
                                     onLongClick = onLongPress,
                                 )
                                 .padding(horizontal = 14.dp, vertical = 10.dp),
@@ -811,4 +1347,37 @@ private fun ProviderSwitchGate(onBack: () -> Unit, onSwitch: () -> Unit) {
             ) { Text("강사 유형으로 전환") }
         }
     }
+}
+
+/** 딥링크·설문 알림으로 찾아갈 카드 — 설문(dispatchId) 또는 약속 제안(proposalId). */
+private sealed interface CardJumpTarget {
+    fun matches(m: ChatMessage): Boolean
+
+    data class Survey(val dispatchId: Int) : CardJumpTarget {
+        override fun matches(m: ChatMessage): Boolean =
+            m.type == "SURVEY_CARD" && runCatching {
+                org.json.JSONObject(m.content).optInt("dispatchId")
+            }.getOrDefault(0) == dispatchId
+    }
+
+    data class Proposal(val proposalId: Int) : CardJumpTarget {
+        override fun matches(m: ChatMessage): Boolean =
+            m.type == "LESSON_PROPOSAL" && LessonProposalCard.parse(m.content)?.proposalId == proposalId
+    }
+}
+
+/** 대상 카드를 찾을 때 이전 메시지를 더 불러오는 최대 횟수(50건 × 20 = 1,000건). */
+private const val MAX_JUMP_LOADS = 20
+
+/** 카드 강조 — 좌우로 짧게 흔든다(iOS ShakeEffect). [active] 가 true 로 바뀔 때 한 번 재생한다. */
+@Composable
+private fun Modifier.shake(active: Boolean): Modifier {
+    val offset = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(active) {
+        if (!active) return@LaunchedEffect
+        for (x in listOf(-10f, 10f, -8f, 8f, -4f, 4f, 0f)) {
+            offset.animateTo(x, androidx.compose.animation.core.tween(durationMillis = 70))
+        }
+    }
+    return this.then(Modifier.graphicsLayer { translationX = offset.value * density })
 }

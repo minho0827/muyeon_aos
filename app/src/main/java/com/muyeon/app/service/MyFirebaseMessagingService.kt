@@ -120,14 +120,25 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         url: String?,
         customData: Map<String, String> = emptyMap()
     ) {
-        // 채팅 푸시(chat.gateway 가 방 미접속자에게 발송: data.type=chat_message, roomId)는
-        //  웹뷰가 아니라 네이티브 채팅방으로 직행. 그 외는 기존 웹뷰 경로 유지.
-        val chatRoomId = customData["roomId"]?.toIntOrNull()
-        val intent = if (customData["type"] == "chat_message" && chatRoomId != null && chatRoomId > 0) {
-            Intent(this, com.muyeon.app.ui.chat.ChatActivity::class.java).apply {
+        // 채팅 푸시는 웹뷰가 아니라 네이티브 채팅방으로 직행한다(iOS routePushPayload 와 같은 분기).
+        //  · survey_response(설문 응답·수정) → 방 진입 후 dispatchId 의 설문 카드로 스크롤
+        //  · 채팅 계열 type(화이트리스트) → 방 진입. proposalId 가 있으면 그 약속 제안 카드로 스크롤
+        //  · type 이 없으면(구버전 서버) roomId 만으로 방을 연다(iOS 하위호환과 같다)
+        //  그 외는 기존 웹뷰 경로 유지.
+        val chatRoomId = customData["roomId"]?.toIntOrNull()?.takeIf { it > 0 }
+        val pushType = customData["type"]
+        val isSurveyResponse = pushType == "survey_response"
+        val opensChat = chatRoomId != null &&
+            (isSurveyResponse || pushType == null || pushType in CHAT_PUSH_TYPES)
+        val intent = if (opensChat && chatRoomId != null) {
+            com.muyeon.app.ui.chat.ChatActivity.roomIntent(
+                this, chatRoomId,
+                // 푸시 제목은 채팅 메시지일 때만 상대 이름이다 — 그 외에는 방 상세에서 이름을 채운다.
+                title = if (pushType == "chat_message") title else null,
+                dispatchId = if (isSurveyResponse) customData["dispatchId"]?.toIntOrNull() else null,
+                proposalId = if (isSurveyResponse) null else customData["proposalId"]?.toIntOrNull(),
+            ).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                putExtra("roomId", chatRoomId)
-                putExtra("title", title)
             }
         } else {
             Intent(this, WebViewActivity::class.java).apply {
@@ -161,4 +172,14 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     private fun String?.orDefault(default: () -> String) = if (this.isNullOrBlank()) default() else this
+
+    private companion object {
+        /** 네이티브 채팅방으로 여는 푸시 type — iOS CustomAppDelegate chatPushTypes 와 같은 목록. */
+        val CHAT_PUSH_TYPES = setOf(
+            "chat_message", "QUOTE_NEW", "QUOTE_REQUEST", "quote_request", "new_message",
+            "QUOTE_ACCEPTED", "LESSON_CONFIRM_NUDGE",
+            "LESSON_PROPOSAL", "LESSON_PROPOSAL_DECLINED",
+            "LESSON_COMPLETE_CANCELED",
+        )
+    }
 }

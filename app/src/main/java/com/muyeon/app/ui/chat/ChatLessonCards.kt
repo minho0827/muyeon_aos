@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Icon
@@ -49,8 +50,11 @@ import java.util.Locale
 // 레슨 진행 카드 — 5단계 스테퍼(요청→견적→채택→확정→완료)
 // ============================================================
 
-private val PROGRESS_STEPS = listOf("요청", "견적", "채택", "확정", "완료")
-
+/**
+ * 진행 카드(접힌 한 줄) — iOS LessonProgressCard.
+ *  카드 탭 → 타임라인 시트([onTimeline]), 우측 캡슐 버튼 → 단계·역할별 주 액션([onPrimary]).
+ *  배경·모서리는 호출부가 정한다(상단 고정은 회색 띠, 목록 시트는 둥근 테두리 카드).
+ */
 @Composable
 fun LessonProgressCard(
     progress: ChatLessonProgress,
@@ -61,17 +65,18 @@ fun LessonProgressCard(
     personName: String? = null,
     personImage: String? = null,
     personRole: String? = null, // "강사" | "수강생"
+    modifier: Modifier = Modifier,
+    onTimeline: () -> Unit,
     onPrimary: () -> Unit,
 ) {
     val isTeacher = context?.isTeacher ?: false
 
     Column(
-        Modifier
+        modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(MuyeonColors.surface)
-            .border(1.dp, MuyeonColors.border, RoundedCornerShape(14.dp))
-            .padding(14.dp),
+            .background(MuyeonColors.groupedBg)
+            .clickable(onClick = onTimeline)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         // 상대 프로필 헤더 — [아바타] 이름 [강사/수강생]. 역할칩이 레슨 방향을 잡아준다.
@@ -100,76 +105,94 @@ fun LessonProgressCard(
             }
         }
 
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 category ?: "레슨",
-                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
-                lineHeight = 18.sp, color = MuyeonColors.textHead,
+                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                lineHeight = 17.sp, color = MuyeonColors.textHead,
             )
             if (isProposal) Chip("약속", MuyeonColors.primary)
-            if (isExpired) Chip("마감", MuyeonColors.secondary)
+            if (isExpired) QuoteExpiredPill()
             Spacer(Modifier.weight(1f))
-            context?.priceText?.let {
+            // 5점 스테퍼 — 현재 단계까지 채움
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                repeat(5) { i ->
+                    Box(
+                        Modifier.size(6.dp).clip(CircleShape)
+                            .background(if (i <= progress.stepIndex) MuyeonColors.primary else Color(0xFFD1D1D6)),
+                    )
+                }
+            }
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
+                tint = MuyeonColors.secondary, modifier = Modifier.size(14.dp),
+            )
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                progressStatusLine(progress, context, isTeacher),
+                fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 16.sp,
+                color = MuyeonColors.secondary, maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            primaryCta(progress.step, isTeacher)?.let { label ->
                 Text(
-                    it,
-                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
-                    lineHeight = 17.sp, color = MuyeonColors.textHead,
+                    label,
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                    lineHeight = 15.sp, color = Color.White,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(MuyeonColors.primary)
+                        .clickable(onClick = onPrimary)
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
                 )
             }
-        }
-
-        // 5단계 스테퍼
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            PROGRESS_STEPS.forEachIndexed { i, label ->
-                val done = i <= progress.stepIndex
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(
-                        Modifier.size(8.dp).clip(CircleShape)
-                            .background(if (done) MuyeonColors.primary else MuyeonColors.border),
-                    )
-                    Text(
-                        label,
-                        fontFamily = customFontFamily,
-                        fontWeight = if (done) FontWeight.SemiBold else FontWeight.Normal,
-                        fontSize = 10.sp, lineHeight = 12.sp,
-                        color = if (done) MuyeonColors.textHead else MuyeonColors.secondary,
-                        modifier = Modifier.padding(top = 3.dp),
-                    )
-                }
-                if (i != PROGRESS_STEPS.lastIndex) {
-                    Box(
-                        Modifier.weight(1f).height(2.dp).padding(horizontal = 2.dp)
-                            .background(if (i < progress.stepIndex) MuyeonColors.primary else MuyeonColors.border),
-                    )
-                }
-            }
-        }
-
-        // 단계·역할별 한 줄 CTA
-        val cta = primaryCta(progress.step, isTeacher)
-        if (cta != null) {
-            Text(
-                cta,
-                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
-                lineHeight = 17.sp, color = Color.White, textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MuyeonColors.primary)
-                    .clickable(onClick = onPrimary)
-                    .padding(vertical = 10.dp),
-            )
         }
     }
 }
 
-/** iOS 단계·역할별 주 액션 라벨. */
+/** iOS LessonProgressCard.statusLine — 단계·역할별 한 줄 상태. */
+private fun progressStatusLine(progress: ChatLessonProgress, context: ChatQuoteContext?, isTeacher: Boolean): String =
+    when (progress.step) {
+        "DONE" -> "레슨 완료"
+        "SCHEDULED" -> lessonProgressDateTime(progress.scheduleStartAt)?.let { "일정 확정 · $it" } ?: "일정 확정"
+        "ACCEPTED" -> if (isTeacher) "채택 완료 — 일정을 확정해 주세요" else "채택 완료 — 원하는 일정을 제안해 주세요"
+        else -> {
+            var line = "견적 ${progress.responseCount ?: 1}건 도착"
+            context?.priceText?.let { line += " · $it" }
+            line
+        }
+    }
+
+/** iOS LessonProgressCard.primaryLabel — 단계·역할별 주 액션 라벨(null 이면 버튼 없음). */
 private fun primaryCta(step: String, isTeacher: Boolean): String? = when (step) {
-    "RESPONDED" -> if (isTeacher) null else "견적 보기"
-    "ACCEPTED" -> if (isTeacher) "일정 정하기" else "일정 확정 기다리는 중"
+    "DONE" -> if (isTeacher) null else "후기 쓰기"   // 후기는 수강생만 — 강사 방향엔 버튼 미노출
     "SCHEDULED" -> "일정 보기"
-    "DONE" -> if (isTeacher) null else "후기 쓰기"
-    else -> null
+    "ACCEPTED" -> if (isTeacher) "일정 확정하기" else "일정 잡기"
+    else -> if (isTeacher) null else "채택하기"
+}
+
+/** 견적요청 마감(14일 경과) 배지 — iOS ChatRoomView.quoteExpiredPill. */
+@Composable
+internal fun QuoteExpiredPill() {
+    Text(
+        "견적 마감",
+        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 10.sp, lineHeight = 12.sp,
+        color = MuyeonColors.secondary,
+        modifier = Modifier
+            .clip(RoundedCornerShape(50)).background(MuyeonColors.placeholder)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+    )
+}
+
+/** ISO → "7월 26일 (토) 오후 4:58" — iOS ChatLessonProgressFormat.dateTime. */
+internal fun lessonProgressDateTime(iso: String?): String? {
+    val t = QuoteUi.parseDate(iso) ?: return null
+    return SimpleDateFormat("M월 d일 (E) a h:mm", Locale.KOREA)
+        .apply { timeZone = java.util.TimeZone.getTimeZone("Asia/Seoul") }
+        .format(Date(t))
 }
 
 @Composable
@@ -195,8 +218,12 @@ data class LessonProposalCard(
     val durationMin: Int?,
     val place: String?,
     val memo: String?,
-    val status: String,       // PROPOSED | ACCEPTED | DECLINED | CANCELED | EXPIRED
+    val status: String,       // PROPOSED | AWAITING_PAYMENT | ACCEPTED | DECLINED | CANCELED | EXPIRED
     val scheduleId: Int?,
+    val proposerId: Int? = null,
+    val memberId: Int? = null,      // 약속의 회원(수강생). 구 카드에는 없다.
+    val totalPrice: Int? = null,
+    val depositAmount: Int? = null,
 ) {
     companion object {
         fun parse(content: String): LessonProposalCard? = runCatching {
@@ -209,13 +236,24 @@ data class LessonProposalCard(
                 memo = o.stringOrNull("memo"),
                 status = o.optString("status"),
                 scheduleId = o.intOrNull("scheduleId"),
+                proposerId = o.intOrNull("proposerId"),
+                memberId = o.intOrNull("memberId"),
+                totalPrice = o.intOrNull("totalPrice"),
+                depositAmount = o.intOrNull("depositAmount"),
             )
         }.getOrNull()
     }
 }
 
+/** 제안 수락·거절·취소 결과. 수락이 내 일정과 겹치면 서버가 409 를 준다(iOS LessonProposalConflict). */
+private sealed interface ProposalActionResult {
+    object Ok : ProposalActionResult
+    data class Conflict(val message: String) : ProposalActionResult
+    data class Failed(val message: String) : ProposalActionResult
+}
+
 /** POST /lesson-proposals/:id/{accept|decline|cancel} — iOS LessonProposalService. */
-private suspend fun proposalAction(token: String?, id: Int, action: String, force: Boolean = false): Boolean =
+private suspend fun proposalAction(token: String?, id: Int, action: String, force: Boolean = false): ProposalActionResult =
     withContext(Dispatchers.IO) {
         runCatching {
             val body = JSONObject().apply { if (action == "accept") put("force", force) }
@@ -225,8 +263,16 @@ private suspend fun proposalAction(token: String?, id: Int, action: String, forc
                 .addHeader("Content-Type", "application/json")
                 .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }.withActiveType()
                 .build()
-            OkHttpClient().newCall(req).execute().use { it.isSuccessful }
-        }.getOrDefault(false)
+            OkHttpClient().newCall(req).execute().use { res ->
+                if (res.isSuccessful) return@use ProposalActionResult.Ok
+                val msg = runCatching { JSONObject(res.body?.string().orEmpty()).stringOrNull("message") }.getOrNull()
+                if (res.code == 409 && action == "accept") {
+                    ProposalActionResult.Conflict(msg ?: "그 시간에 이미 내 일정이 있어요.")
+                } else {
+                    ProposalActionResult.Failed(msg ?: "처리하지 못했어요. 다시 시도해 주세요.")
+                }
+            }
+        }.getOrElse { ProposalActionResult.Failed("처리하지 못했어요. 다시 시도해 주세요.") }
     }
 
 /** 확정 약속 회원 취소 미리보기 — 서버가 약속에 찍힌 환불 규정으로 계산한다(앱은 계산하지 않음). */
@@ -270,12 +316,20 @@ private fun won(v: Int) = String.format(Locale.KOREA, "%,d", v)
 @Composable
 fun LessonProposalBubble(
     contentJson: String,
-    isTeacherSide: Boolean,   // 열람자가 이 방의 강사인지(= 제안자)
+    isProposer: Boolean,      // 열람자가 이 카드의 제안자인지(= 카드 메시지를 보낸 사람). 회원도 제안할 수 있다.
+    currentUserId: Int,
     token: String?,
     onChanged: () -> Unit,
+    onOpenPayment: (proposalId: Int) -> Unit,
 ) {
     val card = remember(contentJson) { LessonProposalCard.parse(contentJson) } ?: return
+    // 이 약속의 회원(수강생)인가. 구 카드에 memberId 가 없으면 제안받은 쪽을 회원으로 본다(iOS isMemberOf).
+    val isMember = card.memberId?.let { it == currentUserId } ?: !isProposer
     var busy by remember { mutableStateOf(false) }
+    var confirmAccept by remember { mutableStateOf(false) }
+    var confirmDecline by remember { mutableStateOf(false) }
+    var acceptConflict by remember { mutableStateOf<String?>(null) }   // 내 일정 겹침(409) → "그래도 수락"
+
     var cancelMessage by remember { mutableStateOf<String?>(null) }   // 회원 취소 확인(예상 환불액)
     var errorText by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -302,13 +356,17 @@ fun LessonProposalBubble(
         }
     }
 
-    fun act(action: String) {
+    fun act(action: String, force: Boolean = false) {
         if (busy) return
         busy = true
+        errorText = null
         scope.launch {
-            proposalAction(token, card.proposalId, action)
+            when (val r = proposalAction(token, card.proposalId, action, force)) {
+                ProposalActionResult.Ok -> onChanged()   // 카드 상태는 서버 message-updated 로도 갱신된다.
+                is ProposalActionResult.Conflict -> acceptConflict = r.message
+                is ProposalActionResult.Failed -> errorText = r.message
+            }
             busy = false
-            onChanged()   // 상태 변경은 서버가 message-updated 로 브로드캐스트하지만 컨텍스트도 재조회.
         }
     }
 
@@ -350,17 +408,44 @@ fun LessonProposalBubble(
         // 대기중일 때만 액션 — 고객: 수락/거절 / 강사(제안자): 제안 취소.
         if (card.status == "PROPOSED") {
             Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (isTeacherSide) {
+                if (isProposer) {
                     ProposalButton("제안 취소", filled = false, enabled = !busy, modifier = Modifier.weight(1f)) { act("cancel") }
                 } else {
-                    ProposalButton("거절", filled = false, enabled = !busy, modifier = Modifier.weight(1f)) { act("decline") }
-                    ProposalButton("수락", filled = true, enabled = !busy, modifier = Modifier.weight(1f)) { act("accept") }
+                    ProposalButton("거절", filled = false, enabled = !busy, modifier = Modifier.weight(1f)) { confirmDecline = true }
+                    ProposalButton(
+                        if (busy) "처리 중…" else "수락", filled = true, enabled = !busy, modifier = Modifier.weight(1f),
+                    ) { confirmAccept = true }
                 }
             }
         }
         // 확정 후 회원 본인 취소 — 수업 시작 전에만. 환불은 약속에 찍힌 규정대로 서버가 계산한다.
         val startMs = QuoteUi.parseDate(card.startAt)
-        if (card.status == "ACCEPTED" && !isTeacherSide && startMs != null && startMs > System.currentTimeMillis()) {
+        if (card.status == "ACCEPTED") {
+            Text(
+                "레슨이 확정됐어요 — 캘린더에서 확인할 수 있어요",
+                fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp, color = MuyeonColors.textSub,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+        // 예약금 결제 대기 — 회원은 웹 결제 화면으로, 강사는 대기 안내(iOS AWAITING_PAYMENT).
+        if (card.status == "AWAITING_PAYMENT") {
+            Text(
+                "총 레슨비 ${won(card.totalPrice ?: 0)}원 · 예약금 ${won(card.depositAmount ?: 0)}원",
+                fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp, color = MuyeonColors.textSub,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            if (card.memberId == currentUserId) {
+                ProposalButton(
+                    "예약금 결제하기", filled = true, enabled = true, modifier = Modifier.fillMaxWidth(),
+                ) { onOpenPayment(card.proposalId) }
+            } else {
+                Text(
+                    "회원의 예약금 결제를 기다리고 있어요.",
+                    fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp, color = MuyeonColors.textSub,
+                )
+            }
+        }
+        if (card.status == "ACCEPTED" && isMember && startMs != null && startMs > System.currentTimeMillis()) {
             ProposalButton(
                 if (busy) "확인 중…" else "약속 취소", filled = false, enabled = !busy,
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
@@ -388,6 +473,33 @@ fun LessonProposalBubble(
             onDismiss = { cancelMessage = null },
         )
     }
+    if (confirmAccept) {
+        com.muyeon.app.ui.quote.QuoteDialog(
+            title = "레슨 약속을 수락할까요?",
+            message = "${proposalDateTime(card.startAt)} 레슨이 확정되고 캘린더에 등록돼요.",
+            confirmText = "수락",
+            onConfirm = { confirmAccept = false; act("accept") },
+            onDismiss = { confirmAccept = false },
+        )
+    }
+    acceptConflict?.let { msg ->
+        com.muyeon.app.ui.quote.QuoteDialog(
+            title = "이미 일정이 있어요",
+            message = "$msg\n그래도 이 약속을 수락할까요?",
+            confirmText = "그래도 수락",
+            onConfirm = { acceptConflict = null; act("accept", force = true) },
+            onDismiss = { acceptConflict = null },
+        )
+    }
+    if (confirmDecline) {
+        com.muyeon.app.ui.quote.QuoteDialog(
+            title = "이번 제안을 거절할까요?",
+            message = "채팅으로 다른 시간을 다시 조율할 수 있어요.",
+            confirmText = "거절",
+            onConfirm = { confirmDecline = false; act("decline") },
+            onDismiss = { confirmDecline = false },
+        )
+    }
 }
 
 @Composable
@@ -411,17 +523,18 @@ private fun ProposalButton(
 }
 
 private fun proposalStatusLabel(s: String) = when (s) {
-    "PROPOSED" -> "대기중"
+    "PROPOSED" -> "대기 중"
+    "AWAITING_PAYMENT" -> "결제 대기"
     "ACCEPTED" -> "수락됨"
     "DECLINED" -> "거절됨"
     "CANCELED" -> "취소됨"
-    "EXPIRED" -> "만료"
+    "EXPIRED" -> "만료됨"
     else -> s
 }
 
 private fun proposalStatusColor(s: String) = when (s) {
     "ACCEPTED" -> MuyeonColors.green
-    "PROPOSED" -> MuyeonColors.primary
+    "PROPOSED", "AWAITING_PAYMENT" -> MuyeonColors.primary
     else -> MuyeonColors.secondary
 }
 
