@@ -619,20 +619,16 @@ private fun MessageBubble(
             }
         }
     }
+    // 말풍선 배치는 PACERA ChatBubble 과 같다 — 꼬리 없는 둥근 사각형, 시간·읽음은 말풍선 옆 아래.
+    //  내 메시지는 [시간][말풍선], 상대 메시지는 [아바타][말풍선][시간].
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start,
-        verticalAlignment = Alignment.Bottom,
+        verticalAlignment = Alignment.Top,
     ) {
         if (!isMine) {
             QuoteAvatar(opponentImage, message.sender?.displayName ?: "상대", 32.dp)
             Spacer(Modifier.width(6.dp))
-        } else if (read) {
-            Text(
-                "읽음",
-                fontFamily = customFontFamily, fontSize = 10.sp, lineHeight = 12.sp,
-                color = MuyeonColors.primary, modifier = Modifier.padding(end = 4.dp, bottom = 2.dp),
-            )
         }
 
         Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
@@ -647,45 +643,49 @@ private fun MessageBubble(
             }
             // 이미지 말풍선은 배경 없이 사진만 보여준다(iOS ChatImageBubble — 말풍선 밖).
             val bare = message.type == "IMAGE" && !message.isDeleted
-            Box(
-                Modifier
-                    .widthIn(max = 260.dp)
-                    .then(
-                        if (bare) Modifier.clip(RoundedCornerShape(12.dp))
-                        else Modifier
-                            // 카톡식 꼬리 말풍선 — 수신은 좌상단, 발신은 우상단(iOS ChatBubbleShape).
-                            .clip(ChatBubbleShape(mine = isMine))
-                            .background(if (isMine) MuyeonColors.primary else Color(0xFFF2F2F7))
-                            .combinedClickable(
-                                onClick = { if (isMine) onEdit() else onReply() },
-                                onLongClick = onLongPress,
-                            )
-                            // 꼬리가 차지하는 폭만큼 그쪽 여백을 더해 글자가 붙지 않게 한다.
-                            .padding(
-                                start = if (isMine) 14.dp else 14.dp + BUBBLE_TAIL,
-                                end = if (isMine) 14.dp + BUBBLE_TAIL else 14.dp,
-                                top = 9.dp, bottom = 9.dp,
-                            ),
-                    ),
-            ) {
-                when {
-                    message.isDeleted -> Text(
-                        "삭제된 메시지입니다.",
-                        fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 20.sp,
-                        color = if (isMine) Color.White.copy(alpha = 0.7f) else MuyeonColors.secondary,
-                    )
-                    message.type == "IMAGE" -> ChatImageBubble(
-                        urls = message.imageUrls,
-                        // 저장은 내가 보낸 사진만(iOS viewerAllowsSaving = vm.isMine)
-                        allowsSaving = isMine,
-                        onLongPress = onLongPress,
-                    )
-                    message.type == "VIDEO" -> ChatVideoBubble(message.imageUrl.orEmpty())
-                    else -> Text(
-                        message.content,
-                        fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 20.sp,
-                        color = if (isMine) Color.White else MuyeonColors.textHead,
-                    )
+            Row(verticalAlignment = Alignment.Bottom) {
+                if (isMine) {
+                    BubbleMeta(message, read = read, alignEnd = true)
+                    Spacer(Modifier.width(4.dp))
+                }
+                Box(
+                    Modifier
+                        .widthIn(max = 260.dp)
+                        .then(
+                            if (bare) Modifier.clip(RoundedCornerShape(12.dp))
+                            else Modifier
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(if (isMine) MuyeonColors.primary else Color(0xFFF2F2F7))
+                                .combinedClickable(
+                                    onClick = { if (isMine) onEdit() else onReply() },
+                                    onLongClick = onLongPress,
+                                )
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                        ),
+                ) {
+                    when {
+                        message.isDeleted -> Text(
+                            "삭제된 메시지입니다.",
+                            fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 20.sp,
+                            color = if (isMine) Color.White.copy(alpha = 0.7f) else MuyeonColors.secondary,
+                        )
+                        message.type == "IMAGE" -> ChatImageBubble(
+                            urls = message.imageUrls,
+                            // 저장은 내가 보낸 사진만(iOS viewerAllowsSaving = vm.isMine)
+                            allowsSaving = isMine,
+                            onLongPress = onLongPress,
+                        )
+                        message.type == "VIDEO" -> ChatVideoBubble(message.imageUrl.orEmpty())
+                        else -> Text(
+                            message.content,
+                            fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 20.sp,
+                            color = if (isMine) Color.White else MuyeonColors.textHead,
+                        )
+                    }
+                }
+                if (!isMine) {
+                    Spacer(Modifier.width(4.dp))
+                    BubbleMeta(message, read = false, alignEnd = false)
                 }
             }
             // 텍스트 안 URL 미리보기(카톡식)
@@ -714,21 +714,36 @@ private fun MessageBubble(
                     }
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (message.isEdited && !message.isDeleted) {
-                    Text(
-                        "수정됨",
-                        fontFamily = customFontFamily, fontSize = 10.sp, lineHeight = 12.sp,
-                        color = MuyeonColors.secondary,
-                    )
-                }
-                Text(
-                    chatListTime(message.createdAt),
-                    fontFamily = customFontFamily, fontSize = 11.sp, lineHeight = 13.sp,
-                    color = MuyeonColors.secondary,
-                )
-            }
         }
+    }
+}
+
+/** 말풍선 옆 메타 — 읽음(내 메시지만)·수정됨·시간. alignEnd 는 내 메시지(말풍선 왼쪽에 놓임)일 때 true. */
+@Composable
+private fun BubbleMeta(message: ChatMessage, read: Boolean, alignEnd: Boolean) {
+    Column(
+        horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start,
+        modifier = Modifier.padding(bottom = 2.dp),
+    ) {
+        if (read) {
+            Text(
+                "읽음",
+                fontFamily = customFontFamily, fontSize = 10.sp, lineHeight = 12.sp,
+                color = MuyeonColors.primary,
+            )
+        }
+        if (message.isEdited && !message.isDeleted) {
+            Text(
+                "수정됨",
+                fontFamily = customFontFamily, fontSize = 10.sp, lineHeight = 12.sp,
+                color = MuyeonColors.secondary,
+            )
+        }
+        Text(
+            chatListTime(message.createdAt),
+            fontFamily = customFontFamily, fontSize = 10.sp, lineHeight = 12.sp,
+            color = MuyeonColors.secondary,
+        )
     }
 }
 
