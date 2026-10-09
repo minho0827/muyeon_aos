@@ -33,6 +33,7 @@ data class ChatRoomSummary(
     val kind: String?,            // quote | space | direct — 세그먼트 필터 기준
     val myQuoteRole: String?,     // 견적방에서 내 역할: customer | pro | null
     val opponent: ChatOpponent?,
+    val lastSeq: Int? = null,     // 방의 마지막 메시지 순번(2026-10-09 서버부터). 구버전 서버는 null
 ) {
     val displayTitle: String get() = opponent?.nickname ?: opponent?.name ?: "채팅"
     val isQuoteExpired: Boolean get() = quoteStatus == "EXPIRED"
@@ -59,6 +60,45 @@ data class ChatRoomSummary(
             kind = o.stringOrNull("kind"),
             myQuoteRole = o.stringOrNull("myQuoteRole"),
             opponent = ChatOpponent.from(o.optJSONObject("opponent")),
+            lastSeq = o.intOrNull("lastSeq"),
+        )
+    }
+}
+
+/**
+ * 소켓 room-updated payload(2026-10-09 서버).
+ *  { roomId, lastMessage, lastMessageAt, lastSeq, lastMessageType, senderId, senderNickname, unreadDelta, unreadCount }
+ *  구버전 서버는 roomId 만 보내므로 나머지는 전부 nullable 이다. [canPatch] 가 false 이면 목록을 다시 조회한다.
+ */
+data class ChatRoomUpdate(
+    val roomId: Int,
+    val lastMessage: String?,
+    val lastMessageAt: String?,
+    val lastSeq: Int?,
+    val lastMessageType: String?,
+    val senderId: Int?,
+    val senderNickname: String?,
+    val unreadDelta: Int?,
+    val unreadCount: Int?,
+) {
+    /**
+     * 목록의 해당 행만 갱신할 수 있는 payload 인지.
+     *  새 메시지 신호는 미리보기 시각, 읽음 신호({roomId, unreadCount:0, lastSeq})는 안읽음 수를 싣는다.
+     *  roomId 만 온 신호(구버전 서버, 메시지 수정·삭제)는 갱신할 값이 없어 재조회 대상이다.
+     */
+    val canPatch: Boolean get() = lastMessageAt != null || unreadCount != null || unreadDelta != null
+
+    companion object {
+        fun from(o: JSONObject) = ChatRoomUpdate(
+            roomId = o.optInt("roomId"),
+            lastMessage = o.stringOrNull("lastMessage"),
+            lastMessageAt = o.stringOrNull("lastMessageAt"),
+            lastSeq = o.intOrNull("lastSeq"),
+            lastMessageType = o.stringOrNull("lastMessageType"),
+            senderId = o.intOrNull("senderId"),
+            senderNickname = o.stringOrNull("senderNickname"),
+            unreadDelta = o.intOrNull("unreadDelta"),
+            unreadCount = o.intOrNull("unreadCount"),
         )
     }
 }
@@ -269,6 +309,7 @@ data class ChatRoomDetail(
     val lessonSchedule: ChatLessonSchedule?,
     val progress: ChatLessonProgress?,
     val lessonCycles: List<ChatLessonCycle>?,   // 있으면 이걸 우선 렌더(양방향)
+    val lastSeq: Int?,                          // 방의 마지막 메시지 순번(구버전 서버는 null)
 ) {
     companion object {
         fun from(o: JSONObject) = ChatRoomDetail(
@@ -282,6 +323,7 @@ data class ChatRoomDetail(
             lessonSchedule = ChatLessonSchedule.from(o.optJSONObject("lessonSchedule")),
             progress = o.optJSONObject("progress")?.let { ChatLessonProgress.from(it) },
             lessonCycles = o.optJSONArray("lessonCycles")?.map { ChatLessonCycle.from(it) },
+            lastSeq = o.intOrNull("lastSeq"),
         )
     }
 }
@@ -334,6 +376,8 @@ data class ChatMessage(
     val surveyRespondedAt: String?,
     val surveyUpdatedAt: String?,
     val reactions: List<ChatReaction>?,
+    val seq: Int? = null,             // 방 안 순번(1..N). 구버전 서버·백필 전 행은 null
+    val clientMsgId: String? = null,  // 보낸 기기가 붙인 UUID — 전송 대기 말풍선과 짝을 맞추는 키
 ) {
     val isDeleted: Boolean get() = deletedAt != null
     val isEdited: Boolean get() = editedAt != null
@@ -363,16 +407,41 @@ data class ChatMessage(
             surveyRespondedAt = o.stringOrNull("surveyRespondedAt"),
             surveyUpdatedAt = o.stringOrNull("surveyUpdatedAt"),
             reactions = o.optJSONArray("reactions")?.map { ChatReaction.from(it) },
+            seq = o.intOrNull("seq")?.takeIf { it > 0 },
+            clientMsgId = o.stringOrNull("clientMsgId"),
         )
+
+        /** 화면 정렬 기준 — 둘 다 순번이 있으면 순번, 아니면 id(서버 auto_increment). */
+        val displayOrder: Comparator<ChatMessage> = Comparator { a, b ->
+            val sa = a.seq
+            val sb = b.seq
+            if (sa != null && sb != null && sa != sb) sa.compareTo(sb) else a.id.compareTo(b.id)
+        }
     }
 }
 
-/** GET /chat/rooms/:id/messages */
-data class ChatMessagesResponse(val total: Int, val page: Int, val limit: Int, val messages: List<ChatMessage>) {
+/**
+ * GET /chat/rooms/:id/messages — 두 가지 응답 형식을 함께 받는다.
+ *  - page 방식(구버전 호환): { total, page, limit, messages }
+ *  - 순번 방식(afterSeq·beforeSeq·cursor=seq): { messages, hasMore, lastSeq } — 항상 오래된 순
+ *  순번 파라미터를 보냈는데 [lastSeq] 가 null 이면 서버가 순번 조회를 지원하지 않는 구버전이다.
+ */
+data class ChatMessagesResponse(
+    val total: Int,
+    val page: Int,
+    val limit: Int,
+    val messages: List<ChatMessage>,
+    val hasMore: Boolean? = null,
+    val lastSeq: Int? = null,
+) {
+    val isSeqMode: Boolean get() = lastSeq != null
+
     companion object {
         fun from(o: JSONObject) = ChatMessagesResponse(
             total = o.optInt("total"), page = o.optInt("page"), limit = o.optInt("limit"),
             messages = o.optJSONArray("messages")?.map { ChatMessage.from(it) } ?: emptyList(),
+            hasMore = o.boolOrNull("hasMore"),
+            lastSeq = o.intOrNull("lastSeq"),
         )
     }
 }

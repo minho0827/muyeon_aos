@@ -2,6 +2,7 @@ package com.muyeon.app.chat.socket
 
 import com.muyeon.app.ui.chat.ChatMessage
 import com.muyeon.app.ui.chat.ChatRoomSummary
+import com.muyeon.app.ui.chat.ChatRoomUpdate
 
 /**
  * muyeon-backend `chat.gateway.ts` 가 실제로 emit 하는 이벤트만 sealed class 로.
@@ -42,8 +43,14 @@ sealed class ChatEvent {
     /** 상대 입력중 표시. 서버가 sender 를 제외하고 relay 하므로 내 것은 안 온다. */
     data class Typing(val roomId: Int, val userId: Int, val isTyping: Boolean) : ChatEvent()
 
-    /** 방 메타 변경(user:{id} 로 옴) — 요약 없이 오는 갱신. 목록 전체 재조회 안전망. */
-    data class RoomUpdated(val roomId: Int) : ChatEvent()
+    /**
+     * 방 미리보기 변경(user:{id} 로 옴, 2026-10-09 서버부터 방마다 1초 묶음).
+     *  신서버는 미리보기·순번·안읽음을 실어 보내 목록의 해당 행만 갱신할 수 있다([ChatRoomUpdate.canPatch]).
+     *  구서버는 roomId 만 보내므로 목록 재조회로 처리한다. 그 방을 보고 있는 소켓에는 보내지 않는다.
+     */
+    data class RoomUpdated(val update: ChatRoomUpdate) : ChatEvent() {
+        val roomId: Int get() = update.roomId
+    }
 
     /**
      * 방 요약을 통째로 실은 증분 갱신(user:{id}). 목록에 upsert 하면 재조회가 필요 없다.

@@ -87,7 +87,19 @@ fun FloatingOverlay(
     //  ⚠️ 모든 이벤트에 반응하면 안 된다. 종전엔 상대가 **타이핑할 때마다**
     //    verificationStatus + unreadCount 를 호출해, 한 문장 입력에 수십 번씩 왕복했다.
     //    안읽음 수를 바꿀 수 있는 이벤트만 골라 받는다.
+    //  안읽음 재조회는 800ms 묶음 — 첫 신호 후 800ms 동안 온 신호는 한 번으로 합친다.
+    //  (종전엔 신호마다 GET /chat/unread-count 를 불러, 대화가 몰리면 초당 수십 번 호출됐다.)
+    //  조회가 시작되면 묶음이 닫히므로 조회 중 온 신호는 다음 묶음으로 넘어가 유실되지 않는다.
     LaunchedEffect(Unit) {
+        var unreadJob: kotlinx.coroutines.Job? = null
+        fun scheduleUnread() {
+            if (unreadJob != null) return
+            unreadJob = launch {
+                delay(UNREAD_REFRESH_DEBOUNCE_MS)
+                unreadJob = null
+                refreshUnread()
+            }
+        }
         ChatEventBus.events.collect { e ->
             when (e) {
                 // 끊긴 동안의 이벤트는 유실됐다 — 서버 기준으로 다시 맞춘다.
@@ -98,7 +110,7 @@ fun FloatingOverlay(
                 is ChatEvent.NewMessage,
                 is ChatEvent.MessagesRead,
                 is ChatEvent.RoomUpdated,
-                is ChatEvent.ChatRoomAdded -> refreshUnread()
+                is ChatEvent.ChatRoomAdded -> scheduleUnread()
 
                 // 타이핑·반응·메시지 수정/삭제는 안읽음 수와 무관.
                 else -> Unit
@@ -227,3 +239,6 @@ fun FloatingOverlay(
         }
     }
 }
+
+/** 채팅 신호로 안읽음 수를 다시 읽을 때의 묶음 간격. */
+private const val UNREAD_REFRESH_DEBOUNCE_MS = 800L

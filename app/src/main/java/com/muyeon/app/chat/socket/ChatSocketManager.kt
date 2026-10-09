@@ -5,14 +5,18 @@ import android.util.Log
 import com.muyeon.app.BuildConfig
 import com.muyeon.app.ui.chat.ChatMessage
 import com.muyeon.app.ui.chat.ChatRoomSummary
+import com.muyeon.app.ui.chat.ChatRoomUpdate
+import io.socket.client.AckWithTimeout
 import com.muyeon.app.utils.TokenManager
 import io.socket.client.IO
 import io.socket.client.Socket
+import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.OkHttpClient
 import org.json.JSONObject
 import java.net.URI
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
 
 /**
  * 채팅 소켓 — PaceERA `chat/socket/SocketIOManager.kt` 구조를 무용연 계약에 맞춰 이식.
@@ -150,8 +154,9 @@ object ChatSocketManager {
         }
         s.on(EV_ROOM_UPDATED) { args ->
             val json = asJson(args.firstOrNull()) ?: return@on
-            val roomId = json.optInt("roomId", 0).takeIf { it > 0 } ?: return@on
-            ChatEventBus.emit(ChatEvent.RoomUpdated(roomId))
+            val update = ChatRoomUpdate.from(json)
+            if (update.roomId <= 0) return@on
+            ChatEventBus.emit(ChatEvent.RoomUpdated(update))
         }
         s.on(EV_CHAT_ROOM_ADDED) { args ->
             val json = asJson(args.firstOrNull()) ?: return@on
@@ -243,31 +248,74 @@ object ChatSocketManager {
     // emit
     // ============================================================
 
+    /** 전송 응답(ack) 대기 한도. 서버 응답 p95 는 수백 ms 이며, 넘기면 실패로 표시하고 같은 id 로 재시도한다. */
+    private const val SEND_ACK_TIMEOUT_MS = 15_000L
+
+    /** send-message 결과. */
+    sealed class SendResult {
+        /** 저장됨. duplicate=true 는 같은 clientMsgId 재전송이라 서버가 처음 메시지를 돌려준 경우. */
+        data class Sent(val message: ChatMessage?, val duplicate: Boolean) : SendResult()
+
+        /** 서버 거절 — INVALID_ROOM|INVALID_TYPE|TOO_LONG|EMPTY|RATE_LIMITED|ACCOUNT_RESTRICTED|FORBIDDEN|SEND_FAILED */
+        data class Rejected(val code: String) : SendResult()
+
+        /** 응답 대기 한도 초과 — 저장됐을 수도 있다(에코가 오면 clientMsgId 로 정리된다). */
+        data object TimedOut : SendResult()
+
+        /** 소켓 미연결 — emit 하지 않았다. */
+        data object NotConnected : SendResult()
+    }
+
     /**
-     * 메시지 전송. payload 는 gateway `onSend` 시그니처와 동일
-     *  ({roomId, type, content, imageUrl?, replyToId?}).
-     *  미연결이면 false — 호출부가 안내/재시도를 결정한다(PaceERA 규약).
+     * 메시지 전송 후 서버 응답(ack)을 기다린다.
+     *  payload: {roomId, type, content, imageUrl?, replyToId?, clientMsgId}
+     *  clientMsgId 는 메시지마다 만든 UUID 이며 재시도해도 같은 값을 보낸다 — 서버가 (senderId, clientMsgId)
+     *  UNIQUE 로 중복 저장을 막고 처음 메시지를 돌려준다. 소켓으로 보낼 수 있는 type 은 TEXT·IMAGE·VIDEO 뿐이다.
+     *  ack 콜백은 소켓 스레드에서 오므로 호출부 코루틴 디스패처로 재개된다.
      */
-    fun sendMessage(
+    suspend fun sendMessage(
         roomId: Int,
         type: String,
         content: String,
         imageUrl: String? = null,
         replyToId: Int? = null,
-    ): Boolean {
+        clientMsgId: String,
+    ): SendResult {
         val s = socket
         if (s?.connected() != true) {
             Log.w(TAG, "send-message skip — not connected")
-            return false
+            return SendResult.NotConnected
         }
         val payload = JSONObject()
             .put("roomId", roomId)
             .put("type", type)
             .put("content", content)
+            .put("clientMsgId", clientMsgId)
         if (!imageUrl.isNullOrBlank()) payload.put("imageUrl", imageUrl)
         if (replyToId != null) payload.put("replyToId", replyToId)
-        s.emit(EV_SEND_MESSAGE, payload)
-        return true
+        return suspendCancellableCoroutine { cont ->
+            val ack = object : AckWithTimeout(SEND_ACK_TIMEOUT_MS) {
+                override fun onSuccess(vararg args: Any?) {
+                    if (cont.isActive) cont.resume(parseSendAck(args))
+                }
+
+                override fun onTimeout() {
+                    Log.w(TAG, "send-message ack timeout clientMsgId=$clientMsgId")
+                    if (cont.isActive) cont.resume(SendResult.TimedOut)
+                }
+            }
+            cont.invokeOnCancellation { ack.cancelTimer() }
+            s.emit(EV_SEND_MESSAGE, arrayOf<Any>(payload), ack)
+        }
+    }
+
+    private fun parseSendAck(args: Array<out Any?>): SendResult {
+        val json = asJson(args.firstOrNull()) ?: return SendResult.Sent(null, false)
+        if (!json.optBoolean("ok", false)) {
+            return SendResult.Rejected(json.optString("code").ifEmpty { "SEND_FAILED" })
+        }
+        val msg = json.optJSONObject("message")?.let { runCatching { ChatMessage.from(it) }.getOrNull() }
+        return SendResult.Sent(msg, json.optBoolean("duplicate", false))
     }
 
     fun markRead(roomId: Int) {

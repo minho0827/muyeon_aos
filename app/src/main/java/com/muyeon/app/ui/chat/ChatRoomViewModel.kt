@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.chat
 
+import android.os.SystemClock
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -10,17 +12,20 @@ import com.auth0.jwt.JWT
 import com.muyeon.app.chat.socket.ChatEvent
 import com.muyeon.app.chat.socket.ChatEventBus
 import com.muyeon.app.chat.socket.ChatSocketManager
+import com.muyeon.app.chat.socket.ChatSocketManager.SendResult
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
 
 /**
- * 채팅방 상태 — iOS `ChatRoomViewModel.swift` 이식.
- *  - 낙관적 전송(PendingMessage) + 소켓 에코 재조정 + 5초 실패 처리
- *  - 초기 로드 레이스 머지(로드 중 도착한 소켓 메시지 보존)
- *  - 위로 스크롤 페이지네이션(이전 메시지 prepend)
- *  - 읽음 처리 디바운스(200ms) / 타이핑 3초 자동 해제
+ * 채팅방 상태 — iOS `ChatRoomViewModel.swift` 이식, 2026-10-09 PACERA iOS 4e3d3784 방식으로 개편.
+ *  - 전송: 메시지마다 clientMsgId(UUID) + 서버 응답(ack)으로 확정/실패. 재시도는 같은 clientMsgId(서버 중복 저장 방지)
+ *  - 합치기: 모든 경로(초기 로드·소켓·ack·채우기·이전 메시지)가 [merge] 하나로 — id 중복 제거 + seq 정렬(없으면 id)
+ *  - 소켓 수신은 50ms 묶어 한 번에 반영
+ *  - 놓친 메시지 채우기: 재연결·화면 복귀·빈 순번 감지 시 afterSeq(100건 × 최대 10회). 구버전 서버는 첫 페이지 재조회
+ *  - 이전 메시지: beforeSeq 커서(구버전 서버는 page)
+ *  - 읽음 1초 간격(앞·뒤 가장자리) / 타이핑 3초에 한 번·4초 무입력 시 해제
  *  - 방별 입력 드래프트(인메모리)
  */
 class ChatRoomViewModel(
@@ -30,14 +35,17 @@ class ChatRoomViewModel(
     token: String?,
 ) : ViewModel() {
 
-    /** 전송 대기(낙관적 삽입). 소켓 에코가 오면 제거된다. */
+    /**
+     * 전송 대기(낙관적 삽입). [localId] 는 서버에 clientMsgId 로 보내며 재시도해도 바뀌지 않는다.
+     *  ack 의 메시지 또는 같은 clientMsgId 를 가진 소켓 에코가 도착하면 제거된다.
+     */
     data class Pending(
         val localId: String = UUID.randomUUID().toString(),
         val type: String,
         val content: String,
         val imageUrl: String?,
         val replyToId: Int?,
-        var failed: Boolean = false,
+        val failed: Boolean = false,
     )
 
     val messages = mutableStateListOf<ChatMessage>()
@@ -70,15 +78,46 @@ class ChatRoomViewModel(
     /** 제안 카드·신고 시트가 쓰는 토큰(뷰가 다시 만들지 않도록 VM 이 보관). */
     val tokenForCards: String? = token
 
+    private val pageLimit = 50
+
+    /**
+     * 순번 조회 사용 여부 — 첫 로드 응답에 lastSeq 가 있고 0 보다 크면 true.
+     *  false(구버전 서버, 또는 순번 백필 전)면 page 방식과 첫 페이지 재조회로 동작한다.
+     */
+    private var seqMode = false
+
+    /** "여기까지는 빠짐없이 받았다" 는 순번. 0 이면 알 수 없음(순번 미사용). */
+    private var contiguousSeq = 0
+
+    /** 순번 방식에서 이전 메시지가 더 있는지. */
+    private var hasMoreBefore = false
+
+    // page 방식(구버전 서버) 페이지 상태.
     private var totalCount = 0
     private var loadedPages = 1
-    private val pageLimit = 50
-    private var markReadJob: Job? = null
-    private var typingJob: Job? = null
-    private var lastTypingSent = false
-    private var loadingInitial = false
 
-    val hasMore: Boolean get() = messages.size < totalCount
+    /** 첫 로드 성공 여부 — 성공 전에는 채우기 대신 첫 로드를 다시 시도한다. */
+    private var initialLoaded = false
+
+    // 놓친 메시지 채우기 — 한 번에 하나만 실행하고, 실행 중 요청이 오면 끝난 뒤 한 번 더 실행한다.
+    private var fillingGap = false
+    private var fillAgain = false
+    private var gapCheckJob: Job? = null
+
+    // 소켓 수신 묶음(50ms).
+    private val incomingBuffer = mutableListOf<ChatMessage>()
+    private var incomingFlushJob: Job? = null
+
+    // 읽음 전송(1초 간격, 앞·뒤 가장자리).
+    private var markReadJob: Job? = null
+    private var lastMarkReadAt: Long? = null
+
+    // 타이핑 전송(3초에 한 번, 4초 무입력 시 false) / 수신 만료(6초).
+    private var typingStopJob: Job? = null
+    private var lastTypingSentAt: Long? = null
+    private var otherTypingExpiryJob: Job? = null
+
+    val hasMore: Boolean get() = if (seqMode) hasMoreBefore else messages.size < totalCount
 
     init {
         collectSocket()
@@ -94,9 +133,18 @@ class ChatRoomViewModel(
         viewModelScope.launch { loadDetail(); loadFirstPage(); loadQuickReplies() }
     }
 
+    /**
+     * 화면 복귀(ON_RESUME) — 다른 화면·백그라운드에 있던 동안 놓친 메시지를 채운다.
+     *  최초 진입의 ON_RESUME 은 첫 로드와 겹치므로 첫 로드 완료 전에는 무시한다.
+     */
+    fun onResume() {
+        if (!initialLoaded) return
+        viewModelScope.launch { fillGap("resume") }
+    }
+
     override fun onCleared() {
         ChatSocketManager.leaveRoom(roomId)
-        if (lastTypingSent) ChatSocketManager.sendTyping(roomId, false)
+        if (lastTypingSentAt != null) ChatSocketManager.sendTyping(roomId, false)
         super.onCleared()
     }
 
@@ -115,33 +163,58 @@ class ChatRoomViewModel(
         }
     }
 
+    /**
+     * 첫 로드 — cursor=seq 로 최신 [pageLimit] 건.
+     *  구버전 서버는 cursor 를 무시하고 page=1 응답을 주므로 응답 형식([ChatMessagesResponse.isSeqMode])으로 구분한다.
+     *  로드 중 소켓으로 들어온 메시지는 [merge] 가 id 로 합치므로 유실되지 않는다.
+     */
     private suspend fun loadFirstPage() {
         isLoading = messages.isEmpty()
-        loadingInitial = true
-        api.getMessages(roomId, page = 1, limit = pageLimit).onSuccess { res ->
-            totalCount = res.total
-            loadedPages = 1
-            // 레이스 머지 — 로드 중 소켓으로 들어온 메시지를 잃지 않는다.
-            val socketArrived = messages.filter { m -> res.messages.none { it.id == m.id } }
-            messages.clear()
-            messages.addAll((res.messages + socketArrived).sortedBy { it.id })
+        val res = api.getMessagesBySeq(roomId, limit = pageLimit).getOrNull()
+        if (res != null && res.isSeqMode && (res.lastSeq ?: 0) > 0) {
+            seqMode = true
+            hasMoreBefore = res.hasMore == true
+            merge(res.messages)
+            contiguousSeq = maxOf(contiguousSeq, res.lastSeq ?: 0)
+            advanceContiguousSeq()
+            initialLoaded = true
+        } else {
+            // 구버전 서버 또는 순번 백필 전(lastSeq=0) — page 방식.
+            val page = if (res != null && !res.isSeqMode) Result.success(res)
+            else api.getMessages(roomId, page = 1, limit = pageLimit)
+            page.onSuccess { p ->
+                seqMode = false
+                totalCount = p.total
+                loadedPages = 1
+                merge(p.messages)
+                initialLoaded = true
+            }
         }
-        loadingInitial = false
         isLoading = false
+        scheduleGapFillIfNeeded()
         scheduleMarkRead()
     }
 
-    /** 위로 스크롤 — 이전 페이지 prepend. */
+    /**
+     * 위로 스크롤 — 이전 메시지.
+     *  순번 방식은 beforeSeq 커서라 그 사이 새 메시지가 와도 밀리지 않는다(page 방식은 offset 이 밀려 중복이 생겼다).
+     */
     fun loadMore() {
         if (isLoadingMore || !hasMore) return
         isLoadingMore = true
         viewModelScope.launch {
-            api.getMessages(roomId, page = loadedPages + 1, limit = pageLimit).onSuccess { res ->
-                loadedPages += 1
-                totalCount = res.total
-                val existing = messages.map { it.id }.toSet()
-                val older = res.messages.filterNot { existing.contains(it.id) }
-                messages.addAll(0, older.sortedBy { it.id })
+            val oldestSeq = messages.firstOrNull { it.seq != null }?.seq
+            if (seqMode && oldestSeq != null) {
+                api.getMessagesBySeq(roomId, beforeSeq = oldestSeq, limit = pageLimit).onSuccess { res ->
+                    merge(res.messages)
+                    hasMoreBefore = res.hasMore == true
+                }
+            } else {
+                api.getMessages(roomId, page = loadedPages + 1, limit = pageLimit).onSuccess { res ->
+                    loadedPages += 1
+                    totalCount = res.total
+                    merge(res.messages)
+                }
             }
             isLoadingMore = false
         }
@@ -151,6 +224,11 @@ class ChatRoomViewModel(
         api.getQuickReplies(roomId).onSuccess { quickReplies = it }
     }
 
+    /** 최신 메시지 한 묶음 — 순번 방식이면 cursor=seq, 아니면 page=1. */
+    private suspend fun fetchLatest(): Result<ChatMessagesResponse> =
+        if (seqMode) api.getMessagesBySeq(roomId, limit = pageLimit)
+        else api.getMessages(roomId, page = 1, limit = pageLimit).onSuccess { totalCount = it.total }
+
     // ============================================================
     // 소켓 수신
     // ============================================================
@@ -159,7 +237,8 @@ class ChatRoomViewModel(
         viewModelScope.launch {
             ChatEventBus.events.collect { e ->
                 when (e) {
-                    is ChatEvent.NewMessage -> if (e.roomId == roomId) onNewMessage(e.message)
+                    is ChatEvent.NewMessage -> if (e.roomId == roomId) enqueueIncoming(e.message)
+                    // 수정·삭제도 같은 id 로 합치면 교체된다(목록에 없는 메시지는 추가하지 않는다).
                     is ChatEvent.MessageUpdated -> if (e.roomId == roomId) replaceMessage(e.message)
                     is ChatEvent.MessageDeleted -> if (e.roomId == roomId) replaceMessage(e.message)
                     is ChatEvent.MessagesRead ->
@@ -167,56 +246,178 @@ class ChatRoomViewModel(
                             opponentLastReadAt = com.muyeon.app.ui.quote.QuoteUi.parseDate(e.readAt)
                         }
                     is ChatEvent.Typing ->
-                        if (e.roomId == roomId && e.userId != currentUserId) isOtherTyping = e.isTyping
+                        if (e.roomId == roomId && e.userId != currentUserId) onOtherTyping(e.isTyping)
                     is ChatEvent.MessageReaction ->
-                        // 서버가 집계를 안 실어준다(뷰어별 mine 이 달라서) → 해당 페이지 재조회.
+                        // 서버가 집계를 안 실어준다(뷰어별 mine 이 달라서) → 최신 묶음 재조회.
                         if (e.roomId == roomId) viewModelScope.launch { refreshReactions() }
-                    // 끊긴 동안 온 메시지는 replay=0 이라 통째로 유실된다 — 방에 그대로 머물러
-                    //  있으면 그 사이 대화가 영영 안 보인다(나갔다 들어와야 보였다).
-                    is ChatEvent.Reconnected -> viewModelScope.launch { syncMissed() }
+                    // 끊긴 동안 온 메시지는 replay=0 이라 통째로 유실된다 — 놓친 순번부터 채운다.
+                    is ChatEvent.Reconnected -> viewModelScope.launch { fillGap("reconnect") }
                     else -> Unit
                 }
             }
         }
     }
 
-    private fun onNewMessage(msg: ChatMessage) {
-        if (messages.any { it.id == msg.id }) return
-        // 내 낙관적 메시지의 에코면 pending 제거(같은 발신자 + 같은 내용).
-        if (msg.senderId == currentUserId) {
-            val i = pending.indexOfFirst { it.content == msg.content && it.type == msg.type }
-            if (i >= 0) pending.removeAt(i)
+    /** 소켓 new-message — 50ms 묶어서 한 번에 반영한다(몰려도 화면 갱신은 묶음당 한 번). */
+    private fun enqueueIncoming(msg: ChatMessage) {
+        incomingBuffer.add(msg)
+        if (incomingFlushJob != null) return
+        incomingFlushJob = viewModelScope.launch {
+            delay(INCOMING_BATCH_MS)
+            val batch = incomingBuffer.toList()
+            incomingBuffer.clear()
+            incomingFlushJob = null
+            receive(batch)
         }
-        messages.add(msg)
+    }
+
+    /** 받은 메시지 반영 — 합치기 → 빈 순번 확인 → 읽음. */
+    private fun receive(batch: List<ChatMessage>) {
+        if (batch.isEmpty()) return
+        merge(batch)
+        scheduleGapFillIfNeeded()
         scheduleMarkRead()
     }
 
     private fun replaceMessage(msg: ChatMessage) {
-        val i = messages.indexOfFirst { it.id == msg.id }
-        if (i >= 0) messages[i] = msg
+        if (messages.any { it.id == msg.id }) merge(listOf(msg))
     }
 
     /**
-     * 재연결 직후 누락분 보충 — 첫 페이지를 받아 **없는 것만 끼워 넣는다.**
-     *  ⚠️ loadFirstPage() 를 재사용하면 안 된다. 그건 목록을 비우고 다시 채우므로
-     *    위로 스크롤해 불러둔 이전 페이지가 날아가고 스크롤이 튄다.
+     * 메시지 합치기 — 초기 로드·소켓·ack·채우기·이전 메시지 어디서 왔든 이 함수 하나로 반영한다.
+     *  id 로 중복을 없애고(같은 id 는 새 값으로 교체) [ChatMessage.displayOrder](seq, 없으면 id) 순으로 정렬한다.
+     *  같은 clientMsgId 의 전송 대기 말풍선은 여기서 제거된다(ack 보다 에코가 먼저 와도 한 번만 보인다).
      */
-    private suspend fun syncMissed() {
-        api.getMessages(roomId, page = 1, limit = pageLimit).onSuccess { res ->
-            totalCount = res.total
-            val missing = res.messages.filter { fresh -> messages.none { it.id == fresh.id } }
-            if (missing.isEmpty()) return@onSuccess
-            messages.addAll(missing)
-            messages.sortBy { it.id }
-            scheduleMarkRead()
+    private fun merge(incoming: List<ChatMessage>) {
+        if (incoming.isEmpty()) return
+        val index = HashMap<Int, Int>(messages.size * 2)
+        messages.forEachIndexed { i, m -> index[m.id] = i }
+        val fresh = ArrayList<ChatMessage>()
+        for (m in incoming) {
+            val i = index[m.id]
+            if (i != null) {
+                if (messages[i] != m) messages[i] = m
+            } else if (fresh.none { it.id == m.id }) {
+                fresh.add(m)
+            }
+        }
+        if (fresh.isNotEmpty()) {
+            val sortedFresh = sortForDisplay(fresh)
+            val last = messages.lastOrNull()
+            if (last == null || ChatMessage.displayOrder.compare(last, sortedFresh.first()) < 0) {
+                // 일반적인 경우 — 전부 뒤에 붙는다.
+                messages.addAll(sortedFresh)
+            } else {
+                val all = sortForDisplay(messages + sortedFresh)
+                messages.clear()
+                messages.addAll(all)
+            }
+        }
+        val ids = incoming.mapNotNullTo(HashSet()) { it.clientMsgId }
+        if (ids.isNotEmpty()) pending.removeAll { it.localId in ids }
+        advanceContiguousSeq()
+    }
+
+    /**
+     * 표시 순서 정렬. 서버 백필은 순번을 id 순으로 매기므로 두 기준은 일치하지만,
+     *  백필 전후 데이터가 섞여 비교 규칙이 어긋나면 정렬이 예외를 던질 수 있어 id 순으로 대체한다.
+     */
+    private fun sortForDisplay(list: List<ChatMessage>): List<ChatMessage> =
+        runCatching { list.sortedWith(ChatMessage.displayOrder) }.getOrElse { list.sortedBy { it.id } }
+
+    /** "빠짐없이 받은 순번" 을 앞으로 민다 — 다음 순번이 목록에 있는 동안. */
+    private fun advanceContiguousSeq() {
+        if (contiguousSeq <= 0) return
+        val seqs = messages.mapNotNullTo(HashSet()) { it.seq }
+        while (seqs.contains(contiguousSeq + 1)) contiguousSeq++
+    }
+
+    private fun maxSeenSeq(): Int = messages.maxOfOrNull { it.seq ?: 0 } ?: 0
+
+    /**
+     * 받은 순번이 "빠짐없이" 보다 크면 사이가 비어 있다 — 순서만 늦게 도착한 것일 수 있으니
+     *  500ms 기다린 뒤에도 비어 있으면 채운다.
+     */
+    private fun scheduleGapFillIfNeeded() {
+        if (contiguousSeq <= 0 || gapCheckJob != null) return
+        if (maxSeenSeq() <= contiguousSeq) return
+        gapCheckJob = viewModelScope.launch {
+            delay(GAP_CHECK_DELAY_MS)
+            gapCheckJob = null
+            advanceContiguousSeq()
+            if (maxSeenSeq() > contiguousSeq) fillGap("gap")
+        }
+    }
+
+    /**
+     * 놓친 메시지 채우기 — 재연결·화면 복귀·빈 순번 감지 시.
+     *  순번 방식: contiguousSeq 다음부터 afterSeq 100건씩 최대 10회(1,000건).
+     *  구버전 서버: 첫 페이지를 다시 받아 합친다.
+     *  채운 **뒤에** 읽음을 보낸다(먼저 보내면 아직 화면에 없는 메시지가 읽음 처리된다).
+     */
+    private suspend fun fillGap(reason: String) {
+        if (!initialLoaded) {
+            // 첫 로드가 실패했던 경우(오프라인 진입 등) — 채울 기준이 없으므로 첫 로드를 다시 한다.
+            loadFirstPage()
+            return
+        }
+        if (fillingGap) {
+            fillAgain = true
+            return
+        }
+        fillingGap = true
+        try {
+            do {
+                fillAgain = false
+                fillGapOnce(reason)
+            } while (fillAgain)
+        } finally {
+            fillingGap = false
+        }
+        scheduleMarkRead()
+    }
+
+    private suspend fun fillGapOnce(reason: String) {
+        if (seqMode && contiguousSeq > 0) {
+            var after = contiguousSeq
+            for (round in 0 until GAP_FILL_MAX_ROUNDS) {
+                val res = api.getMessagesBySeq(roomId, afterSeq = after, limit = GAP_FILL_LIMIT).getOrElse {
+                    Log.w(TAG, "fillGap($reason) 실패 room=$roomId after=$after: ${it.message}")
+                    return
+                }
+                merge(res.messages)
+                after = res.messages.lastOrNull()?.seq ?: after
+                if (res.hasMore != true) {
+                    // 끝까지 받았다 — 화면에 노출되지 않는 순번(나가기 이전 등)으로 생긴 빈칸은 건너뛴다.
+                    contiguousSeq = maxOf(contiguousSeq, res.lastSeq ?: 0)
+                    break
+                }
+                if (round == GAP_FILL_MAX_ROUNDS - 1) {
+                    Log.w(TAG, "fillGap($reason) 최대 ${GAP_FILL_MAX_ROUNDS * GAP_FILL_LIMIT}건 도달 room=$roomId after=$after")
+                }
+            }
+            Log.i(TAG, "fillGap($reason) room=$roomId upTo=$contiguousSeq")
+        } else {
+            fetchLatest().onSuccess { merge(it.messages) }
         }
     }
 
     private suspend fun refreshReactions() {
-        api.getMessages(roomId, page = 1, limit = pageLimit).onSuccess { res ->
-            res.messages.forEach { fresh ->
-                val i = messages.indexOfFirst { it.id == fresh.id }
-                if (i >= 0) messages[i] = fresh
+        fetchLatest().onSuccess { res ->
+            // 반응 갱신은 이미 보이는 메시지만 교체한다.
+            val shown = messages.mapTo(HashSet()) { it.id }
+            merge(res.messages.filter { it.id in shown })
+        }
+    }
+
+    /** 상대 입력 중 — 6초 동안 신호가 없으면 스스로 끈다(멈춤 신호가 유실돼도 남지 않게). */
+    private fun onOtherTyping(typing: Boolean) {
+        otherTypingExpiryJob?.cancel()
+        isOtherTyping = typing
+        if (typing) {
+            otherTypingExpiryJob = viewModelScope.launch {
+                delay(TYPING_EXPIRY_MS)
+                isOtherTyping = false
             }
         }
     }
@@ -231,20 +432,33 @@ class ChatRoomViewModel(
         handleTypingChanged(text)
     }
 
-    /** 입력 중 → 상대에게 typing emit. 3초 멈추면 자동 false(iOS typingTimer). */
+    /**
+     * 입력 중 신호 — 글자마다 보내지 않는다. 입력하는 동안 3초에 한 번 true,
+     *  4초 동안 입력이 없거나 입력창이 비면 false.
+     */
     private fun handleTypingChanged(text: String) {
-        val typing = text.isNotEmpty()
-        if (typing != lastTypingSent) {
-            ChatSocketManager.sendTyping(roomId, typing)
-            lastTypingSent = typing
+        typingStopJob?.cancel()
+        if (text.isEmpty()) {
+            stopTyping()
+            return
         }
-        typingJob?.cancel()
-        if (typing) {
-            typingJob = viewModelScope.launch {
-                delay(3000)
-                ChatSocketManager.sendTyping(roomId, false)
-                lastTypingSent = false
-            }
+        val now = SystemClock.elapsedRealtime()
+        val last = lastTypingSentAt
+        if (last == null || now - last >= TYPING_SEND_INTERVAL_MS) {
+            ChatSocketManager.sendTyping(roomId, true)
+            lastTypingSentAt = now
+        }
+        typingStopJob = viewModelScope.launch {
+            delay(TYPING_IDLE_MS)
+            stopTyping()
+        }
+    }
+
+    private fun stopTyping() {
+        typingStopJob?.cancel()
+        if (lastTypingSentAt != null) {
+            ChatSocketManager.sendTyping(roomId, false)
+            lastTypingSentAt = null
         }
     }
 
@@ -262,39 +476,69 @@ class ChatRoomViewModel(
 
         val p = Pending(type = "TEXT", content = text, imageUrl = null, replyToId = replyingTo?.id)
         pending.add(p)
-        val ok = ChatSocketManager.sendMessage(roomId, "TEXT", text, replyToId = p.replyToId)
         replyingTo = null
         clearInput()
-        if (!ok) {
-            markFailed(p)
-        } else {
-            // 5초 안에 에코가 안 오면 실패 표시(iOS 동일).
-            viewModelScope.launch {
-                delay(5000)
-                if (pending.any { it.localId == p.localId }) markFailed(p)
+        dispatch(p)
+    }
+
+    /** 실패한 말풍선 재전송 — 같은 clientMsgId 로 보낸다(이미 저장됐으면 서버가 처음 메시지를 돌려준다). */
+    fun retry(p: Pending) {
+        val i = pending.indexOfFirst { it.localId == p.localId }
+        if (i < 0 || !pending[i].failed) return
+        val again = pending[i].copy(failed = false)
+        pending[i] = again
+        dispatch(again)
+    }
+
+    /** 소켓 전송 후 ack 로 결과를 정한다. 에코 대기 타이머·내용 비교는 쓰지 않는다. */
+    private fun dispatch(p: Pending) {
+        viewModelScope.launch {
+            val result = ChatSocketManager.sendMessage(
+                roomId, p.type, p.content, p.imageUrl, p.replyToId, clientMsgId = p.localId,
+            )
+            when (result) {
+                is SendResult.Sent ->
+                    if (result.message != null) {
+                        receiveOwn(result.message, p.localId)
+                    } else {
+                        // 저장은 됐으나 응답 본문이 없다(구버전 형식 등) — 에코가 목록에 반영한다.
+                        pending.removeAll { it.localId == p.localId }
+                    }
+                is SendResult.Rejected -> {
+                    Log.w(TAG, "send rejected code=${result.code} clientMsgId=${p.localId}")
+                    markFailed(p.localId)
+                    toast = rejectMessage(result.code)
+                }
+                SendResult.TimedOut, SendResult.NotConnected -> markFailed(p.localId)
             }
         }
     }
 
-    fun retry(p: Pending) {
-        pending.removeAll { it.localId == p.localId }
-        val np = p.copy(localId = UUID.randomUUID().toString(), failed = false)
-        pending.add(np)
-        if (!ChatSocketManager.sendMessage(roomId, np.type, np.content, np.imageUrl, np.replyToId)) markFailed(np)
+    /** 내 메시지 확정 — 대기 말풍선을 지우고 서버 메시지를 합친다(에코가 와도 id 로 한 번만 남는다). */
+    private fun receiveOwn(msg: ChatMessage, localId: String) {
+        pending.removeAll { it.localId == localId }
+        merge(listOf(msg))
+        scheduleGapFillIfNeeded()
     }
 
-    private fun markFailed(p: Pending) {
-        val i = pending.indexOfFirst { it.localId == p.localId }
+    private fun markFailed(localId: String) {
+        val i = pending.indexOfFirst { it.localId == localId }
         if (i >= 0) pending[i] = pending[i].copy(failed = true)
+    }
+
+    private fun rejectMessage(code: String): String = when (code) {
+        "RATE_LIMITED" -> "메시지를 너무 빠르게 보내고 있어요. 잠시 후 다시 보내 주세요."
+        "TOO_LONG" -> "메시지가 너무 길어요(최대 5,000자)."
+        "EMPTY" -> "빈 메시지는 보낼 수 없어요."
+        "ACCOUNT_RESTRICTED" -> "이용이 제한된 계정이에요."
+        "FORBIDDEN", "INVALID_ROOM" -> "이 채팅방에는 메시지를 보낼 수 없어요."
+        else -> "메시지를 보내지 못했어요."
     }
 
     private fun clearInput() {
         input = ""
         ChatDrafts.clear(roomId)
-        if (lastTypingSent) {
-            ChatSocketManager.sendTyping(roomId, false)
-            lastTypingSent = false
-        }
+        stopTyping()
     }
 
     fun deleteMessage(m: ChatMessage) = ChatSocketManager.deleteMessage(roomId, m.id)
@@ -303,19 +547,15 @@ class ChatRoomViewModel(
     fun reloadContext() { viewModelScope.launch { loadDetail() } }
 
     /**
-     * 설문 등 방 밖 화면에서 돌아왔을 때 — 맥락 + 첫 페이지 메시지를 다시 읽어 **있는 건 교체,
-     *  없는 건 끼워 넣는다**(카드 응답 상태 반영). loadFirstPage 처럼 비우지 않아 스크롤이 튀지 않는다.
+     * 설문 등 방 밖 화면에서 돌아왔을 때 — 맥락 + 최신 메시지를 다시 읽어 **있는 건 교체,
+     *  없는 건 끼워 넣는다**(카드 응답 상태 반영). 목록을 비우지 않아 스크롤이 튀지 않는다.
      */
     fun reloadMessagesAndContext() {
         viewModelScope.launch {
             loadDetail()
-            api.getMessages(roomId, page = 1, limit = pageLimit).onSuccess { res ->
-                totalCount = res.total
-                res.messages.forEach { fresh ->
-                    val i = messages.indexOfFirst { it.id == fresh.id }
-                    if (i >= 0) messages[i] = fresh else messages.add(fresh)
-                }
-                messages.sortBy { it.id }
+            fetchLatest().onSuccess { res ->
+                merge(res.messages)
+                scheduleGapFillIfNeeded()
                 scheduleMarkRead()
             }
         }
@@ -337,7 +577,7 @@ class ChatRoomViewModel(
             val joined = urls.joinToString(",")
             val p = Pending(type = "IMAGE", content = "", imageUrl = joined, replyToId = null)
             pending.add(p)
-            if (!ChatSocketManager.sendMessage(roomId, "IMAGE", "", joined)) markFailed(p)
+            dispatch(p)
         }
     }
 
@@ -351,7 +591,7 @@ class ChatRoomViewModel(
             if (url == null) { toast = "동영상을 올리지 못했어요."; return@launch }
             val p = Pending(type = "VIDEO", content = "", imageUrl = url, replyToId = null)
             pending.add(p)
-            if (!ChatSocketManager.sendMessage(roomId, "VIDEO", "", url)) markFailed(p)
+            dispatch(p)
         }
     }
 
@@ -383,13 +623,33 @@ class ChatRoomViewModel(
         viewModelScope.launch { api.setRoomMute(roomId, value).onFailure { muted = !value } }
     }
 
-    /** 읽음 처리 디바운스 — 메시지가 연속 도착해도 emit 은 200ms 에 한 번. */
+    /**
+     * 읽음 전송 — 1초 간격, 앞·뒤 가장자리.
+     *  첫 호출은 바로 보내고, 이후 1초 안의 호출은 한 번으로 합쳐 구간 끝에 반드시 보낸다.
+     *  (디바운스는 메시지가 계속 오면 끝까지 보내지 않다가 멈추는 순간 몰아서 보냈다.)
+     */
     private fun scheduleMarkRead() {
-        markReadJob?.cancel()
+        if (markReadJob != null) return
+        val last = lastMarkReadAt
+        val wait = if (last == null) 0L else (MARK_READ_INTERVAL_MS - (SystemClock.elapsedRealtime() - last)).coerceAtLeast(0L)
         markReadJob = viewModelScope.launch {
-            delay(200)
+            if (wait > 0) delay(wait)
+            markReadJob = null
+            lastMarkReadAt = SystemClock.elapsedRealtime()
             ChatSocketManager.markRead(roomId)
         }
+    }
+
+    private companion object {
+        const val TAG = "ChatRoomVM"
+        const val INCOMING_BATCH_MS = 50L
+        const val GAP_CHECK_DELAY_MS = 500L
+        const val GAP_FILL_LIMIT = 100
+        const val GAP_FILL_MAX_ROUNDS = 10
+        const val MARK_READ_INTERVAL_MS = 1_000L
+        const val TYPING_SEND_INTERVAL_MS = 3_000L
+        const val TYPING_IDLE_MS = 4_000L
+        const val TYPING_EXPIRY_MS = 6_000L
     }
 }
 

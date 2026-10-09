@@ -34,6 +34,27 @@ class ChatApi(private val token: String?) {
     suspend fun getMessages(roomId: Int, page: Int = 1, limit: Int = 50): Result<ChatMessagesResponse> =
         call("/chat/rooms/$roomId/messages?page=$page&limit=$limit").map { ChatMessagesResponse.from(JSONObject(it)) }
 
+    /**
+     * 순번 기준 조회(2026-10-09 서버) — page(offset) 는 새 메시지가 오면 다음 페이지가 밀려 중복·누락이 생긴다.
+     *  - afterSeq: 그 순번 다음부터 오래된 순(놓친 메시지 채우기)
+     *  - beforeSeq: 그 순번 이전 최신 limit 건(이전 메시지)
+     *  - 둘 다 없으면 cursor=seq 로 최신 limit 건
+     *  구버전 서버는 이 파라미터를 무시하고 page=1 응답을 준다 → 호출부가 [ChatMessagesResponse.isSeqMode] 로 구분한다.
+     */
+    suspend fun getMessagesBySeq(
+        roomId: Int,
+        afterSeq: Int? = null,
+        beforeSeq: Int? = null,
+        limit: Int = 50,
+    ): Result<ChatMessagesResponse> {
+        val q = when {
+            afterSeq != null -> "afterSeq=$afterSeq"
+            beforeSeq != null -> "beforeSeq=$beforeSeq"
+            else -> "cursor=seq"
+        }
+        return call("/chat/rooms/$roomId/messages?$q&limit=$limit").map { ChatMessagesResponse.from(JSONObject(it)) }
+    }
+
     /** DELETE /chat/rooms/:id/leave — 내 참여기록 삭제(방 나가기). */
     suspend fun leaveRoom(roomId: Int): Result<Unit> = call("/chat/rooms/$roomId/leave", "DELETE").map { }
 

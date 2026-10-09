@@ -91,7 +91,7 @@ class ChatActivity : ResultActivity() {
             val lifecycleOwner = LocalLifecycleOwner.current
             DisposableEffect(lifecycleOwner) {
                 val observer = LifecycleEventObserver { _, event ->
-                    if (event == Lifecycle.Event.ON_RESUME) listState.requestReload()
+                    if (event == Lifecycle.Event.ON_RESUME) listState.requestReload(immediate = true)
                 }
                 lifecycleOwner.lifecycle.addObserver(observer)
                 onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -120,6 +120,7 @@ class ChatActivity : ResultActivity() {
                     nav.ReturnResultKeys(entry, ResultKeys.CHAT_ROOMS)
                     val rid = entry.arguments?.getString("roomId")?.toIntOrNull() ?: 0
                     val vm = remember(rid) { ChatRoomViewModel(rid, deepTitle, api, token) }
+                    ActiveRoomEffect(listState, rid)
                     ChatRoomScreen(vm = vm, onBack = { if (!nav.popBackStack()) finish() })
                 }
                 composable("room/{roomId}?title={title}") { entry ->
@@ -127,9 +128,22 @@ class ChatActivity : ResultActivity() {
                     val rid = entry.arguments?.getString("roomId")?.toIntOrNull() ?: 0
                     val t = entry.arguments?.getString("title").orEmpty()
                     val vm = remember(rid) { ChatRoomViewModel(rid, t, api, token) }
+                    ActiveRoomEffect(listState, rid)
                     ChatRoomScreen(vm = vm, onBack = { if (!nav.popBackStack()) finish() })
                 }
             }
         }
+    }
+}
+
+/**
+ * 방 화면이 떠 있는 동안 목록 상태에 "지금 보고 있는 방" 을 알린다 — 그 방의 안읽음은 0 으로 표시된다.
+ *  방이 겹쳐 열리는 경우(딥링크 → 다른 방) 나중에 열린 방이 우선이며, 내 방이 아닐 때는 지우지 않는다.
+ */
+@androidx.compose.runtime.Composable
+private fun ActiveRoomEffect(listState: ChatListState, roomId: Int) {
+    DisposableEffect(roomId) {
+        listState.activeRoomId = roomId
+        onDispose { if (listState.activeRoomId == roomId) listState.activeRoomId = null }
     }
 }
