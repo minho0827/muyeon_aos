@@ -187,8 +187,12 @@ class ChatRoomViewModel(
     private var totalCount = 0
     private var loadedPages = 1
 
-    /** 첫 로드 성공 여부 — 성공 전에는 채우기 대신 첫 로드를 다시 시도한다. */
-    private var initialLoaded = false
+    /**
+     * 첫 로드 성공 여부 — 성공 전에는 채우기 대신 첫 로드를 다시 시도한다.
+     *  화면은 푸시 딥링크 대상 카드 찾기를 첫 로드 이후에 시작하는 기준으로 쓴다.
+     */
+    var initialLoaded by mutableStateOf(false)
+        private set
 
     // 놓친 메시지 채우기 — 한 번에 하나만 실행하고, 실행 중 요청이 오면 끝난 뒤 한 번 더 실행한다.
     private var fillingGap = false

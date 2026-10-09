@@ -224,7 +224,11 @@ class AppBridgeInterface(
             }
             "openChatRoom" -> {
                 val roomId = d.optString("roomId").toIntOrNull() ?: return true
-                com.muyeon.app.ui.chat.ChatActivity.startRoom(activity, roomId, d.optString("title"))
+                // proposalId 가 오면 방에 들어간 뒤 그 약속 제안 카드로 스크롤(iOS presentChatRoom 과 같은 키).
+                com.muyeon.app.ui.chat.ChatActivity.startRoom(
+                    activity, roomId, d.optString("title"),
+                    proposalId = d.optString("proposalId").toIntOrNull(),
+                )
             }
             // 이미지 뷰어 — 웹은 네이티브 핸들러가 있으면 자기 라이트박스를 안 띄운다.
             //  여기서 안 받으면 이미지 탭이 무반응 버튼이 된다(iOS presentImageViewer 와 동일 키).

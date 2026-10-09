@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -65,7 +66,12 @@ import kotlinx.coroutines.launch
  *   시간 11 secondary / 아바타 32 / 입력바 상단 구분선 + 전송 버튼 원형 34.
  */
 @Composable
-fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
+fun ChatRoomScreen(
+    vm: ChatRoomViewModel,
+    onBack: () -> Unit,
+    initialSurveyDispatchId: Int? = null,   // 설문 응답 푸시 진입 — 이 설문 카드로 스크롤·강조
+    initialProposalId: Int? = null,         // 약속 제안 푸시·웹 진입 — 이 제안 카드로 스크롤·강조
+) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -86,6 +92,17 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
     var teacherReviewInfo by remember { mutableStateOf(false) }
 
     LaunchedEffect(vm.roomId) { vm.start() }
+
+    // ── 카드 찾아가기(iOS attemptSurveyJump·attemptProposalJump·highlightSurveyCard) ──
+    //  대상이 아직 로드되지 않았으면 이전 메시지를 더 불러오며 찾고, 찾으면 스크롤 후 잠깐 흔들어 강조한다.
+    var jumpTarget by remember {
+        mutableStateOf(
+            initialSurveyDispatchId?.let { CardJumpTarget.Survey(it) }
+                ?: initialProposalId?.let { CardJumpTarget.Proposal(it) },
+        )
+    }
+    var jumpLoadCount by remember { mutableIntStateOf(0) }   // 실패 반복 시 무한 재조회 방지
+    var highlightId by remember { mutableStateOf<Int?>(null) }
 
     // 화면 복귀(다른 화면·백그라운드에서 돌아옴) — 그 사이 놓친 메시지를 순번 기준으로 채운다.
     val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
@@ -159,6 +176,41 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
         }
     }
 
+    /** 메시지 id 로 목록 위치를 찾아 스크롤한다(상단 '이전 메시지 로딩' 줄이 있으면 한 칸 밀린다). */
+    suspend fun scrollToMessage(id: Int): Boolean {
+        val i = vm.messages.indexOfFirst { it.id == id }
+        if (i < 0) return false
+        val offset = if (vm.isLoadingMore) 1 else 0
+        listState.animateScrollToItem(i + offset)
+        return true
+    }
+
+    LaunchedEffect(jumpTarget, vm.messages.size, vm.isLoadingMore, vm.initialLoaded) {
+        val target = jumpTarget ?: return@LaunchedEffect
+        if (!vm.initialLoaded || vm.isLoadingMore) return@LaunchedEffect
+        val id = vm.messages.firstOrNull { target.matches(it) }?.id
+        when {
+            id != null -> {
+                jumpTarget = null
+                jumpLoadCount = 0
+                // 키 변경으로 이 효과가 취소돼도 스크롤·강조는 끝까지 진행되도록 화면 범위에서 실행한다.
+                scope.launch {
+                    kotlinx.coroutines.delay(450)   // 첫 로드 직후 하단 스크롤과 겹치지 않게(iOS 0.45초)
+                    if (!scrollToMessage(id)) return@launch
+                    kotlinx.coroutines.delay(350)
+                    highlightId = id
+                    kotlinx.coroutines.delay(700)
+                    if (highlightId == id) highlightId = null
+                }
+            }
+            vm.hasMore && jumpLoadCount < MAX_JUMP_LOADS -> {
+                jumpLoadCount++
+                vm.loadMore()
+            }
+            else -> { jumpTarget = null; jumpLoadCount = 0 }   // 못 찾으면 포기(방은 이미 열려 있다)
+        }
+    }
+
     /** 견적 헤더 탭 — 견적 카드로 스크롤. 재입장으로 카드가 숨겨진 방은 서버 컨텍스트 요약 시트. */
     fun onQuoteHeader() {
         if (vm.quoteCardHiddenByRejoin) {
@@ -166,10 +218,7 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
             return
         }
         val id = vm.firstQuoteCardId ?: return
-        val i = vm.messages.indexOfFirst { it.id == id }
-        if (i < 0) return
-        val offset = if (vm.isLoadingMore) 1 else 0
-        scope.launch { listState.animateScrollToItem(i + offset) }
+        scope.launch { scrollToMessage(id) }
     }
 
     // 새 메시지/전송 → 최하단으로.
@@ -297,6 +346,9 @@ fun ChatRoomScreen(vm: ChatRoomViewModel, onBack: () -> Unit) {
                             onOpenLesson = { lid ->
                                 lessonLauncher.launch(com.muyeon.app.ui.lesson.LessonActivity.detailIntent(context, lid))
                             },
+                            // 설문 응답·수정 알림 탭 → 같은 설문 카드로 스크롤·강조(iOS SurveyUpdateBubble).
+                            onSurveyUpdate = { did -> jumpTarget = CardJumpTarget.Survey(did) },
+                            highlighted = highlightId == m.id,
                         )
                     }
                     items(vm.pending.size, key = { "pending-" + vm.pending[it].localId }) { i ->
@@ -859,6 +911,8 @@ private fun MessageBubble(
     onOpenProvider: (Int, Boolean) -> Unit,
     onOpenSurvey: (Int) -> Unit,
     onOpenLesson: (Int) -> Unit,
+    onSurveyUpdate: (Int) -> Unit,
+    highlighted: Boolean,
 ) {
     // ── 말풍선이 아니라 전용 카드/안내로 그리는 타입들 ──
     //  ⚠️ 여기서 안 받으면 `else -> Text(content)` 로 떨어져 JSON 원문이 그대로 노출된다.
@@ -870,7 +924,7 @@ private fun MessageBubble(
             }
             "SURVEY_UPDATE" -> {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    SurveyUpdateBubble(message.content, onOpenSurvey)
+                    SurveyUpdateBubble(message.content, onSurveyUpdate)
                 }
                 return
             }
@@ -887,7 +941,10 @@ private fun MessageBubble(
                 return
             }
             "SURVEY_CARD" -> {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
+                Row(
+                    Modifier.fillMaxWidth().shake(highlighted),
+                    horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start,
+                ) {
                     SurveyCardBubble(
                         json = message.content,
                         done = message.surveyDone == true,
@@ -901,7 +958,10 @@ private fun MessageBubble(
             }
             // 레슨 약속 제안은 전용 카드로 렌더(iOS LessonProposalCardBubble).
             "LESSON_PROPOSAL" -> {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
+                Row(
+                    Modifier.fillMaxWidth().shake(highlighted),
+                    horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start,
+                ) {
                     LessonProposalBubble(
                         contentJson = message.content,
                         isProposer = isMine,
@@ -1112,4 +1172,37 @@ private fun ProviderSwitchGate(onBack: () -> Unit, onSwitch: () -> Unit) {
             ) { Text("강사 유형으로 전환") }
         }
     }
+}
+
+/** 딥링크·설문 알림으로 찾아갈 카드 — 설문(dispatchId) 또는 약속 제안(proposalId). */
+private sealed interface CardJumpTarget {
+    fun matches(m: ChatMessage): Boolean
+
+    data class Survey(val dispatchId: Int) : CardJumpTarget {
+        override fun matches(m: ChatMessage): Boolean =
+            m.type == "SURVEY_CARD" && runCatching {
+                org.json.JSONObject(m.content).optInt("dispatchId")
+            }.getOrDefault(0) == dispatchId
+    }
+
+    data class Proposal(val proposalId: Int) : CardJumpTarget {
+        override fun matches(m: ChatMessage): Boolean =
+            m.type == "LESSON_PROPOSAL" && LessonProposalCard.parse(m.content)?.proposalId == proposalId
+    }
+}
+
+/** 대상 카드를 찾을 때 이전 메시지를 더 불러오는 최대 횟수(50건 × 20 = 1,000건). */
+private const val MAX_JUMP_LOADS = 20
+
+/** 카드 강조 — 좌우로 짧게 흔든다(iOS ShakeEffect). [active] 가 true 로 바뀔 때 한 번 재생한다. */
+@Composable
+private fun Modifier.shake(active: Boolean): Modifier {
+    val offset = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(active) {
+        if (!active) return@LaunchedEffect
+        for (x in listOf(-10f, 10f, -8f, 8f, -4f, 4f, 0f)) {
+            offset.animateTo(x, androidx.compose.animation.core.tween(durationMillis = 70))
+        }
+    }
+    return this.then(Modifier.graphicsLayer { translationX = offset.value * density })
 }

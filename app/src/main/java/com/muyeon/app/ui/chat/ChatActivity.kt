@@ -41,28 +41,51 @@ class ChatActivity : ResultActivity() {
         private const val EXTRA_ROOM_ID = "roomId"
         private const val EXTRA_TITLE = "title"
         private const val EXTRA_FILTER = "filter"
+        private const val EXTRA_DISPATCH_ID = "dispatchId"   // 설문 응답 푸시 — 대상 설문 카드
+        private const val EXTRA_PROPOSAL_ID = "proposalId"   // 약속 제안 푸시·웹 — 대상 제안 카드
 
         /** 목록부터. filter 는 웹 openChatList 의 세그먼트 문자열(requested|responded|inquiry). */
         fun listIntent(context: Context, filter: String? = null): Intent =
             Intent(context, ChatActivity::class.java).putExtra(EXTRA_FILTER, filter ?: "")
 
-        /** 특정 방 직행(견적 채택·푸시 딥링크). 뒤로가면 목록. */
-        fun roomIntent(context: Context, roomId: Int, title: String? = null): Intent =
+        /**
+         * 특정 방 직행(견적 채택·푸시 딥링크). 뒤로가면 목록.
+         *  [dispatchId]·[proposalId] 가 있으면 방에 들어간 뒤 그 설문/약속 제안 카드로 스크롤해 강조한다
+         *  (iOS ChatRoomView initialSurveyDispatchId·initialProposalId).
+         */
+        fun roomIntent(
+            context: Context,
+            roomId: Int,
+            title: String? = null,
+            dispatchId: Int? = null,
+            proposalId: Int? = null,
+        ): Intent =
             Intent(context, ChatActivity::class.java)
                 .putExtra(EXTRA_ROOM_ID, roomId)
                 .putExtra(EXTRA_TITLE, title ?: "")
+                .apply {
+                    dispatchId?.takeIf { it > 0 }?.let { putExtra(EXTRA_DISPATCH_ID, it) }
+                    proposalId?.takeIf { it > 0 }?.let { putExtra(EXTRA_PROPOSAL_ID, it) }
+                }
 
         fun startList(context: Context, filter: String? = null) =
             context.launchScreen(listIntent(context, filter))
 
-        fun startRoom(context: Context, roomId: Int, title: String? = null) =
-            context.launchScreen(roomIntent(context, roomId, title))
+        fun startRoom(
+            context: Context,
+            roomId: Int,
+            title: String? = null,
+            dispatchId: Int? = null,
+            proposalId: Int? = null,
+        ) = context.launchScreen(roomIntent(context, roomId, title, dispatchId, proposalId))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val deepRoomId = intent.getIntExtra(EXTRA_ROOM_ID, 0)
         val deepTitle = intent.getStringExtra(EXTRA_TITLE).orEmpty()
+        val deepDispatchId = intent.getIntExtra(EXTRA_DISPATCH_ID, 0).takeIf { it > 0 }
+        val deepProposalId = intent.getIntExtra(EXTRA_PROPOSAL_ID, 0).takeIf { it > 0 }
         val filter = ChatRoomFilter.from(intent.getStringExtra(EXTRA_FILTER)?.ifEmpty { null })
 
         // 소켓 연결 + 백그라운드 pause/resume 옵저버 등록(둘 다 idempotent).
@@ -121,7 +144,14 @@ class ChatActivity : ResultActivity() {
                     val rid = entry.arguments?.getString("roomId")?.toIntOrNull() ?: 0
                     val vm = remember(rid) { ChatRoomViewModel(rid, deepTitle, api, token) }
                     ActiveRoomEffect(listState, rid)
-                    ChatRoomScreen(vm = vm, onBack = { if (!nav.popBackStack()) finish() })
+                    // 딥링크 대상 카드는 직행한 방에만 적용한다(목록에서 다시 연 방에는 적용하지 않음).
+                    val isDeepRoom = rid == deepRoomId
+                    ChatRoomScreen(
+                        vm = vm,
+                        onBack = { if (!nav.popBackStack()) finish() },
+                        initialSurveyDispatchId = deepDispatchId.takeIf { isDeepRoom },
+                        initialProposalId = deepProposalId.takeIf { isDeepRoom },
+                    )
                 }
                 composable("room/{roomId}?title={title}") { entry ->
                     nav.ReturnResultKeys(entry, ResultKeys.CHAT_ROOMS)
