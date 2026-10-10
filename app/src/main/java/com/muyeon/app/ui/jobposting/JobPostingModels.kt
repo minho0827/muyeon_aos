@@ -41,14 +41,18 @@ data class MyPosting(
     val createdAt: String?,
     // 본인 전용 작성값 원본(서버 postingCard.preview) — 상세 화면을 GET 응답 전에 바로 그린다(2026-10-04).
     val preview: JSONObject? = null,
+    // 인증 대기(비공개) 공고 — 서버는 status=OPEN 이지만 인증 승인 전까지 작성자에게만 보인다.
+    //  '채용중'으로 보이면 오해하므로 '인증 대기'로 표시하고 보류·마감 동작을 숨긴다(iOS 와 동일).
+    val pendingVerification: Boolean = false,
+    val hiddenByRole: String? = null,
 ) {
     /** kind 가 달라도 id 가 겹칠 수 있어 목록 key 는 조합. */
     val uid: String get() = "$kind-$id"
 
-    /** D-day — OPEN + 마감일이 있을 때만. "-"(미정)은 null. */
+    /** D-day — OPEN + 마감일이 있을 때만. "-"(미정)은 null. 인증 대기 공고는 아직 모집 전이라 표시하지 않는다. */
     val dday: Int?
         get() {
-            if (status != "OPEN") return null
+            if (status != "OPEN" || pendingVerification) return null
             val d = deadline ?: return null
             if (d == "-" || d.length < 10) return null
             val due = runCatching { ymd.parse(d.take(10))?.time }.getOrNull() ?: return null
@@ -77,12 +81,15 @@ data class MyPosting(
             o.intOrNull("applicants"), o.intOrNull("views"),
             o.stringOrNull("updatedAt"), o.stringOrNull("createdAt"),
             o.optJSONObject("preview"),
+            pendingVerification = o.optBoolean("pendingVerification", false),
+            hiddenByRole = o.stringOrNull("hiddenByRole"),
         )
     }
 }
 
 object JobPostingOptions {
     val kindLabel = mapOf("JOB" to "채용", "SUB" to "대타", "CASTING" to "공연")
+    const val PENDING_LABEL = "인증 대기"
 
     fun statusLabel(s: String?): String = when (s) {
         "OPEN" -> "채용중"

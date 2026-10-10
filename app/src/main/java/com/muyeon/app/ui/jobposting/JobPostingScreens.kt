@@ -90,7 +90,8 @@ fun MyPostingsScreen(
     // 상태 변경·마감·복사·삭제 — 상세와 같은 PostingActions(2026-10-04).
     val actions = rememberPostingActions(api) { _, _ -> onChanged(); scope.launch { load() } }
 
-    val filtered = (if (tab == "ALL") postings else postings.filter { it.status == tab })
+    // 인증 대기 공고는 status=OPEN 이지만 아직 모집 전 — '채용중' 탭에서 뺀다(전체에만 보임).
+    val filtered = (if (tab == "ALL") postings else postings.filter { it.status == tab && !(tab == "OPEN" && it.pendingVerification) })
         .sortedWith(
             compareBy<MyPosting> { JobPostingOptions.statusPriority(it.status) }
                 .thenByDescending { it.updatedAt ?: it.createdAt.orEmpty() }
@@ -246,9 +247,9 @@ private fun PostingCard(
                     .background(MuyeonColors.primary.copy(alpha = 0.12f)).padding(horizontal = 6.dp, vertical = 2.dp),
             )
             Text(
-                JobPostingOptions.statusLabel(p.status),
+                if (p.pendingVerification) JobPostingOptions.PENDING_LABEL else JobPostingOptions.statusLabel(p.status),
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 10.sp, lineHeight = 12.sp,
-                color = if (p.status == "OPEN") MuyeonColors.green else MuyeonColors.secondary,
+                color = if (p.status == "OPEN" && !p.pendingVerification) MuyeonColors.green else MuyeonColors.secondary,
                 modifier = Modifier.clip(RoundedCornerShape(50)).background(Color(0xFFF2F2F7))
                     .padding(horizontal = 6.dp, vertical = 2.dp),
             )
@@ -271,12 +272,16 @@ private fun PostingCard(
                     val menu = buildList<Pair<String, () -> Unit>> {
                         add("공고 보기" to onView)
                         // 공연(CASTING)은 수정 화면이 없다 — 숨긴다.
-                        if (p.kind != "CASTING") add("수정" to onEdit)
-                        if (p.status == "OPEN") add("보류" to { onStatus("HOLD") })
-                        else add("다시 열기" to { onStatus("OPEN") })
-                        add("복사" to onDuplicate)
+                        // 인증 대기 공고는 승인 전이라 수정·보류·복사·마감이 의미 없다 → 보기·삭제만.
+                        val pending = p.pendingVerification
+                        if (p.kind != "CASTING" && !pending) add("수정" to onEdit)
+                        if (!pending) {
+                            if (p.status == "OPEN") add("보류" to { onStatus("HOLD") })
+                            else add("다시 열기" to { onStatus("OPEN") })
+                            add("복사" to onDuplicate)
+                        }
                         add("삭제" to onDelete)
-                        if (p.status == "OPEN") add("마감하기" to { onStatus("CLOSED") })
+                        if (p.status == "OPEN" && !pending) add("마감하기" to { onStatus("CLOSED") })
                     }
                     menu.forEach { (label, action) ->
                         DropdownMenuItem(
