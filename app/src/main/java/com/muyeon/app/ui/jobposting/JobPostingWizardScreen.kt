@@ -114,7 +114,14 @@ fun JobPostingWizardScreen(
         !form.genre.isNullOrEmpty() &&
         !form.fields.isNullOrEmpty() &&
         !form.region.isNullOrEmpty()
-    val canNext = step != 0 || step1Valid
+    // Step2 필수: 지원 마감일 — 날짜 또는 상시 모집('-') 중 하나를 반드시 고른다.
+    //  상시 모집 해제 + 날짜 미선택이면 deadline 이 빠진 채 저장돼 서버가 기존 '-'(상시 모집)를 유지했다.
+    val deadlineChosen = !form.deadline.isNullOrBlank()
+    val canNext = when (step) {
+        0 -> step1Valid
+        1 -> deadlineChosen
+        else -> true
+    }
     val images = form.images ?: emptyList()
 
     suspend fun readBytes(uri: android.net.Uri): ByteArray? = withContext(Dispatchers.IO) {
@@ -152,6 +159,12 @@ fun JobPostingWizardScreen(
 
     fun save(asDraft: Boolean) {
         if (saving) return
+        // 등록·수정 저장은 마감일 선택이 필수(임시저장은 작성 중이라 예외). 수정 모드 Step1 '저장'도 여기서 막는다.
+        if (!asDraft && !deadlineChosen) {
+            step = 1
+            errorMessage = DEADLINE_REQUIRED_MESSAGE
+            return
+        }
         saving = true
         scope.launch {
             // 수정 모드에서 기존 상태(마감·보류)를 임의로 OPEN 으로 되돌리지 않는다.
@@ -487,6 +500,7 @@ private fun displayDeadline(raw: String?): String {
 }
 
 private const val DEADLINE_PLACEHOLDER = "날짜를 선택해주세요"
+private const val DEADLINE_REQUIRED_MESSAGE = "마감일을 선택하거나 상시 모집을 선택해 주세요."
 
 /** 스텝 인디케이터 (1—2—3—4). */
 @Composable
@@ -737,6 +751,14 @@ private fun DeadlineRow(deadline: String?, onPick: () -> Unit, onToggleOpenEnded
                 "상시 모집",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
                 lineHeight = 17.sp, color = MuyeonColors.textHead,
+            )
+        }
+        // 날짜도 상시 모집도 고르지 않았으면 인라인 안내('다음'은 비활성).
+        if (deadline.isNullOrBlank()) {
+            Text(
+                DEADLINE_REQUIRED_MESSAGE,
+                fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp,
+                lineHeight = 15.sp, color = MuyeonColors.danger,
             )
         }
     }

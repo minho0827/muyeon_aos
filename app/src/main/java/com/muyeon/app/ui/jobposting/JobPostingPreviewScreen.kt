@@ -110,8 +110,13 @@ fun JobPostingPreviewScreen(form: JobForm, onClose: () -> Unit) {
  */
 @Composable
 internal fun JobPostingDetailContent(form: JobForm, showPlaceholders: Boolean) {
-    val deadlineText = form.deadline?.takeIf { it.isNotEmpty() && it != "-" }
-        ?.take(10)?.replace("-", ".") ?: "상시 모집" // '-'(및 미입력) = 마감일 없는 공고(웹 상세와 같은 문구)
+    // '-' = 상시 모집(작성자가 선택한 값), 값 없음(레거시 공고) = 마감일 미정. 웹 jobDeadlineText 와 같은 규칙.
+    //  서버는 둘 다 무기한으로 본다. 작성 미리보기에서는 빈 값이면 입력 안내(placeholder)를 보여 준다.
+    val deadlineText = when (val d = form.deadline?.trim()) {
+        null, "" -> if (showPlaceholders) null else "마감일 미정"
+        "-" -> "상시 모집"
+        else -> d.take(10).replace("-", ".")
+    }
     // 급여 구간 + 부가설명(pay) — 상세와 동일하게 "3만~4만원 (경력별 협의)" 형태
     val salaryText = run {
         val range = JobFormOptions.salaryLabel(form.salary)
