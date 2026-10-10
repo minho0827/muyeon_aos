@@ -111,7 +111,7 @@ fun JobPostingPreviewScreen(form: JobForm, onClose: () -> Unit) {
 @Composable
 internal fun JobPostingDetailContent(form: JobForm, showPlaceholders: Boolean) {
     val deadlineText = form.deadline?.takeIf { it.isNotEmpty() && it != "-" }
-        ?.take(10)?.replace("-", ".") ?: "미정"
+        ?.take(10)?.replace("-", ".") ?: "상시 모집" // '-'(및 미입력) = 마감일 없는 공고(웹 상세와 같은 문구)
     // 급여 구간 + 부가설명(pay) — 상세와 동일하게 "3만~4만원 (경력별 협의)" 형태
     val salaryText = run {
         val range = JobFormOptions.salaryLabel(form.salary)
@@ -153,6 +153,7 @@ internal fun JobPostingDetailContent(form: JobForm, showPlaceholders: Boolean) {
         PostingRow("수업 대상", ResumeOptions.classTargets.firstOrNull { it.first == form.target }?.second, showPlaceholders)
         PostingRow("모집 인원", form.headcount?.let { "${it}명" }, showPlaceholders)
         PostingRow("지원 마감일", deadlineText, showPlaceholders)
+        PostingRow("지원 방법", form.applyMethod?.trim(), showPlaceholders)
         PostingRow("급여", salaryText, showPlaceholders)
         PostingRow("허용 경력", careerText, showPlaceholders)
 
