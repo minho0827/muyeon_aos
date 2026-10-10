@@ -97,6 +97,8 @@ fun PostingDetailScreen(
     val ref = PostingRef(kind, id)
     val kindLabel = JobPostingOptions.kindLabel[kind] ?: kind
     val status = summary?.status ?: detail?.stringOrNull("status")
+    // 인증 대기(비공개) 공고 — 상세 응답(작성자 전용) 또는 내 공고 카드 값.
+    val pending = summary?.pendingVerification == true || detail?.optBoolean("pendingVerification", false) == true
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         QuoteNavBar(
@@ -111,8 +113,8 @@ fun PostingDetailScreen(
                     // 수정은 채용(네이티브 위저드)·대타(웹 수정)만 — 공연은 수정 화면이 없다.
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         val menu = buildList<Pair<String, () -> Unit>> {
-                            if (kind != "CASTING") add("수정" to { onEdit(kind, id) })
-                            add("복사" to { actions.duplicate(ref) })
+                            if (kind != "CASTING" && !pending) add("수정" to { onEdit(kind, id) })
+                            if (!pending) add("복사" to { actions.duplicate(ref) })
                             add("삭제" to { actions.requestDelete(ref) })
                         }
                         menu.forEach { (label, action) ->
@@ -140,7 +142,7 @@ fun PostingDetailScreen(
             }
             else -> {
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                    DetailHeader(kind, d, summary, status)
+                    DetailHeader(kind, d, summary, status, pending)
                     Column(
                         Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -164,11 +166,12 @@ fun PostingDetailScreen(
                             else -> JobPostingDetailContent(JobForm.from(d), showPlaceholders = false)
                         }
                         Spacer(Modifier.height(4.dp))
-                        ApplicantsCard(summary?.applicants ?: 0) { onApplicants(kind, id) }
+                        if (!pending) ApplicantsCard(summary?.applicants ?: 0) { onApplicants(kind, id) }
                     }
                 }
                 // 하단 버튼 — 채용중: [보류][마감하기] / 보류·마감·임시저장: [다시 열기]
-                Column(Modifier.fillMaxWidth().background(MuyeonColors.surface)) {
+                //  인증 대기 공고는 승인 전이라 보류·마감할 것이 없다 → 하단 바 숨김.
+                if (!pending) Column(Modifier.fillMaxWidth().background(MuyeonColors.surface)) {
                     HorizontalDivider(color = MuyeonColors.border)
                     Row(
                         Modifier.padding(horizontal = 16.dp).padding(top = 8.dp, bottom = 12.dp),
@@ -198,7 +201,7 @@ fun PostingDetailScreen(
 // MARK: 공통 머리
 
 @Composable
-private fun DetailHeader(kind: String, d: JSONObject, summary: MyPosting?, status: String?) {
+private fun DetailHeader(kind: String, d: JSONObject, summary: MyPosting?, status: String?, pending: Boolean = false) {
     // 대표 이미지가 없으면 상세 이미지 첫 장(웹 ImageCarousel 과 동일 폴백). 없으면 자리를 차지하지 않는다.
     val hero = d.stringOrNull("imageUrl") ?: d.stringOrNull("image") ?: d.stringList("images")?.firstOrNull()
     hero?.let {
@@ -214,8 +217,8 @@ private fun DetailHeader(kind: String, d: JSONObject, summary: MyPosting?, statu
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Chip(JobPostingOptions.kindLabel[kind] ?: kind, MuyeonColors.primary, MuyeonColors.primary.copy(alpha = 0.12f))
             Chip(
-                JobPostingOptions.statusLabel(status),
-                if (status == "OPEN") MuyeonColors.green else MuyeonColors.secondary,
+                if (pending) JobPostingOptions.PENDING_LABEL else JobPostingOptions.statusLabel(status),
+                if (status == "OPEN" && !pending) MuyeonColors.green else MuyeonColors.secondary,
                 Color(0xFFF2F2F7),
             )
             if (kind == "SUB" && d.optBoolean("urgent")) Chip("긴급", MuyeonColors.danger, MuyeonColors.danger.copy(alpha = 0.10f))
