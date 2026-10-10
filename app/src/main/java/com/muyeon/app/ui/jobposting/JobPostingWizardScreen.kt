@@ -20,6 +20,8 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -284,11 +286,17 @@ fun JobPostingWizardScreen(
                         keyboard = KeyboardType.Number,
                     ) { form = form.copy(headcount = it.toIntOrNull()) }
                     // 목록 카드의 D-day / 상세의 '지원 마감일' 근거값 — 자유 텍스트는 표기가 제각각이라 휠로 받는다.
+                    //  상시 모집 체크 = 마감일 '-'(웹 DateSelect '상시 모집' 과 같은 규약), 해제 = 미입력.
                     DeadlineRow(
                         deadline = form.deadline,
                         onPick = { showDeadlinePicker = true },
-                        onClear = { form = form.copy(deadline = null) },
+                        onToggleOpenEnded = { on -> form = form.copy(deadline = if (on) "-" else null) },
                     )
+                    // 지원 방법(선택, 200자) — 웹 JobCreate 와 같은 위치(마감일 바로 아래).
+                    JobField(
+                        "지원 방법 (선택)", form.applyMethod.orEmpty(),
+                        "예: 이력서 제출 후 채팅으로 면접 일정 조율",
+                    ) { form = form.copy(applyMethod = it.take(APPLY_METHOD_MAX)) }
                 }
                 2 -> {
                     SectionHead("근무 조건", "근무 요일·시간·급여·경력 조건을 입력해주세요.")
@@ -348,7 +356,8 @@ fun JobPostingWizardScreen(
                     SummaryRow("근무 지역", form.region.orEmpty())
                     SummaryRow("근무 요일", form.days.orEmpty())
                     SummaryRow("급여", JobFormOptions.salaryLabel(form.salary))
-                    SummaryRow("지원 마감일", displayDeadline(form.deadline).takeIf { it != "미정" }.orEmpty())
+                    SummaryRow("지원 마감일", if (form.deadline.isNullOrEmpty()) "" else displayDeadline(form.deadline))
+                    SummaryRow("지원 방법", form.applyMethod?.trim().orEmpty())
                     SummaryRow("상세 이미지", if (images.isEmpty()) "" else "${images.size}장")
                     Row(
                         Modifier.padding(top = 8.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp))
@@ -468,10 +477,16 @@ fun JobPostingWizardScreen(
     }
 }
 
+/** 지원 방법 최대 길이 — 서버 CreateJobDto.applyMethod @MaxLength(200). */
+private const val APPLY_METHOD_MAX = 200
+
 private fun displayDeadline(raw: String?): String {
-    val d = raw?.takeIf { it.isNotEmpty() && it != "-" } ?: return "미정"
+    if (raw == "-") return "상시 모집"
+    val d = raw?.takeIf { it.isNotEmpty() } ?: return DEADLINE_PLACEHOLDER
     return d.take(10).replace("-", ".")
 }
+
+private const val DEADLINE_PLACEHOLDER = "날짜를 선택해주세요"
 
 /** 스텝 인디케이터 (1—2—3—4). */
 @Composable
@@ -681,41 +696,48 @@ private fun DetailImages(
 }
 
 @Composable
-private fun DeadlineRow(deadline: String?, onPick: () -> Unit, onClear: () -> Unit) {
+private fun DeadlineRow(deadline: String?, onPick: () -> Unit, onToggleOpenEnded: (Boolean) -> Unit) {
     val text = displayDeadline(deadline)
+    val openEnded = deadline == "-"
+    val hasDate = !deadline.isNullOrEmpty() && !openEnded
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
             "지원 마감일",
             fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
             lineHeight = 18.sp, color = MuyeonColors.textHead,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(
-                Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
-                    .border(1.dp, MuyeonColors.border, RoundedCornerShape(10.dp))
-                    .clickable(onClick = onPick)
-                    .padding(horizontal = 12.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text,
-                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
-                    lineHeight = 17.sp,
-                    color = if (text == "미정") MuyeonColors.chevron else MuyeonColors.textHead,
-                    modifier = Modifier.weight(1f),
-                )
-                Icon(Icons.Filled.CalendarMonth, null, tint = MuyeonColors.chevron, modifier = Modifier.size(13.dp))
-            }
-            if (!deadline.isNullOrEmpty()) {
-                Text(
-                    "미정",
-                    fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                    lineHeight = 16.sp, color = MuyeonColors.textSub,
-                    modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Color(0xFFF4F4F4))
-                        .clickable(onClick = onClear)
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
-                )
-            }
+        // 상시 모집이면 날짜 선택을 막는다(웹은 date 입력 disabled).
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                .background(if (openEnded) Color(0xFFF7F7F7) else Color.Transparent)
+                .border(1.dp, MuyeonColors.border, RoundedCornerShape(10.dp))
+                .clickable(enabled = !openEnded, onClick = onPick)
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text,
+                fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
+                lineHeight = 17.sp,
+                color = if (hasDate) MuyeonColors.textHead else MuyeonColors.chevron,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(Icons.Filled.CalendarMonth, null, tint = MuyeonColors.chevron, modifier = Modifier.size(13.dp))
+        }
+        // 체크 = '-' 저장, 해제 = 미입력. 날짜가 있던 상태에서 체크하면 날짜는 지워진다.
+        Row(
+            Modifier.clickable { onToggleOpenEnded(!openEnded) },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(
+                checked = openEnded, onCheckedChange = onToggleOpenEnded,
+                colors = CheckboxDefaults.colors(checkedColor = MuyeonColors.primary),
+            )
+            Text(
+                "상시 모집",
+                fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
+                lineHeight = 17.sp, color = MuyeonColors.textHead,
+            )
         }
     }
 }

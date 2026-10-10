@@ -150,7 +150,8 @@ data class JobForm(
     var time: String? = null,
     var employment: String? = null,
     var headcount: Int? = null,
-    var deadline: String? = null,
+    var deadline: String? = null,   // "yyyy-MM-dd" | "-"(상시 모집) | null(미입력)
+    var applyMethod: String? = null, // 지원 방법(선택, 최대 200자). 서버 저장 위치 details.applyMethod
     var salary: String? = null,
     var pay: String? = null,
     var careerLevels: List<String>? = null,
@@ -175,6 +176,10 @@ data class JobForm(
         putOpt("employment", employment)
         headcount?.let { put("headcount", it) }
         putOpt("deadline", deadline); putOpt("salary", salary); putOpt("pay", pay)
+        // 지원 방법 — 서버는 최상위 applyMethod 를 받아 details.applyMethod 에 저장한다.
+        //  수정에서는 빈 문자열도 보내야 지운 내용이 반영된다(서버 update 는 undefined 만 건너뛴다).
+        val method = applyMethod?.trim().orEmpty()
+        if (isEdit) put("applyMethod", method) else if (method.isNotEmpty()) put("applyMethod", method)
         careerLevels?.let { put("careerLevels", JSONArray(it)) }
         putOpt("careerText", careerText); putOpt("description", description)
         putOpt("status", status)
@@ -202,6 +207,7 @@ data class JobForm(
                 target = d.stringOrNull("target"), address = d.stringOrNull("address"),
                 subway = d.stringOrNull("subway"), employment = d.stringOrNull("employment"),
                 headcount = d.intOrNull("headcount"), deadline = d.stringOrNull("deadline"),
+                applyMethod = d.stringOrNull("applyMethod"),
                 // 서버는 preferences 를 details 안에 넣는다(웹과 동일 위치).
                 pref = JobPref.from(d.optJSONObject("preferences")),
             )
