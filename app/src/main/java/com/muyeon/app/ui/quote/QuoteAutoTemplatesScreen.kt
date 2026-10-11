@@ -384,7 +384,7 @@ private fun AutoQuoteEditor(
                         onValueChange = { if (it.length <= 300) message = it },
                         placeholder = {
                             Text(
-                                "예: 안녕하세요! 발레 전문 강사입니다. 편하게 상담 도와드릴게요 :)",
+                                "예: 안녕하세요! 발레 전문 강사예요. 편하게 상담 도와드릴게요 :)",
                                 fontFamily = customFontFamily, fontSize = 14.sp,
                             )
                         },

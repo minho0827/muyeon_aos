@@ -161,7 +161,7 @@ fun SpaceReserveSheet(
                     FieldGroup("옵션 선택") {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             currentOptions.forEach { o ->
-                                RadioRow("${o.label ?: "옵션"} — ${o.priceText}", optionId == o.id) {
+                                RadioRow("${o.label ?: "옵션"} · ${o.priceText}", optionId == o.id) {
                                     optionId = o.id
                                 }
                             }
@@ -211,7 +211,7 @@ fun SpaceReserveSheet(
                         )
                     }
                     Text(
-                        "예약 요청은 공간 소유자의 확인 후 확정됩니다. 확정·취소 결과는 알림으로 안내드리며, 결제는 확정 이후에 진행됩니다.",
+                        "예약 요청은 공간 소유자가 확인하면 확정돼요. 확정·취소 결과는 알림으로 알려 드리고, 결제는 확정된 뒤에 해요.",
                         fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
                         lineHeight = 24.sp, color = SpaceDesign.ink700,
                     )
@@ -253,8 +253,8 @@ fun SpaceReserveSheet(
                                         hours = if (bookingType == "HOURLY") hours else null,
                                     ),
                                 )
-                                    .onSuccess { onReserved(); onFinish("예약 요청이 접수되었습니다.") }
-                                    .onFailure { error = "예약 요청에 실패했습니다. 잠시 후 다시 시도해 주세요." }
+                                    .onSuccess { onReserved(); onFinish("예약 요청을 보냈어요.") }
+                                    .onFailure { error = "예약 요청을 보내지 못했어요. 잠시 후 다시 시도해 주세요." }
                                 submitting = false
                             }
                         }

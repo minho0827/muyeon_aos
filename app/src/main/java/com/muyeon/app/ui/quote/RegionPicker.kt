@@ -242,7 +242,7 @@ fun QuoteRegionPicker(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        if (empty) "지역을 선택해주세요" else "선택 완료 (${selected.size})",
+                        if (empty) "지역을 선택해 주세요" else "선택 완료 (${selected.size})",
                         fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
                         color = QuoteColors.white,
                     )

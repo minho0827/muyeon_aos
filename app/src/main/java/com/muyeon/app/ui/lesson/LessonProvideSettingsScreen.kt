@@ -294,7 +294,7 @@ fun LessonProvideSettingsScreen(
                     scope.launch {
                         api.saveProfile(enabled, gender)
                             .mapCatching { api.savePrefs(prefs).getOrThrow() }
-                            .onSuccess { doneMessage = "레슨 설정을 저장했습니다." }
+                            .onSuccess { doneMessage = "레슨 설정을 저장했어요." }
                             .onFailure { errorMessage = it.message ?: "저장에 실패했어요." }
                         saving = false
                     }

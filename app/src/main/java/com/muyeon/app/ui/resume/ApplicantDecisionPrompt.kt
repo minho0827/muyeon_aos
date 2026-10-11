@@ -40,7 +40,7 @@ fun ApplicantDecisionPromptDialog(
 
         is ApplicantDecisionPrompt.SubConfirmed -> AlertDialog(
             onDismissRequest = { onPrompt(null) },
-            title = { DialogTitle("대타가 확정되었어요") },
+            title = { DialogTitle("대타가 확정됐어요") },
             text = { DialogMessage("나머지 지원자 ${prompt.count}명을 미선정 처리하고 결과 알림을 발송할까요?") },
             confirmButton = {
                 TextButton(onClick = { onPrompt(null); onBulkNotify() }) { DialogAction("일괄 안내하기") }
@@ -51,7 +51,7 @@ fun ApplicantDecisionPromptDialog(
         is ApplicantDecisionPrompt.JobConfirmed -> AlertDialog(
             onDismissRequest = { onPrompt(null) },
             title = { DialogTitle("${prompt.name} 님을 채용 확정했어요") },
-            text = { DialogMessage("다른 지원자 ${prompt.count}명도 계속 검토하시겠어요?") },
+            text = { DialogMessage("다른 지원자 ${prompt.count}명도 계속 검토할까요?") },
             confirmButton = { TextButton(onClick = { onPrompt(null) }) { DialogAction("계속 검토하기") } },
             dismissButton = {
                 TextButton(
@@ -65,7 +65,7 @@ fun ApplicantDecisionPromptDialog(
             title = { DialogTitle("채용을 마감할까요?") },
             text = {
                 DialogMessage(
-                    "채용을 마감하면 남은 지원자 ${prompt.count}명이 미선정 처리되고 결과 알림이 발송됩니다.",
+                    "채용을 마감하면 남은 지원자 ${prompt.count}명이 미선정 처리되고 결과 알림이 가요.",
                 )
             },
             confirmButton = {

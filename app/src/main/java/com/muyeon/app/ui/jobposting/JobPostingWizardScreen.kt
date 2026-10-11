@@ -232,7 +232,7 @@ fun JobPostingWizardScreen(
         ) {
             when (step) {
                 0 -> {
-                    SectionHead("기본 정보", "공고의 기본 정보를 입력해주세요.")
+                    SectionHead("기본 정보", "공고의 기본 정보를 입력해 주세요.")
                     JobField("공고 제목", form.title, "예) 성인 발레 강사 모집", required = true) {
                         form = form.copy(title = it)
                     }
@@ -284,7 +284,7 @@ fun JobPostingWizardScreen(
                     )
                 }
                 1 -> {
-                    SectionHead("상세 정보", "지원자에게 보여줄 상세 내용을 입력해주세요.")
+                    SectionHead("상세 정보", "지원자에게 보여 줄 상세 내용을 입력해 주세요.")
                     JobMultiline("상세 설명", form.description.orEmpty(), "근무 내용, 지원 자격 등 자세히 적어주세요.") {
                         form = form.copy(description = it)
                     }
@@ -312,7 +312,7 @@ fun JobPostingWizardScreen(
                     ) { form = form.copy(applyMethod = it.take(APPLY_METHOD_MAX)) }
                 }
                 2 -> {
-                    SectionHead("근무 조건", "근무 요일·시간·급여·경력 조건을 입력해주세요.")
+                    SectionHead("근무 조건", "근무 요일·시간·급여·경력 조건을 입력해 주세요.")
                     val days = (form.days ?: "").split("·").filter { it.isNotEmpty() }
                     JobChips("근무 요일", JobFormOptions.weekDays.map { it to it }, days.toSet()) { d ->
                         val next = if (days.contains(d)) days - d else days + d
@@ -362,7 +362,7 @@ fun JobPostingWizardScreen(
                     }
                 }
                 else -> {
-                    SectionHead("등록 완료", "입력한 내용을 확인하고 등록해주세요.")
+                    SectionHead("등록 완료", "입력한 내용을 확인하고 등록해 주세요.")
                     SummaryRow("공고 제목", form.title)
                     SummaryRow("장르", form.genre.orEmpty())
                     SummaryRow("모집 분야", (form.fields ?: emptyList()).joinToString(", ") { ResumeOptions.fieldLabel(it) })
@@ -388,7 +388,7 @@ fun JobPostingWizardScreen(
                         )
                     }
                     Text(
-                        "공고는 등록 즉시 강사님들에게 노출됩니다. 임시저장한 공고는 목록에서 언제든 이어서 작성할 수 있어요.",
+                        "공고는 등록하자마자 강사님들에게 보여요. 임시저장한 공고는 목록에서 언제든 이어서 작성할 수 있어요.",
                         fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp,
                         lineHeight = 18.sp, color = MuyeonColors.chevron,
                     )
@@ -476,9 +476,9 @@ fun JobPostingWizardScreen(
         } else {
             // 무료 회원(tier null) 또는 data 없는 구 응답 — 종전 가입 유도. 문구는 서버 것이 있으면 그것.
             QuoteDialog(
-                "공고를 하나 더 등록하시겠어요?",
+                "공고를 하나 더 등록할까요?",
                 e.serverMessage.takeIf { e.hasData }
-                    ?: "무료 회원은 공개중인 공고를 1개까지 등록할 수 있어요. 멤버십에 가입하면 추가 공고를 등록할 수 있습니다.",
+                    ?: "무료 회원은 공개중인 공고를 1개까지 등록할 수 있어요. 멤버십에 가입하면 공고를 더 등록할 수 있어요.",
                 "멤버십 보기",
                 onConfirm = { postingLimit = null; onOpenMembership() },
                 onDismiss = { postingLimit = null },
@@ -499,7 +499,7 @@ private fun displayDeadline(raw: String?): String {
     return d.take(10).replace("-", ".")
 }
 
-private const val DEADLINE_PLACEHOLDER = "날짜를 선택해주세요"
+private const val DEADLINE_PLACEHOLDER = "날짜를 선택해 주세요"
 private const val DEADLINE_REQUIRED_MESSAGE = "마감일을 선택하거나 상시 모집을 선택해 주세요."
 
 /** 스텝 인디케이터 (1—2—3—4). */

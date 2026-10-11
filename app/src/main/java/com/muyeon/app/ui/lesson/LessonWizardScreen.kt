@@ -59,11 +59,11 @@ import kotlinx.coroutines.withContext
  */
 private val STEP_TITLES = listOf("기본 정보", "소개·사진", "위치", "시간·정원·가격", "예약 안내", "미리보기")
 private val STEP_SUBTITLES = listOf(
-    "레슨명과 장르를 정해주세요.",
+    "레슨명과 장르를 정해 주세요.",
     "레슨을 소개하고 사진을 올려주세요.",
     "수업 장소와 주소를 등록하세요.",
     "요일·시간·정원·가격을 설정하면 예약 시간이 자동 생성돼요.",
-    "예약 시 수강생에게 보일 안내예요. 비워도 됩니다.",
+    "예약할 때 수강생에게 보이는 안내예요. 비워 둬도 돼요.",
     "내용을 확인하고 게시하세요.",
 )
 
@@ -256,7 +256,7 @@ private fun StepBasic(
             }
             Text(
                 if (isAcademy) "회원에게는 선택한 강사가 보이고, 후기도 그 강사에게 쌓여요. 관리는 학원이 합니다."
-                else "학원을 고르면 관리는 학원이 함께 해요. 레슨은 그대로 내 이름으로 보입니다.",
+                else "학원을 고르면 관리는 학원이 함께 해요. 레슨은 그대로 내 이름으로 보여요.",
                 fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp, color = MuyeonColors.textSub,
             )
         }

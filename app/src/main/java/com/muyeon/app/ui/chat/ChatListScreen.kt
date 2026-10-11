@@ -77,8 +77,8 @@ fun ChatListScreen(
         when {
             state.isLoading && rooms.isEmpty() -> ChatListSkeleton()
             state.loadFailed && rooms.isEmpty() -> LoadFailed { scope.launch { state.retry() } }
-            rooms.isEmpty() -> EmptyMessage(Icons.Outlined.ChatBubbleOutline, "진행 중인 채팅이 없습니다.")
-            filtered.isEmpty() -> EmptyMessage(Icons.Outlined.FilterList, "해당하는 채팅이 없습니다.")
+            rooms.isEmpty() -> EmptyMessage(Icons.Outlined.ChatBubbleOutline, "진행 중인 채팅이 없어요.")
+            filtered.isEmpty() -> EmptyMessage(Icons.Outlined.FilterList, "조건에 맞는 채팅이 없어요.")
             else -> PullToRefreshBox(
                 isRefreshing = state.refreshing,
                 onRefresh = { scope.launch { state.pullToRefresh() } },

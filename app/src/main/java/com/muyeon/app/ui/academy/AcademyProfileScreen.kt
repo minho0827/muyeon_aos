@@ -118,7 +118,7 @@ fun AcademyProfileScreen(token: String?, academyId: Int, onClose: () -> Unit, on
                 Icon(Icons.Default.Apartment, null, Modifier.size(40.dp), tint = cAFAFAF)
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "학원 정보를 불러올 수 없습니다.",
+                    "학원 정보를 불러오지 못했어요.",
                     fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
                     lineHeight = 17.sp, color = MuyeonColors.textSub,
                 )

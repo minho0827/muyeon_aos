@@ -176,8 +176,8 @@ object TierInfo {
 
     const val DEFAULT_FOOTNOTE = "회원유형을 바꿔도 멤버십은 그대로 유지돼요. 인증받은 유형의 혜택이 함께 열려요."
     val DEFAULT_NOTICES = listOf(
-        "멤버십은 계정에 하나이며, 인증받은 회원유형의 혜택이 함께 열립니다.",
-        "회원유형을 바꾸거나 추가해도 이용 기간은 그대로 유지됩니다.",
+        "멤버십은 계정에 하나이며, 인증받은 회원유형의 혜택이 함께 열려요.",
+        "회원유형을 바꾸거나 추가해도 이용 기간은 그대로 유지돼요.",
     )
 
     fun label(tier: String?, copy: MembershipCopy? = null) = copy?.tiers?.get(tier)?.label ?: when (tier) {

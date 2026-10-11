@@ -415,7 +415,7 @@ private fun SelectedDayAgenda(
     val lessons = state.selectedLessons
     val blocks = state.selectedBlocks
     if (lessons.isEmpty() && blocks.isEmpty()) {
-        EmptyRow("이 날은 일정이 없습니다.")
+        EmptyRow("이 날은 일정이 없어요.")
     } else {
         lessons.forEach { LessonCard(it, state, pending = false, onOpenLesson = onOpenLesson, onOpenChat = onOpenChat) }
         blocks.forEach { b ->
@@ -442,7 +442,7 @@ private fun MonthAgenda(
                 LessonCard(it, state, pending = true, onOpenLesson = onOpenLesson, onOpenChat = onOpenChat)
             }
         } else if (tab == StatusTab.PENDING) {
-            EmptyRow("조율 중인 레슨이 없습니다.")
+            EmptyRow("조율 중인 레슨이 없어요.")
         }
     }
     if (tab == StatusTab.PENDING) return
@@ -455,7 +455,7 @@ private fun MonthAgenda(
         }
         if (tab == StatusTab.ALL) {
             SectionHeader(section.title)
-            if (items.isEmpty()) EmptyRow("일정이 없습니다.")
+            if (items.isEmpty()) EmptyRow("일정이 없어요.")
             else items.forEach { LessonCard(it, state, false, onOpenLesson, onOpenChat) }
         } else if (items.isNotEmpty()) {
             // 필터 탭은 빈 달 섹션을 생략한다(소음 방지) — iOS 와 동일.
@@ -527,7 +527,7 @@ private fun ListBody(
                 }
             }
             if (groups.isEmpty() && state.pending.isEmpty() && state.didLoad) {
-                ListEmpty("예정된 일정이 없습니다.")
+                ListEmpty("예정된 일정이 없어요.")
             }
             groups.forEach { (ymd, lessons) ->
                 SectionHeader(listDateTitle(ymd))
@@ -535,14 +535,14 @@ private fun ListBody(
             }
         }
         StatusTab.UPCOMING -> {
-            if (groups.isEmpty() && state.didLoad) ListEmpty("예정된 레슨이 없습니다.")
+            if (groups.isEmpty() && state.didLoad) ListEmpty("예정된 레슨이 없어요.")
             groups.forEach { (ymd, lessons) ->
                 SectionHeader(listDateTitle(ymd))
                 lessons.forEach { LessonCard(it, state, false, onOpenLesson, onOpenChat) }
             }
         }
         StatusTab.PENDING -> {
-            if (state.pending.isEmpty() && state.didLoad) ListEmpty("조율 중인 레슨이 없습니다.")
+            if (state.pending.isEmpty() && state.didLoad) ListEmpty("조율 중인 레슨이 없어요.")
             else {
                 SectionHeader("일정 조율 중 ${state.pending.size}건")
                 state.pending.forEach { LessonCard(it, state, true, onOpenLesson, onOpenChat) }
@@ -550,7 +550,7 @@ private fun ListBody(
         }
         StatusTab.CANCELED -> {
             val items = state.canceledLessons
-            if (items.isEmpty() && state.didLoad) ListEmpty("취소된 레슨이 없습니다.")
+            if (items.isEmpty() && state.didLoad) ListEmpty("취소된 레슨이 없어요.")
             else {
                 SectionHeader("취소된 레슨 ${items.size}건")
                 items.forEach { LessonCard(it, state, false, onOpenLesson, onOpenChat) }
@@ -701,7 +701,7 @@ private fun LessonCard(
                 )
                 val sub = when {
                     isCanceled -> "취소된 일정이에요"
-                    pending -> if (l.iAmTeacher) "날짜 미정 — 일정을 정해주세요" else "강사가 일정을 정할 예정이에요"
+                    pending -> if (l.iAmTeacher) "날짜 미정. 일정을 정해 주세요" else "강사가 일정을 정할 예정이에요"
                     else -> l.startMillis?.let { cardTimeFormatter.format(Date(it)) } ?: ""
                 }
                 if (sub.isNotEmpty()) {

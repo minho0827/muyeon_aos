@@ -151,7 +151,7 @@ class SplashActivity : ComponentActivity() {
             val forced = u.action == "FORCE"
             GateScrim {
                 GateCard {
-                    GateTitle(u.title ?: "새 버전이 있습니다")
+                    GateTitle(u.title ?: "새 버전이 나왔어요")
                     if (!u.message.isNullOrBlank()) GateBody(u.message)
                     GateActions {
                         if (forced) {

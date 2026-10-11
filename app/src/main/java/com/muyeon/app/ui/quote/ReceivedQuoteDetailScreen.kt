@@ -146,7 +146,7 @@ fun ReceivedQuoteDetailScreen(
                 QuoteEmptyState(
                     icon = Icons.Filled.HelpOutline,
                     title = "요청을 찾을 수 없어요",
-                    message = "이미 취소되었거나 삭제된 견적요청이에요.",
+                    message = "이미 취소됐거나 삭제된 견적 요청이에요.",
                     modifier = Modifier.fillMaxSize().wrapContentHeight(Alignment.CenterVertically),
                 )
                 return@Column
@@ -243,8 +243,8 @@ fun ReceivedQuoteDetailScreen(
                                     if (busyResponseId != null) return@launch
                                     busyResponseId = r.id
                                     api.startQuoteChat(quoteId, r.id)
-                                        .onSuccess { if (it > 0) onOpenChat(it) else toast = "채팅방을 여는 데 실패했어요. 잠시 후 다시 시도해 주세요." }
-                                        .onFailure { toast = "채팅 연결 중 오류가 발생했어요." }
+                                        .onSuccess { if (it > 0) onOpenChat(it) else toast = "채팅방을 열지 못했어요. 잠시 후 다시 시도해 주세요." }
+                                        .onFailure { toast = "채팅을 열지 못했어요. 잠시 후 다시 시도해 주세요." }
                                     busyResponseId = null
                                 }
                             },
@@ -281,7 +281,7 @@ fun ReceivedQuoteDetailScreen(
                             toast = "채택 완료! 채팅방에서 레슨 일정을 정해 주세요."
                             if (rid > 0) onOpenChat(rid)
                         }
-                        .onFailure { toast = "채택에 실패했습니다." }
+                        .onFailure { toast = "채택하지 못했어요. 잠시 후 다시 시도해 주세요." }
                     busyResponseId = null
                 }
             },

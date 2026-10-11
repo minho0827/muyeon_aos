@@ -255,7 +255,7 @@ fun StudioSettingsSheet(api: StudioApi, onDismiss: () -> Unit) {
                     )
                 }
                 Text(
-                    "켜면 결석 처리된 회원도 횟수권이 1회 차감됩니다. 끄면 출석한 회원만 차감돼요.",
+                    "켜면 결석 처리된 회원도 횟수권이 1회 차감돼요. 끄면 출석한 회원만 차감돼요.",
                     fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp, color = MuyeonColors.textSub,
                 )
                 Spacer(Modifier.height(8.dp))

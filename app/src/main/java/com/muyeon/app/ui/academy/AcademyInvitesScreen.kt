@@ -105,7 +105,7 @@ fun AcademyInvitesScreen(api: AcademyTeacherApi, onClose: () -> Unit) {
                             lineHeight = 19.sp, color = MuyeonColors.textHead,
                         )
                         Text(
-                            "학원에서 받은 코드를 입력하세요. 학원이 승인하면 소속이 됩니다.",
+                            "학원에서 받은 코드를 입력해 주세요. 학원이 승인하면 소속돼요.",
                             fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
                             lineHeight = 19.sp, color = MuyeonColors.textSub,
                         )
@@ -129,7 +129,7 @@ fun AcademyInvitesScreen(api: AcademyTeacherApi, onClose: () -> Unit) {
                                 filled = true, enabled = canSubmit,
                             ) {
                                 keyboard?.hide()
-                                run("소속을 신청했습니다. 학원 승인 후 소속이 됩니다.", clearCode = true) {
+                                run("소속을 신청했어요. 학원이 승인하면 소속돼요.", clearCode = true) {
                                     api.joinByCode(codeInput.trim())
                                 }
                             }
@@ -184,8 +184,8 @@ fun AcademyInvitesScreen(api: AcademyTeacherApi, onClose: () -> Unit) {
             onConfirm = {
                 confirm = null
                 when (c) {
-                    is AcademyConfirm.Cancel -> run("신청을 취소했습니다.") { api.cancel(c.row.id) }
-                    is AcademyConfirm.Leave -> run("소속을 해지했습니다.") { api.leave(c.row.id) }
+                    is AcademyConfirm.Cancel -> run("신청을 취소했어요.") { api.cancel(c.row.id) }
+                    is AcademyConfirm.Leave -> run("소속을 해지했어요.") { api.leave(c.row.id) }
                     else -> Unit
                 }
             },

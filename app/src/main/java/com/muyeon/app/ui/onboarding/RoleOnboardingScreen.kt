@@ -46,7 +46,7 @@ fun RoleOnboardingScreen(onSelect: (String) -> Unit) {
                 lineHeight = 33.sp, color = MuyeonColors.textHead,
             )
             Text(
-                "회원 유형은 언제든 추가하거나 변경할 수 있어요.",
+                "회원유형은 언제든 추가하거나 변경할 수 있어요.",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
                 lineHeight = 17.sp, color = MuyeonColors.textSub,
             )

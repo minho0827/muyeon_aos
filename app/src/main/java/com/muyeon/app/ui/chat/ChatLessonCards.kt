@@ -158,7 +158,7 @@ private fun progressStatusLine(progress: ChatLessonProgress, context: ChatQuoteC
     when (progress.step) {
         "DONE" -> "레슨 완료"
         "SCHEDULED" -> lessonProgressDateTime(progress.scheduleStartAt)?.let { "일정 확정 · $it" } ?: "일정 확정"
-        "ACCEPTED" -> if (isTeacher) "채택 완료 — 일정을 확정해 주세요" else "채택 완료 — 원하는 일정을 제안해 주세요"
+        "ACCEPTED" -> if (isTeacher) "채택했어요. 일정을 확정해 주세요" else "채택됐어요. 원하는 일정을 제안해 주세요"
         else -> {
             var line = "견적 ${progress.responseCount ?: 1}건 도착"
             context?.priceText?.let { line += " · $it" }
@@ -422,7 +422,7 @@ fun LessonProposalBubble(
         val startMs = QuoteUi.parseDate(card.startAt)
         if (card.status == "ACCEPTED") {
             Text(
-                "레슨이 확정됐어요 — 캘린더에서 확인할 수 있어요",
+                "레슨이 확정됐어요. 캘린더에서 확인할 수 있어요",
                 fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp, color = MuyeonColors.textSub,
                 modifier = Modifier.padding(top = 4.dp),
             )

@@ -143,7 +143,7 @@ fun FloatingOverlay(
                         .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
                         .background(if (approved) VERIFY_GREEN else MuyeonColors.primary)
                         .clickable {
-                            if (approved) showComplete = true else toast = "현재 심사중입니다"
+                            if (approved) showComplete = true else toast = "지금 심사 중이에요"
                         },
                     contentAlignment = Alignment.Center,
                 ) {

@@ -79,7 +79,7 @@ fun ReviewEditSheet(
             onValueChange = { content = it },
             placeholder = {
                 Text(
-                    "레슨 후기를 남겨주세요. (선택)",
+                    "레슨 후기를 남겨 주세요. (선택)",
                     fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.tileLocked,
                 )
             },
