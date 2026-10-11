@@ -56,11 +56,11 @@ class PostingActions internal constructor(
             .onSuccess {
                 // 대타는 보류해도 수락한 강사(후보)를 유지하고 서버가 보류·재개를 알린다(2026-10-05).
                 message = when {
-                    status == "CLOSED" -> "공고가 마감되었습니다."
+                    status == "CLOSED" -> "공고를 마감했어요."
                     status == "HOLD" && ref.kind == "SUB" -> "공고를 보류했어요. 지원한 강사들에게 보류를 알렸어요."
-                    status == "HOLD" -> "공고가 보류되었습니다."
+                    status == "HOLD" -> "공고를 보류했어요."
                     ref.kind == "SUB" -> "공고를 다시 열었어요."
-                    else -> "공고가 다시 등록되었습니다."
+                    else -> "공고를 다시 등록했어요."
                 }
                 changed(ref, PostingChange.STATUS)
             }
@@ -125,7 +125,7 @@ class PostingActions internal constructor(
             val label = if (target.kind == "SUB") "대타공고" else "채용공고"
             QuoteDialog(
                 title = "${label}를 마감할까요?",
-                message = "남은 지원자 ${count}명이 미선정 처리되고 결과 알림이 발송됩니다. 이미 확정된 지원자는 제외됩니다.",
+                message = "남은 지원자 ${count}명이 미선정 처리되고 결과 알림이 가요. 이미 확정된 지원자는 빠져요.",
                 confirmText = "마감하고 일괄 안내",
                 onConfirm = { closeTarget = null; confirmClose(target) },
                 onDismiss = { closeTarget = null },

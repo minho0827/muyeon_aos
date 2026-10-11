@@ -89,7 +89,7 @@ fun SurveyPickerSheet(
                 }
                 templates.isEmpty() -> Box(Modifier.fillMaxWidth().height(200.dp), Alignment.Center) {
                     Text(
-                        "등록된 설문지가 없습니다.",
+                        "등록된 설문지가 없어요.",
                         fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.textSub,
                     )
                 }

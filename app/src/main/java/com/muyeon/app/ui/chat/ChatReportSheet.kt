@@ -181,7 +181,7 @@ private fun ReportContactLine() {
             withLink(LinkAnnotation.Url("tel:050219297300", linkStyle)) { append("0502-1929-7300") }
             append(" · ")
             withLink(LinkAnnotation.Url("mailto:muyeon.app@gmail.com", linkStyle)) { append("muyeon.app@gmail.com") }
-            append(" (신고는 24시간 이내 처리됩니다)")
+            append("\n신고는 24시간 안에 처리돼요.")
         },
         fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp, color = MuyeonColors.textSub,
     )

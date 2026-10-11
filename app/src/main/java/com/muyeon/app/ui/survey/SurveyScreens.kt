@@ -220,7 +220,7 @@ fun SurveyResponseScreen(
                 q.required && (answers[q.id.toString()]?.let { it.optionIds.isEmpty() && it.text.isNullOrBlank() } ?: true)
             }
             Text(
-                if (saving) "제출 중…" else if (missing) "필수 문항을 완료해주세요" else "제출하기",
+                if (saving) "제출 중…" else if (missing) "필수 문항에 답해 주세요" else "제출하기",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
                 lineHeight = 19.sp, color = Color.White, textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 20.dp).padding(top = 8.dp, bottom = 12.dp)

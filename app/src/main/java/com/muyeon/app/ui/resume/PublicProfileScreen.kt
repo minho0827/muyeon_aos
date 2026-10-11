@@ -185,7 +185,7 @@ fun PublicProfileScreen(
                     // 본인 열람 안내 — 비공개 항목도 보이는 예외 상황을 명시(iOS selfView).
                     if (p.selfView == true || preview) {
                         Text(
-                            if (preview) "미리보기 — 일반회원에게 보이는 화면이에요" else "본인 프로필이라 비공개 항목도 보여요",
+                            if (preview) "미리보기예요. 일반회원에게 이렇게 보여요" else "본인 프로필이라 비공개 항목도 보여요",
                             fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 12.sp,
                             lineHeight = 14.sp, color = Color.White,
                             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
@@ -297,7 +297,7 @@ fun PublicProfileScreen(
                 reportOpen = false
                 scope.launch {
                     api.report(userId, "INAPPROPRIATE")
-                        .onSuccess { toast = "신고가 접수되었어요." }
+                        .onSuccess { toast = "신고가 접수됐어요." }
                         .onFailure { toast = it.message }
                 }
             },
@@ -413,7 +413,7 @@ private fun ProfileSections(p: PublicProfile, reviews: ReviewList?, onOpenReview
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     perfs.forEach { pf ->
                         val head = listOf(pf.year, pf.title).filter { it.isNotEmpty() }.joinToString(" ")
-                        val line = listOf(head, pf.role).filter { it.isNotEmpty() }.joinToString(" — ")
+                        val line = listOf(head, pf.role).filter { it.isNotEmpty() }.joinToString(" · ")
                         Text(line, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp, color = MuyeonColors.body)
                     }
                 }

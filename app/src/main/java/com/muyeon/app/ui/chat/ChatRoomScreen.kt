@@ -616,7 +616,7 @@ fun ChatRoomScreen(
         val scope2 = rememberCoroutineScope()
         com.muyeon.app.ui.quote.QuoteDialog(
             "${vm.title}님을 차단할까요?",
-            "서로의 채팅 목록에서 사라지고 더 이상 대화할 수 없어요.\n채팅 목록 우측 상단에서 차단을 해제할 수 있습니다.",
+            "서로의 채팅 목록에서 사라지고 더 이상 대화할 수 없어요.\n채팅 목록 우측 상단에서 차단을 풀 수 있어요.",
             "차단하기",
             onConfirm = {
                 confirmBlock = false
@@ -636,7 +636,7 @@ fun ChatRoomScreen(
             roomId = vm.roomId,
             opponentName = vm.title,
             token = vm.tokenForCards,
-            onDone = { showReport = false; vm.toast = "신고가 접수되었어요." },
+            onDone = { showReport = false; vm.toast = "신고가 접수됐어요." },
             onDismiss = { showReport = false },
         )
     }
@@ -647,7 +647,7 @@ fun ChatRoomScreen(
             opponentName = vm.title,
             token = vm.tokenForCards,
             message = m,
-            onDone = { reportMessage = null; vm.toast = "신고가 접수되었어요." },
+            onDone = { reportMessage = null; vm.toast = "신고가 접수됐어요." },
             onDismiss = { reportMessage = null },
         )
     }
@@ -1201,7 +1201,7 @@ private fun MessageBubble(
                 ) {
                     when {
                         message.isDeleted -> Text(
-                            "삭제된 메시지입니다.",
+                            "삭제된 메시지예요.",
                             fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 20.sp,
                             color = if (isMine) Color.White.copy(alpha = 0.7f) else MuyeonColors.secondary,
                         )

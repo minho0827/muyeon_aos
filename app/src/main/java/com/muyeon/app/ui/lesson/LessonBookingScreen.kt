@@ -328,7 +328,7 @@ private fun BookingPaymentBlock(
         ) {
             Checkbox(checked = policyAgreed, onCheckedChange = onTogglePolicy)
             Text(
-                "취소·환불 규정을 확인했습니다.",
+                "취소·환불 규정을 확인했어요.",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
                 lineHeight = 17.sp, color = MuyeonColors.textHead,
             )
@@ -377,7 +377,7 @@ fun LessonRefundPolicySheet(policy: LessonRefundPolicy, onDismiss: () -> Unit) {
                     lineHeight = 22.sp, color = MuyeonColors.textHead,
                 )
                 Text(
-                    "취소 시점에 따라 아래 기준으로 예약금이 환불됩니다.",
+                    "취소 시점에 따라 아래 기준으로 예약금이 환불돼요.",
                     fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
                     color = MuyeonColors.textSub,
                 )
@@ -450,7 +450,7 @@ fun LessonCancelReasonSheet(onDismiss: () -> Unit, onConfirm: (LessonCancelReaso
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
             Text(
-                "취소 사유를 선택해주세요.",
+                "취소 사유를 선택해 주세요.",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 19.sp,
                 lineHeight = 23.sp, color = MuyeonColors.textHead,
                 modifier = Modifier.padding(horizontal = 20.dp).padding(top = 4.dp, bottom = 18.dp),

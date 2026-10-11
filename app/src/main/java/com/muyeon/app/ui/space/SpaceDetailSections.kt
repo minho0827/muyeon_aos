@@ -216,7 +216,7 @@ private fun FeeBlock(title: String, amountText: String, showWonSuffix: Boolean, 
             }
         }
         if (rows.isEmpty()) {
-            DetailRow(SpaceFeeRow(null, "등록된 가격 옵션이 없습니다", ""))
+            DetailRow(SpaceFeeRow(null, "등록된 가격 옵션이 없어요", ""))
         } else {
             rows.forEach { DetailRow(it) }
         }
@@ -281,7 +281,7 @@ private fun RefundBox(rules: List<SpaceRefundRule>) {
 @Composable
 internal fun SpaceIntroSection(space: SpaceDetail) = WhiteSection("공간 소개") {
     Text(
-        firstNonEmpty(space.intro, space.description) ?: "등록된 소개가 없습니다.",
+        firstNonEmpty(space.intro, space.description) ?: "등록된 소개가 없어요.",
         fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
         lineHeight = 24.sp, color = SpaceDesign.ink700,
     )

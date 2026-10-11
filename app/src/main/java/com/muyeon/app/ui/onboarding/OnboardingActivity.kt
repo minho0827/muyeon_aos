@@ -309,7 +309,7 @@ class OnboardingActivity : ComponentActivity() {
             startActivity(Intent(Intent.ACTION_VIEW, uri))
         } catch (e: Exception) {
             // 브라우저가 없는 기기(사실상 없음) — 약관을 못 보는 것보다 안내가 낫다.
-            Toast.makeText(this, "약관을 열 수 있는 브라우저가 없습니다.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "약관을 열 수 있는 브라우저가 없어요.", Toast.LENGTH_SHORT).show()
         }
     }
 

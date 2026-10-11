@@ -276,7 +276,7 @@ fun LessonSlotManageScreen(
     deleteTarget?.let { t ->
         QuoteDialog(
             title = "이 규칙을 삭제할까요?",
-            message = "${t.dayLabel} ${t.timeLabel}\n예약이 없는 앞으로의 시간만 사라져요. 이미 예약된 시간은 남습니다.",
+            message = "${t.dayLabel} ${t.timeLabel}\n예약이 없는 앞으로의 시간만 사라져요. 이미 예약된 시간은 그대로 남아요.",
             confirmText = "삭제",
             onConfirm = {
                 deleteTarget = null

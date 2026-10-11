@@ -62,14 +62,14 @@ fun JobPostingPreviewScreen(form: JobForm, onClose: () -> Unit) {
                     QuoteUi.imageUrl(it), null, contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxWidth().height(220.dp).background(Color(0xFFF7F7F7)),
                 )
-            } ?: PreviewPlaceholder("대표 이미지가 표시됩니다", Modifier.fillMaxWidth().height(220.dp), square = true)
+            } ?: PreviewPlaceholder("대표 이미지가 여기에 보여요", Modifier.fillMaxWidth().height(220.dp), square = true)
             Column(
                 Modifier.fillMaxWidth().padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 // 분야가 많으면 한 줄로 밀리므로 등록폼과 동일하게 줄바꿈시킨다.
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        (chips.ifEmpty { listOf("장르·모집 분야가 표시됩니다") }).chunked(3).forEach { row ->
+                        (chips.ifEmpty { listOf("장르·모집 분야가 여기에 보여요") }).chunked(3).forEach { row ->
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 row.forEach { label ->
                                     Text(
@@ -91,7 +91,7 @@ fun JobPostingPreviewScreen(form: JobForm, onClose: () -> Unit) {
                     lineHeight = 27.sp, color = MuyeonColors.textHead,
                 )
                 Text(
-                        form.academy?.takeIf { it.isNotEmpty() } ?: "학원명이 표시됩니다",
+                        form.academy?.takeIf { it.isNotEmpty() } ?: "학원명이 여기에 보여요",
                         fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
                         lineHeight = 17.sp, color = MuyeonColors.textSub,
                     )
@@ -166,7 +166,7 @@ internal fun JobPostingDetailContent(form: JobForm, showPlaceholders: Boolean) {
             HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
             PostingHead("원하는 강사 조건")
             if (preferenceLines.isEmpty()) {
-                PreviewPlaceholder("선택한 우대 조건이 표시됩니다")
+                PreviewPlaceholder("선택한 우대 조건이 여기에 보여요")
             } else {
                 PostingBody(preferenceLines.joinToString("\n"))
             }
@@ -174,14 +174,14 @@ internal fun JobPostingDetailContent(form: JobForm, showPlaceholders: Boolean) {
         if (showPlaceholders || description != null) {
             HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
             PostingHead("상세 설명")
-            description?.let { PostingBody(it) } ?: PreviewPlaceholder("공고의 상세 설명이 표시됩니다")
+            description?.let { PostingBody(it) } ?: PreviewPlaceholder("공고 상세 설명이 여기에 보여요")
         }
         // 실제 상세(웹)는 캐러셀, 앱은 세로 스택으로 전부 확인.
         if (showPlaceholders || images != null) {
             HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
             PostingHead("상세 이미지")
             images?.let { PostingImageStack(it) }
-                ?: PreviewPlaceholder("등록한 상세 이미지가 표시됩니다", Modifier.fillMaxWidth().height(160.dp))
+                ?: PreviewPlaceholder("등록한 상세 이미지가 여기에 보여요", Modifier.fillMaxWidth().height(160.dp))
         }
     }
 }
@@ -211,7 +211,7 @@ internal fun PostingRow(label: String, value: String?, placeholders: Boolean = f
             lineHeight = 16.sp, color = MuyeonColors.textSub, modifier = Modifier.width(74.dp),
         )
         if (value.isNullOrEmpty()) {
-            PreviewPlaceholder("입력한 $label 정보가 표시됩니다", Modifier.weight(1f))
+            PreviewPlaceholder("입력한 $label 정보가 여기에 보여요", Modifier.weight(1f))
         } else {
             Text(
                 value,

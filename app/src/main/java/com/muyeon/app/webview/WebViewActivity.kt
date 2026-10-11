@@ -114,12 +114,23 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
     // ★ 2026-10-12 웹 <input type="file"> 지원 — 종전엔 onShowFileChooser 가 없어 앱 웹뷰에서 파일 선택 창이 열리지 않았다
     //  (전문 정보 확인 서류·웹 사진 업로드). 시스템 문서 선택기(SAF)라 저장소 권한이 필요 없다.
     private var fileChooserCallback: android.webkit.ValueCallback<Array<android.net.Uri>>? = null
-    private val fileChooserLauncher = registerForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.OpenMultipleDocuments()
-    ) { uris ->
+    private fun deliverChosen(uris: List<android.net.Uri>) {
         fileChooserCallback?.onReceiveValue(uris.toTypedArray())
         fileChooserCallback = null
     }
+    // 이미지만 받는 입력 → 사진 선택기(갤러리, 권한 불필요). 그 밖(PDF 등) → 문서 선택기. 한 장/여러 장은 input 의 multiple 을 따른다.
+    private val photoPickOne = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+    ) { uri -> deliverChosen(listOfNotNull(uri)) }
+    private val photoPickMany = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia(10)
+    ) { uris -> deliverChosen(uris) }
+    private val docPickOne = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+    ) { uri -> deliverChosen(listOfNotNull(uri)) }
+    private val docPickMany = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris -> deliverChosen(uris) }
 
     private val imagePickerLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -604,8 +615,17 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
                     ?.filter { it.isNotEmpty() }
                     ?.takeIf { it.isNotEmpty() }
                     ?: listOf("*/*")
+                val multiple = params?.mode == FileChooserParams.MODE_OPEN_MULTIPLE
+                val imagesOnly = types.all { it.startsWith("image/") }
                 return try {
-                    fileChooserLauncher.launch(types.toTypedArray())
+                    if (imagesOnly) {
+                        val req = androidx.activity.result.PickVisualMediaRequest(
+                            androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
+                        )
+                        if (multiple) photoPickMany.launch(req) else photoPickOne.launch(req)
+                    } else {
+                        if (multiple) docPickMany.launch(types.toTypedArray()) else docPickOne.launch(types.toTypedArray())
+                    }
                     true
                 } catch (e: Exception) {
                     fileChooserCallback = null

@@ -166,7 +166,7 @@ fun SpaceDetailScreen(
                 }
                 else -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                     Text(
-                        "공간을 찾을 수 없습니다.",
+                        "공간을 찾을 수 없어요.",
                         fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp,
                         color = SpaceDesign.ink500,
                     )
@@ -193,12 +193,12 @@ fun SpaceDetailScreen(
                                     when {
                                         !api.isLoggedIn -> message = "로그인 후 이용할 수 있어요."
                                         (space.ownerId ?: 0) <= 0 ->
-                                            message = "공간 소유자 정보가 없어 채팅을 열 수 없습니다."
+                                            message = "공간 소유자 정보가 없어 채팅을 열 수 없어요."
                                         else -> scope.launch {
                                             api.createDirectRoom(space.ownerId!!, space.id)
                                                 .onSuccess { onChat(it) }
                                                 .onFailure {
-                                                    message = "채팅방을 열지 못했습니다. 잠시 후 다시 시도해 주세요."
+                                                    message = "채팅방을 열지 못했어요. 잠시 후 다시 시도해 주세요."
                                                 }
                                         }
                                     }
@@ -331,7 +331,7 @@ private fun SpaceAgreementNote(modifier: Modifier = Modifier) {
                 lineHeight = 16.sp, color = SpaceDesign.ink700,
             )
             Text(
-                "'바로 예약하기'를 선택해주세요.",
+                "'바로 예약하기'를 선택해 주세요.",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
                 lineHeight = 16.sp, color = SpaceDesign.ink700,
             )

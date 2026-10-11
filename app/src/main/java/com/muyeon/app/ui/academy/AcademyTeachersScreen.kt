@@ -140,7 +140,7 @@ fun AcademyTeachersScreen(api: AcademyTeacherApi, onClose: () -> Unit) {
                                     //  INVITED 는 강사 수락 대기라 학원이 할 게 없다(iOS 동일).
                                     if (r.status == "REQUESTED") {
                                         AcademyActionButton("승인", filled = true, enabled = !busy) {
-                                            run("소속을 승인했습니다.") { api.approve(r.id) }
+                                            run("소속을 승인했어요.") { api.approve(r.id) }
                                         }
                                         AcademyActionButton("거절", destructive = true, enabled = !busy) {
                                             confirm = AcademyConfirm.Deny(r)
@@ -175,7 +175,7 @@ fun AcademyTeachersScreen(api: AcademyTeacherApi, onClose: () -> Unit) {
         val (title, message, confirmText) = when (c) {
             AcademyConfirm.Reissue -> Triple(
                 "코드를 재발급할까요?",
-                "이전 코드는 즉시 사용할 수 없어요. 이미 승인된 소속은 그대로 유지됩니다.",
+                "이전 코드는 즉시 사용할 수 없어요. 이미 승인된 소속은 그대로 유지돼요.",
                 "재발급",
             )
             is AcademyConfirm.Deny -> Triple("신청을 거절할까요?", "강사님께 거절 알림이 전달돼요.", "거절")
@@ -192,14 +192,14 @@ fun AcademyTeachersScreen(api: AcademyTeacherApi, onClose: () -> Unit) {
                             busy = true
                             scope.launch {
                                 api.reissueCode()
-                                    .onSuccess { code = it; infoMessage = "새 코드를 발급했습니다." }
+                                    .onSuccess { code = it; infoMessage = "새 코드를 발급했어요." }
                                     .onFailure { errorMessage = it.message }
                                 busy = false
                             }
                         }
                     }
-                    is AcademyConfirm.Deny -> run("신청을 거절했습니다.") { api.deny(c.row.id) }
-                    is AcademyConfirm.Leave -> run("소속을 해지했습니다.") { api.leave(c.row.id) }
+                    is AcademyConfirm.Deny -> run("신청을 거절했어요.") { api.deny(c.row.id) }
+                    is AcademyConfirm.Leave -> run("소속을 해지했어요.") { api.leave(c.row.id) }
                     else -> Unit
                 }
             },

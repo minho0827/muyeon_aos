@@ -301,14 +301,14 @@ fun ResumeEditScreen(
                     ReadOnlyField(
                         "이름",
                         basic.name.orEmpty(),
-                        hint = "본인확인으로 등록된 이름이에요.",
-                        empty = "휴대폰 본인확인 후 채워져요",
+                        hint = "본인인증으로 등록된 이름이에요.",
+                        empty = "휴대폰 본인인증 후 채워져요",
                     )
                     LabeledField("생년월일", basic.birth.orEmpty(), "예: 1995.03.21") { basic = basic.copy(birth = it) }
                     LabeledField("연락처", basic.phone.orEmpty(), keyboard = KeyboardType.Phone) { basic = basic.copy(phone = it) }
                     LabeledField("이메일", basic.email.orEmpty(), keyboard = KeyboardType.Email) { basic = basic.copy(email = it) }
                     LabeledField("이력서 제목", title) { title = it }
-                    LabeledField("한 줄 소개", oneLiner, "예: 10년차 발레 전문 강사입니다") { oneLiner = it }
+                    LabeledField("한 줄 소개", oneLiner, "예: 10년차 발레 전문 강사예요") { oneLiner = it }
                 }
 
                 // 전공/장르

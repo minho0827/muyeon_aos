@@ -65,7 +65,7 @@ fun QuoteIntroScreen(onStart: () -> Unit, onClose: () -> Unit) {
                 modifier = Modifier.padding(top = 28.dp),
             )
             Text(
-                "원하는 조건을 입력하면\n여러 강사가 견적을 보내드립니다.",
+                "원하는 조건을 입력하면\n여러 강사가 견적을 보내 드려요.",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp,
                 lineHeight = 23.sp,   // iOS lineSpacing 5 = 18 + 5
                 color = MuyeonColors.textSub,
@@ -95,9 +95,9 @@ fun QuoteIntroScreen(onStart: () -> Unit, onClose: () -> Unit) {
                     fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
                     lineHeight = 17.sp, color = MuyeonColors.textHead,
                 )
-                BulletLine("요청 내용은 강사에게만 공개됩니다.")
-                BulletLine("최대 5명의 강사에게 견적을 받을 수 있습니다.")
-                BulletLine("원하지 않을 경우 언제든 요청을 취소할 수 있습니다.")
+                BulletLine("요청 내용은 강사에게만 공개돼요.")
+                BulletLine("최대 5명의 강사에게 견적을 받을 수 있어요.")
+                BulletLine("원하지 않으면 언제든 요청을 취소할 수 있어요.")
             }
         }
 

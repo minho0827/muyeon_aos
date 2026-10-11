@@ -259,7 +259,7 @@ fun StudioMemberDetailScreen(api: StudioApi, memberId: Int, onClose: () -> Unit)
             StudioSection("수강권 ${d.passes.size}건", action = "발급" to { showIssuePass = true }) {
                 if (d.passes.isEmpty()) {
                     Text(
-                        "발급된 수강권이 없어요. '발급'으로 수강권을 등록하세요.",
+                        "발급된 수강권이 없어요. '발급'을 눌러 수강권을 등록해 주세요.",
                         fontFamily = customFontFamily, fontSize = 13.sp, color = MuyeonColors.textSub,
                     )
                 }

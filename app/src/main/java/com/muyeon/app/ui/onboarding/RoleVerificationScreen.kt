@@ -73,12 +73,12 @@ private fun roleLabel(code: String): String = when (code) {
 
 /** 역할별 제출 서류 안내. iOS `documentGuide` 와 같은 문구를 쓴다. */
 private fun documentGuide(code: String): String = when (code) {
-    "TEACHER" -> "강사 경력이나 무용 전공을 확인할 수 있는 서류를 첨부해주세요."
-    "DANCER" -> "공연 경력, 소속 또는 무용 전공을 확인할 수 있는 서류를 첨부해주세요."
-    "ACADEMY" -> "사업자등록증, 학원등록증 또는 재직증명서를 첨부해주세요."
-    "SPACE" -> "사업자등록증 또는 임대차계약서를 첨부해주세요."
-    "TEAM" -> "사업자등록증, 고유번호증 또는 공연 증빙을 첨부해주세요."
-    else -> "회원유형을 확인할 수 있는 서류를 첨부해주세요."
+    "TEACHER" -> "강사 경력이나 무용 전공을 확인할 수 있는 서류를 첨부해 주세요."
+    "DANCER" -> "공연 경력, 소속 또는 무용 전공을 확인할 수 있는 서류를 첨부해 주세요."
+    "ACADEMY" -> "사업자등록증, 학원등록증 또는 재직증명서를 첨부해 주세요."
+    "SPACE" -> "사업자등록증 또는 임대차계약서를 첨부해 주세요."
+    "TEAM" -> "사업자등록증, 고유번호증 또는 공연 증빙을 첨부해 주세요."
+    else -> "회원유형을 확인할 수 있는 서류를 첨부해 주세요."
 }
 
 class RoleVerificationApi(private val token: String?) {
@@ -193,7 +193,7 @@ fun RoleVerificationScreen(
                             color = MuyeonColors.textHead,
                         )
                         Text(
-                            "휴대폰 본인확인으로 등록된 이름이에요. 학원명과 함께 공개됩니다.",
+                            "휴대폰 본인인증으로 등록된 이름이에요. 학원명과 함께 공개돼요.",
                             fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 16.sp,
                             color = MuyeonColors.textSub,
                         )

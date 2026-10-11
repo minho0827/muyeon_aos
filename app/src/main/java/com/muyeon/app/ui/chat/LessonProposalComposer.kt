@@ -306,7 +306,7 @@ fun LessonProposalComposer(
                         PriceRow("현장 결제 예정액", maxOf(0, totalPrice - depositAmount))
                         HorizontalDivider(color = MuyeonColors.border)
                         Text(
-                            "예약금은 레슨비에 포함됩니다.\n${refundPolicy.bulletText}",
+                            "예약금은 레슨비에 포함돼요.\n${refundPolicy.bulletText}",
                             fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 20.sp,
                             color = MuyeonColors.textSub,
                         )
@@ -315,7 +315,7 @@ fun LessonProposalComposer(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                "취소·환불 규정을 확인했습니다.",
+                                "취소·환불 규정을 확인했어요.",
                                 fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
                                 lineHeight = 17.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
                             )

@@ -249,7 +249,7 @@ fun LessonContextArea(
             ) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     Text(
-                        "이 강사와 진행하시겠어요?",
+                        "이 강사와 진행할까요?",
                         fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
                         lineHeight = 16.sp, color = MuyeonColors.textHead,
                     )
@@ -275,7 +275,7 @@ fun LessonContextArea(
             ) {
                 Icon(Icons.Filled.Verified, null, tint = MuyeonColors.primary, modifier = Modifier.size(15.dp))
                 Text(
-                    if (vm.isTeacherSide) "채택 완료 — 일정을 확정해 주세요" else "채택 완료 — 원하는 일정을 제안해 주세요",
+                    if (vm.isTeacherSide) "채택했어요. 일정을 확정해 주세요" else "채택됐어요. 원하는 일정을 제안해 주세요",
                     fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
                     lineHeight = 16.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
                 )

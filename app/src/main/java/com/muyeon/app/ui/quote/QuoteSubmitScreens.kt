@@ -172,7 +172,7 @@ fun QuoteSubmittedScreen(
         ) {
             CheckMark(Modifier.padding(top = 28.dp))
             Text(
-                "요청이 전달되었어요!",
+                "요청을 보냈어요!",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp,
                 color = QuoteColors.c101116, modifier = Modifier.padding(top = 20.dp),
             )

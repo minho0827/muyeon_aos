@@ -122,7 +122,7 @@ fun LessonReservationDetailScreen(
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 90.dp),
                             )
                             Text(
-                                "수업 완료 처리 후 5일 이내 앱에서 접수할 수 있어요. 이후 법정 권리는 고객센터로 문의할 수 있습니다.",
+                                "수업 완료 처리 후 5일 이내 앱에서 접수할 수 있어요. 그 이후의 법정 권리는 고객센터로 문의해 주세요.",
                                 fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp,
                                 color = MuyeonColors.textSub,
                             )
@@ -140,7 +140,7 @@ fun LessonReservationDetailScreen(
                                             api.openDispute(reservationId, reason)
                                                 .onSuccess {
                                                     onChanged(reservationId)
-                                                    doneMessage = "이의 신청이 접수되었습니다. 확인 전까지 정산이 보류됩니다."
+                                                    doneMessage = "이의 신청이 접수됐어요. 확인할 때까지 정산이 보류돼요."
                                                     load()
                                                 }
                                                 .onFailure { errorMessage = it.message }
@@ -200,7 +200,7 @@ fun LessonReservationDetailScreen(
 
     if (showFinalConfirmation) {
         QuoteDialogTwoActions(
-            title = "레슨을 취소하시겠어요?",
+            title = "레슨을 취소할까요?",
             message = finalConfirmationMessage(detail),
             confirmText = "취소할게요",
             dismissText = "아니요",
@@ -213,7 +213,7 @@ fun LessonReservationDetailScreen(
                 if (reason != null) {
                     scope.launch {
                         api.cancel(reservationId, reason.code, rd)
-                            .onSuccess { didCancel = true; doneMessage = "레슨이 취소되었습니다." }
+                            .onSuccess { didCancel = true; doneMessage = "레슨을 취소했어요." }
                             .onFailure { errorMessage = it.message }
                     }
                 }
@@ -228,7 +228,7 @@ fun LessonReservationDetailScreen(
 
     doneMessage?.let { msg ->
         QuoteDialog(
-            "처리가 완료되었습니다.", msg, "확인",
+            "처리를 마쳤어요.", msg, "확인",
             onConfirm = {
                 doneMessage = null
                 if (didCancel) onCanceled(reservationId)
@@ -249,7 +249,7 @@ fun LessonReservationDetailScreen(
  *  구버전 서버가 예상값을 안 주면 확정값으로 물러선다(iOS finalConfirmationMessage 와 동일).
  */
 private fun finalConfirmationMessage(d: LessonReservationDetail?): String {
-    val base = "취소 후에는 되돌릴 수 없습니다."
+    val base = "취소하면 되돌릴 수 없어요."
     if (d == null) return base
     val payment = d.paymentAmount ?: d.deposit
     if (payment <= 0) return base
@@ -257,10 +257,10 @@ private fun finalConfirmationMessage(d: LessonReservationDetail?): String {
         ?: d.refundAmount
         ?: maxOf(0, payment - (d.cancelFee ?: 0))
     // ★ 종전 문구 "수업이 시작되어…"는 수업 전 24시간 이내 취소에도 나와 틀렸다(iOS 와 같이 수정).
-    if (refund == 0) return "$base\n환불 규정에 따라 결제한 예약금은 환불되지 않습니다."
+    if (refund == 0) return "$base\n환불 규정에 따라 결제한 예약금은 환불되지 않아요."
     val fee = d.expectedCancelFee ?: d.cancelFee ?: maxOf(0, payment - refund)
-    if (fee == 0) return "$base\n결제한 예약금 ${won(refund)}원이 전액 환불됩니다."
-    return "$base\n취소 수수료 ${won(fee)}원을 제외한 ${won(refund)}원이 환불됩니다."
+    if (fee == 0) return "$base\n결제한 예약금 ${won(refund)}원이 전액 환불돼요."
+    return "$base\n취소 수수료 ${won(fee)}원을 제외한 ${won(refund)}원이 환불돼요."
 }
 
 private fun won(v: Int) = String.format(Locale.KOREA, "%,d", v)
@@ -311,7 +311,7 @@ private fun PaymentSection(d: LessonReservationDetail) = Card {
         Kv("결제한 예약금", "${won(d.paymentAmount ?: d.deposit)}원")
         Kv("현장 결제 예정액", "${won(d.remainingAmount ?: 0)}원")
         Text(
-            "예약금은 별도 수수료가 아니라 전체 레슨비에 포함됩니다.",
+            "예약금은 별도 수수료가 아니라 전체 레슨비에 포함돼요.",
             fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp, color = MuyeonColors.textSub,
         )
     } else {
@@ -386,7 +386,7 @@ private fun CancelPolicySection(d: LessonReservationDetail) = Card {
     //  판매자(강사·학원) 취소 정책은 보이지 않는다 — 환불 규정은 무용연이 정한다(2026-09-24).
     val policy = d.refundPolicy ?: LessonRefundPolicy.FALLBACK
     Text(
-        if (d.deposit > 0) policy.paragraph else "결제 없는 예약으로 취소 수수료가 없습니다.",
+        if (d.deposit > 0) policy.paragraph else "결제하지 않은 예약이라 취소 수수료가 없어요.",
         fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 20.sp, color = MuyeonColors.textHead,
     )
     if (d.deposit > 0) {

@@ -91,8 +91,8 @@ fun ReviewWriteScreen(
     val canSubmit = allAxesRated && lessonType != null && purpose != null
     val ctaText = when {
         !allAxesRated -> "별점을 매겨주세요"
-        lessonType == null -> "레슨 형태를 선택해주세요"
-        purpose == null -> "레슨 목적을 선택해주세요"
+        lessonType == null -> "레슨 형태를 선택해 주세요"
+        purpose == null -> "레슨 목적을 선택해 주세요"
         else -> "리뷰 등록하기"
     }
     // 전체 별점 = 3축 평균(반올림)

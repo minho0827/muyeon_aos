@@ -85,7 +85,7 @@ object QuoteQuestions {
         QuoteQuestion("format", QuoteAnswerType.MULTI, "어떤 레슨 형태를 원하시나요?", listOf(
             QuoteOption("private", "개인 레슨"), QuoteOption("group", "그룹 레슨"), QuoteOption("academy", "학원"),
             QuoteOption("any", "무관"), QuoteOption("etc", "기타"))),
-        QuoteQuestion("days", QuoteAnswerType.MULTI, "선호하는 레슨 요일을 선택해주세요.", listOf(
+        QuoteQuestion("days", QuoteAnswerType.MULTI, "선호하는 레슨 요일을 선택해 주세요.", listOf(
             QuoteOption("mon", "월요일"), QuoteOption("tue", "화요일"), QuoteOption("wed", "수요일"),
             QuoteOption("thu", "목요일"), QuoteOption("fri", "금요일"), QuoteOption("sat", "토요일"),
             QuoteOption("sun", "일요일"))),
@@ -98,8 +98,8 @@ object QuoteQuestions {
         QuoteQuestion("teacherGender", QuoteAnswerType.SINGLE, "선호하는 강사의 성별이 있나요?", listOf(
             QuoteOption("any", "무관"), QuoteOption("male", "남"), QuoteOption("female", "여")), required = false),
         QuoteQuestion("when", QuoteAnswerType.SINGLE, "레슨받고 싶은 날이 언제인가요?", listOf(
-            QuoteOption("negotiable", "협의 가능해요."), QuoteOption("asap", "가능한 빨리 진행하고 싶어요."),
-            QuoteOption("week", "일주일 이내로 진행하고 싶어요."), QuoteOption("date", "원하는 날짜가 있어요."),
+            QuoteOption("negotiable", "협의 가능해요."), QuoteOption("asap", "최대한 빨리 시작하고 싶어요."),
+            QuoteOption("week", "일주일 안에 시작하고 싶어요."), QuoteOption("date", "원하는 날짜가 있어요."),
             QuoteOption("etc", "기타"))),
         QuoteQuestion("region", QuoteAnswerType.REGION, "레슨받고 싶은 지역이 어디인가요?"),
         QuoteQuestion("method", QuoteAnswerType.SINGLE, "어떻게 진행하기 원하시나요?", listOf(

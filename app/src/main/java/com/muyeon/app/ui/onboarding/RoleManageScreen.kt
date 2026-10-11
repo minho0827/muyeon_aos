@@ -310,7 +310,7 @@ private fun ProfilePanel(
         }
         Text(
             "카드를 탭하면 그 유형으로 활동이 전환돼요(하단 탭·홈이 바뀜).\n" +
-                "길게 누르면 추가·인증·해제. 일반회원을 제외한 유형은 승인 후 부여됩니다.",
+                "길게 누르면 추가·인증·해제. 일반회원 외 유형은 승인 후에 추가돼요.",
             fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp,
             color = MuyeonColors.textSub, textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
@@ -456,15 +456,15 @@ private fun RoleActionSheet(
 }
 
 private fun sheetDesc(opt: RoleOption, isGranted: Boolean, st: String): String {
-    if (isGranted) return "현재 보유 중인 회원유형입니다."
+    if (isGranted) return "지금 가지고 있는 회원유형이에요."
     // ★ 2026-10-12 강사·무용수 — 본인 인증 회원은 서류 없이 바로 추가(전공·경력 확인은 선택)
     if (opt.code == "TEACHER" || opt.code == "DANCER") return "본인인증을 마쳤다면 서류 없이 바로 추가할 수 있어요. 전공·경력 확인은 나중에 원할 때 신청하면 돼요."
-    if (!opt.business) return "바로 추가할 수 있는 회원유형입니다."
+    if (!opt.business) return "바로 추가할 수 있는 회원유형이에요."
     return when (st) {
-        "APPROVED" -> "이미 인증이 완료되어 재인증 없이 바로 전환할 수 있어요."
-        "PENDING" -> "인증 심사 중입니다. 서류를 다시 제출할 수 있어요."
-        "REJECTED" -> "인증이 반려되었어요. 서류를 다시 제출해 주세요."
-        else -> "서류 제출 후 관리자 승인 시 부여되는 회원유형입니다."
+        "APPROVED" -> "이미 인증을 마쳐서 다시 인증하지 않고 바로 바꿀 수 있어요."
+        "PENDING" -> "인증 심사 중이에요. 서류를 다시 제출할 수 있어요."
+        "REJECTED" -> "인증이 반려됐어요. 서류를 다시 제출해 주세요."
+        else -> "서류를 내고 승인을 받으면 추가되는 회원유형이에요."
     }
 }
 

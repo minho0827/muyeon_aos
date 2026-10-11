@@ -58,12 +58,12 @@ fun VerificationCompleteScreen(role: String, onStart: () -> Unit) {
         )
         Spacer(Modifier.height(24.dp))
         Text(
-            "심사가 완료되었습니다",
+            "심사가 끝났어요",
             fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp,
             lineHeight = 29.sp, color = MuyeonColors.textHead,
         )
         Text(
-            "${roleLabel} 인증이 승인되었어요.\n이제 아래 기능을 이용할 수 있어요.",
+            "${roleLabel} 인증이 승인됐어요.\n이제 아래 기능을 이용할 수 있어요.",
             fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp,
             lineHeight = 23.sp, color = MuyeonColors.textSub, textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 10.dp),

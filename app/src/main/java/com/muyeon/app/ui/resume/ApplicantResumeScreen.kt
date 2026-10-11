@@ -77,7 +77,7 @@ fun ApplicantResumeScreen(
                     confirmedInCurrentView = true
                     decisionPrompt = when {
                         remaining <= 0 -> ApplicantDecisionPrompt.Confirmed(
-                            if (kind == ApplicantPostingKind.SUB) "대타가 확정되었습니다." else "채용이 확정되었습니다.",
+                            if (kind == ApplicantPostingKind.SUB) "대타가 확정됐어요." else "채용이 확정됐어요.",
                         )
                         kind == ApplicantPostingKind.SUB -> ApplicantDecisionPrompt.SubConfirmed(remaining)
                         else -> ApplicantDecisionPrompt.JobConfirmed(applicantName(), remaining)
@@ -185,8 +185,8 @@ fun ApplicantResumeScreen(
     if (showConfirmApplicant) {
         val name = applicantName()
         QuoteDialogTwo(
-            title = if (kind == ApplicantPostingKind.SUB) "${name}님을 대타로 확정하시겠습니까?"
-            else "${name}님을 채용하시겠습니까?",
+            title = if (kind == ApplicantPostingKind.SUB) "${name}님을 대타로 확정할까요?"
+            else "${name}님을 채용할까요?",
             confirmText = kind.confirmTitle,
             dismissText = "계속 검토하기",
             onConfirm = { showConfirmApplicant = false; confirmApplicant() },
@@ -271,7 +271,7 @@ private fun ResumeBody(a: Applicant) {
         }
         d.performances?.takeIf { it.isNotEmpty() }?.let { ps ->
             Section("공연 이력") {
-                Lines(ps.map { listOf("${it.year} ${it.title}".trim(), it.role).filter { s -> s.isNotEmpty() }.joinToString(" — ") })
+                Lines(ps.map { listOf("${it.year} ${it.title}".trim(), it.role).filter { s -> s.isNotEmpty() }.joinToString(" · ") })
             }
         }
         d.certificates?.takeIf { it.isNotEmpty() }?.let {
