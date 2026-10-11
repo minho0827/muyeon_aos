@@ -45,7 +45,7 @@ data class CredentialBadges(
 
     /** 표시 순서: 본인 인증 → 전공·경력·자격·지도경력 */
     val all: List<Item>
-        get() = (if (identity) listOf(Item("IDENTITY", "본인 인증", "휴대폰 본인 인증으로 실명과 연락처를 확인했어요.", null, null)) else emptyList()) + items
+        get() = (if (identity) listOf(Item("IDENTITY", "본인인증", "휴대폰 본인인증으로 실명을 확인한 회원이에요.", null, null)) else emptyList()) + items
 
     companion object {
         fun from(o: JSONObject?): CredentialBadges? {
@@ -84,7 +84,7 @@ fun CredentialBadgeRow(badges: CredentialBadges?, modifier: Modifier = Modifier)
             }
         }
         badges?.careerYears?.takeIf { it > 0 }?.let {
-            Text("확인된 경력 ${it}년", fontFamily = customFontFamily, fontSize = 12.sp, color = MuyeonColors.textSub)
+            Text("경력 ${it}년 확인", fontFamily = customFontFamily, fontSize = 12.sp, color = MuyeonColors.textSub)
         }
     }
     shown?.let { b ->
@@ -94,7 +94,7 @@ fun CredentialBadgeRow(badges: CredentialBadges?, modifier: Modifier = Modifier)
             title = { Text(b.label, fontFamily = customFontFamily, fontWeight = FontWeight.Bold) },
             text = {
                 Text(
-                    listOfNotNull(b.desc, b.title?.let { "확인 내용: $it" }, b.years?.let { "확인 연수: ${it}년" }).joinToString("\n"),
+                    listOfNotNull(b.desc, listOfNotNull(b.title, b.years?.let { "${it}년" }).joinToString(" · ").takeIf { it.isNotEmpty() }).joinToString("\n"),
                     fontFamily = customFontFamily,
                 )
             },

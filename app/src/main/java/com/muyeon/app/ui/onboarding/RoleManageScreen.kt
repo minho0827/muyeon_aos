@@ -458,7 +458,7 @@ private fun RoleActionSheet(
 private fun sheetDesc(opt: RoleOption, isGranted: Boolean, st: String): String {
     if (isGranted) return "현재 보유 중인 회원유형입니다."
     // ★ 2026-10-12 강사·무용수 — 본인 인증 회원은 서류 없이 바로 추가(전공·경력 확인은 선택)
-    if (opt.code == "TEACHER" || opt.code == "DANCER") return "휴대폰 본인 인증을 마친 회원은 서류 없이 바로 추가할 수 있어요. 전공·경력 확인은 추가한 뒤 선택으로 받을 수 있어요."
+    if (opt.code == "TEACHER" || opt.code == "DANCER") return "본인인증을 마쳤다면 서류 없이 바로 추가할 수 있어요. 전공·경력 확인은 나중에 원할 때 신청하면 돼요."
     if (!opt.business) return "바로 추가할 수 있는 회원유형입니다."
     return when (st) {
         "APPROVED" -> "이미 인증이 완료되어 재인증 없이 바로 전환할 수 있어요."
