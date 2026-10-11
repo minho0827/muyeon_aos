@@ -111,6 +111,16 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
         }
     }
 
+    // ★ 2026-10-12 웹 <input type="file"> 지원 — 종전엔 onShowFileChooser 가 없어 앱 웹뷰에서 파일 선택 창이 열리지 않았다
+    //  (전문 정보 확인 서류·웹 사진 업로드). 시스템 문서 선택기(SAF)라 저장소 권한이 필요 없다.
+    private var fileChooserCallback: android.webkit.ValueCallback<Array<android.net.Uri>>? = null
+    private val fileChooserLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris ->
+        fileChooserCallback?.onReceiveValue(uris.toTypedArray())
+        fileChooserCallback = null
+    }
+
     private val imagePickerLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -580,6 +590,29 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
             }
         }
         webView.webChromeClient = object : android.webkit.WebChromeClient() {
+            override fun onShowFileChooser(
+                view: WebView?,
+                callback: android.webkit.ValueCallback<Array<android.net.Uri>>?,
+                params: FileChooserParams?,
+            ): Boolean {
+                // 이전 요청이 남아 있으면 취소로 끝내 준다(웹 input 이 멈추지 않게).
+                fileChooserCallback?.onReceiveValue(null)
+                fileChooserCallback = callback
+                val types = params?.acceptTypes
+                    ?.flatMap { it.split(',') }
+                    ?.map { it.trim() }
+                    ?.filter { it.isNotEmpty() }
+                    ?.takeIf { it.isNotEmpty() }
+                    ?: listOf("*/*")
+                return try {
+                    fileChooserLauncher.launch(types.toTypedArray())
+                    true
+                } catch (e: Exception) {
+                    fileChooserCallback = null
+                    false
+                }
+            }
+
             override fun onConsoleMessage(cm: android.webkit.ConsoleMessage): Boolean {
                 android.util.Log.d("QR_WEB", "${cm.message()}  (@${cm.sourceId()}:${cm.lineNumber()})")
                 return true
