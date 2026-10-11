@@ -524,7 +524,8 @@ fun ResumeEditScreen(
                         },
                         onVisibility = onVisibility,
                     )
-                    dispatch?.let { prefs ->
+                    // ★ 2026-10-11 긴급 발송 종료 — 설정 섹션을 숨긴다(다시 열면 SUB_DISPATCH_ENABLED=true).
+                    if (SUB_DISPATCH_ENABLED) dispatch?.let { prefs ->
                         SubDispatchSettings(
                             prefs = prefs,
                             onEnabled = { enabled ->
@@ -661,6 +662,8 @@ private fun SeekProfileSettings(viewAlert: Boolean, onViewAlert: (Boolean) -> Un
  * 긴급 대타 알림 — iOS `ResumeEditView.subDispatchSection` 1:1.
  *  지역·장르·대상·시간대는 위 프로필 본문으로 매칭(요일 무관)하므로 타임 수·타임당 최소 금액만 고른다.
  */
+private const val SUB_DISPATCH_ENABLED = false
+
 @Composable
 private fun SubDispatchSettings(
     prefs: SubDispatchPrefs,
