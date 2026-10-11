@@ -28,7 +28,7 @@ object ResumeOptions {
     val salaryRanges = listOf(
         "W1_2" to "1만원~2만원 미만", "W2_3" to "2만원~3만원 미만",
         "W3_4" to "3만원~4만원 미만", "W4_5" to "4만원~5만원 미만",
-        "W5_6" to "5만원~6만원 미만", "NEGOTIABLE" to "추후 협의",
+        "W5_6" to "5만원~6만원 미만", "W6_8" to "6만원~8만원 미만", "W8_UP" to "8만원 이상", "NEGOTIABLE" to "추후 협의",
     )
 
     /** 수업 분야 — 웹 TEACHING_FIELDS 와 1:1. */

@@ -118,7 +118,7 @@ object JobFormOptions {
     )
     val salaryRanges = listOf(
         "W1_2" to "1만~2만원", "W2_3" to "2만~3만원", "W3_4" to "3만~4만원",
-        "W4_5" to "4만~5만원", "W5_6" to "5만~6만원", "NEGOTIABLE" to "추후 협의",
+        "W4_5" to "4만~5만원", "W5_6" to "5만~6만원", "W6_8" to "6만~8만원", "W8_UP" to "8만원 이상", "NEGOTIABLE" to "추후 협의",
     )
     val employments = listOf(
         "FULLTIME" to "정규직", "CONTRACT" to "계약직", "PARTTIME" to "파트타임", "FREELANCE" to "프리랜서",
