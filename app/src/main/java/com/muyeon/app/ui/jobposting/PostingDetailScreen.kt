@@ -221,7 +221,7 @@ private fun DetailHeader(kind: String, d: JSONObject, summary: MyPosting?, statu
                 if (status == "OPEN" && !pending) MuyeonColors.green else MuyeonColors.secondary,
                 Color(0xFFF2F2F7),
             )
-            if (kind == "SUB" && d.optBoolean("urgent")) Chip("긴급", MuyeonColors.danger, MuyeonColors.danger.copy(alpha = 0.10f))
+            // ★ 2026-10-11 '긴급 여부' 폐지 — '긴급' 칩을 더 보여 주지 않는다.
             summary?.dday?.let { dd ->
                 Text(
                     if (dd < 0) "마감 지남" else if (dd == 0) "오늘 마감" else "D-$dd",
