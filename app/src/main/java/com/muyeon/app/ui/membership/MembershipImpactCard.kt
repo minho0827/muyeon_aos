@@ -91,7 +91,7 @@ private fun Headline(
     val title = when {
         money > 0 -> "결제 전 같은 기간보다 예상 금액이 이만큼 늘었어요"
         else -> topGrowth(before, after, isAcademy)
-            ?.let { "결제 전 같은 기간보다 ${it.first}이(가) ${it.second} 늘었어요" }
+            ?.let { "결제 전 같은 기간보다 ${withIGa(it.first)} ${it.second} 늘었어요" }
             ?: "결제 후 ${if (isAcademy) "학원" else "강사님"}을 이만큼 찾아봤어요"
     }
     val target = if (money > 0) money
@@ -149,6 +149,13 @@ private fun RowScope.RatePill(label: String, before: Double, after: Double) {
 }
 
 /** 증가율이 가장 큰 지표(이전 구간이 0 이 아닌 것 중에서) → (이름, 표기). */
+/** 이름 뒤 주격 조사 — 마지막 글자 받침 유무로 '이/가'를 고른다. */
+private fun withIGa(name: String): String {
+    val code = (name.lastOrNull()?.code ?: 0) - 0xAC00
+    val hasFinal = code !in 0..11171 || code % 28 != 0
+    return name + if (hasFinal) "이" else "가"
+}
+
 private fun topGrowth(
     before: MembershipImpactMetrics,
     after: MembershipImpactMetrics,
