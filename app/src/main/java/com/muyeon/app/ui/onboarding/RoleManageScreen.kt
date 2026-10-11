@@ -59,15 +59,16 @@ import org.json.JSONObject
  *     인증 서류 제출만 예외로, 제출 뒤 이 화면까지 함께 닫는다(OnboardingActivity 참고).
  *
  * @param business 인증(서류 제출 → 관리자 승인) 후에만 부여되는 유형인가.
- *  ★ 일반회원(HOBBY)을 뺀 다섯 유형은 전부 인증 대상이다 — 강사·무용수도 예외가 아니다.
- *    예전엔 이 둘이 false 라 "바로 추가할 수 있는 회원유형입니다" + [회원유형 추가] 가 떠서
- *    서류 없이 보유로 표시됐다(iOS `RoleManageView.options` 와 같은 값이어야 한다).
+ *  ★ 2026-10-12 인증 개편 — 학원·공연팀·공간만 서류 인증 대상이다. 강사·무용수는 휴대폰 본인 인증으로
+ *    바로 부여되고(서버가 판정, 본인 인증 전이면 웹이 본인확인으로 안내), 전공·경력 서류는 선택 '전문 정보 확인'이다.
+ *    iOS `RoleManageView.options` 와 같은 값이어야 한다.
  */
 data class RoleOption(val code: String, val emoji: String, val title: String, val business: Boolean)
 
 private val ROLE_OPTIONS = listOf(
-    RoleOption("TEACHER", "🩰", "강사", true),
-    RoleOption("DANCER", "💃", "무용수", true),
+    // ★ 2026-10-12 강사·무용수는 본인 인증으로 바로 부여(서버 IDENTITY_REQUIRED_ROLES) — 서류 인증 대상 아님(iOS 와 같은 값).
+    RoleOption("TEACHER", "🩰", "강사", false),
+    RoleOption("DANCER", "💃", "무용수", false),
     RoleOption("ACADEMY", "🏫", "학원·원장", true),
     RoleOption("TEAM", "🎭", "공연팀·기획자", true),
     RoleOption("SPACE", "🏢", "공간보유자", true),

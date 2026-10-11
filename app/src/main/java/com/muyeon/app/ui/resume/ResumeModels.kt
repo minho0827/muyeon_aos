@@ -285,6 +285,7 @@ data class PublicProfile(
     val selfView: Boolean?,     // 본인 열람(서버 키는 "self")
     val myQuoteId: Int?,
     val myQuoteHasResponse: Boolean?,
+    val badges: CredentialBadges? = null, // ★ 2026-10-12 본인 인증·전문 정보 확인 배지
 ) {
     companion object {
         /**
@@ -312,6 +313,7 @@ data class PublicProfile(
                 phone = null, email = null,
                 full = true, recruiterLocked = false, selfView = false,
                 myQuoteId = null, myQuoteHasResponse = null,
+                badges = applicant.applicantBadges,
             )
         }
 
@@ -338,6 +340,7 @@ data class PublicProfile(
             selfView = o.boolOrNull("self"),
             myQuoteId = o.optJSONObject("myQuote")?.intOrNull("quoteId"),
             myQuoteHasResponse = o.optJSONObject("myQuote")?.boolOrNull("hasResponse"),
+            badges = CredentialBadges.from(o.optJSONObject("badges")),
         )
     }
 }
@@ -377,6 +380,7 @@ data class Applicant(
     val postingConfirmedApplicationId: Int? = null,
     val postingClassStartAt: String? = null,
     val applicantProfile: ResumeData?,
+    val applicantBadges: CredentialBadges? = null, // ★ 2026-10-12
     val resumeTitle: String?,
     val resumeData: ResumeData?,
 ) {
@@ -443,6 +447,7 @@ data class Applicant(
                 postingConfirmedApplicationId = o.intOrNull("postingConfirmedApplicationId"),
                 postingClassStartAt = o.stringOrNull("postingClassStartAt"),
                 applicantProfile = o.optJSONObject("applicantProfile")?.let { ResumeData.from(it) },
+                applicantBadges = CredentialBadges.from(o.optJSONObject("applicantBadges")),
                 resumeTitle = r?.stringOrNull("title"),
                 resumeData = r?.optJSONObject("data")?.let { ResumeData.from(it) },
             )

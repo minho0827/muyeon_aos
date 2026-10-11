@@ -85,7 +85,8 @@ internal val ONBOARDING_ROLE_OPTIONS = listOf(
 )
 
 /** 일반회원(HOBBY)만 인증 없이 바로 시작한다 — 나머지는 서류 인증이 필요하다. */
-internal fun roleRequiresVerification(code: String) = code != "HOBBY"
+// ★ 2026-10-12 서류 인증은 사업자 확인이 필요한 학원·공연팀(·공간)만. 강사·무용수는 본인 인증(가입 시 완료)으로 바로 부여된다.
+internal fun roleRequiresVerification(code: String) = code == "ACADEMY" || code == "TEAM" || code == "SPACE"
 
 @Composable
 private fun RoleCard(opt: OnboardingRoleOption, isSelected: Boolean, onClick: () -> Unit) {
