@@ -232,6 +232,7 @@ private fun ResumeBody(a: Applicant) {
                     lineHeight = 24.sp, color = MuyeonColors.textHead,
                 )
                 Kv("생년월일", d.basic?.birth)
+                CredentialBadgeRow(a.applicantBadges) // ★ 2026-10-12
             }
         }
 

@@ -203,6 +203,7 @@ fun PublicProfileScreen(
                         fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp,
                         lineHeight = 26.sp, color = MuyeonColors.textHead,
                     )
+                    CredentialBadgeRow(p.badges) // ★ 2026-10-12
                     if ((p.ratingCount ?: 0) > 0) {
                         Row(
                             Modifier.clickable(onClick = onOpenReviews),
