@@ -201,15 +201,15 @@ fun MyPostingsScreen(
     actions.Dialogs()
     purgeTarget?.let { target ->
         QuoteDialog(
-            "영구 삭제",
-            "이 공고를 영구 삭제할까요?\n삭제하면 다시 복원할 수 없어요.",
-            "영구 삭제",
+            "삭제",
+            "이 공고를 삭제할까요?\n삭제하면 다시 복원할 수 없어요.",
+            "삭제",
             onConfirm = {
                 purgeTarget = null
                 scope.launch {
                     api.purge(target.kind, target.id)
-                        .onSuccess { toast = "공고를 영구 삭제했어요." }
-                        .onFailure { toast = it.message ?: "영구 삭제하지 못했어요." }
+                        .onSuccess { toast = "공고를 삭제했어요." }
+                        .onFailure { toast = it.message ?: "삭제하지 못했어요." }
                     load()
                 }
             },
@@ -237,7 +237,7 @@ private fun ArchivedPostingRow(posting: MyPosting, onRestore: () -> Unit, onPurg
                 contentAlignment = Alignment.CenterEnd,
             ) {
                 Text(
-                    "영구 삭제",
+                    "삭제",
                     fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp,
                     color = Color.White,
                 )
