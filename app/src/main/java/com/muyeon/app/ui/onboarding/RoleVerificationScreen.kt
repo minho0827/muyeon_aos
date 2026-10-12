@@ -75,7 +75,7 @@ private fun roleLabel(code: String): String = when (code) {
 private fun documentGuide(code: String): String = when (code) {
     "TEACHER" -> "강사 경력이나 무용 전공을 확인할 수 있는 서류를 첨부해 주세요."
     "DANCER" -> "공연 경력, 소속 또는 무용 전공을 확인할 수 있는 서류를 첨부해 주세요."
-    "ACADEMY" -> "사업자등록증, 학원등록증 또는 재직증명서를 첨부해 주세요."
+    "ACADEMY" -> "사업자등록번호와 최근 3개월 이내 발급한 사업자등록증명원을 확인해요."
     "SPACE" -> "사업자등록증 또는 임대차계약서를 첨부해 주세요."
     "TEAM" -> "사업자등록증, 고유번호증 또는 공연 증빙을 첨부해 주세요."
     else -> "회원유형을 확인할 수 있는 서류를 첨부해 주세요."
@@ -112,13 +112,16 @@ fun RoleVerificationScreen(
     api: RoleVerificationApi,
     role: String,
     onClose: () -> Unit,
-    onDone: (String, List<String>, String?) -> Unit,
+    onDone: (String, List<String>, String?, String?) -> Unit,
     ownerName: String = "",
     initialImages: List<String> = emptyList(),
+    allowSkip: Boolean = false,
 ) {
     // 기존 제출 서류를 그대로 이어받는다 — 재제출인데 빈 화면이면 처음부터 다시 찍어 올려야 한다.
     var images by remember(initialImages) { mutableStateOf(initialImages) }
     var academyName by remember { mutableStateOf("") }
+    var businessNumber by remember { mutableStateOf("") }
+    var verifyLater by remember { mutableStateOf(false) }
     var uploading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
@@ -199,9 +202,17 @@ fun RoleVerificationScreen(
                         )
                     }
                 }
+
+                AcademyBusinessVerificationSection(
+                    businessNumber = businessNumber,
+                    onBusinessNumberChange = { businessNumber = it },
+                    verifyLater = verifyLater,
+                    onVerifyLaterChange = { verifyLater = it },
+                    allowsVerifyLater = allowSkip,
+                )
             }
 
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (role != "ACADEMY" || !verifyLater) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(
                     Modifier.size(96.dp).clip(RoundedCornerShape(10.dp))
                         .border(1.dp, MuyeonColors.border, RoundedCornerShape(10.dp))
@@ -227,24 +238,32 @@ fun RoleVerificationScreen(
                     }
                 }
             }
-            Text(
-                "${images.size}/$MAX_DOCS",
-                fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 14.sp, color = MuyeonColors.secondary,
-            )
+            if (role != "ACADEMY" || !verifyLater) {
+                Text(
+                    "${images.size}/$MAX_DOCS",
+                    fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 14.sp, color = MuyeonColors.secondary,
+                )
+            }
         }
 
         // 학원 인증은 학원명이 있어야 제출된다 — 비면 프로필·공고·홈 추천에 이름 없이 노출된다.
         val academy = academyName.trim().takeIf { role == "ACADEMY" && it.isNotEmpty() }
-        val canSubmit = images.isNotEmpty() && !uploading && (role != "ACADEMY" || academy != null)
+        val normalizedNumber = businessNumber.filter(Char::isDigit).take(10)
+        val canSubmit = !uploading && if (role == "ACADEMY") {
+            academy != null && (verifyLater && allowSkip || (images.isNotEmpty() && normalizedNumber.length == 10))
+        } else images.isNotEmpty()
         Text(
-            if (uploading) "업로드 중…" else "제출하기",
+            if (uploading) "업로드 중…" else if (role == "ACADEMY" && verifyLater) "가입 계속" else "제출하기",
             fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
             lineHeight = 19.sp, color = Color.White, textAlign = TextAlign.Center,
             modifier = Modifier
                 .padding(horizontal = 20.dp).padding(top = 8.dp, bottom = 12.dp)
                 .fillMaxWidth().clip(RoundedCornerShape(12.dp))
                 .background(if (canSubmit) MuyeonColors.primary else Color.Gray.copy(alpha = 0.4f))
-                .clickable(enabled = canSubmit) { onDone(role, images, academy) }
+                .clickable(enabled = canSubmit) {
+                    onDone(role, if (verifyLater) emptyList() else images, academy,
+                        normalizedNumber.takeIf { role == "ACADEMY" && !verifyLater })
+                }
                 .padding(vertical = 16.dp),
         )
     }
