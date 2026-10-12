@@ -329,6 +329,10 @@ class JobPostingApi(internal val token: String?) {
     suspend fun restore(kind: String, id: Int): Result<Unit> =
         call("/me/postings/$kind/$id/restore", "POST").map { }
 
+    /** 보관한 공고 한 건 영구 삭제 — 지원 이력은 서버에 보존된다. */
+    suspend fun purge(kind: String, id: Int): Result<Unit> =
+        call("/me/postings/$kind/$id/permanent", "DELETE").map { }
+
     suspend fun loadJob(id: Int): Result<JobForm> = call("/jobs/$id").map { JobForm.from(JSONObject(it)) }
 
     /**

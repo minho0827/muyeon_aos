@@ -25,6 +25,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.runtime.*
@@ -74,6 +77,7 @@ fun MyPostingsScreen(
     // 보관함 — 삭제가 소프트(ARCHIVED)라 되살릴 경로가 반드시 있어야 한다.
     var archived by remember { mutableStateOf<List<MyPosting>>(emptyList()) }
     var showArchived by remember { mutableStateOf(false) }
+    var purgeTarget by remember { mutableStateOf<MyPosting?>(null) }
 
     suspend fun load() {
         api.myPostings()
@@ -166,37 +170,17 @@ fun MyPostingsScreen(
                         }
                         if (showArchived) {
                             items(archived, key = { "arc-${it.uid}" }) { p ->
-                                Row(
-                                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                                        .background(MuyeonColors.groupedBg).padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                        Text(
-                                            p.title ?: "(제목 없음)",
-                                            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
-                                            lineHeight = 17.sp, color = MuyeonColors.textHead,
-                                            maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                        )
-                                        Text(
-                                            "${JobPostingOptions.kindLabel[p.kind] ?: p.kind} · 삭제 전 상태로 되돌아갑니다",
-                                            fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp,
-                                            color = MuyeonColors.textSub,
-                                        )
-                                    }
-                                    Text(
-                                        "복원",
-                                        fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                                        lineHeight = 16.sp, color = MuyeonColors.primary,
-                                        modifier = Modifier.clickable {
-                                            scope.launch {
-                                                api.restore(p.kind, p.id).onSuccess { toast = "공고를 복원했어요." }
-                                                    .onFailure { toast = it.message }
-                                                load()
-                                            }
-                                        }.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    )
-                                }
+                                ArchivedPostingRow(
+                                    posting = p,
+                                    onRestore = {
+                                        scope.launch {
+                                            api.restore(p.kind, p.id).onSuccess { toast = "공고를 복원했어요." }
+                                                .onFailure { toast = it.message }
+                                            load()
+                                        }
+                                    },
+                                    onPurge = { purgeTarget = p },
+                                )
                             }
                         }
                     }
@@ -215,8 +199,76 @@ fun MyPostingsScreen(
     }
 
     actions.Dialogs()
+    purgeTarget?.let { target ->
+        QuoteDialog(
+            "영구 삭제",
+            "이 공고를 영구 삭제할까요?\n삭제하면 다시 복원할 수 없어요.",
+            "영구 삭제",
+            onConfirm = {
+                purgeTarget = null
+                scope.launch {
+                    api.purge(target.kind, target.id)
+                        .onSuccess { toast = "공고를 영구 삭제했어요." }
+                        .onFailure { toast = it.message ?: "영구 삭제하지 못했어요." }
+                    load()
+                }
+            },
+            onDismiss = { purgeTarget = null },
+        )
+    }
     toast?.let { msg ->
         QuoteDialog("알림", msg, "확인", onConfirm = { toast = null }, onDismiss = { toast = null })
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ArchivedPostingRow(posting: MyPosting, onRestore: () -> Unit, onPurge: () -> Unit) {
+    val swipeState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { it != SwipeToDismissBoxValue.StartToEnd },
+    )
+    SwipeToDismissBox(
+        state = swipeState,
+        enableDismissFromStartToEnd = false,
+        backgroundContent = {
+            Box(
+                Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)).background(MuyeonColors.danger)
+                    .clickable(onClick = onPurge).padding(horizontal = 18.dp),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                Text(
+                    "영구 삭제",
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                    color = Color.White,
+                )
+            }
+        },
+    ) {
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                .background(MuyeonColors.groupedBg).padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    posting.title ?: "(제목 없음)",
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                    lineHeight = 17.sp, color = MuyeonColors.textHead,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    "${JobPostingOptions.kindLabel[posting.kind] ?: posting.kind} · 삭제 전 상태로 되돌아갑니다",
+                    fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp,
+                    color = MuyeonColors.textSub,
+                )
+            }
+            Text(
+                "복원",
+                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                lineHeight = 16.sp, color = MuyeonColors.primary,
+                modifier = Modifier.clickable(onClick = onRestore).padding(horizontal = 8.dp, vertical = 4.dp),
+            )
+        }
     }
 }
 
