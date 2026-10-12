@@ -40,6 +40,7 @@ import com.muyeon.app.ui.quote.QuoteDialog
 import com.muyeon.app.ui.quote.QuoteNavBar
 import com.muyeon.app.ui.quote.QuoteUi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -98,6 +99,26 @@ class RoleVerificationApi(private val token: String?) {
             }
         }.getOrNull()
     }
+
+    data class BusinessNumberCheck(val verified: Boolean, val number: String, val message: String)
+
+    suspend fun checkAcademyBusinessNumber(number: String): BusinessNumberCheck = withContext(Dispatchers.IO) {
+        val json = JSONObject().put("businessRegistrationNumber", number).toString()
+        val req = Request.Builder()
+            .url(BuildConfig.API_BASE_URL + "/api/me/roles/academy/business-number/check")
+            .post(json.toRequestBody("application/json".toMediaType()))
+            .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
+            .build()
+        client.newCall(req).execute().use { res ->
+            val payload = JSONObject(res.body?.string().orEmpty().ifEmpty { "{}" })
+            if (!res.isSuccessful) throw IllegalStateException(payload.optString("message"))
+            BusinessNumberCheck(
+                verified = payload.optBoolean("verified"),
+                number = payload.optString("businessRegistrationNumber"),
+                message = payload.optString("message"),
+            )
+        }
+    }
 }
 
 /**
@@ -122,10 +143,31 @@ fun RoleVerificationScreen(
     var academyName by remember { mutableStateOf("") }
     var businessNumber by remember { mutableStateOf("") }
     var verifyLater by remember { mutableStateOf(false) }
+    var checkingBusinessNumber by remember { mutableStateOf(false) }
+    var verifiedBusinessNumber by remember { mutableStateOf<String?>(null) }
+    var businessNumberMessage by remember { mutableStateOf<String?>(null) }
     var uploading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(businessNumber, verifyLater) {
+        verifiedBusinessNumber = null
+        businessNumberMessage = null
+        val normalized = businessNumber.filter(Char::isDigit).take(10)
+        if (normalized.length != 10 || verifyLater) return@LaunchedEffect
+        delay(450)
+        checkingBusinessNumber = true
+        runCatching { api.checkAcademyBusinessNumber(normalized) }
+            .onSuccess { result ->
+                if (result.verified) verifiedBusinessNumber = result.number
+                businessNumberMessage = result.message
+            }
+            .onFailure {
+                businessNumberMessage = "자동 확인이 지연되고 있어요. 잠시 후 다시 시도해 주세요."
+            }
+        checkingBusinessNumber = false
+    }
 
     val picker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia(maxItems = MAX_DOCS),
@@ -209,6 +251,9 @@ fun RoleVerificationScreen(
                     verifyLater = verifyLater,
                     onVerifyLaterChange = { verifyLater = it },
                     allowsVerifyLater = allowSkip,
+                    isChecking = checkingBusinessNumber,
+                    isVerified = verifiedBusinessNumber == businessNumber.filter(Char::isDigit).take(10),
+                    statusMessage = businessNumberMessage,
                 )
             }
 
@@ -252,7 +297,8 @@ fun RoleVerificationScreen(
         val academy = academyName.trim().takeIf { role == "ACADEMY" && it.isNotEmpty() }
         val normalizedNumber = businessNumber.filter(Char::isDigit).take(10)
         val canSubmit = !uploading && if (role == "ACADEMY") {
-            academy != null && (verifyLater && allowSkip || (images.isNotEmpty() && normalizedNumber.length == 10))
+            academy != null && (verifyLater && allowSkip ||
+                (images.isNotEmpty() && verifiedBusinessNumber == normalizedNumber))
         } else images.isNotEmpty()
         Text(
             if (uploading) "업로드 중…" else if (role == "ACADEMY" && verifyLater) "가입 계속" else "제출하기",

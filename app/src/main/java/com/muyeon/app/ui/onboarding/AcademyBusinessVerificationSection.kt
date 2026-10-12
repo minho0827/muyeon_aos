@@ -34,6 +34,9 @@ fun AcademyBusinessVerificationSection(
     verifyLater: Boolean,
     onVerifyLaterChange: (Boolean) -> Unit,
     allowsVerifyLater: Boolean,
+    isChecking: Boolean = false,
+    isVerified: Boolean = false,
+    statusMessage: String? = null,
 ) {
     var dialog by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
@@ -54,7 +57,14 @@ fun AcademyBusinessVerificationSection(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth(),
         )
-        Text("기업 인증", fontFamily = customFontFamily, fontWeight = FontWeight.Bold,
+        if (!verifyLater && (isChecking || statusMessage != null)) {
+            Text(
+                if (isChecking) "사업자등록번호 확인 중…" else statusMessage.orEmpty(),
+                fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 17.sp,
+                color = if (isVerified) MuyeonColors.primary else MuyeonColors.textSub,
+            )
+        }
+        Text("학원 인증", fontFamily = customFontFamily, fontWeight = FontWeight.Bold,
             fontSize = 15.sp, color = MuyeonColors.textHead)
         Column(
             Modifier.fillMaxWidth().background(MuyeonColors.groupedBg, RoundedCornerShape(12.dp)).padding(18.dp),
@@ -78,6 +88,11 @@ fun AcademyBusinessVerificationSection(
                 Text("다음에 인증할게요", fontFamily = customFontFamily, fontSize = 15.sp, color = MuyeonColors.textHead)
             }
         }
+        Text(
+            "인증 전에는 공고를 비공개로 작성할 수 있지만, 공고 공개·이력서 및 지원자 상세 열람·연락·학원 레슨 운영은 제한돼요.",
+            fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp,
+            color = MuyeonColors.textSub,
+        )
     }
 
     if (dialog != null) {
