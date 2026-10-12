@@ -212,6 +212,8 @@ fun RoleVerificationScreen(
                 )
             }
 
+            if (role == "TEAM") TeamBusinessNumberHelp()
+
             if (role != "ACADEMY" || !verifyLater) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(
                     Modifier.size(96.dp).clip(RoundedCornerShape(10.dp))

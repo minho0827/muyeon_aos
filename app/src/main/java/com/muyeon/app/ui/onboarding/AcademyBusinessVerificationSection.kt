@@ -94,7 +94,7 @@ fun AcademyBusinessVerificationSection(
             text = {
                 Text(
                     if (dialog == "document") "사업자등록증과 달리 위조 방지용 번호와 발급 일자가 표시된 서류예요. 정부24에서 발급한 최근 3개월 이내 사업자등록증명원을 제출해 주세요."
-                    else "국내 학원·개인사업자는 사업자등록번호와 사업자등록증명원이 있어야 학원 원장 인증을 신청할 수 있어요. 번호가 없다면 ‘다음에 인증할게요’를 선택하고 일반회원으로 계속 이용해 주세요. 해외 사업자는 고객센터로 문의해 주세요.",
+                    else "학원 원장 인증을 신청하려면 사업자등록번호와 사업자등록증명원이 필요해요. 번호가 없다면 ‘다음에 인증할게요’를 선택하고 일반회원으로 계속 이용해 주세요.",
                     fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 22.sp,
                 )
             },
@@ -107,6 +107,31 @@ fun AcademyBusinessVerificationSection(
                     TextButton(onClick = { dialog = null }) { Text("확인", fontFamily = customFontFamily) }
                 }
             },
+        )
+    }
+}
+
+@Composable
+fun TeamBusinessNumberHelp() {
+    var isOpen by remember { mutableStateOf(false) }
+    Row(
+        Modifier.fillMaxWidth().background(MuyeonColors.groupedBg, RoundedCornerShape(12.dp)).padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("사업자등록번호가 없는 공연팀도 인증할 수 있어요.", fontFamily = customFontFamily,
+            fontSize = 14.sp, color = MuyeonColors.textSub, modifier = Modifier.weight(1f))
+        Text("안내 보기", fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold,
+            fontSize = 14.sp, color = MuyeonColors.primary, modifier = Modifier.clickable { isOpen = true })
+    }
+    if (isOpen) {
+        AlertDialog(
+            onDismissRequest = { isOpen = false },
+            title = { Text("사업자등록번호가 없어요", fontFamily = customFontFamily, fontWeight = FontWeight.Bold) },
+            text = {
+                Text("해외 공연팀·기획자는 해당 국가에서 발급한 사업자 또는 단체 증빙을 첨부해 주세요. 국내 비영리 단체는 고유번호증을, 프로젝트 공연팀은 단체명과 활동 내역을 확인할 수 있는 공연 증빙을 제출할 수 있어요.",
+                    fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 22.sp)
+            },
+            confirmButton = { TextButton(onClick = { isOpen = false }) { Text("확인", fontFamily = customFontFamily) } },
         )
     }
 }
