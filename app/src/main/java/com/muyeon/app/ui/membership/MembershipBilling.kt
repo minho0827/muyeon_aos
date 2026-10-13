@@ -114,8 +114,13 @@ object MembershipBilling : PurchasesUpdatedListener {
     fun consumeNotice() { _notice.value = null }
 
     /** 화면 수명과 무관하게(앱 범위) 구매를 진행하고, 결과 안내를 notice 로 남긴다. toNotice 가 null 이면 안내 없음. */
-    fun launchPurchase(activity: Activity, plan: MembershipPlan, toNotice: (Outcome) -> Pair<String, String>?) {
-        scope.launch { toNotice(purchase(activity, plan))?.let { _notice.value = it } }
+    fun launchPurchase(
+        activity: Activity,
+        plan: MembershipPlan,
+        currentBasePlanId: String? = null,
+        toNotice: (Outcome) -> Pair<String, String>?,
+    ) {
+        scope.launch { toNotice(purchase(activity, plan, currentBasePlanId))?.let { _notice.value = it } }
     }
 
     /** launchBillingFlow 결과를 기다리는 구매(사용자가 누른 것). 없으면 콜백은 조용한 전송이다. */
@@ -199,9 +204,11 @@ object MembershipBilling : PurchasesUpdatedListener {
 
     /**
      * 구독 시작 또는 변경. 이 Google 계정에 이용 중인 멤버십 구독이 있으면 교체(SubscriptionUpdateParams)로 연다 —
-     *  등급을 올리면 즉시(WITH_TIME_PRORATION), 내리거나 기간만 바꾸면 다음 갱신일부터(DEFERRED).
+     *  결제 금액이 오르면 즉시(WITH_TIME_PRORATION), 같거나 내려가면 다음 갱신일부터(DEFERRED).
+     *  ★ 2026-10-13 실기기: 구글은 금액이 오르는 교체(베이직 1→3개월 등)를 DEFERRED 로 요청하면 '문제가 발생했습니다'로 거절한다.
+     *   종전엔 등급만 보고 정해 같은 등급의 기간 늘림이 막혔다. 지금 상품의 금액을 모르면 등급으로 대신한다.
      */
-    suspend fun purchase(activity: Activity, plan: MembershipPlan): Outcome {
+    suspend fun purchase(activity: Activity, plan: MembershipPlan, currentBasePlanId: String? = null): Outcome {
         if (_purchasingId.value != null) return Outcome.Cancelled
         if (!isLoggedIn) return Outcome.Failed("로그인한 뒤 구독할 수 있어요.")
         val productId = plan.googleProductId ?: return Outcome.Failed("상품 정보를 불러오지 못했어요.")
@@ -229,14 +236,18 @@ object MembershipBilling : PurchasesUpdatedListener {
             var deferred = false
             if (old != null) {
                 val oldProductId = membershipProductOf(old)!!
-                deferred = tierRank(productId) <= tierRank(oldProductId)
+                val oldBasePlanId = currentBasePlanId ?: lastBasePlan(oldProductId)
+                val oldPrice = recurringPhase(_products.value[oldProductId], oldBasePlanId)?.priceAmountMicros
+                val newPrice = offer.pricingPhases.pricingPhaseList.lastOrNull()?.priceAmountMicros
+                deferred = if (oldPrice != null && newPrice != null) newPrice <= oldPrice
+                else tierRank(productId) <= tierRank(oldProductId)
                 val update = BillingFlowParams.SubscriptionUpdateParams.newBuilder()
                     .setOldPurchaseToken(old.purchaseToken)
                 if (oldProductId == productId) {
-                    // 같은 상품의 기간만 바꿈(1→3개월 등) — 상품 단위 교체 파라미터(old == new 상품)는 Play 가
-                    //  '문제가 발생했습니다'로 거절한다(2026-10-13 실기기). 구독 단위 교체 방식으로 연다.
+                    // 같은 상품의 기간만 바꿈(1→3개월 등) — 상품 단위 교체 파라미터(old == new 상품) 대신 구독 단위 교체로 연다.
                     update.setSubscriptionReplacementMode(
-                        BillingFlowParams.SubscriptionUpdateParams.ReplacementMode.DEFERRED,
+                        if (deferred) BillingFlowParams.SubscriptionUpdateParams.ReplacementMode.DEFERRED
+                        else BillingFlowParams.SubscriptionUpdateParams.ReplacementMode.WITH_TIME_PRORATION,
                     )
                 } else {
                     val mode = if (deferred) SubscriptionProductReplacementParams.ReplacementMode.DEFERRED

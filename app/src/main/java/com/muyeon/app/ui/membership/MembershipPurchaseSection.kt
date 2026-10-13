@@ -56,8 +56,8 @@ import java.util.Locale
  * 결제 수단은 계정에 하나:
  *  - billingProvider == TOSS / APPSTORE → 웹·아이폰에서 결제 중. 구매 버튼을 숨기고 안내만(이중 결제 방지).
  *                                         ★ 웹 결제로 보내는 링크는 두지 않는다(외부 결제 유도 금지).
- *  - billingProvider == PLAYSTORE       → 구글 구독 중. 다른 상품을 고르면 [변경하기] — 등급 올림은 즉시,
- *                                         내림·기간 변경은 다음 갱신일부터(구글이 처리).
+ *  - billingProvider == PLAYSTORE       → 구글 구독 중. 다른 상품을 고르면 [변경하기] — 결제 금액이 오르면 즉시,
+ *                                         내려가면 다음 갱신일부터(구글이 처리).
  *  - null                               → [구독하기].
  *
  * 가격은 서버 priceKrw 가 아니라 **구글이 내려준 가격**을 우선 보여준다(실제 청구 금액과 같아야 한다).
@@ -126,7 +126,7 @@ internal fun MembershipPurchaseSection(
                             val plan = selected ?: return@clickable
                             val activity = context.findActivity() ?: return@clickable
                             // 결제 창을 다녀오면 이 화면이 다시 만들어질 수 있다 — 결과는 앱 범위(MembershipBilling.notice)로 받는다.
-                            MembershipBilling.launchPurchase(activity, plan) { o ->
+                            MembershipBilling.launchPurchase(activity, plan, currentBasePlanId) { o ->
                                 when (o) {
                                     is MembershipBilling.Outcome.Success ->
                                         if (o.deferred) {
@@ -160,7 +160,7 @@ internal fun MembershipPurchaseSection(
                 }
 
                 if (provider == "PLAYSTORE") {
-                    Note("등급을 올리면 바로 적용되고, 내리거나 기간을 바꾸면 다음 갱신일부터 적용돼요.")
+                    Note("결제 금액이 오르는 변경(등급 올림·기간 늘림)은 바로 적용되고, 내려가는 변경은 다음 갱신일부터 적용돼요.")
                     // 해지·결제 수단 변경·환불은 구글이 처리한다 — 앱은 Play 구독 관리 화면만 연다.
                     LinkText("구독 관리 · 해지 (Google Play)", bold = true) {
                         openUrl(context, MembershipBilling.manageUrl(context.packageName, currentProductId))
