@@ -230,16 +230,23 @@ object MembershipBilling : PurchasesUpdatedListener {
             if (old != null) {
                 val oldProductId = membershipProductOf(old)!!
                 deferred = tierRank(productId) <= tierRank(oldProductId)
-                val mode = if (deferred) SubscriptionProductReplacementParams.ReplacementMode.DEFERRED
-                else SubscriptionProductReplacementParams.ReplacementMode.WITH_TIME_PRORATION
-                productParams.setSubscriptionProductReplacementParams(
-                    SubscriptionProductReplacementParams.newBuilder()
-                        .setOldProductId(oldProductId).setReplacementMode(mode).build(),
-                )
-                flow.setSubscriptionUpdateParams(
-                    BillingFlowParams.SubscriptionUpdateParams.newBuilder()
-                        .setOldPurchaseToken(old.purchaseToken).build(),
-                )
+                val update = BillingFlowParams.SubscriptionUpdateParams.newBuilder()
+                    .setOldPurchaseToken(old.purchaseToken)
+                if (oldProductId == productId) {
+                    // 같은 상품의 기간만 바꿈(1→3개월 등) — 상품 단위 교체 파라미터(old == new 상품)는 Play 가
+                    //  '문제가 발생했습니다'로 거절한다(2026-10-13 실기기). 구독 단위 교체 방식으로 연다.
+                    update.setSubscriptionReplacementMode(
+                        BillingFlowParams.SubscriptionUpdateParams.ReplacementMode.DEFERRED,
+                    )
+                } else {
+                    val mode = if (deferred) SubscriptionProductReplacementParams.ReplacementMode.DEFERRED
+                    else SubscriptionProductReplacementParams.ReplacementMode.WITH_TIME_PRORATION
+                    productParams.setSubscriptionProductReplacementParams(
+                        SubscriptionProductReplacementParams.newBuilder()
+                            .setOldProductId(oldProductId).setReplacementMode(mode).build(),
+                    )
+                }
+                flow.setSubscriptionUpdateParams(update.build())
             }
             flow.setProductDetailsParamsList(listOf(productParams.build()))
 
