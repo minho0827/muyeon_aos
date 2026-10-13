@@ -9,10 +9,11 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization") version "1.9.0" apply false
 }
 
-val buildToolsVersion: String by extra("35.0.0")
+val buildToolsVersion: String by extra("36.0.0")
 val minSdkVersion: Int   by extra(24)
-val compileSdkVersion: Int by extra(35)
-val targetSdkVersion: Int  by extra(35)
+// Play 신규 제출은 targetSdk 36 이상 필수(2026-10 Play Console 출시 검토에서 오류로 차단됨).
+val compileSdkVersion: Int by extra(36)
+val targetSdkVersion: Int  by extra(36)
 val ndkVersion: String     by extra("27.1.12297006")
 val kotlinVersion: String  by extra("2.1.20")
 
