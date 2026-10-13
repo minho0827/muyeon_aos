@@ -80,6 +80,8 @@ fun LessonWizardScreen(
     var uploading by remember { mutableStateOf(false) }
     var submitting by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    // 레슨 판매 한도 초과(403 LESSON_MEMBERSHIP_REQUIRED) — 멤버십 화면으로 안내.
+    var lessonLimit by remember { mutableStateOf<LessonLimitException?>(null) }
     var showExit by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -207,7 +209,7 @@ fun LessonWizardScreen(
                     val result = if (lessonId != null) api.updateProduct(lessonId, draft.toPayload())
                     else api.createProduct(draft.toCreatePayload(isAcademy))
                     result.onSuccess { id -> onCreated(if (id > 0) id else (lessonId ?: 0)) }
-                        .onFailure { errorMessage = it.message }
+                        .onFailure { if (it is LessonLimitException) lessonLimit = it else errorMessage = it.message }
                     submitting = false
                 }
             }
@@ -225,6 +227,15 @@ fun LessonWizardScreen(
     }
     errorMessage?.let { msg ->
         QuoteDialog("알림", msg, "확인", onConfirm = { errorMessage = null }, onDismiss = { errorMessage = null })
+    }
+    lessonLimit?.let { e ->
+        QuoteDialog(
+            "레슨 등록 한도",
+            e.dialogMessage,
+            "멤버십 보기",
+            onConfirm = { lessonLimit = null; com.muyeon.app.ui.membership.MembershipActivity.start(context) },
+            onDismiss = { lessonLimit = null },
+        )
     }
 }
 
@@ -288,7 +299,7 @@ private fun StepIntro(
     WizardField("대표 사진") {
         PhotoStrip(d.images, uploading, onPickPhotos) { url -> onChange(d.copy(images = d.images - url)) }
     }
-    // 상세페이지 — 이미지형은 멤버십 DETAIL_IMAGE 이용권 보유자만.
+    // 상세페이지 — 이미지형은 멤버십 features 에 DETAIL_IMAGE 가 있는 회원만(서버·웹과 같은 판정).
     WizardField("상세 페이지") {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

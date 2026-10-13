@@ -121,6 +121,10 @@ data class MyMembership(
     val googleBasePlanId: String? = null,
     /** 자동 갱신 여부(지금 결제 수단 기준). 모르면 null. */
     val autoRenew: Boolean? = null,
+    /** 내 혜택 사용 현황(서버가 회원유형별로 정리). 구 서버엔 없다 → null(예전 자동견적 줄로 폴백). */
+    val benefitUsage: List<BenefitUsage>? = null,
+    /** 지금 등급·인증 유형으로 열린 기능(DETAIL_IMAGE 등). 구 서버·비활성이면 빈 목록. */
+    val features: Set<String> = emptySet(),
 ) {
     companion object {
         /**
@@ -141,6 +145,8 @@ data class MyMembership(
                 o.textOrNull("googleProductId") ?: google?.textOrNull("productId"),
                 o.textOrNull("googleBasePlanId") ?: google?.textOrNull("basePlanId"),
                 store?.boolOrNull("autoRenew") ?: o.boolOrNull("autoRenew"),
+                BenefitUsage.listFrom(o),
+                o.optJSONArray("features").featureKeys(),
             )
         }
     }
@@ -183,6 +189,18 @@ data class MembershipCopy(
 
 private fun JSONObject.boolOrNull(key: String): Boolean? =
     if (isNull(key)) null else (opt(key) as? Boolean)
+
+/** features — 문자열 배열(서버 기준). 객체 꼴({featureType})로 와도 받는다. */
+private fun JSONArray?.featureKeys(): Set<String> {
+    if (this == null) return emptySet()
+    return (0 until length()).mapNotNull { i ->
+        when (val v = opt(i)) {
+            is String -> v
+            is JSONObject -> v.textOrNull("featureType") ?: v.textOrNull("key")
+            else -> null
+        }?.takeIf { it.isNotBlank() }
+    }.toSet()
+}
 
 /** 공백뿐인 문자열·null 은 '값 없음'으로 본다. */
 private fun JSONObject.textOrNull(key: String): String? =
@@ -393,7 +411,8 @@ fun MembershipScreen(api: MembershipApi, onClose: () -> Unit) {
                         )
                     }
                     // 이번 달 남은 횟수 — 다 쓰기 전에 알아야 등급을 올릴지 판단할 수 있다.
-                    val remains = listOfNotNull(
+                    //  서버가 benefitUsage 를 주면 아래 '내 혜택 사용 현황' 카드가 대신한다(구 서버 폴백만).
+                    val remains = if (m.benefitUsage != null) emptyList() else listOfNotNull(
                         remainText("자동견적", m.limits?.autoQuotes, m.autoQuotesUsed),
                     )
                     if (remains.isNotEmpty()) {
@@ -416,6 +435,18 @@ fun MembershipScreen(api: MembershipApi, onClose: () -> Unit) {
                             }
                         }
                     }
+                }
+            }
+
+            // 내 혜택 사용 현황 — 공고·레슨·자동견적·노출·성과 등. 무료 회원도 공고·레슨 한도는 보인다(서버가 정리).
+            mine?.benefitUsage?.takeIf { it.isNotEmpty() }?.let { items ->
+                // '등급 올리기' = 지금 등급 다음 탭(무료면 첫 등급). 최고 등급이면 링크를 숨긴다.
+                val current = mine?.takeIf { it.active }?.tier
+                val next = if (current == null) availableTiers.firstOrNull()
+                else availableTiers.getOrNull(availableTiers.indexOf(current) + 1)
+                    ?.takeIf { availableTiers.indexOf(current) >= 0 }
+                Box(Modifier.padding(top = if (mine?.active == true) 0.dp else 14.dp)) {
+                    BenefitUsageCard(items, onUpgrade = next?.let { t -> { selectedTier = t } })
                 }
             }
 

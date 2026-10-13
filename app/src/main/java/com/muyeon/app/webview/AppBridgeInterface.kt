@@ -61,10 +61,88 @@ class AppBridgeInterface(
 
     /**
      * 네이티브 이식 완료 화면 라우팅 — 처리했으면 true.
+     *  실제 표는 [NativeActionRouter] 에 있다(멤버십 혜택 카드 등 네이티브 화면도 같은 표로 연다).
+     */
+    private fun openNative(action: String, d: JSONObject): Boolean =
+        NativeActionRouter.open(activity, action, d)
+
+    /** 상태 통지류 처리 — UI 를 열지 않고 네이티브 상태만 갱신한다. */
+    private fun onSilentAction(action: String, data: JSONObject) {
+        android.util.Log.d(TAG, "silent action=$action data=$data")
+        when (action) {
+            // 활성 회원유형은 로그만 찍고 버리면 안 된다 — 네이티브 화면이 "지금 학원인가 강사인가"를
+            //  판단할 유일한 근거다(iOS RoleGate.store 대응).
+            "syncActiveType" -> ActiveRole.store(activity, data.optString("type"))
+            // 플로팅(채팅 버튼·인증 책갈피) 표시 판정 — iOS WebViewModel.currentRoute / floatingHidden.
+            "routeChanged" -> com.muyeon.app.ui.floating.FloatingState.updateRoute(data.optString("path"))
+            "setFloatingHidden" ->
+                com.muyeon.app.ui.floating.FloatingState.updateFloatingHidden(data.optString("hidden") == "1")
+            // 웹이 window.__muyeonResult 를 등록함(페이지 로드당 1회). 예전 300ms 재시도 루프를 대신한다.
+            //  ★ 이 수신부가 없으면 백엔드 배포 스크립트(check-bridge-contract.js)가 죽은 액션으로 막는다.
+            "webReady" -> onWebReady()
+            // 웹이 인증 서류 제출·역할 추가·해제를 끝냄 → 플로팅(인증 책갈피 '심사중') 1회 재조회.
+            //  onResume 재조회는 웹이 서류를 보내기 전에 돌아서 '심사중'을 놓칠 수 있다.
+            "rolesChanged" -> com.muyeon.app.ui.floating.FloatingState.requestRefresh()
+        }
+    }
+
+    /** SPA 이동 — 웹이 심어둔 window.__nativeGo(path) 사용(전체 리로드 없이 라우팅). */
+    private fun navigateWeb(path: String) {
+        val safe = path.replace("'", "\\'")
+        webView.evaluateJavascript(
+            "(function(){ if(window.__nativeGo){ window.__nativeGo('$safe'); return 1; } return 0; })()",
+            null,
+        )
+    }
+
+    /**
+     * 액션 → 동등 웹 경로. null 이면 웹 대응 화면이 없는 네이티브 전용 기능.
+     *
+     * ★ 2026-09-06 기준 웹 폴백이 남은 건 아래 하나뿐이다 — 나머지 액션은 전부
+     *   openNative() 에서 네이티브 화면으로 처리된다(견적·레슨·이력서·리뷰·채팅·이용권·
+     *   학원 소속·멤버십 성과·예약 상세·공간 상세·유형 온보딩·이미지 뷰어).
+     */
+    private fun webPathFor(action: String, @Suppress("UNUSED_PARAMETER") d: JSONObject): String? =
+        when (action) {
+            // 학원 프로필 자체는 네이티브지만, academyId 가 없으면 열 대상이 없어 학원 목록 웹으로 보낸다.
+            "openAcademyProfile" -> "/academyProfile"
+            // 애플 로그인 — iOS 전용(웹 대응 화면 없음).
+            "getAppleLogin" -> null
+            else -> null
+        }
+
+    companion object {
+        private const val TAG = "AppBridge"
+
+        /** UI 를 열지 않는 상태 통지 액션 — 토스트/이동 금지. */
+        private val SILENT_ACTIONS = setOf(
+            "routeChanged",       // 웹 라우트 변경 통지(플로팅 버튼 판정용)
+            "setFloatingHidden",  // 웹 모달 표시/해제 → 플로팅 숨김
+            "syncActiveType",     // 활성 회원유형 동기화(X-Active-Type)
+            "closeModal",         // 네이티브 모달 닫기 요청
+            "webReady",           // 웹 결과 콜백 등록 완료(밀린 JS 흘리기)
+            "rolesChanged",       // 역할 제출·추가·해제 완료 → 플로팅 재조회
+        )
+    }
+}
+
+/**
+ * 액션명(웹 브릿지 계약, iOS 와 동일) → 네이티브 화면 표.
+ *
+ * AppBridge(웹 → 네이티브)와 네이티브 화면(멤버십 '내 혜택 사용 현황' 카드의 행 이동 등)이
+ * **같은 표**를 쓴다 — 액션별로 여는 화면이 플랫폼 안에서 갈라지지 않게.
+ *
+ * ★ 이 파일 밖으로 옮기지 말 것 — 백엔드 배포 스크립트(check-bridge-contract.js)가
+ *   AppBridgeInterface.kt 만 읽어 AOS 가 받는 액션을 센다.
+ */
+object NativeActionRouter {
+
+    /**
+     * 네이티브 이식 완료 화면 라우팅 — 처리했으면 true.
      *  iOS 대응: presentQuoteWizard / presentMyQuotes / presentReceivedQuotes /
      *  presentQuoteBrowse / presentAutoQuoteTemplates / presentLessonQuoteHub.
      */
-    private fun openNative(action: String, d: JSONObject): Boolean {
+    fun open(activity: Activity, action: String, d: JSONObject): Boolean {
         when (action) {
             "openQuoteWizard" -> com.muyeon.app.ui.quote.QuoteWizardActivity.start(
                 activity,
@@ -247,62 +325,13 @@ class AppBridgeInterface(
         return true
     }
 
-    /** 상태 통지류 처리 — UI 를 열지 않고 네이티브 상태만 갱신한다. */
-    private fun onSilentAction(action: String, data: JSONObject) {
-        android.util.Log.d(TAG, "silent action=$action data=$data")
-        when (action) {
-            // 활성 회원유형은 로그만 찍고 버리면 안 된다 — 네이티브 화면이 "지금 학원인가 강사인가"를
-            //  판단할 유일한 근거다(iOS RoleGate.store 대응).
-            "syncActiveType" -> ActiveRole.store(activity, data.optString("type"))
-            // 플로팅(채팅 버튼·인증 책갈피) 표시 판정 — iOS WebViewModel.currentRoute / floatingHidden.
-            "routeChanged" -> com.muyeon.app.ui.floating.FloatingState.updateRoute(data.optString("path"))
-            "setFloatingHidden" ->
-                com.muyeon.app.ui.floating.FloatingState.updateFloatingHidden(data.optString("hidden") == "1")
-            // 웹이 window.__muyeonResult 를 등록함(페이지 로드당 1회). 예전 300ms 재시도 루프를 대신한다.
-            //  ★ 이 수신부가 없으면 백엔드 배포 스크립트(check-bridge-contract.js)가 죽은 액션으로 막는다.
-            "webReady" -> onWebReady()
-            // 웹이 인증 서류 제출·역할 추가·해제를 끝냄 → 플로팅(인증 책갈피 '심사중') 1회 재조회.
-            //  onResume 재조회는 웹이 서류를 보내기 전에 돌아서 '심사중'을 놓칠 수 있다.
-            "rolesChanged" -> com.muyeon.app.ui.floating.FloatingState.requestRefresh()
-        }
-    }
-
-    /** SPA 이동 — 웹이 심어둔 window.__nativeGo(path) 사용(전체 리로드 없이 라우팅). */
-    private fun navigateWeb(path: String) {
-        val safe = path.replace("'", "\\'")
-        webView.evaluateJavascript(
-            "(function(){ if(window.__nativeGo){ window.__nativeGo('$safe'); return 1; } return 0; })()",
-            null,
-        )
-    }
-
     /**
-     * 액션 → 동등 웹 경로. null 이면 웹 대응 화면이 없는 네이티브 전용 기능.
-     *
-     * ★ 2026-09-06 기준 웹 폴백이 남은 건 아래 하나뿐이다 — 나머지 액션은 전부
-     *   openNative() 에서 네이티브 화면으로 처리된다(견적·레슨·이력서·리뷰·채팅·이용권·
-     *   학원 소속·멤버십 성과·예약 상세·공간 상세·유형 온보딩·이미지 뷰어).
+     * 웹뷰 밖(네이티브 화면)에서 액션을 연다. 표에 없으면 AppBridge 의 마지막 단계와 같은 안내 토스트
+     *  — 무반응 금지(죽은 버튼 방지). 웹 경로 폴백은 웹뷰가 있어야 해서 여기선 쓰지 않는다.
      */
-    private fun webPathFor(action: String, @Suppress("UNUSED_PARAMETER") d: JSONObject): String? =
-        when (action) {
-            // 학원 프로필 자체는 네이티브지만, academyId 가 없으면 열 대상이 없어 학원 목록 웹으로 보낸다.
-            "openAcademyProfile" -> "/academyProfile"
-            // 애플 로그인 — iOS 전용(웹 대응 화면 없음).
-            "getAppleLogin" -> null
-            else -> null
+    fun openOrNotice(activity: Activity, action: String, d: JSONObject = JSONObject()) {
+        if (!open(activity, action, d)) {
+            Toast.makeText(activity, "곧 제공될 기능이에요.", Toast.LENGTH_SHORT).show()
         }
-
-    companion object {
-        private const val TAG = "AppBridge"
-
-        /** UI 를 열지 않는 상태 통지 액션 — 토스트/이동 금지. */
-        private val SILENT_ACTIONS = setOf(
-            "routeChanged",       // 웹 라우트 변경 통지(플로팅 버튼 판정용)
-            "setFloatingHidden",  // 웹 모달 표시/해제 → 플로팅 숨김
-            "syncActiveType",     // 활성 회원유형 동기화(X-Active-Type)
-            "closeModal",         // 네이티브 모달 닫기 요청
-            "webReady",           // 웹 결과 콜백 등록 완료(밀린 JS 흘리기)
-            "rolesChanged",       // 역할 제출·추가·해제 완료 → 플로팅 재조회
-        )
     }
 }

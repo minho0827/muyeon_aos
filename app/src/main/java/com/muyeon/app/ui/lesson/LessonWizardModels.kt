@@ -282,8 +282,38 @@ class LessonWizardApi(internal val token: String?) {
         }
     }
 
-    /** 멤버십 상세이미지(DETAIL_IMAGE) 이용권 보유 여부. */
+    /**
+     * 레슨 이미지 꾸미기(DETAIL_IMAGE) 사용 가능 여부.
+     *  서버·웹과 같은 판정 — /monetization/membership/me 의 `features` 에 DETAIL_IMAGE 가 있는가.
+     *  (예전엔 이용권 행만 봐서 멤버십 등급으로 열린 회원도 잠겨 보일 수 있었다.)
+     *  features 가 없는 구 서버·조회 실패면 예전 이용권(entitlements) 판정으로 폴백한다.
+     */
     suspend fun hasDetailImage(): Boolean = withContext(Dispatchers.IO) {
+        membershipFeatures()?.let { return@withContext "DETAIL_IMAGE" in it }
+        hasDetailImageEntitlement()
+    }
+
+    /** membership/me `features`. 필드가 없거나 실패하면 null(폴백 신호). */
+    private fun membershipFeatures(): Set<String>? = runCatching {
+        val req = Request.Builder().url("$apiBase/monetization/membership/me")
+            .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }.withActiveType()
+            .build()
+        client.newCall(req).execute().use { res ->
+            if (!res.isSuccessful) return@use null
+            val arr = JSONObject(res.body?.string().orEmpty().ifBlank { "{}" }).optJSONArray("features")
+                ?: return@use null
+            (0 until arr.length()).mapNotNull { i ->
+                when (val v = arr.opt(i)) {
+                    is String -> v
+                    is JSONObject -> v.stringOrNull("featureType")
+                    else -> null
+                }
+            }.toSet()
+        }
+    }.getOrNull()
+
+    /** 구 판정 — DETAIL_IMAGE 이용권(ACTIVE) 보유 여부. */
+    private fun hasDetailImageEntitlement(): Boolean =
         runCatching {
             val req = Request.Builder().url("$apiBase/monetization/entitlements/me")
                 .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }.withActiveType()
@@ -298,7 +328,6 @@ class LessonWizardApi(internal val token: String?) {
                 }
             }
         }.getOrDefault(false)
-    }
 
     suspend fun uploadImage(bytes: ByteArray): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
@@ -327,11 +356,48 @@ class LessonWizardApi(internal val token: String?) {
                 client.newCall(req).execute().use { res ->
                     val text = res.body?.string().orEmpty()
                     if (!res.isSuccessful) {
-                        val msg = runCatching { JSONObject(text).optString("message") }.getOrNull()
-                        throw IllegalStateException(msg?.ifEmpty { null } ?: failMsg)
+                        val obj = runCatching { JSONObject(text) }.getOrNull()
+                        val msg = obj?.optString("message")?.ifEmpty { null }
+                        // 레슨 판매 한도 — 공고 한도(PostingLimitException)처럼 팝업으로 안내한다.
+                        if (obj?.optString("code") == LessonLimitException.CODE) {
+                            throw LessonLimitException.from(msg, obj)
+                        }
+                        throw IllegalStateException(msg ?: failMsg)
                     }
                     JSONObject(text.ifBlank { "{}" }).optInt("id", 0)
                 }
             }
         }
+}
+
+/**
+ * 레슨 판매 한도 초과(403 LESSON_MEMBERSHIP_REQUIRED).
+ *  서버 본문 = { code, message, limit, current } — 숫자가 data 안에 올 수도 있어 둘 다 본다.
+ *  숫자가 없으면(구 서버) 서버 message 를 그대로 쓴다.
+ */
+class LessonLimitException(
+    val serverMessage: String?,
+    val limit: Int?,
+    val current: Int?,
+) : Exception(serverMessage ?: CODE) {
+
+    /** 팝업 본문 — "레슨은 N개까지 올릴 수 있어요(현재 N개)". */
+    val dialogMessage: String
+        get() = if (limit != null && limit >= 0) {
+            "레슨은 ${limit}개까지 올릴 수 있어요" + (current?.let { "(현재 ${it}개)" } ?: "") +
+                ".\n멤버십 등급을 올리면 더 올릴 수 있어요."
+        } else serverMessage ?: "레슨 등록 한도를 넘었어요. 멤버십 등급을 올리면 더 올릴 수 있어요."
+
+    companion object {
+        const val CODE = "LESSON_MEMBERSHIP_REQUIRED"
+
+        fun from(message: String?, body: JSONObject): LessonLimitException {
+            val data = body.optJSONObject("data")
+            return LessonLimitException(
+                serverMessage = message,
+                limit = body.intOrNull("limit") ?: data?.intOrNull("limit"),
+                current = body.intOrNull("current") ?: data?.intOrNull("current") ?: data?.intOrNull("used"),
+            )
+        }
+    }
 }
