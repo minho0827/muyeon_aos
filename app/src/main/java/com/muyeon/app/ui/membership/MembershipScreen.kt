@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.muyeon.app.BuildConfig
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
+import com.muyeon.app.ui.quote.AutoQuoteHistoryActivity
 import com.muyeon.app.ui.quote.QuoteDialog
 import com.muyeon.app.ui.quote.QuoteNavBar
 import com.muyeon.app.ui.quote.intOrNull
@@ -396,11 +397,24 @@ fun MembershipScreen(api: MembershipApi, onClose: () -> Unit) {
                         remainText("자동견적", m.limits?.autoQuotes, m.autoQuotesUsed),
                     )
                     if (remains.isNotEmpty()) {
-                        Text(
-                            remains.joinToString(" · "),
-                            fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp,
-                            color = MuyeonColors.textSub,
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                remains.joinToString(" · "),
+                                fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp,
+                                color = MuyeonColors.textSub, modifier = Modifier.weight(1f, fill = false),
+                            )
+                            // 어느 요청에 자동견적이 쓰였는지 — 강사·학원만(무용수는 내역 화면이 막혀 있다).
+                            if (!isDancer) {
+                                Text(
+                                    "발송 내역 >",
+                                    fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold,
+                                    fontSize = 13.sp, lineHeight = 18.sp, color = MuyeonColors.primary,
+                                    modifier = Modifier
+                                        .padding(start = 8.dp)
+                                        .clickable { AutoQuoteHistoryActivity.start(context) },
+                                )
+                            }
+                        }
                     }
                 }
             }

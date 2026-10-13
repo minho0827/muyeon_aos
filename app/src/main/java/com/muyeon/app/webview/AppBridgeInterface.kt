@@ -96,6 +96,10 @@ class AppBridgeInterface(
             }
             "openQuoteBrowse" -> com.muyeon.app.ui.quote.QuoteBrowseActivity.start(activity)
             "openAutoQuoteTemplates" -> com.muyeon.app.ui.quote.QuoteAutoTemplatesActivity.start(activity)
+            // 자동견적 발송 내역(강사·학원 전용 — Activity 가 무용수 차단). data.month = "YYYY-MM"(선택).
+            "openAutoQuoteHistory" -> com.muyeon.app.ui.quote.AutoQuoteHistoryActivity.start(
+                activity, d.optString("month").ifEmpty { null },
+            )
             "openLessonQuoteHub" -> com.muyeon.app.ui.quote.QuoteDashboardActivity.start(activity, d.optString("role"))
             // 채팅 — 웹 대체 화면이 없어 유일하게 토스트로 막혀 있던 동선.
             "openChatList" -> com.muyeon.app.ui.chat.ChatActivity.startList(activity, d.optString("filter"))

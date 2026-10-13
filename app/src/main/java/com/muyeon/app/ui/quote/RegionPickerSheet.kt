@@ -21,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -171,12 +172,31 @@ fun RegionAddRow(
     token: String?,
     label: String = "지역 추가 (최대 3개)",
     enabled: Boolean = true,
+    /** iOS ActiveRegionAddRow 처럼 점선(dash 4) 테두리. 기본 false = 종전 실선. */
+    dashed: Boolean = false,
     onPick: (name: String, code: String?) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
+    val strokeColor = MuyeonColors.primary.copy(alpha = 0.4f)
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-            .border(1.dp, MuyeonColors.primary.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+            .then(
+                if (dashed) Modifier.drawBehind {
+                    val w = 1.dp.toPx()
+                    drawRoundRect(
+                        color = strokeColor,
+                        topLeft = androidx.compose.ui.geometry.Offset(w / 2, w / 2),
+                        size = androidx.compose.ui.geometry.Size(size.width - w, size.height - w),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(10.dp.toPx()),
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(
+                            width = w,
+                            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(
+                                floatArrayOf(4.dp.toPx(), 4.dp.toPx()),
+                            ),
+                        ),
+                    )
+                } else Modifier.border(1.dp, strokeColor, RoundedCornerShape(10.dp)),
+            )
             .clickable(enabled = enabled) { open = true }
             .padding(vertical = 11.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),

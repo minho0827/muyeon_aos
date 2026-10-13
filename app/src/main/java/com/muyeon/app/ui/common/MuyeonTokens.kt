@@ -39,6 +39,7 @@ object MuyeonColors {
     val tileLocked = Color(0xFFC5C4C4)       // colorC5C4C4 (잠금 타일 / '미보유' 텍스트)
     val tileIdle = Color(0xFFF7F7F7)         // colorF7F7F7 (기본 타일)
     val primaryDeep = Color(0xFFF4741A)      // colorF4741A — CTA 그라데이션 끝색
+    val hint = Color(0xFFAFAFAF)             // colorAFAFAF — 플레이스홀더/빈 상태 안내/삭제 아이콘
 }
 
 object MuyeonLayout {

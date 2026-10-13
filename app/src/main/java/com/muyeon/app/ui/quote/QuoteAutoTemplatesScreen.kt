@@ -151,6 +151,7 @@ fun QuoteAutoTemplatesScreen(api: AutoQuoteApi, onClose: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<EditorState?>(null) }
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     suspend fun load() {
         activeId = api.activeId()
@@ -189,6 +190,15 @@ fun QuoteAutoTemplatesScreen(api: AutoQuoteApi, onClose: () -> Unit) {
                     fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 16.sp,
                     color = MuyeonColors.secondary,
                     modifier = Modifier.padding(horizontal = 20.dp).padding(top = 16.dp),
+                )
+                // 어느 요청에 자동견적이 나갔는지 — 발송 내역 화면으로.
+                Text(
+                    "발송 내역 보기 >",
+                    fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                    lineHeight = 16.sp, color = MuyeonColors.primary,
+                    modifier = Modifier
+                        .padding(horizontal = 20.dp)
+                        .clickable { AutoQuoteHistoryActivity.start(context) },
                 )
 
                 if (templates.isEmpty()) {

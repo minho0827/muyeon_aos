@@ -157,6 +157,25 @@ class QuoteApi(private val token: String?) {
     /** 방문 종료(다음 N 기준 시각 갱신). POST /quotes/browse/visit */
     suspend fun endQuoteBrowseVisit() { call("/quotes/browse/visit", "POST") }
 
+    // MARK: - 자동견적 발송 내역(강사·원장)
+
+    /**
+     * 자동견적으로 나간 견적(커서 페이지). GET /quotes/auto-sent?month=YYYY-MM&before=&size=
+     *  요약(used/limit/remaining/skippedCount)은 첫 페이지(before 없음)에만 온다.
+     */
+    suspend fun getAutoSentQuotes(month: String, before: Int? = null, size: Int = 20): Result<AutoSentPage> {
+        var path = "/quotes/auto-sent?month=" + URLEncoder.encode(month, "UTF-8") + "&size=$size"
+        if (before != null) path += "&before=$before"
+        return call(path).map { AutoSentPage.from(it.asObject()) }
+    }
+
+    /** 횟수 소진으로 못 보낸 요청(커서 페이지). GET /quotes/auto-skipped?month=&before=&size= */
+    suspend fun getAutoSkippedQuotes(month: String, before: Int? = null, size: Int = 20): Result<AutoSkippedPage> {
+        var path = "/quotes/auto-skipped?month=" + URLEncoder.encode(month, "UTF-8") + "&size=$size"
+        if (before != null) path += "&before=$before"
+        return call(path).map { AutoSkippedPage.from(it.asObject()) }
+    }
+
     // MARK: - 대시보드
 
     /** 견적관리 허브 대시보드(타일 카운트 + 다가오는 일정). GET /quotes/dashboard?role= */
