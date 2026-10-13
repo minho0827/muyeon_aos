@@ -103,6 +103,21 @@ object MembershipBilling : PurchasesUpdatedListener {
     private val _changes = MutableSharedFlow<MyMembership?>(extraBufferCapacity = 4)
     val changes: SharedFlow<MyMembership?> = _changes.asSharedFlow()
 
+    /**
+     * 구매 결과 안내(제목 to 본문). 결제 창(Play)에서 돌아올 때 멤버십 화면이 다시 만들어질 수 있어
+     *  (2026-10-13 실기기 — 액티비티 재생성으로 화면 코루틴과 함께 '구독 완료' 팝업이 사라졌다)
+     *  화면이 아니라 여기에 둔다. 화면은 띄운 뒤 consumeNotice() 로 비운다.
+     */
+    private val _notice = MutableStateFlow<Pair<String, String>?>(null)
+    val notice: StateFlow<Pair<String, String>?> = _notice.asStateFlow()
+
+    fun consumeNotice() { _notice.value = null }
+
+    /** 화면 수명과 무관하게(앱 범위) 구매를 진행하고, 결과 안내를 notice 로 남긴다. toNotice 가 null 이면 안내 없음. */
+    fun launchPurchase(activity: Activity, plan: MembershipPlan, toNotice: (Outcome) -> Pair<String, String>?) {
+        scope.launch { toNotice(purchase(activity, plan))?.let { _notice.value = it } }
+    }
+
     /** launchBillingFlow 결과를 기다리는 구매(사용자가 누른 것). 없으면 콜백은 조용한 전송이다. */
     private var pendingFlow: CompletableDeferred<Outcome>? = null
     /** 미전송 구매 재전송이 도는 중인지(로그인·포그라운드 복귀가 겹쳐도 한 번만 돈다). */

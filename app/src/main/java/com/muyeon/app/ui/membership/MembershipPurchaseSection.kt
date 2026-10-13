@@ -70,15 +70,12 @@ internal fun MembershipPurchaseSection(
     mine: MyMembership?,
     isLoggedIn: Boolean,
     copy: MembershipCopy?,
-    onMembershipChanged: (MyMembership?) -> Unit,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val products by MembershipBilling.products.collectAsState()
     val purchasingId by MembershipBilling.purchasingId.collectAsState()
     val isRestoring by MembershipBilling.isRestoring.collectAsState()
     var selectedCode by remember { mutableStateOf<String?>(null) }
-    var alert by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     val provider = mine?.billingProvider
     val currentProductId = mine?.googleProductId?.takeIf { provider == "PLAYSTORE" }
@@ -128,20 +125,18 @@ internal fun MembershipPurchaseSection(
                         .clickable(enabled = enabled) {
                             val plan = selected ?: return@clickable
                             val activity = context.findActivity() ?: return@clickable
-                            scope.launch {
-                                when (val o = MembershipBilling.purchase(activity, plan)) {
-                                    is MembershipBilling.Outcome.Success -> {
-                                        o.mine?.let(onMembershipChanged)
-                                        alert = if (o.deferred) {
+                            // 결제 창을 다녀오면 이 화면이 다시 만들어질 수 있다 — 결과는 앱 범위(MembershipBilling.notice)로 받는다.
+                            MembershipBilling.launchPurchase(activity, plan) { o ->
+                                when (o) {
+                                    is MembershipBilling.Outcome.Success ->
+                                        if (o.deferred) {
                                             "변경 예약 완료" to "다음 갱신일부터 ${TierInfo.label(plan.tier, copy)} ${plan.months}개월 상품으로 바뀌어요."
                                         } else {
                                             "구독 완료" to "${TierInfo.label(o.mine?.tier ?: plan.tier, copy)} 멤버십 혜택이 열렸어요."
                                         }
-                                    }
-                                    MembershipBilling.Outcome.Pending ->
-                                        alert = "결제 대기 중" to "결제가 완료되면 자동으로 반영돼요."
-                                    MembershipBilling.Outcome.Cancelled -> Unit
-                                    is MembershipBilling.Outcome.Failed -> alert = "구독하지 못했어요" to o.message
+                                    MembershipBilling.Outcome.Pending -> "결제 대기 중" to "결제가 완료되면 자동으로 반영돼요."
+                                    MembershipBilling.Outcome.Cancelled -> null
+                                    is MembershipBilling.Outcome.Failed -> "구독하지 못했어요" to o.message
                                 }
                             }
                         }
@@ -175,7 +170,9 @@ internal fun MembershipPurchaseSection(
         }
     }
 
-    alert?.let { (title, message) -> InfoDialog(title, message) { alert = null } }
+    // 화면 반영은 MembershipBilling.changes 를 듣는 MembershipScreen 이 한다.
+    val notice by MembershipBilling.notice.collectAsState()
+    notice?.let { (title, message) -> InfoDialog(title, message) { MembershipBilling.consumeNotice() } }
 }
 
 /** 기간 행 — 개월 수 · 월 평균 · 할인율 · 가격. */

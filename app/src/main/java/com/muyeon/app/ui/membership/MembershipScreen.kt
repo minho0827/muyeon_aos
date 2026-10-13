@@ -456,7 +456,6 @@ fun MembershipScreen(api: MembershipApi, onClose: () -> Unit) {
                 // 기간·가격 + 구독 버튼(구글 플레이 결제)
                 MembershipPurchaseSection(
                     tier = selectedTier, plans = tierPlans, mine = mine, isLoggedIn = isLoggedIn, copy = copy,
-                    onMembershipChanged = { mine = it },
                 )
             }
             // 구독 필수 안내 + 구매 복원 + 약관. 결제 링크(웹·토스)는 두지 않는다.
