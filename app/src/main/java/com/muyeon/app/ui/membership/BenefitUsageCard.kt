@@ -102,7 +102,12 @@ private fun openBenefitAction(activity: Activity, action: String) {
         "openLessonManage" -> "openLessonBooking"
         else -> action
     }
-    NativeActionRouter.openOrNotice(activity, normalized)
+    // 레슨·견적 허브는 role 이 있어야 강사·학원 화면(개인레슨 관리)을 연다 — 없으면 일반회원 '레슨 요청 허브'가 열린다.
+    //  웹·iOS 와 같게 지금 활성 유형을 넘긴다(2026-10-13 실기기에서 강사가 요청 허브로 가던 문제).
+    val data = JSONObject().apply {
+        if (normalized == "openLessonQuoteHub") put("role", com.muyeon.app.webview.ActiveRole.current(activity))
+    }
+    NativeActionRouter.openOrNotice(activity, normalized, data)
 }
 
 /**
@@ -176,7 +181,7 @@ private fun BenefitUsageRow(item: BenefitUsage, onOpen: (() -> Unit)?, onUpgrade
                 )
             }
         }
-        if (item.parts.isNotEmpty()) {
+        if (item.parts.size > 1) {  // 종류가 하나뿐이면(예: 강사=대타) 같은 줄이 두 번 보이므로 큰 막대만
             // 공고 — 채용·대타·캐스팅 종류별 미니 줄.
             item.parts.forEach { p -> UsagePartRow(p, accent) }
         } else if (item.hasBar) {
