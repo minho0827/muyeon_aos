@@ -204,9 +204,11 @@ object MembershipBilling : PurchasesUpdatedListener {
 
     /**
      * 구독 시작 또는 변경. 이 Google 계정에 이용 중인 멤버십 구독이 있으면 교체(SubscriptionUpdateParams)로 연다 —
-     *  결제 금액이 오르면 즉시(WITH_TIME_PRORATION), 같거나 내려가면 다음 갱신일부터(DEFERRED).
-     *  ★ 2026-10-13 실기기: 구글은 금액이 오르는 교체(베이직 1→3개월 등)를 DEFERRED 로 요청하면 '문제가 발생했습니다'로 거절한다.
-     *   종전엔 등급만 보고 정해 같은 등급의 기간 늘림이 막혔다. 지금 상품의 금액을 모르면 등급으로 대신한다.
+     *  - 다른 상품(등급 변경): 결제 금액이 오르면 즉시(WITH_TIME_PRORATION), 같거나 내려가면 다음 갱신일부터(DEFERRED).
+     *    지금 상품의 금액을 모르면 등급으로 대신한다.
+     *  - 같은 상품의 기간만 바꿈(베이직 1→3개월 등): 즉시 + 새 기간 요금 전액(CHARGE_FULL_PRICE). 남은 기간은 구글이 이어 준다.
+     *    ★ 2026-10-13 실기기 진단: 같은 상품끼리는 DEFERRED·WITH_TIME_PRORATION·CHARGE_PRORATED_PRICE 가 모두
+     *     DEVELOPER_ERROR(5) 'Requested replacement mode is not supported for this request' 로 거절되고 이 방식만 된다.
      */
     suspend fun purchase(activity: Activity, plan: MembershipPlan, currentBasePlanId: String? = null): Outcome {
         if (_purchasingId.value != null) return Outcome.Cancelled
@@ -244,10 +246,10 @@ object MembershipBilling : PurchasesUpdatedListener {
                 val update = BillingFlowParams.SubscriptionUpdateParams.newBuilder()
                     .setOldPurchaseToken(old.purchaseToken)
                 if (oldProductId == productId) {
-                    // 같은 상품의 기간만 바꿈(1→3개월 등) — 상품 단위 교체 파라미터(old == new 상품) 대신 구독 단위 교체로 연다.
+                    // 같은 상품의 기간만 바꿈 — 구독 단위 교체 + CHARGE_FULL_PRICE 만 구글이 받아 준다(위 설명).
+                    deferred = false
                     update.setSubscriptionReplacementMode(
-                        if (deferred) BillingFlowParams.SubscriptionUpdateParams.ReplacementMode.DEFERRED
-                        else BillingFlowParams.SubscriptionUpdateParams.ReplacementMode.WITH_TIME_PRORATION,
+                        BillingFlowParams.SubscriptionUpdateParams.ReplacementMode.CHARGE_FULL_PRICE,
                     )
                 } else {
                     val mode = if (deferred) SubscriptionProductReplacementParams.ReplacementMode.DEFERRED
