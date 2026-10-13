@@ -84,6 +84,7 @@
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
+        android:name=".MuyeonApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -206,10 +207,6 @@
             android:exported="false"
             android:screenOrientation="portrait" />
         <!-- 알림함 우측 톱니 → 알림 수신 설정(종류별 푸시 on/off). -->
-        <activity
-            android:name=".ui.notification.NotificationSettingsActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
         <activity
             android:name=".ui.notification.NotificationSettingsActivity"
             android:exported="false"

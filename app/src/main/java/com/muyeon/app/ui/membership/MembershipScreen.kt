@@ -6,7 +6,6 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -41,7 +40,6 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
-import java.util.Locale
 
 /**
  * 멤버십/이용권 — iOS `Membership/MembershipView.swift` 이식.
@@ -61,6 +59,9 @@ data class MembershipPlan(
     val limits: MembershipLimits?,
     // PASS(기간권) | SUBSCRIPTION(월 자동결제) — 안내 문구를 판매 방식에 맞춘다(웹 MembershipPlans 와 같은 판정).
     val planKind: String? = null,
+    /** 구글 플레이 구독 상품 id·기본 요금제 id. channel=PLAYSTORE 로 받은 목록에만 있다. */
+    val googleProductId: String? = null,
+    val googleBasePlanId: String? = null,
 ) {
     val months: Int get() = maxOf(1, Math.round((durationDays ?: 30) / 30.0).toInt())
     val discountPct: Int
@@ -79,6 +80,7 @@ data class MembershipPlan(
                 meta?.stringOrNull("tier"),
                 meta?.optJSONObject("limits")?.let(MembershipLimits::from),
                 o.stringOrNull("planKind"),
+                o.textOrNull("googleProductId"), o.textOrNull("googleBasePlanId"),
             )
         }
     }
@@ -111,14 +113,33 @@ data class MyMembership(
     val limits: MembershipLimits?,
     val resumeViewsUsed: Int,
     val autoQuotesUsed: Int,
+    /** PLAYSTORE / APPSTORE / TOSS / null(자동결제 없음). 구 서버엔 없다 → null. */
+    val billingProvider: String? = null,
+    /** 구글 구독 중일 때 지금 상품(productId)·기간(basePlanId). */
+    val googleProductId: String? = null,
+    val googleBasePlanId: String? = null,
+    /** 자동 갱신 여부(지금 결제 수단 기준). 모르면 null. */
+    val autoRenew: Boolean? = null,
 ) {
     companion object {
+        /**
+         * 구글 필드는 서버와 동시에 만들어져 이름이 확정 전이다 — 두 모양을 다 받는다.
+         *  최상위 `googleProductId`/`googleBasePlanId`/`autoRenew` 또는 iOS `apple` 과 같은 꼴의 `google{productId,basePlanId,autoRenew}`.
+         */
         fun from(o: JSONObject): MyMembership {
             val usage = o.optJSONObject("usage")
+            val provider = o.textOrNull("billingProvider")
+            val google = o.optJSONObject("google")
+            val apple = o.optJSONObject("apple")
+            val store = if (provider == "APPSTORE") apple else google
             return MyMembership(
                 o.optBoolean("active", false), o.stringOrNull("tier"), o.stringOrNull("endAt"),
                 o.optJSONObject("limits")?.let(MembershipLimits::from),
                 usage?.optInt("resumeViews", 0) ?: 0, usage?.optInt("autoQuotes", 0) ?: 0,
+                provider,
+                o.textOrNull("googleProductId") ?: google?.textOrNull("productId"),
+                o.textOrNull("googleBasePlanId") ?: google?.textOrNull("basePlanId"),
+                store?.boolOrNull("autoRenew") ?: o.boolOrNull("autoRenew"),
             )
         }
     }
@@ -158,6 +179,9 @@ data class MembershipCopy(
         }
     }
 }
+
+private fun JSONObject.boolOrNull(key: String): Boolean? =
+    if (isNull(key)) null else (opt(key) as? Boolean)
 
 /** 공백뿐인 문자열·null 은 '값 없음'으로 본다. */
 private fun JSONObject.textOrNull(key: String): String? =
@@ -216,8 +240,9 @@ class MembershipApi(private val token: String?) {
     private val client = OkHttpClient()
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
 
+    // channel=PLAYSTORE — 구글 상품 id 가 연결된 상품만(앱은 구글 플레이 결제로만 판다).
     suspend fun plans(): Result<List<MembershipPlan>> =
-        call("/monetization/plans?featureType=MEMBERSHIP")
+        call("/monetization/plans?featureType=MEMBERSHIP&channel=PLAYSTORE")
             .map { JSONArray(it.ifBlank { "[]" }).map(MembershipPlan::from) }
 
     /** 멤버십 화면 문구 — 비로그인 공개 API. 실패하면 화면은 앱 기본 문구를 쓴다. */
@@ -228,8 +253,33 @@ class MembershipApi(private val token: String?) {
     suspend fun myMembership(): Result<MyMembership> =
         call("/monetization/membership/me").map { MyMembership.from(JSONObject(it.ifBlank { "{}" })) }
 
-    // ★ 구매 API 는 부르지 않는다. 앱에서 디지털 상품을 팔면 스토어 결제를 요구받는다.
-    //   결제는 웹에서만 받는다(2026-08-30 개편).
+    /** 구글 결제에 실을 obfuscatedAccountId — 서버가 구글 알림에서 구매자를 찾는 열쇠. */
+    suspend fun googleAccountToken(): Result<String> =
+        call("/monetization/google/account-token").map {
+            JSONObject(it).optString("obfuscatedAccountId").ifBlank { throw IllegalStateException("빈 토큰") }
+        }
+
+    /** HTTP 상태까지 필요한 호출 결과(구매 전송 — 4xx/5xx 에 따라 재전송 여부가 갈린다). */
+    class StatusResponse(val status: Int, val body: String)
+
+    /**
+     * 구글 구매 토큰을 서버로(서버가 구글에 확인·acknowledge 하고 멤버십을 연다). 200 본문 = /membership/me 와 같은 꼴.
+     *  basePlanId 를 모르면(이 기기에서 시작한 결제가 아님) 빼고 보낸다 — 서버가 구글 조회로 안다.
+     *  ★ 통신 오류만 실패(Result.failure)로, HTTP 오류는 상태 코드로 돌려준다.
+     */
+    suspend fun submitGooglePurchase(productId: String, basePlanId: String?, purchaseToken: String): Result<StatusResponse> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val body = JSONObject().put("productId", productId).put("purchaseToken", purchaseToken)
+                if (basePlanId != null) body.put("basePlanId", basePlanId)
+                val req = Request.Builder().url("$apiBase/monetization/google/purchases")
+                    .post(body.toString().toRequestBody(JSON))
+                    .addHeader("Content-Type", "application/json")
+                    .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
+                    .build()
+                client.newCall(req).execute().use { res -> StatusResponse(res.code, res.body?.string().orEmpty()) }
+            }
+        }
 
     private suspend fun call(
         path: String, method: String = "GET", body: JSONObject? = null, auth: Boolean = true,
@@ -260,11 +310,10 @@ class MembershipApi(private val token: String?) {
 }
 
 /**
- * 멤버십 안내 — iOS `MembershipView` 와 같은 구성.
+ * 멤버십 안내 + 구독 — iOS `MembershipView` 와 같은 구성.
  *
- * ★ 앱에서는 결제를 받지 않는다. 앱 안에서 디지털 상품을 팔면 스토어가 자체 결제를 요구한다.
- *   그래서 이 화면은 **현재 상태와 등급별 혜택을 알려주는 데까지만** 한다.
- *   결제 버튼도, 웹으로 보내는 링크도 두지 않는다.
+ * ★ 앱에서는 **구글 플레이 결제(자동갱신 구독)로만** 판다 — MembershipBilling / MembershipPurchaseSection.
+ *   앱 안 디지털 혜택이라 스토어 결제만 쓸 수 있다. 토스 결제는 웹 전용이며 웹 결제로 보내는 링크도 두지 않는다.
  */
 @Composable
 fun MembershipScreen(api: MembershipApi, onClose: () -> Unit) {
@@ -281,7 +330,15 @@ fun MembershipScreen(api: MembershipApi, onClose: () -> Unit) {
         launch { api.membershipCopy().onSuccess { copy = it } }
         api.plans().onSuccess { plans = it }.onFailure { toast = it.message }
         api.myMembership().onSuccess { mine = it }
+        // 이용 중인 등급이 있으면 그 등급 탭부터 보여준다.
+        mine?.takeIf { it.active }?.tier?.let { t -> if (plans.any { it.tier == t }) selectedTier = t }
         loading = false
+        // 구글 가격(현지 통화)은 화면을 띄운 뒤 받는다 — 받기 전엔 서버 가격을 보인다.
+        MembershipBilling.loadProducts(plans.mapNotNull { it.googleProductId }.distinct())
+    }
+    // 결제가 서버에 반영됐다(이 화면의 구매·앱 복귀 재전송·Play 콜백) — 다시 불러온다(iOS membershipDidChange).
+    LaunchedEffect(Unit) {
+        MembershipBilling.changes.collect { m -> mine = m ?: api.myMembership().getOrNull() ?: mine }
     }
 
     // 판매중인 등급만 노출(관리자가 등급을 내리면 자동으로 빠진다).
@@ -291,6 +348,7 @@ fun MembershipScreen(api: MembershipApi, onClose: () -> Unit) {
     // 무용수 활동 중에는 레슨 활동 불가(2026-09-26) — 레슨·자동견적 혜택 줄은 뺀다.
     val context = androidx.compose.ui.platform.LocalContext.current
     val isDancer = remember { com.muyeon.app.webview.ActiveRole.isDancer(context) }
+    val isLoggedIn = remember { !TokenManager.getAccessToken(context).isNullOrEmpty() }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         QuoteNavBar(title = "멤버십", onBack = onClose)
@@ -323,6 +381,14 @@ fun MembershipScreen(api: MembershipApi, onClose: () -> Unit) {
                             "${it}까지 이용 가능",
                             fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp,
                             color = MuyeonColors.textSub,
+                        )
+                    }
+                    // 스토어 구독 자동 갱신을 끈 상태 — 화면에 안 보이면 "해지가 안 된다"고 느낀다(iOS 와 같은 줄).
+                    if ((m.billingProvider == "PLAYSTORE" || m.billingProvider == "APPSTORE") && m.autoRenew == false) {
+                        Text(
+                            "자동 갱신 해지됨 · 이용 기간이 끝나면 멤버십이 종료돼요",
+                            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                            lineHeight = 18.sp, color = MuyeonColors.primary,
                         )
                     }
                     // 이번 달 남은 횟수 — 다 쓰기 전에 알아야 등급을 올릴지 판단할 수 있다.
@@ -387,61 +453,14 @@ fun MembershipScreen(api: MembershipApi, onClose: () -> Unit) {
                     )
                 }
 
-                // 기간·가격
-                tierPlans.forEach { p ->
-                    Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                            .border(1.dp, MuyeonColors.border, RoundedCornerShape(12.dp))
-                            .padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Text(
-                                "${p.months}개월",
-                                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
-                                lineHeight = 18.sp, color = MuyeonColors.textHead,
-                            )
-                            if (p.months > 1 && p.priceKrw != null) {
-                                Text(
-                                    String.format(Locale.KOREA, "월 평균 %,d원", p.priceKrw / p.months),
-                                    fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp,
-                                    color = MuyeonColors.textSub,
-                                )
-                            }
-                        }
-                        if (p.discountPct > 0) {
-                            Text(
-                                "${p.discountPct}%",
-                                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 12.sp,
-                                lineHeight = 15.sp, color = Color.White,
-                                modifier = Modifier.padding(end = 8.dp).clip(RoundedCornerShape(50))
-                                    .background(MuyeonColors.primary)
-                                    .padding(horizontal = 6.dp, vertical = 2.dp),
-                            )
-                        }
-                        Text(
-                            p.priceKrw?.let { String.format(Locale.KOREA, "%,d원", it) } ?: "-",
-                            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
-                            lineHeight = 19.sp, color = MuyeonColors.textHead,
-                        )
-                    }
-                }
-
-                // 안내 — 결제 링크는 두지 않는다(스토어 정책).
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    (TierInfo.notices(copy) + listOf(
-                        // 운영은 기간권 판매 중 — 자동결제 상품이 있을 때만 자동결제 문구를 보인다.
-                        if (plans.any { it.planKind == "SUBSCRIPTION" }) "멤버십은 30일마다 자동결제되며, 해지 후에도 남은 기간은 혜택이 유지됩니다."
-                        else "기간권은 자동으로 갱신되지 않으며, 구매한 기간이 끝나면 멤버십이 종료됩니다.",
-                    )).forEach {
-                        Text(
-                            "- $it",
-                            fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp,
-                            color = MuyeonColors.textSub,
-                        )
-                    }
-                }
+                // 기간·가격 + 구독 버튼(구글 플레이 결제)
+                MembershipPurchaseSection(
+                    tier = selectedTier, plans = tierPlans, mine = mine, isLoggedIn = isLoggedIn, copy = copy,
+                    onMembershipChanged = { mine = it },
+                )
             }
+            // 구독 필수 안내 + 구매 복원 + 약관. 결제 링크(웹·토스)는 두지 않는다.
+            MembershipLegalFooter(isLoggedIn = isLoggedIn, notices = TierInfo.notices(copy))
             Spacer(Modifier.height(12.dp))
         }
     }

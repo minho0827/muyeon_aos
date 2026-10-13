@@ -49,10 +49,14 @@ fun ChatVideoBubble(videoPath: String) {
         val url = fullUrl ?: return@LaunchedEffect
         thumb = withContext(Dispatchers.IO) {
             runCatching {
-                MediaMetadataRetriever().use { r ->
+                // use{} 는 API 29+ (AutoCloseable) — minSdk 24 라 직접 release 한다.
+                val r = MediaMetadataRetriever()
+                try {
                     r.setDataSource(url, HashMap())
                     // iOS 와 동일하게 0.5초 지점(검은 첫 프레임 회피).
                     r.getFrameAtTime(500_000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                } finally {
+                    r.release()
                 }
             }.getOrNull()
         }

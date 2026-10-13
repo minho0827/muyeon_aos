@@ -51,7 +51,7 @@ android {
         applicationId = "com.muyeon.app"
         minSdk = rootProject.extra["minSdkVersion"] as Int
         targetSdk = rootProject.extra["targetSdkVersion"] as Int
-        versionCode = 2
+        versionCode = 3
         versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -71,13 +71,18 @@ android {
     }
 
     signingConfigs {
+        // 업로드 키 시크릿은 ~/.gradle/gradle.properties 의 MUYEON_RELEASE_* (레포 밖).
+        // local.properties 의 MY_RELEASE_* 가 있으면 그것이 우선.
         create("release") {
-            val storeFilePath = localProperties.getProperty("MY_RELEASE_STORE_FILE")
+            fun signingProp(key: String): String? =
+                localProperties.getProperty("MY_RELEASE_$key")
+                    ?: (project.findProperty("MUYEON_RELEASE_$key") as String?)
+            val storeFilePath = signingProp("STORE_FILE")
             if (storeFilePath != null) {
                 storeFile = file(storeFilePath)
-                storePassword = localProperties.getProperty("MY_RELEASE_STORE_PASSWORD")
-                keyAlias = localProperties.getProperty("MY_RELEASE_KEY_ALIAS")
-                keyPassword = localProperties.getProperty("MY_RELEASE_KEY_PASSWORD")
+                storePassword = signingProp("STORE_PASSWORD")
+                keyAlias = signingProp("KEY_ALIAS")
+                keyPassword = signingProp("KEY_PASSWORD")
             }
         }
     }
@@ -202,6 +207,9 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.4.1")
     // 백그라운드 진입 시 소켓 pause (ProcessLifecycleOwner)
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
+    // 멤버십 구글 플레이 결제(자동갱신 구독) — MembershipBilling. BILLING 권한은 매니페스트 병합으로 들어온다.
+    //  billing-ktx 9.x 는 Kotlin 2.2+ 메타데이터라 지금 Kotlin(2.1)으로 못 읽는다 → 자바 판 + 코루틴 래퍼.
+    implementation("com.android.billingclient:billing:9.1.0")
 
     // Testing
     testImplementation("junit:junit:4.13.2")

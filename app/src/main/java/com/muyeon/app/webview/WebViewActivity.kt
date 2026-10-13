@@ -27,6 +27,9 @@ import com.muyeon.app.common_components.dialog.CustomDialog
 import com.muyeon.app.data.repository.LocationRepositoryImpl
 import com.muyeon.app.domain.use_cases.RequestNotificationPermissionUseCase
 import com.muyeon.app.result.ResultKeys
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
 import com.muyeon.app.result.payloadJsonFor
 import com.muyeon.app.result.resultKeys
 import com.muyeon.app.result.resultPayload
@@ -279,6 +282,15 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
         webView.addJavascriptInterface(
             AppBridgeInterface(this, webView, onWebReady = ::onWebReady), "AppBridge",
         )
+        // 구글 결제가 서버에 반영됐다(앱 복귀 재전송·Play 콜백) — 웹도 멤버십을 다시 읽게 한다(iOS ResultBus .membership).
+        //  보이는 동안만 듣는다. 멤버십 화면이 위에 있으면 그 화면이 닫힐 때 결과 키(MEMBERSHIP)로 알린다(중복 재조회 방지).
+        lifecycleScope.launch {
+            repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                com.muyeon.app.ui.membership.MembershipBilling.changes.collect {
+                    deliverResults(setOf(ResultKeys.MEMBERSHIP), null)
+                }
+            }
+        }
 
         android.util.Log.d("QR_DEBUG", "🟢 WebViewActivity onCreate savedInstanceState=${savedInstanceState != null}, QrPageManager.value=${com.muyeon.app.utils.QrPageManager.getValue()}")
         // QR 식사평가(qrPage)가 있으면 복원하지 말고 홈을 새로 로드해 DefaultLayout 폴링이 처리하도록 함

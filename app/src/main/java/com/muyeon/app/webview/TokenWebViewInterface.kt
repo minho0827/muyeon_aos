@@ -83,6 +83,8 @@ class TokenWebViewInterface(private val context: Context, private val webView: W
 
             val response = if (accessToken.isNotEmpty() && refreshToken.isNotEmpty()) {
                 TokenManager.saveTokens(context, accessToken, refreshToken)
+                // 로그인 직후 — 로그아웃 상태에서 결제했거나 못 보낸 구글 구매를 서버에 보낸다.
+                webView.post { com.muyeon.app.ui.membership.MembershipBilling.flushUnfinished() }
                 WebViewResponse.success(emptyList())
             } else {
                 WebViewResponse.serverError(emptyList<Any>())
