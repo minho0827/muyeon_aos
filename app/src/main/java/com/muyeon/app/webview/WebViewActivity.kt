@@ -672,11 +672,28 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
     @Deprecated("")
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack()
-        } else {
-            super.onBackPressed()
+        when {
+            webView.canGoBack() -> webView.goBack()
+            // 더 돌아갈 화면이 없고 이 화면이 앱의 마지막 화면이면 바로 끄지 않고 한 번 묻는다.
+            //  다른 화면 위에 열린 경우(isTaskRoot=false)는 그 화면으로 돌아가는 게 맞아서 묻지 않는다.
+            isTaskRoot -> showExitDialog()
+            else -> super.onBackPressed()
         }
+    }
+
+    private fun showExitDialog() {
+        dialogTitle = "앱을 종료할까요?"
+        dialogContent = null
+        dialogLeftButtonText = "취소"
+        dialogRightButtonText = "종료"
+        dialogButtonCount = 2
+        dialogAlignment = ContentAlignment.Middle
+        dialogOnLeftClick = { showDialog = false }
+        dialogOnRightClick = {
+            showDialog = false
+            finish()
+        }
+        showDialog = true
     }
 
     override fun onPause() {
