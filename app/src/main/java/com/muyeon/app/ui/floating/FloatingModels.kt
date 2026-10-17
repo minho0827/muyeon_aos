@@ -44,7 +44,11 @@ object FloatingState {
 
     // ⚠️ 이름을 setFloatingHidden 으로 두면 `var floatingHidden` 의 JVM setter 와
     //   시그니처가 겹쳐 컴파일이 막힌다(Platform declaration clash).
-    fun updateRoute(path: String) { currentRoute = path.ifEmpty { "/" } }
+    fun updateRoute(path: String) {
+        val next = path.ifEmpty { "/" }
+        if (currentRoute != next) hideChatFloat = false
+        currentRoute = next
+    }
     fun updateFloatingHidden(hidden: Boolean) { floatingHidden = hidden }
     fun updateHideChatFloat(hidden: Boolean) { hideChatFloat = hidden }
     fun requestRefresh() { refreshTick += 1 }
@@ -81,7 +85,9 @@ object FloatingState {
 /** 인증 상태 요약 — GET /me/roles/verification-status. */
 data class VerifyStatus(val role: String?, val status: String, val acknowledged: Boolean)
 
-class FloatingApi(private val token: String?) {
+class FloatingApi(private val tokenProvider: () -> String?) {
+    private val token: String? get() = tokenProvider()
+
 
     private val client = OkHttpClient()
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
@@ -97,6 +103,7 @@ class FloatingApi(private val token: String?) {
     }
 
     suspend fun acknowledgeVerification(role: String): Boolean = withContext(Dispatchers.IO) {
+        val token = token
         if (token.isNullOrEmpty()) return@withContext false
         runCatching {
             val body = JSONObject().put("role", role).toString()
@@ -113,6 +120,7 @@ class FloatingApi(private val token: String?) {
     suspend fun unreadCount(): Int = get("/chat/unread-count")?.optInt("count") ?: 0
 
     private suspend fun get(path: String): JSONObject? = withContext(Dispatchers.IO) {
+        val token = token
         if (token.isNullOrEmpty()) return@withContext null
         runCatching {
             val req = Request.Builder().url(apiBase + path)

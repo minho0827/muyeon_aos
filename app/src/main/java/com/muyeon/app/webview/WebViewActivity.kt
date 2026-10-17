@@ -326,7 +326,7 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
                 // 웹 라우트와 무관하게 살아 있는 네이티브 플로팅(채팅 버튼 + 인증 책갈피).
                 //  ComposeView 가 웹뷰 위에 깔려 있어 여기 붙이면 페이지 이동에도 사라지지 않는다.
                 com.muyeon.app.ui.floating.FloatingOverlay(
-                    api = remember { com.muyeon.app.ui.floating.FloatingApi(com.muyeon.app.utils.TokenManager.getAccessToken(this@WebViewActivity)) },
+                    api = remember { com.muyeon.app.ui.floating.FloatingApi { com.muyeon.app.utils.TokenManager.getAccessToken(this@WebViewActivity) } },
                     onOpenChatList = { com.muyeon.app.ui.chat.ChatActivity.startList(this@WebViewActivity, "") },
                     // 완료 화면 '시작하기' → 웹이 해당 유형 화면으로 전환한다.
                     onRoleApproved = { role ->

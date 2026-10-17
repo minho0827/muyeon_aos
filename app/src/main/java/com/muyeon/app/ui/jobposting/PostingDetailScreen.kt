@@ -74,6 +74,7 @@ fun PostingDetailScreen(
     onChanged: () -> Unit,
 ) {
     var summary by remember { mutableStateOf(initial) }
+    var confirmedApplicantName by remember(kind, id) { mutableStateOf<String?>(null) }
     var detail by remember { mutableStateOf(initial?.preview) }
     var loading by remember { mutableStateOf(initial?.preview == null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -81,7 +82,7 @@ fun PostingDetailScreen(
     val scope = rememberCoroutineScope()
 
     suspend fun reload() {
-        api.myPostings().onSuccess { list -> list.firstOrNull { it.kind == kind && it.id == id }?.let { summary = it } }
+        api.postingSummary(kind, id).onSuccess { row -> summary = MyPosting.from(row); confirmedApplicantName = row.stringOrNull("confirmedApplicantName") }
         api.loadPosting(kind, id)
             .onSuccess { detail = it }
             .onFailure { if (detail == null) error = it.message ?: "공고를 불러오지 못했어요." }
@@ -150,7 +151,7 @@ fun PostingDetailScreen(
                         HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
                         when (kind) {
                             "SUB" -> {
-                                SubStatusLine(api, id, d, status)
+                                SubStatusLine(d, status, confirmedApplicantName)
                                 SubBody(d)
                                 if (SubDispatch.isDispatch(d)) {
                                     HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
@@ -355,12 +356,8 @@ private fun SubBody(s: JSONObject) {
 // MARK: 대타 지금 상태 문장 — 웹 SubDetail(올린 분) 상태 안내와 같은 우선순위. ★ 2026-10-05
 
 @Composable
-private fun SubStatusLine(api: JobPostingApi, id: Int, s: JSONObject, status: String?) {
+private fun SubStatusLine(s: JSONObject, status: String?, confirmedName: String?) {
     val confirmedId = s.num("confirmedApplicationId")?.takeIf { it > 0 }
-    var confirmedName by remember(confirmedId) { mutableStateOf<String?>(null) }
-    LaunchedEffect(confirmedId) {
-        if (confirmedId != null) api.subApplicantName(id, confirmedId).onSuccess { confirmedName = it }
-    }
     val agreedPay = s.num("agreedPay")?.takeIf { it > 0 }
     val pendingOffers = s.optJSONObject("dispatchStats")?.num("pendingOffers") ?: 0
     val started = QuoteUi.parseDate(s.stringOrNull("classStartAt"))?.let { it <= System.currentTimeMillis() } ?: false

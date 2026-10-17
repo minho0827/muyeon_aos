@@ -79,6 +79,7 @@ object TokenManager {
             )
             putString(KEY_REFRESH_TOKEN_IV, Base64.encodeToString(refreshTokenIV, Base64.DEFAULT))
         }
+        notifyFloatingAuthChanged()
     }
 
     fun getAccessToken(context: Context): String? {
@@ -132,6 +133,13 @@ object TokenManager {
                 .remove(KEY_ACCESS_TOKEN_IV)
                 .remove(KEY_REFRESH_TOKEN_IV)
                 .remove(com.muyeon.app.utils.Constants.KEY_FCM_TOKEN)
+        }
+        notifyFloatingAuthChanged()
+    }
+
+    private fun notifyFloatingAuthChanged() {
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            com.muyeon.app.ui.floating.FloatingState.requestRefresh()
         }
     }
 

@@ -52,10 +52,54 @@ import com.muyeon.app.ui.resume.ResumeActivity
 import com.muyeon.app.ui.resume.ResumeOptions
 import com.muyeon.app.utils.TokenManager
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 /**
  * 내 공고 관리 + 공고 등록 — iOS `JobPosting/MyJobPostingsView` · `JobPostingWizardView` 이식.
  */
+private class PostingCursorState {
+    var items by mutableStateOf<List<MyPosting>>(emptyList())
+    var busy by mutableStateOf(false)
+    var hasMore by mutableStateOf(true)
+    var error by mutableStateOf<String?>(null)
+    var counts by mutableStateOf<Map<String, Int>>(emptyMap())
+    var archivedCount by mutableStateOf(0)
+    private var cursor: String? = null
+    private var generation = 0
+    private val visited = mutableSetOf<String>()
+    suspend fun load(reset: Boolean, fetch: suspend (String?) -> Result<JobPostingApi.PostingPage>) {
+        if (!reset && (busy || !hasMore)) return
+        if (reset) { generation++; cursor = null; visited.clear(); items = emptyList(); hasMore = true }
+        val current = generation
+        busy = true; error = null
+        try {
+            val page = fetch(cursor).getOrThrow()
+            currentCoroutineContext().ensureActive()
+            if (current != generation) return
+            if (page.hasMore && (page.nextCursor.isNullOrBlank() || page.nextCursor in visited)) throw IllegalStateException("다음 페이지를 확인할 수 없어요.")
+            items = (items + page.items).distinctBy { it.uid }
+            cursor = page.nextCursor; hasMore = page.hasMore
+            page.nextCursor?.let { visited.add(it) }
+            counts = page.counts; archivedCount = page.archivedCount
+        } catch (e: Exception) {
+            currentCoroutineContext().ensureActive()
+            if (current == generation) error = e.message ?: "공고를 불러오지 못했어요."
+        } finally { if (current == generation) busy = false }
+    }
+}
+
+@Composable
+private fun PostingCursorFooter(state: PostingCursorState, retry: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        state.error?.let { Text(it, fontFamily = customFontFamily, color = MuyeonColors.textSub) }
+        if (state.busy) CircularProgressIndicator(color = MuyeonColors.primary)
+        else if (state.hasMore || state.error != null) Text(
+            if (state.error != null) "다시 시도" else "더 보기", fontFamily = customFontFamily,
+            color = MuyeonColors.primary, modifier = Modifier.clickable(onClick = retry).padding(16.dp))
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyPostingsScreen(
@@ -67,39 +111,32 @@ fun MyPostingsScreen(
     onView: (MyPosting) -> Unit,
     onChanged: () -> Unit = {},
 ) {
-    var postings by remember { mutableStateOf<List<MyPosting>>(emptyList()) }
+    val pages = remember { PostingCursorState() }
+    val archivePages = remember { PostingCursorState() }
+    val postings = pages.items
     var tab by remember { mutableStateOf("ALL") }
-    var loading by remember { mutableStateOf(true) }
+    val loading = pages.busy && pages.items.isEmpty()
     var toast by remember { mutableStateOf<String?>(null) }
     var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     // 보관함 — 삭제가 소프트(ARCHIVED)라 되살릴 경로가 반드시 있어야 한다.
-    var archived by remember { mutableStateOf<List<MyPosting>>(emptyList()) }
+    val archived = archivePages.items
     var showArchived by remember { mutableStateOf(false) }
     var purgeTarget by remember { mutableStateOf<MyPosting?>(null) }
 
     suspend fun load() {
-        api.myPostings()
-            .onSuccess { postings = it }
-            .onFailure { toast = it.message ?: "공고 목록을 불러오지 못했어요." }
-        api.archived()
-            .onSuccess { archived = it }
-            .onFailure { toast = it.message ?: "보관함을 불러오지 못했어요." }
-        loading = false
+        val selectedTab = tab
+        pages.load(true) { cursor -> api.postingsPage(tab = selectedTab, cursor = cursor) }
+        archivePages.load(true) { cursor -> api.postingsPage(archived = true, cursor = cursor) }
     }
 
-    LaunchedEffect(Unit) { load() }
+    LaunchedEffect(tab) { load() }
 
     // 상태 변경·마감·복사·삭제 — 상세와 같은 PostingActions(2026-10-04).
     val actions = rememberPostingActions(api) { _, _ -> onChanged(); scope.launch { load() } }
 
-    // 인증 대기 공고는 status=OPEN 이지만 아직 모집 전 — '채용중' 탭에서 뺀다(전체에만 보임).
-    val filtered = (if (tab == "ALL") postings else postings.filter { it.status == tab && !(tab == "OPEN" && it.pendingVerification) })
-        .sortedWith(
-            compareBy<MyPosting> { JobPostingOptions.statusPriority(it.status) }
-                .thenByDescending { it.updatedAt ?: it.createdAt.orEmpty() }
-        )
+    val filtered = postings
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         QuoteNavBar(title = "내 공고", onBack = onClose)
@@ -111,7 +148,7 @@ fun MyPostingsScreen(
             JobPostingOptions.tabs.forEach { (key, label) ->
                 val on = tab == key
                 Text(
-                    label,
+                    "$label ${pages.counts[key] ?: 0}",
                     fontFamily = customFontFamily,
                     fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
                     fontSize = 13.sp, lineHeight = 16.sp, textAlign = TextAlign.Center,
@@ -127,9 +164,6 @@ fun MyPostingsScreen(
             loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                 CircularProgressIndicator(color = MuyeonColors.primary)
             }
-            filtered.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
-                QuoteEmptyState(Icons.Outlined.WorkOutline, "등록한 공고가 없어요", "공고를 올리면 지원자를 받을 수 있어요.")
-            }
             else -> PullToRefreshBox(
                 isRefreshing = refreshing,
                 onRefresh = { scope.launch { refreshing = true; load(); refreshing = false } },
@@ -140,6 +174,9 @@ fun MyPostingsScreen(
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
+                    if (filtered.isEmpty() && pages.error == null) item(key = "empty-postings") {
+                        QuoteEmptyState(Icons.Outlined.WorkOutline, "등록한 공고가 없어요", "공고를 올리면 지원자를 받을 수 있어요.")
+                    }
                     items(filtered, key = { it.uid }) { p ->
                         PostingCard(
                             p = p,
@@ -155,10 +192,13 @@ fun MyPostingsScreen(
                             },
                         )
                     }
-                    if (archived.isNotEmpty()) {
+                    item(key = "postings-footer") {
+                        PostingCursorFooter(pages) { scope.launch { pages.load(pages.items.isEmpty()) { cursor -> api.postingsPage(tab = tab, cursor = cursor) } } }
+                    }
+                    if (archivePages.archivedCount > 0 || archivePages.error != null) {
                         item(key = "archived-toggle") {
                             Text(
-                                if (showArchived) "보관함 닫기" else "보관함 (${archived.size})",
+                                if (showArchived) "보관함 닫기" else "보관함 (${archivePages.archivedCount})",
                                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
                                 lineHeight = 17.sp, color = MuyeonColors.textSub, textAlign = TextAlign.Center,
                                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
@@ -181,6 +221,9 @@ fun MyPostingsScreen(
                                     },
                                     onPurge = { purgeTarget = p },
                                 )
+                            }
+                            item(key = "archived-footer") {
+                                PostingCursorFooter(archivePages) { scope.launch { archivePages.load(archivePages.items.isEmpty()) { cursor -> api.postingsPage(archived = true, cursor = cursor) } } }
                             }
                         }
                     }

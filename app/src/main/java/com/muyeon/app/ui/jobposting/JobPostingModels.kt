@@ -307,6 +307,22 @@ class JobPostingApi(internal val token: String?) {
     private val client = OkHttpClient()
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
 
+    data class PostingPage(val items: List<MyPosting>, val hasMore: Boolean, val nextCursor: String?,
+        val counts: Map<String, Int>, val archivedCount: Int, val totalApplicants: Int)
+    suspend fun postingsPage(archived: Boolean = false, tab: String = "ALL", cursor: String? = null): Result<PostingPage> {
+        val suffix = cursor?.let { "&cursor=" + java.net.URLEncoder.encode(it, "UTF-8") } ?: ""
+        val path = if (archived) "/me/postings/archived/page" else "/me/postings/page"
+        return call("$path?limit=30&sort=native&tab=$tab$suffix").mapCatching {
+            val obj = JSONObject(it)
+            val counts = obj.optJSONObject("counts")
+            PostingPage(obj.getJSONArray("items").map(MyPosting::from), obj.getBoolean("hasMore"), obj.stringOrNull("nextCursor"),
+                counts?.keys()?.asSequence()?.associateWith { key -> counts.optInt(key) } ?: emptyMap(),
+                obj.optInt("archivedCount"), obj.optInt("totalApplicants"))
+        }
+    }
+    suspend fun postingSummary(kind: String, id: Int): Result<JSONObject> =
+        call("/me/postings/$kind/$id").mapCatching { JSONObject(it) }
+
     suspend fun myPostings(): Result<List<MyPosting>> =
         call("/me/postings").map { JSONArray(it.ifBlank { "[]" }).map(MyPosting::from) }
 
