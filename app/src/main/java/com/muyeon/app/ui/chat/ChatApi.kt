@@ -26,6 +26,17 @@ class ChatApi(private val token: String?) {
     suspend fun getRooms(): Result<List<ChatRoomSummary>> =
         call("/chat/rooms").map { JSONArray(it.ifBlank { "[]" }).map(ChatRoomSummary::from) }
 
+    data class RoomPage(val items: List<ChatRoomSummary>, val hasMore: Boolean, val nextCursor: String?)
+
+    suspend fun getRoomsPage(cursor: String? = null): Result<RoomPage> {
+        val query = cursor?.let { "&cursor=" + java.net.URLEncoder.encode(it, "UTF-8") } ?: ""
+        return call("/chat/rooms/page?limit=30$query").mapCatching {
+            val page = JSONObject(it)
+            RoomPage(page.getJSONArray("items").map(ChatRoomSummary::from), page.getBoolean("hasMore"),
+                if (page.isNull("nextCursor")) null else page.getString("nextCursor"))
+        }
+    }
+
     /** GET /chat/rooms/:id */
     suspend fun getRoomDetail(roomId: Int): Result<ChatRoomDetail> =
         call("/chat/rooms/$roomId").map { ChatRoomDetail.from(JSONObject(it)) }

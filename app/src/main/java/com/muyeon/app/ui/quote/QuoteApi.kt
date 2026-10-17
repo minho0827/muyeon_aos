@@ -42,6 +42,26 @@ class QuoteApi(private val token: String?) {
     suspend fun getMyQuotes(): Result<List<MyQuoteSummary>> =
         call("/quotes/me").map { it.asArray().map(MyQuoteSummary::from) }
 
+    data class MyQuotePage(val items: List<MyQuoteSummary>, val nextCursor: String?)
+    suspend fun getMyQuotesPage(cursor: String? = null): Result<MyQuotePage> {
+        val suffix = cursor?.let { "&cursor=" + java.net.URLEncoder.encode(it, "UTF-8") } ?: ""
+        return call("/quotes/me/page?limit=30$suffix").map {
+            val obj = it.asObject()
+            MyQuotePage(obj.getJSONArray("items").map(MyQuoteSummary::from),
+                if (obj.isNull("nextCursor")) null else obj.getString("nextCursor"))
+        }
+    }
+
+    data class SentQuotePage(val items: List<SentQuoteItem>, val nextCursor: String?)
+    suspend fun getSentQuotesPage(cursor: String? = null): Result<SentQuotePage> {
+        val suffix = cursor?.let { "&cursor=" + java.net.URLEncoder.encode(it, "UTF-8") } ?: ""
+        return call("/quotes/sent/page?limit=30$suffix").map {
+            val obj = it.asObject()
+            SentQuotePage(obj.getJSONArray("items").map(SentQuoteItem::from),
+                if (obj.isNull("nextCursor")) null else obj.getString("nextCursor"))
+        }
+    }
+
     /** 견적요청 상세 + 받은 견적. GET /quotes/:id */
     suspend fun getQuote(quoteId: Int): Result<QuoteDetailResponse> =
         call("/quotes/$quoteId").map { QuoteDetailResponse.from(it.asObject()) }

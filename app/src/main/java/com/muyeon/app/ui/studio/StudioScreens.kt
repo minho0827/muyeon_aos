@@ -39,6 +39,8 @@ import com.muyeon.app.ui.quote.QuoteAvatar
 import com.muyeon.app.ui.quote.QuoteEmptyState
 import com.muyeon.app.ui.quote.QuoteNavBar
 import com.muyeon.app.ui.quote.QuoteUi
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Date
@@ -53,24 +55,72 @@ import org.json.JSONObject
 // 회원 관리
 // ============================================================
 
+private class StudioCursorState<T>(private val keyOf: (T) -> Any) {
+    var items by mutableStateOf<List<T>>(emptyList())
+        private set
+    var loading by mutableStateOf(true)
+        private set
+    var busy by mutableStateOf(false)
+        private set
+    var hasMore by mutableStateOf(false)
+        private set
+    var error by mutableStateOf<String?>(null)
+        private set
+    private var cursor: String? = null
+    private var key = ""
+    private var generation = 0
+    private val seen = mutableSetOf<String>()
+
+    suspend fun load(queryKey: String, reset: Boolean, fetch: suspend (String?) -> Result<StudioApi.Page<T>>) {
+        if (!reset && (busy || !hasMore || queryKey != key)) return
+        if (reset) {
+            generation++; key = queryKey; items = emptyList(); cursor = null; seen.clear(); hasMore = false; loading = true
+        }
+        val version = generation
+        busy = true; error = null
+        try {
+            val result = fetch(if (reset) null else cursor)
+            currentCoroutineContext().ensureActive()
+            if (version != generation) return
+            result.mapCatching { page ->
+                require(!page.hasMore || (!page.nextCursor.isNullOrBlank() && page.nextCursor !in seen))
+                page
+            }.onSuccess { page ->
+                items = (items + page.items).distinctBy(keyOf)
+                cursor = page.nextCursor
+                page.nextCursor?.let { seen.add(it) }
+                hasMore = page.hasMore
+            }.onFailure { error = "목록을 불러오지 못했어요." }
+        } finally {
+            if (version == generation) { busy = false; loading = false }
+        }
+    }
+}
+
+@Composable
+private fun StudioPageFooter(busy: Boolean, hasMore: Boolean, error: String?, load: () -> Unit) {
+    if (hasMore || error != null) Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        error?.let { Text(it, color = MuyeonColors.textSub) }
+        androidx.compose.material3.TextButton(enabled = !busy, onClick = load) {
+            Text(if (busy) "불러오는 중…" else if (error != null) "다시 시도" else "더 보기")
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudioMembersScreen(api: StudioApi, onClose: () -> Unit, onOpenMember: (Int) -> Unit) {
-    var members by remember { mutableStateOf<List<StudioMemberSummary>>(emptyList()) }
+    val page = remember { StudioCursorState<StudioMemberSummary> { it.memberId } }
+    val members = page.items
     var query by remember { mutableStateOf("") }
-    var tab by remember { mutableStateOf("ACTIVE") }   // ACTIVE | LEAD
-    var loading by remember { mutableStateOf(true) }
+    var tab by remember { mutableStateOf("all") }
     var refreshing by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-
-    suspend fun load() {
-        loading = members.isEmpty()
-        api.members(query.ifEmpty { null }, tab).onSuccess { members = it }
-        loading = false
+    suspend fun load(reset: Boolean = true) = page.load("$tab\u0000$query", reset) { cursor ->
+        api.membersPage(query.ifEmpty { null }, tab, cursor)
     }
-
-    LaunchedEffect(tab) { load() }
+    LaunchedEffect(query, tab) { kotlinx.coroutines.delay(300); load() }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         QuoteNavBar(
@@ -90,7 +140,7 @@ fun StudioMembersScreen(api: StudioApi, onClose: () -> Unit, onOpenMember: (Int)
             Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            listOf("ACTIVE" to "수강 회원", "LEAD" to "상담 문의").forEach { (v, label) ->
+            listOf("all" to "전체 회원", "lead" to "상담 문의").forEach { (v, label) ->
                 val on = tab == v
                 Text(
                     label,
@@ -111,16 +161,11 @@ fun StudioMembersScreen(api: StudioApi, onClose: () -> Unit, onOpenMember: (Int)
             singleLine = true,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
         )
-        LaunchedEffect(query) {
-            kotlinx.coroutines.delay(300)   // 입력 디바운스
-            load()
-        }
-
         when {
-            loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
+            page.loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                 CircularProgressIndicator(color = MuyeonColors.primary)
             }
-            members.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
+            members.isEmpty() && page.error == null && !page.hasMore -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                 QuoteEmptyState(Icons.Outlined.Groups, "회원이 없어요", "수강권을 발급하면 여기에 모여요.")
             }
             else -> PullToRefreshBox(
@@ -132,6 +177,11 @@ fun StudioMembersScreen(api: StudioApi, onClose: () -> Unit, onOpenMember: (Int)
                     items(members, key = { it.memberId }) { m ->
                         MemberRow(m) { onOpenMember(m.memberId) }
                         HorizontalDivider(Modifier.padding(start = 20.dp), color = MuyeonColors.border)
+                    }
+                    item {
+                        StudioPageFooter(page.busy, page.hasMore, page.error) {
+                            scope.launch { load(reset = members.isEmpty()) }
+                        }
                     }
                 }
             }
@@ -426,101 +476,65 @@ private fun MemberLeadToggle(isLead: Boolean, onChange: (Boolean) -> Unit) {
 @Composable
 fun StudioSalesScreen(api: StudioApi, onClose: () -> Unit) {
     var summary by remember { mutableStateOf<SalesSummary?>(null) }
-    var sales by remember { mutableStateOf<List<StudioSale>>(emptyList()) }
-    var loading by remember { mutableStateOf(true) }
+    val page = remember { StudioCursorState<StudioSale> { it.id } }
     var refreshing by remember { mutableStateOf(false) }
     val (from, to) = remember { monthRange() }
     val scope = rememberCoroutineScope()
-
-    suspend fun load() {
-        api.salesSummary(from, to).onSuccess { summary = it }
-        api.sales(from, to).onSuccess { sales = it }
-        loading = false
+    var summaryGeneration by remember { mutableIntStateOf(0) }
+    suspend fun load(reset: Boolean = true) {
+        if (reset) { summaryGeneration++; summary = null }
+        val version = summaryGeneration
+        page.load("$from/$to", reset) fetch@{ cursor ->
+            if (reset) {
+                val totals = api.salesSummary(from, to)
+                currentCoroutineContext().ensureActive()
+                if (totals.isFailure) return@fetch Result.failure(totals.exceptionOrNull()!!)
+                if (version != summaryGeneration) return@fetch Result.failure(kotlinx.coroutines.CancellationException())
+                summary = totals.getOrNull()
+            }
+            api.salesPage(from, to, cursor)
+        }
     }
-
     LaunchedEffect(Unit) { load() }
-
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         QuoteNavBar(title = "매출 현황", onBack = onClose)
-
-        if (loading) {
-            Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
-                CircularProgressIndicator(color = MuyeonColors.primary)
-            }
-            return@Column
-        }
-
-        PullToRefreshBox(
-            isRefreshing = refreshing,
-            onRefresh = { scope.launch { refreshing = true; load(); refreshing = false } },
-            modifier = Modifier.weight(1f),
-        ) {
-            Column(
-                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp),
-            ) {
-                Column(
-                    Modifier.padding(top = 14.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp))
-                        .background(MuyeonColors.primary.copy(alpha = 0.07f)).padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text("$from ~ $to", fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 14.sp, color = MuyeonColors.textSub)
-                    Text(
-                        StudioDateFmt.won(summary?.total ?: 0),
-                        fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 26.sp,
-                        lineHeight = 31.sp, color = MuyeonColors.textHead,
-                    )
-                    val unpaid = summary?.unpaidTotal ?: 0
-                    if (unpaid > 0) {
-                        Text(
-                            "미수금 ${StudioDateFmt.won(unpaid)}",
-                            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                            lineHeight = 16.sp, color = MuyeonColors.danger,
-                        )
+        if (page.loading) {
+            Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) { CircularProgressIndicator(color = MuyeonColors.primary) }
+        } else PullToRefreshBox(isRefreshing = refreshing,
+            onRefresh = { scope.launch { refreshing = true; try { load() } finally { refreshing = false } } },
+            modifier = Modifier.weight(1f)) {
+            LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                item {
+                    Column(Modifier.padding(top = 14.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                        .background(MuyeonColors.primary.copy(alpha = 0.07f)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("$from ~ $to", fontFamily = customFontFamily, fontSize = 12.sp, color = MuyeonColors.textSub)
+                        Text(summary?.let { StudioDateFmt.won(it.total) } ?: "—", fontFamily = customFontFamily,
+                            fontWeight = FontWeight.Bold, fontSize = 26.sp, color = MuyeonColors.textHead)
+                        if ((summary?.unpaidTotal ?: 0) > 0) Text("미수금 ${StudioDateFmt.won(summary!!.unpaidTotal)}", color = MuyeonColors.danger)
                     }
                 }
-
-                StudioSection("항목별") {
-                    (summary?.byCategory ?: emptyList()).forEach { c ->
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                "${c.label} ${c.count}건",
-                                fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 17.sp,
-                                color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
-                            )
-                            Text(
-                                StudioDateFmt.won(c.amount),
-                                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
-                                lineHeight = 17.sp, color = MuyeonColors.textHead,
-                            )
-                        }
-                    }
-                }
-
-                StudioSection("매출 내역 ${sales.size}건") {
-                    sales.forEach { s ->
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(
-                                    s.title,
-                                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
-                                    lineHeight = 17.sp, color = MuyeonColors.textHead,
-                                )
-                                Text(
-                                    "${s.categoryLabel} · ${QuoteUi.relativeTime(s.soldAt)}",
-                                    fontFamily = customFontFamily, fontSize = 11.sp, lineHeight = 14.sp,
-                                    color = MuyeonColors.secondary,
-                                )
+                item {
+                    StudioSection("항목별") {
+                        (summary?.byCategory ?: emptyList()).forEach { c ->
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Text("${c.label} ${c.count}건", Modifier.weight(1f), fontFamily = customFontFamily, fontSize = 14.sp)
+                                Text(StudioDateFmt.won(c.amount), fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold)
                             }
-                            Text(
-                                StudioDateFmt.won(s.amount),
-                                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
-                                lineHeight = 17.sp, color = MuyeonColors.textHead,
-                            )
                         }
                     }
                 }
-                Spacer(Modifier.height(12.dp))
+                item { Text(if (page.hasMore) "불러온 매출 내역 ${page.items.size}건" else "매출 내역 ${page.items.size}건", fontWeight = FontWeight.Bold) }
+                items(page.items, key = { it.id }) { sale ->
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(sale.title, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, color = MuyeonColors.textHead)
+                            Text("${sale.categoryLabel} · ${QuoteUi.relativeTime(sale.soldAt)}", fontFamily = customFontFamily, fontSize = 11.sp, color = MuyeonColors.secondary)
+                        }
+                        Text(StudioDateFmt.won(sale.amount), fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                item { StudioPageFooter(page.busy, page.hasMore, page.error) { scope.launch { load(reset = page.items.isEmpty()) } } }
+                item { Spacer(Modifier.height(12.dp)) }
             }
         }
     }

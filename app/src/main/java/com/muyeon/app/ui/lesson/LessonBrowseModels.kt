@@ -136,20 +136,20 @@ class LessonBrowseApi(private val token: String?) {
     private val client = OkHttpClient()
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
 
-    /** 숨고식 혼합 둘러보기 피드(포트폴리오+리뷰). browse=1&feed=1. */
-    suspend fun feed(filter: LessonBrowseFilter): Result<List<BrowseFeedItem>> = runCatching {
-        val q = mutableListOf("browse=1", "feed=1")
+    data class FeedPage(val items: List<BrowseFeedItem>, val hasMore: Boolean, val nextCursor: String?)
+
+    suspend fun feedPage(filter: LessonBrowseFilter, cursor: String? = null): Result<FeedPage> = runCatching {
+        val q = mutableListOf("limit=30")
         filter.genre?.let { q += "genre=" + URLEncoder.encode(it, "UTF-8") }
-        filter.sidoCode?.let { q += "regionCode=$it" }
-        filter.purposes.takeIf { it.isNotEmpty() }?.let {
-            q += "purposes=" + URLEncoder.encode(it.joinToString(","), "UTF-8")
-        }
-        filter.ageGroups.takeIf { it.isNotEmpty() }?.let {
-            q += "ageGroups=" + URLEncoder.encode(it.joinToString(","), "UTF-8")
-        }
-        val body = get("/lesson-products?" + q.joinToString("&")) ?: error("목록을 불러오지 못했어요.")
-        val arr = JSONArray(body.ifBlank { "[]" })
-        (0 until arr.length()).mapNotNull { arr.optJSONObject(it)?.let(BrowseFeedItem::from) }
+        filter.sidoCode?.let { q += "regionCode=" + URLEncoder.encode(it, "UTF-8") }
+        filter.purposes.takeIf { it.isNotEmpty() }?.let { q += "purpose=" + URLEncoder.encode(it.joinToString(","), "UTF-8") }
+        filter.ageGroups.takeIf { it.isNotEmpty() }?.let { q += "ageGroup=" + URLEncoder.encode(it.joinToString(","), "UTF-8") }
+        cursor?.let { q += "cursor=" + URLEncoder.encode(it, "UTF-8") }
+        val body = get("/lesson-products/feed/page?" + q.joinToString("&")) ?: error("목록을 불러오지 못했어요.")
+        val page = JSONObject(body)
+        val rows = page.getJSONArray("items")
+        FeedPage((0 until rows.length()).map { BrowseFeedItem.from(rows.getJSONObject(it)) },
+            page.getBoolean("hasMore"), if (page.isNull("nextCursor")) null else page.getString("nextCursor"))
     }
 
     /** 상세. view=1 은 조회수 증가(첫 진입에만). */

@@ -12,6 +12,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -63,10 +67,43 @@ fun LessonBrowseScreen(
     var loading by remember { mutableStateOf(true) }
     var facet by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(filter, reloadSignal) {
-        loading = items.isEmpty()
-        api.feed(filter).onSuccess { items = it }
+    var loadingMore by remember { mutableStateOf(false) }
+    var nextCursor by remember { mutableStateOf<String?>(null) }
+    var hasMore by remember { mutableStateOf(false) }
+    var loadError by remember { mutableStateOf<String?>(null) }
+    var generation by remember { mutableIntStateOf(0) }
+    val cursors = remember { mutableSetOf<String>() }
+    val scope = rememberCoroutineScope()
+
+    suspend fun load(append: Boolean) {
+        if (append && (loading || loadingMore || !hasMore)) return
+        val version = generation
+        if (append) loadingMore = true else loading = true
+        loadError = null
+        val result = api.feedPage(filter, if (append) nextCursor else null)
+        currentCoroutineContext().ensureActive()
+        if (version != generation) return
+        result.mapCatching { page ->
+            require(!page.hasMore || (!page.nextCursor.isNullOrBlank() && page.nextCursor !in cursors))
+            page
+        }.onSuccess { page ->
+            items = ((if (append) items else emptyList()) + page.items).distinctBy { "${it.type}-${it.itemId}" }
+            nextCursor = page.nextCursor
+            page.nextCursor?.let { cursors.add(it) }
+            hasMore = page.hasMore
+        }.onFailure { loadError = "콘텐츠를 불러오지 못했어요." }
         loading = false
+        loadingMore = false
+    }
+
+    LaunchedEffect(filter, reloadSignal) {
+        generation++
+        items = emptyList()
+        nextCursor = null
+        hasMore = false
+        loadingMore = false
+        cursors.clear()
+        load(false)
     }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
@@ -89,7 +126,7 @@ fun LessonBrowseScreen(
             loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                 CircularProgressIndicator(color = MuyeonColors.primary)
             }
-            items.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
+            items.isEmpty() && loadError == null && !hasMore -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                 Text(
                     "조건에 맞는 콘텐츠가 없어요.",
                     fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.textSub,
@@ -107,6 +144,15 @@ fun LessonBrowseScreen(
                         // 리뷰 카드는 리뷰 상세로, 포트폴리오는 콘텐츠 상세로(iOS 라우팅과 동일).
                         if (item.isReview) onSelectReview(item.itemId)
                         else onSelectPortfolio(item.itemId)
+                    }
+                }
+                if (hasMore || loadError != null) item(span = { GridItemSpan(maxLineSpan) }) {
+                    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        loadError?.let { Text(it, color = MuyeonColors.textSub) }
+                        androidx.compose.material3.TextButton(enabled = !loading && !loadingMore,
+                            onClick = { scope.launch { load(items.isNotEmpty()) } }) {
+                            Text(if (loadingMore) "불러오는 중…" else if (loadError != null) "다시 시도" else "더 보기")
+                        }
                     }
                 }
             }

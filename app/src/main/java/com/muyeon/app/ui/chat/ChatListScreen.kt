@@ -77,14 +77,17 @@ fun ChatListScreen(
         when {
             state.isLoading && rooms.isEmpty() -> ChatListSkeleton()
             state.loadFailed && rooms.isEmpty() -> LoadFailed { scope.launch { state.retry() } }
-            rooms.isEmpty() -> EmptyMessage(Icons.Outlined.ChatBubbleOutline, "진행 중인 채팅이 없어요.")
-            filtered.isEmpty() -> EmptyMessage(Icons.Outlined.FilterList, "조건에 맞는 채팅이 없어요.")
+            rooms.isEmpty() && !state.hasMore -> EmptyMessage(Icons.Outlined.ChatBubbleOutline, "진행 중인 채팅이 없어요.")
+            filtered.isEmpty() && !state.hasMore -> EmptyMessage(Icons.Outlined.FilterList, "조건에 맞는 채팅이 없어요.")
             else -> PullToRefreshBox(
                 isRefreshing = state.refreshing,
                 onRefresh = { scope.launch { state.pullToRefresh() } },
                 modifier = Modifier.fillMaxSize(),
             ) {
                 LazyColumn(Modifier.fillMaxSize()) {
+                    if (filtered.isEmpty()) item {
+                        Text("현재 불러온 대화 중에는 없어요. 이전 대화를 더 확인해 보세요.", Modifier.padding(20.dp))
+                    }
                     itemsIndexed(filtered, key = { _, r -> r.roomId }) { idx, room ->
                         // iOS allowsFullSwipe:false — 끝까지 밀어도 자동 실행 안 되고 버튼을 눌러야 나간다.
                         SwipeToLeaveRow(
@@ -97,6 +100,15 @@ fun ChatListScreen(
                                 Modifier.background(MuyeonColors.surface).padding(start = 76.dp),
                                 color = MuyeonColors.border,
                             )
+                        }
+                    }
+                    if (state.hasMore || state.pageFailed) item {
+                        Column(Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            if (state.pageFailed) Text("이전 대화를 불러오지 못했어요.")
+                            androidx.compose.material3.TextButton(
+                                enabled = !state.loadingMore,
+                                onClick = { scope.launch { state.loadMore() } },
+                            ) { Text(if (state.loadingMore) "불러오는 중…" else if (state.pageFailed) "다시 시도" else "이전 대화 더 보기") }
                         }
                     }
                 }

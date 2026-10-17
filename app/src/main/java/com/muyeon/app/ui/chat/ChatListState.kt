@@ -37,6 +37,16 @@ class ChatListState(private val api: ChatApi) {
     var refreshing by mutableStateOf(false)
         private set
 
+    var hasMore by mutableStateOf(false)
+        private set
+    var loadingMore by mutableStateOf(false)
+        private set
+    var pageFailed by mutableStateOf(false)
+        private set
+    private var nextCursor: String? = null
+    private val seenCursors = mutableSetOf<String>()
+    private val pageMutex = kotlinx.coroutines.sync.Mutex()
+
     /** 필터도 여기 둔다 — 방을 다녀와도 유지되어야 한다. */
     var filter by mutableStateOf(ChatRoomFilter.ALL)
 
@@ -147,7 +157,7 @@ class ChatListState(private val api: ChatApi) {
         }
         if (unread != r.unreadCount) r = r.copy(unreadCount = unread)
         if (r == rooms[idx]) return
-        rooms = rooms.toMutableList().also { it[idx] = r }.sortedByDescending { it.lastMessageAt ?: "" }
+        rooms = rooms.toMutableList().also { it[idx] = r }.sortedWith(compareByDescending<ChatRoomSummary> { it.lastMessageAt ?: "" }.thenBy { it.roomId })
     }
 
     /** a 가 b 보다 이전이 아니면 true. 시각을 해석하지 못하면 갱신 쪽으로 판단한다. */
@@ -169,18 +179,52 @@ class ChatListState(private val api: ChatApi) {
      *  @param silent 이미 목록이 있으면 스켈레톤을 띄우지 않는다(iOS `if rooms.isEmpty` 규칙).
      */
     suspend fun load(silent: Boolean = false) {
-        if (!silent && rooms.isEmpty()) isLoading = true
-        api.getRooms()
-            .onSuccess { list ->
+        pageMutex.lock()
+        try {
+            if (!silent && rooms.isEmpty()) isLoading = true
+            api.getRoomsPage().mapCatching { page ->
+                require(!page.hasMore || !page.nextCursor.isNullOrBlank())
+                page
+            }.onSuccess { page ->
                 val active = activeRoomId
-                rooms = list
+                rooms = page.items.distinctBy { it.roomId }
                     .map { if (it.roomId == active && it.unreadCount != 0) it.copy(unreadCount = 0) else it }
-                    .sortedByDescending { it.lastMessageAt ?: "" }
+                    .sortedWith(compareByDescending<ChatRoomSummary> { it.lastMessageAt ?: "" }.thenBy { it.roomId })
+                nextCursor = page.nextCursor
+                seenCursors.clear()
+                page.nextCursor?.let { seenCursors.add(it) }
+                hasMore = page.hasMore
+                pageFailed = false
                 loadFailed = false
-            }
-            // 캐시가 있으면 조용히 유지 — 일시적 실패로 목록을 비우지 않는다.
-            .onFailure { if (rooms.isEmpty()) loadFailed = true }
-        isLoading = false
+            }.onFailure { if (rooms.isEmpty()) loadFailed = true }
+        } finally {
+            isLoading = false
+            pageMutex.unlock()
+        }
+    }
+
+    suspend fun loadMore() {
+        if (!pageMutex.tryLock()) return
+        try {
+            val cursor = nextCursor ?: return
+            if (!hasMore) return
+            loadingMore = true
+            pageFailed = false
+            api.getRoomsPage(cursor).mapCatching { page ->
+                require(!page.hasMore || (!page.nextCursor.isNullOrBlank() && page.nextCursor !in seenCursors))
+                page
+            }.onSuccess { page ->
+                val active = activeRoomId
+                rooms = (rooms + page.items.map { if (it.roomId == active) it.copy(unreadCount = 0) else it })
+                    .distinctBy { it.roomId }.sortedWith(compareByDescending<ChatRoomSummary> { it.lastMessageAt ?: "" }.thenBy { it.roomId })
+                nextCursor = page.nextCursor
+                page.nextCursor?.let { seenCursors.add(it) }
+                hasMore = page.hasMore
+            }.onFailure { pageFailed = true }
+        } finally {
+            loadingMore = false
+            pageMutex.unlock()
+        }
     }
 
     suspend fun pullToRefresh() {
@@ -203,7 +247,7 @@ class ChatListState(private val api: ChatApi) {
     private fun upsert(room: ChatRoomSummary) {
         val fixed = if (room.roomId == activeRoomId && room.unreadCount != 0) room.copy(unreadCount = 0) else room
         rooms = (listOf(fixed) + rooms.filterNot { it.roomId == room.roomId })
-            .sortedByDescending { it.lastMessageAt ?: "" }
+            .sortedWith(compareByDescending<ChatRoomSummary> { it.lastMessageAt ?: "" }.thenBy { it.roomId })
     }
 
     private companion object {

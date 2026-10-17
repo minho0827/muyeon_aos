@@ -2,6 +2,12 @@ package com.muyeon.app.webview
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -251,17 +257,14 @@ class FileWebViewInterface(
     }
 
     fun processSelectedImages(uri: Uri) {
-        try {
-            val fileInfo = processImageFile(uri)
-            if (fileInfo != null) {
-                sendFilesToWeb(listOf(fileInfo))
-
-            } else {
-                sendErrorToWeb("ImageConversionFailed", 415)
-            }
-        } catch (e: Exception) {
-            Log.d("FileWebViewInterface", "Error: $e")
+        val owner = context as? LifecycleOwner ?: run {
             sendErrorToWeb("ImageConversionFailed", 415)
+            return
+        }
+        owner.lifecycleScope.launch {
+            val fileInfo = withContext(Dispatchers.IO) { processImageFile(uri) }
+            if (fileInfo != null) sendFilesToWeb(listOf(fileInfo))
+            else sendErrorToWeb("ImageConversionFailed", 415)
         }
     }
 
@@ -280,9 +283,22 @@ class FileWebViewInterface(
             val fileName = fullFileName.substringBeforeLast('.', fullFileName)
             val fileSize = getFileSize(uri)
             val fileExt = getFileExtension(fullFileName, mimeType)
-            val inputStream = context.contentResolver.openInputStream(uri) ?: return null
-            val bytes = inputStream.readBytes()
-            inputStream.close()
+            // 서버 이미지 제한(10MiB)과 맞춘다. SIZE가 없는 제공자도 읽는 동안 제한한다.
+            val maxBytes = 10 * 1024 * 1024
+            if (fileSize > maxBytes) return null
+            val bytes = context.contentResolver.openInputStream(uri)?.use { input ->
+                val output = ByteArrayOutputStream()
+                val chunk = ByteArray(8192)
+                var total = 0
+                while (true) {
+                    val count = input.read(chunk)
+                    if (count < 0) break
+                    total += count
+                    if (total > maxBytes) return null
+                    output.write(chunk, 0, count)
+                }
+                output.toByteArray()
+            } ?: return null
 
             if (!isValidImageContent(bytes)) return null
 

@@ -235,6 +235,29 @@ class StudioApi(private val token: String?) {
     private val client = OkHttpClient()
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
 
+    data class Page<T>(val items: List<T>, val hasMore: Boolean, val nextCursor: String?)
+
+    suspend fun membersPage(q: String?, tab: String?, cursor: String? = null): Result<Page<StudioMemberSummary>> {
+        val query = mutableListOf("limit=30")
+        if (!q.isNullOrEmpty()) query += "q=" + java.net.URLEncoder.encode(q, "UTF-8")
+        if (!tab.isNullOrEmpty() && tab != "all") query += "tab=" + java.net.URLEncoder.encode(tab, "UTF-8")
+        cursor?.let { query += "cursor=" + java.net.URLEncoder.encode(it, "UTF-8") }
+        return call("/studio/members/page?" + query.joinToString("&")).mapCatching {
+            val page = JSONObject(it)
+            Page(page.getJSONArray("items").map(StudioMemberSummary::from), page.getBoolean("hasMore"),
+                if (page.isNull("nextCursor")) null else page.getString("nextCursor"))
+        }
+    }
+
+    suspend fun salesPage(from: String, to: String, cursor: String? = null): Result<Page<StudioSale>> {
+        val query = cursor?.let { "&cursor=" + java.net.URLEncoder.encode(it, "UTF-8") } ?: ""
+        return call("/studio/sales/page?from=$from&to=$to&limit=30$query").mapCatching {
+            val page = JSONObject(it)
+            Page(page.getJSONArray("items").map(StudioSale::from), page.getBoolean("hasMore"),
+                if (page.isNull("nextCursor")) null else page.getString("nextCursor"))
+        }
+    }
+
     suspend fun members(q: String?, tab: String?): Result<List<StudioMemberSummary>> {
         val query = buildList {
             if (!q.isNullOrEmpty()) add("q=" + java.net.URLEncoder.encode(q, "UTF-8"))

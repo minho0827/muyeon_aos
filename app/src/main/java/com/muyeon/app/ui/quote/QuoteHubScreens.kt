@@ -164,10 +164,23 @@ fun RequestedQuotesList(api: QuoteApi, onOpen: (Int) -> Unit, reloadSignal: Int 
     var toast by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    suspend fun load() {
-        api.getMyQuotes().onSuccess { quotes = it }
-            // 서버 거절 사유(403 등)는 그대로 노출 — 네트워크 오류는 기존대로 조용히.
-            .onFailure { (it as? ApiMessageException)?.message?.let { m -> toast = m } }
+    var nextCursor by remember { mutableStateOf<String?>(null) }
+    var pageLoading by remember { mutableStateOf(false) }
+    var generation by remember { mutableStateOf(0) }
+    suspend fun load(reset: Boolean = true) {
+        if (!reset && (pageLoading || nextCursor == null)) return
+        if (reset) generation++
+        val current = generation
+        pageLoading = true
+        api.getMyQuotesPage(if (reset) null else nextCursor).onSuccess { page ->
+            if (current == generation) {
+                quotes = if (reset) page.items else (quotes + page.items).distinctBy { it.id }
+                nextCursor = page.nextCursor
+            }
+        }.onFailure { error ->
+            if (current == generation) toast = error.message
+        }
+        if (current == generation) pageLoading = false
     }
 
     // 최초 + 부모 신호(reloadSignal)마다. 목록이 있으면 스켈레톤 없이 조용히 갈아끼운다.
@@ -204,6 +217,11 @@ fun RequestedQuotesList(api: QuoteApi, onOpen: (Int) -> Unit, reloadSignal: Int 
                     }
                     // iOS List(.plain) 기본 구분선 — 행 좌측 인셋(16 + 아바타 52 + 간격 12)에 맞춘다.
                     if (idx != quotes.lastIndex) RowSeparator()
+                }
+                if (nextCursor != null) item {
+                    TextButton(enabled = !pageLoading, onClick = { scope.launch { load(false) } }) {
+                        Text("더 보기")
+                    }
                 }
             }
         }
@@ -326,7 +344,26 @@ fun SentQuotesList(api: QuoteApi, onOpen: (SentQuoteItem) -> Unit, reloadSignal:
     var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    suspend fun load() { api.getSentQuotes().onSuccess { items = it } }
+    var toast by remember { mutableStateOf<String?>(null) }
+    var nextCursor by remember { mutableStateOf<String?>(null) }
+    var pageLoading by remember { mutableStateOf(false) }
+    var generation by remember { mutableStateOf(0) }
+    suspend fun load(reset: Boolean = true) {
+        if (!reset && (pageLoading || nextCursor == null)) return
+        if (reset) generation++
+        val current = generation
+        pageLoading = true
+        api.getSentQuotesPage(if (reset) null else nextCursor).onSuccess { page ->
+            if (current == generation) {
+                items = if (reset) page.items else (items + page.items).distinctBy { it.id }
+                nextCursor = page.nextCursor
+            }
+        }.onFailure { error ->
+            if (current == generation) toast = error.message
+        }
+        if (current == generation) pageLoading = false
+    }
+
 
     // 최초 + 부모 신호(reloadSignal)마다. 목록이 있으면 스켈레톤 없이 조용히 갈아끼운다.
     LaunchedEffect(reloadSignal) { isLoading = items.isEmpty(); load(); isLoading = false }
@@ -349,11 +386,22 @@ fun SentQuotesList(api: QuoteApi, onOpen: (SentQuoteItem) -> Unit, reloadSignal:
                     SentQuoteRow(item = item, onClick = { onOpen(item) })
                     if (idx != items.lastIndex) RowSeparator()
                 }
+                if (nextCursor != null) item {
+                    TextButton(enabled = !pageLoading, onClick = { scope.launch { load(false) } }) {
+                        Text("더 보기")
+                    }
+                }
             }
         }
     }
+    if (toast != null) {
+        AlertDialog(
+            onDismissRequest = { toast = null },
+            text = { Text(toast ?: "", fontFamily = customFontFamily, fontSize = 14.sp) },
+            confirmButton = { TextButton(onClick = { toast = null }) { Text("확인") } },
+        )
+    }
 }
-
 /** 내 응답 상태 배지(요청 마감이면 마감 우선) — iOS SentQuoteRow.badge / SentQuoteDetailView.badge 공용. */
 internal fun sentQuoteBadge(item: SentQuoteItem): Pair<String, androidx.compose.ui.graphics.Color> = when {
     item.status == "ACCEPTED" -> "채택됨" to MuyeonColors.green   // 대기중(primary)과 구분
