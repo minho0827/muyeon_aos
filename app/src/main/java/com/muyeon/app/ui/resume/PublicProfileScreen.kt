@@ -198,11 +198,23 @@ fun PublicProfileScreen(
 
                 // 이름 + 평점
                 Column(Modifier.padding(horizontal = 20.dp).padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        p.name ?: "강사",
-                        fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp,
-                        lineHeight = 26.sp, color = MuyeonColors.textHead,
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            p.name ?: "강사",
+                            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp,
+                            lineHeight = 26.sp, color = MuyeonColors.textHead,
+                        )
+                        if (p.isDemoProfile == true) {
+                            Text(
+                                "프로필 예시",
+                                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 11.sp,
+                                color = MuyeonColors.primary,
+                                modifier = Modifier.clip(RoundedCornerShape(99.dp))
+                                    .background(MuyeonColors.primary.copy(alpha = 0.10f))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                            )
+                        }
+                    }
                     CredentialBadgeRow(p.badges) // ★ 2026-10-12
                     if ((p.ratingCount ?: 0) > 0) {
                         Row(
@@ -223,6 +235,15 @@ fun PublicProfileScreen(
                             it,
                             fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
                             lineHeight = 20.sp, color = MuyeonColors.textSub,
+                        )
+                    }
+                    if (p.isDemoProfile == true) {
+                        Text(
+                            "무용연에서 제공하는 프로필 예시예요. 실제 강사가 아니므로 레슨 문의, 견적 요청 및 예약은 이용할 수 없어요.",
+                            fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
+                            lineHeight = 19.sp, color = MuyeonColors.textSub,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                                .clip(RoundedCornerShape(12.dp)).background(MuyeonColors.groupedBg).padding(14.dp),
                         )
                     }
                 }
@@ -254,8 +275,11 @@ fun PublicProfileScreen(
                         .padding(horizontal = 20.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    if (recruitMode) {
-                        CtaButton("채팅하기", filled = true, modifier = Modifier.weight(1f)) { onOpenChat(p.id) }
+                    if (p.isDemoProfile == true && !recruitMode) {
+                        CtaButton("문의하기", filled = false, enabled = false, modifier = Modifier.weight(1f)) {}
+                        CtaButton("레슨 견적 요청하기", filled = true, enabled = false, modifier = Modifier.weight(1f)) {}
+                    } else if (recruitMode) {
+                        CtaButton("채팅하기", filled = true, enabled = p.isDemoProfile != true, modifier = Modifier.weight(1f)) { onOpenChat(p.id) }
                     } else {
                         val roomId = p.chatRoomId ?: 0
                         if (roomId > 0) {
@@ -584,15 +608,15 @@ private fun CircleIconButton(
 }
 
 @Composable
-private fun CtaButton(text: String, filled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun CtaButton(text: String, filled: Boolean, enabled: Boolean = true, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Text(
         text,
         fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp, lineHeight = 18.sp,
-        color = if (filled) Color.White else MuyeonColors.primary, textAlign = TextAlign.Center,
+        color = if (!enabled) MuyeonColors.textSub else if (filled) Color.White else MuyeonColors.primary, textAlign = TextAlign.Center,
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(if (filled) MuyeonColors.primary else MuyeonColors.primary.copy(alpha = 0.08f))
-            .clickable(onClick = onClick)
+            .background(if (!enabled) MuyeonColors.groupedBg else if (filled) MuyeonColors.primary else MuyeonColors.primary.copy(alpha = 0.08f))
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(vertical = 14.dp),
     )
 }

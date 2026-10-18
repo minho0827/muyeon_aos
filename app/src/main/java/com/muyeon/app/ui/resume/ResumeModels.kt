@@ -283,6 +283,7 @@ data class PublicProfile(
     val full: Boolean?,         // 전체 이력서 열람됨(이용권/본인)
     val recruiterLocked: Boolean?,  // 채용 뷰어인데 이용권 없음 → 멤버십 유도
     val selfView: Boolean?,     // 본인 열람(서버 키는 "self")
+    val isDemoProfile: Boolean?, // 무용연 공식 프로필 예시 — 거래 CTA 비활성
     val myQuoteId: Int?,
     val myQuoteHasResponse: Boolean?,
     val badges: CredentialBadges? = null, // ★ 2026-10-12 본인 인증·전문 정보 확인 배지
@@ -312,6 +313,7 @@ data class PublicProfile(
                 scrapped = false, chatRoomId = null,
                 phone = null, email = null,
                 full = true, recruiterLocked = false, selfView = false,
+                isDemoProfile = false,
                 myQuoteId = null, myQuoteHasResponse = null,
                 badges = applicant.applicantBadges,
             )
@@ -338,6 +340,7 @@ data class PublicProfile(
             phone = o.stringOrNull("phone"), email = o.stringOrNull("email"),
             full = o.boolOrNull("full"), recruiterLocked = o.boolOrNull("recruiterLocked"),
             selfView = o.boolOrNull("self"),
+            isDemoProfile = o.boolOrNull("isDemoProfile"),
             myQuoteId = o.optJSONObject("myQuote")?.intOrNull("quoteId"),
             myQuoteHasResponse = o.optJSONObject("myQuote")?.boolOrNull("hasResponse"),
             badges = CredentialBadges.from(o.optJSONObject("badges")),
