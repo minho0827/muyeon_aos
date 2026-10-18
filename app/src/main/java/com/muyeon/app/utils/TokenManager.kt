@@ -134,6 +134,8 @@ object TokenManager {
                 .remove(KEY_REFRESH_TOKEN_IV)
                 .remove(com.muyeon.app.utils.Constants.KEY_FCM_TOKEN)
         }
+        // 다음 계정이 앞 계정의 활성유형을 X-Active-Type 으로 물려받지 않게
+        com.muyeon.app.webview.ActiveRole.clear(context)
         notifyFloatingAuthChanged()
     }
 

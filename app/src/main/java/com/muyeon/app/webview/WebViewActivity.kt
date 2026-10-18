@@ -111,6 +111,8 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
         keys.forEach { key -> evalWhenReady(readyGuarded(WebCallbacks.resultJs(key, payload.payloadJsonFor(key)))) }
         if (ResultKeys.CHAT_ROOMS in keys || ResultKeys.CHAT_ROOM in keys || ResultKeys.NOTIFICATIONS in keys) {
             com.muyeon.app.ui.floating.FloatingState.requestRefresh()
+        // 서버 활성유형으로 X-Active-Type 값 맞춤 — 다른 기기·웹에서 바꾼 유형, 가입 직후 낡은 값 보정.
+        ActiveRole.syncFromServer(this)
         }
     }
 

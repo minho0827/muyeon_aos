@@ -83,6 +83,8 @@ class TokenWebViewInterface(private val context: Context, private val webView: W
 
             val response = if (accessToken.isNotEmpty() && refreshToken.isNotEmpty()) {
                 TokenManager.saveTokens(context, accessToken, refreshToken)
+                // 웹 로그인·가입 — 서버 활성유형으로 X-Active-Type 값 맞춤
+                ActiveRole.syncFromServer(context)
                 // 로그인 직후 — 로그아웃 상태에서 결제했거나 못 보낸 구글 구매를 서버에 보낸다.
                 webView.post { com.muyeon.app.ui.membership.MembershipBilling.flushUnfinished() }
                 WebViewResponse.success(emptyList())

@@ -2,7 +2,15 @@ package com.muyeon.app.webview
 
 import android.content.Context
 import android.widget.Toast
+import com.muyeon.app.BuildConfig
+import com.muyeon.app.utils.TokenManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
 /**
  * 활성 회원유형 저장소 — iOS `RoleGate.activeType` 대응.
@@ -41,6 +49,49 @@ object ActiveRole {
         val v = (type ?: "").trim().uppercase().ifEmpty { "GENERAL" }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putString(KEY, v).apply()
+    }
+
+    /** 로그아웃 — 다음 계정이 앞 계정의 유형을 X-Active-Type 으로 물려받지 않게 지운다. */
+    fun clear(context: Context) {
+        bind(context)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().remove(KEY).apply()
+    }
+
+    private val syncClient = OkHttpClient.Builder()
+        .connectTimeout(5, TimeUnit.SECONDS)
+        .readTimeout(5, TimeUnit.SECONDS)
+        .build()
+
+    /**
+     * 서버에 저장된 활성유형으로 맞춘다 — 로그인 직후·화면 복귀 때. iOS `RoleGate.syncFromServer` 1:1.
+     *  웹 syncActiveType 통지만 기다리면 가입 직후(서버는 강사, 앱은 GENERAL)나 계정을 바꾼 뒤
+     *  낡은 값이 헤더로 나가 이력서 저장 등이 403 으로 막혔다(2026-10-18 iOS 사고). 웹 재통지는 하지 않는다.
+     *  실패하면 기존 값을 그대로 둔다(서버가 DB 활성유형과 다시 대조한다).
+     */
+    fun syncFromServer(context: Context) {
+        val app = context.applicationContext
+        val token = TokenManager.getAccessToken(app)
+        if (token.isNullOrEmpty()) {
+            clear(app)
+            return
+        }
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val req = Request.Builder()
+                    .url("${BuildConfig.API_BASE_URL}/api/me/roles")
+                    .addHeader("Authorization", "Bearer $token")
+                    .get().build()
+                syncClient.newCall(req).execute().use { res ->
+                    if (!res.isSuccessful) return@use
+                    val type = JSONObject(res.body?.string().orEmpty().ifBlank { "{}" })
+                        .optString("activeType")
+                    if (type.isNotBlank() && type != "null") store(app, type)
+                }
+            } catch (_: Exception) {
+                // 네트워크 실패 — 기존 값 유지
+            }
+        }
     }
 
     fun current(context: Context): String {
