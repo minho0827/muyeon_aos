@@ -34,6 +34,12 @@ class ResumeApi(internal val token: String?) {
     suspend fun getOne(id: Int): Result<ResumeDetail> =
         call("/resumes/$id").map { ResumeDetail.from(JSONObject(it)) }
 
+    /** 이력서 기본정보에 표시할 NICE 본인확인 이름·생년월일. */
+    suspend fun getEditorIdentity(): ResumeEditorIdentity? =
+        call("/auth/me").getOrNull()?.let { text ->
+            runCatching { ResumeEditorIdentity.from(JSONObject(text.ifBlank { "{}" })) }.getOrNull()
+        }
+
     /**
      * 저장 — 서버가 data 를 spread 병합하므로 편집 화면의 전체 스냅샷을 보낸다.
      *  ResumeData.toJson() 이 raw(미지 키 포함) 위에 아는 키만 덮어쓴다.

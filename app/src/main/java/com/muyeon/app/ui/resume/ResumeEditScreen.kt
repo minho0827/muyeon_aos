@@ -207,9 +207,9 @@ fun ResumeEditScreen(
 
     // 서버 값으로 폼을 채우는 건 한 번뿐 — 재진입마다 다시 채우면 입력 중이던 내용이 날아간다.
     LaunchedEffect(resumeId) {
-        val id = resumeId ?: return@LaunchedEffect
         if (form.loaded) return@LaunchedEffect
-        api.getOne(id).onSuccess { dto ->
+        val id = resumeId
+        if (id != null) api.getOne(id).onSuccess { dto ->
             form.loaded = true
             title = dto.title
             val d = dto.data
@@ -239,6 +239,13 @@ fun ResumeEditScreen(
             desired = d.desired ?: DesiredCond()
             if (desired.region == null) desired = desired.copy(region = d.desiredRegion)
             desiredRegionCode = d.desiredRegionCode
+        }
+        if (id == null) form.loaded = true
+        api.getEditorIdentity()?.takeIf { it.phoneVerified }?.let { identity ->
+            basic = basic.copy(
+                name = identity.name.ifEmpty { basic.name },
+                birth = identity.birth.ifEmpty { basic.birth },
+            )
         }
         loading = false
     }
@@ -431,9 +438,7 @@ fun ResumeEditScreen(
                             //  이력서는 학원·공연팀이 지원자를 볼 때 여는 문서라, 여기만 활동명을 허용하면
                             //  목록의 지원자명(실명)과 문서 안 이름이 갈린다. (iOS ResumeEditView 와 동일)
                             ReadOnlyRow("이름", basic.name.orEmpty(), hint = "본인인증으로 등록된 이름이에요.")
-                            LabeledInput("생년월일", basic.birth.orEmpty(), "1995.01.01", KeyboardType.Decimal) {
-                                basic = basic.copy(birth = it)
-                            }
+                            ReadOnlyRow("생년월일", basic.birth.orEmpty(), hint = "본인인증으로 등록된 생년월일이에요.")
                         }
                     }
                     LabeledInput("한줄 소개", oneLiner, "예) 성인발레 전문, 맞춤형 지도") { oneLiner = it }

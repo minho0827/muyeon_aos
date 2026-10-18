@@ -65,6 +65,22 @@ data class ResumeBasic(
         .put("photo", photo).put("name", name).put("birth", birth).put("phone", phone).put("email", email)
 }
 
+data class ResumeEditorIdentity(
+    val name: String,
+    val birth: String,
+    val phoneVerified: Boolean,
+) {
+    companion object {
+        fun from(o: JSONObject): ResumeEditorIdentity {
+            val digits = o.optString("birthDate").filter(Char::isDigit)
+            val birth = if (digits.length == 8) {
+                "${digits.substring(0, 4)}.${digits.substring(4, 6)}.${digits.substring(6, 8)}"
+            } else ""
+            return ResumeEditorIdentity(o.optString("name"), birth, o.optBoolean("phoneVerified", false))
+        }
+    }
+}
+
 data class DesiredCond(var job: String? = null, var region: String? = null, var salary: String? = null) {
     companion object {
         fun from(o: JSONObject?) = o?.let {
