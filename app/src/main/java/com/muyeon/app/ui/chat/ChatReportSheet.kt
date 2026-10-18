@@ -171,17 +171,15 @@ fun ChatReportSheet(
     }
 }
 
-/** 긴급 연락처 — 전화·메일은 탭하면 바로 연결. */
+/** 긴급 문의 이메일 — 탭하면 메일로 연결. */
 @Composable
 private fun ReportContactLine() {
     val linkStyle = TextLinkStyles(SpanStyle(color = MuyeonColors.primary, textDecoration = TextDecoration.Underline))
     Text(
         buildAnnotatedString {
-            append("긴급 신고·문의: 고객센터 ")
-            withLink(LinkAnnotation.Url("tel:050219297300", linkStyle)) { append("0502-1929-7300") }
-            append(" · ")
+            append("긴급 신고·문의\n")
             withLink(LinkAnnotation.Url("mailto:muyeon.app@gmail.com", linkStyle)) { append("muyeon.app@gmail.com") }
-            append("\n신고는 24시간 안에 처리돼요.")
+            append("\n(24시간 이내 처리)")
         },
         fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp, color = MuyeonColors.textSub,
     )
