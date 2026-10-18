@@ -297,12 +297,6 @@ class StudioApi(private val token: String?) {
     suspend fun schedule(from: String, to: String): Result<StudioScheduleData> =
         call("/studio/schedule?from=$from&to=$to").map { StudioScheduleData.from(JSONObject(it)) }
 
-    suspend fun createBlock(body: JSONObject): Result<Unit> = call("/studio/blocks", "POST", body).map { }
-
-    suspend fun updateBlock(id: Int, body: JSONObject): Result<Unit> = call("/studio/blocks/$id", "PATCH", body).map { }
-
-    suspend fun deleteBlock(id: Int): Result<Unit> = call("/studio/blocks/$id", "DELETE").map { }
-
     suspend fun getSettings(): Result<Boolean> =
         call("/studio/settings").map { JSONObject(it.ifBlank { "{}" }).optBoolean("noshowConsumes", false) }
 
