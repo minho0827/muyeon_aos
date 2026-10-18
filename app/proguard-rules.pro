@@ -1,174 +1,72 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# 무용연 R8 규칙
+#  - Play "DEX 난독화 비율" 기준(25%) 때문에 라이브러리 통째 keep 은 하지 않는다.
+#    AndroidX/Compose/Firebase/GMS/CameraX/ML Kit/Retrofit/OkHttp/Coil/Glide/Koin 은
+#    각 AAR 의 consumer 규칙이 필요한 것만 보존한다.
+#  - 여기엔 앱 코드에서 "이름"이 런타임 계약인 것만 둔다(웹 브릿지, Gson 필드, 리플렉션).
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
-
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# 크래시 스택 추적용(mapping.txt 로 복원). 파일명은 숨김.
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
 # ==========================================
-# WebView JavaScript Interface - CRITICAL
+# WebView JS 브릿지 — 메서드명이 웹과의 계약 (window.AppBridge.xxx, AndroidToken.xxx …)
 # ==========================================
-# Keep all WebView JavaScript interfaces
 -keepclassmembers class * {
     @android.webkit.JavascriptInterface <methods>;
 }
-
-# Keep EVERYTHING in webview package - methods, fields, constructors
--keep,allowobfuscation class com.muyeon.app.webview.** { *; }
--keepclassmembers class com.muyeon.app.webview.** {
-    <init>(...);
-    public *;
-    private *;
-    protected *;
-}
-
-# Keep all methods that might be called from JavaScript
--keepclassmembers class com.muyeon.app.webview.** {
-    *** *(...);
-}
-
-# Specifically keep your JavaScript interfaces
--keep class com.muyeon.app.webview.LocationWebViewInterface { *; }
--keep class com.muyeon.app.webview.DownloadWebViewInterface { *; }
--keep class com.muyeon.app.webview.FileWebViewInterface { *; }
--keep class com.muyeon.app.webview.ScanQRWebViewInterface { *; }
--keep class com.muyeon.app.webview.DeviceInfoWebViewInterface { *; }
--keep class com.muyeon.app.webview.TokenWebViewInterface { *; }
--keep class com.muyeon.app.webview.NotificationWebViewInterface { *; }
--keep class com.muyeon.app.webview.PermissionWebViewInterface { *; }
--keep class com.muyeon.app.webview.PushNotificationInterface { *; }
+# 브릿지 클래스와 웹으로 내보내는 응답 타입(Gson 직렬화 → 필드명 = JSON 키)
+-keep class com.muyeon.app.webview.** { *; }
 
 # ==========================================
-# Kotlin Coroutines
+# Gson / Retrofit 모델 — 필드명 = JSON 키
 # ==========================================
--keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
--keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
--keepclassmembers class kotlinx.** {
-    volatile <fields>;
-}
+-keep class com.muyeon.app.data.models.** { *; }
+-keep class com.muyeon.app.domain.models.** { *; }
 
-# ==========================================
-# Retrofit & OkHttp
-# ==========================================
--dontwarn okhttp3.**
--dontwarn okio.**
--dontwarn javax.annotation.**
--keepclasseswithmembers class * {
-    @retrofit2.http.* <methods>;
-}
--keepclassmembers,allowshrinking,allowobfuscation interface * {
-    @retrofit2.http.* <methods>;
-}
-
-# ==========================================
-# Gson
-# ==========================================
+# Gson 2.10 은 자체 consumer 규칙이 없다 → 공식 권장 규칙
 -keepattributes Signature
 -keepattributes *Annotation*
+-keepattributes EnclosingMethod,InnerClasses
 -dontwarn sun.misc.**
--keep class com.google.gson.** { *; }
+-keep class * extends com.google.gson.reflect.TypeToken
+-keep,allowobfuscation,allowshrinking class com.google.gson.reflect.TypeToken
 -keep class * implements com.google.gson.TypeAdapter
 -keep class * implements com.google.gson.TypeAdapterFactory
 -keep class * implements com.google.gson.JsonSerializer
 -keep class * implements com.google.gson.JsonDeserializer
+-keepclassmembers,allowobfuscation class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
 
-# Keep your data models (adjust package name as needed)
--keep class com.muyeon.app.data.** { *; }
--keep class com.muyeon.app.domain.** { *; }
-
-# ==========================================
-# Firebase
-# ==========================================
--keep class com.google.firebase.** { *; }
--keep class com.google.android.gms.** { *; }
--dontwarn com.google.firebase.**
--dontwarn com.google.android.gms.**
+# Retrofit suspend 함수 반환 타입(Response<T>) 제네릭 보존
+-keep,allowobfuscation,allowshrinking interface retrofit2.Call
+-keep,allowobfuscation,allowshrinking class retrofit2.Response
+-keep,allowobfuscation,allowshrinking class kotlin.coroutines.Continuation
 
 # ==========================================
-# Jetpack Compose
-# ==========================================
--keep class androidx.compose.** { *; }
--keep class androidx.lifecycle.** { *; }
--keepclassmembers class androidx.compose.** { *; }
-
-# ==========================================
-# CameraX & ML Kit
-# ==========================================
--keep class androidx.camera.** { *; }
--keep class com.google.mlkit.** { *; }
--dontwarn androidx.camera.**
-
-# ==========================================
-# Koin (Dependency Injection)
-# ==========================================
--keep class org.koin.** { *; }
--keep class org.koin.core.** { *; }
--keepnames class androidx.lifecycle.ViewModel
-
-# ==========================================
-# JWT
+# java-jwt → Jackson databind (리플렉션 기반 직렬화)
 # ==========================================
 -keep class com.auth0.jwt.** { *; }
--keepnames class com.auth0.jwt.** { *; }
+-keep class com.fasterxml.jackson.** { *; }
+-dontwarn com.fasterxml.jackson.databind.**
+-dontwarn java.beans.**
+-dontwarn org.w3c.dom.bootstrap.**
 
 # ==========================================
-# General Android
+# 기타
 # ==========================================
--keepclassmembers class * extends android.app.Activity {
-   public void *(android.view.View);
-}
--keepclassmembers enum * {
-    public static **[] values();
-    public static ** valueOf(java.lang.String);
-}
--keep class * implements android.os.Parcelable {
-  public static final android.os.Parcelable$Creator *;
-}
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-dontwarn javax.annotation.**
+-dontwarn org.conscrypt.**
+-dontwarn org.bouncycastle.**
+-dontwarn org.openjsse.**
 
-# ==========================================
-# Serialization
-# ==========================================
--keepattributes *Annotation*, InnerClasses
--dontnote kotlinx.serialization.AnnotationsKt
--keepclassmembers class kotlinx.serialization.json.** {
-    *** Companion;
-}
--keepclasseswithmembers class kotlinx.serialization.json.** {
-    kotlinx.serialization.KSerializer serializer(...);
-}
-
-# Keep Serializable classes
--keep,includedescriptorclasses class com.muyeon.app.**$$serializer { *; }
+# kotlinx.serialization (QrScannerViewModel 등)
 -keepclassmembers class com.muyeon.app.** {
     *** Companion;
 }
 -keepclasseswithmembers class com.muyeon.app.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
-
-# ==========================================
-# Glide
-# ==========================================
--keep public class * implements com.bumptech.glide.module.GlideModule
--keep class * extends com.bumptech.glide.module.AppGlideModule {
- <init>(...);
-}
--keep public enum com.bumptech.glide.load.ImageHeaderParser$** {
-  **[] $VALUES;
-  public *;
-}
+-keep,includedescriptorclasses class com.muyeon.app.**$$serializer { *; }
