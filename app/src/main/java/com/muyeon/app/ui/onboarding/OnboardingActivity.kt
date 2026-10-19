@@ -110,6 +110,7 @@ class OnboardingActivity : ComponentActivity() {
 
         setContent {
             val nav = rememberNavController()
+            com.muyeon.app.analytics.TrackNavigation("Onboarding", nav)
             navRef = nav
             val token = remember { TokenManager.getAccessToken(this) }
             val api = remember { RoleVerificationApi(token) }

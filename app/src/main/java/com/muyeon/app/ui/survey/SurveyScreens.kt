@@ -361,6 +361,7 @@ class SurveyActivity : com.muyeon.app.result.ResultActivity() {
 
         setContent {
             val nav = rememberNavController()
+            com.muyeon.app.analytics.TrackNavigation("Survey", nav)
             val api = remember { SurveyApi(TokenManager.getAccessToken(this)) }
             NavHost(nav, startDestination = if (recipientId > 0) "profile" else "respond") {
                 composable("profile") {

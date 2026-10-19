@@ -94,6 +94,7 @@ class LessonActivity : ResultActivity() {
 
         setContent {
             val nav = rememberNavController()
+            com.muyeon.app.analytics.TrackNavigation("Lesson", nav)
             val token = remember { TokenManager.getAccessToken(this) }
             val lessonApi = remember { LessonApi(token) }
             val calendarApi = remember { UserCalendarApi(token) }

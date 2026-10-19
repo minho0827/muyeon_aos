@@ -94,6 +94,7 @@ class ChatActivity : ResultActivity() {
 
         setContent {
             val nav = rememberNavController()
+            com.muyeon.app.analytics.TrackNavigation("Chat", nav)
             val token = remember { TokenManager.getAccessToken(this) }
             val api = remember { ChatApi(token) }
 

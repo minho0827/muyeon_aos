@@ -280,6 +280,7 @@ class AutoQuoteHistoryActivity : com.muyeon.app.result.ResultActivity() {
 
         setContent {
             val nav = rememberNavController()
+            com.muyeon.app.analytics.TrackNavigation("AutoQuoteHistory", nav)
             val api = remember { QuoteApi(TokenManager.getAccessToken(this)) }
             val state = remember { AutoQuoteHistoryState(api, initialMonth) }
             // 상세는 항목을 통째로 넘긴다(QuoteHubActivity 의 sentDetail 과 동일한 이유).

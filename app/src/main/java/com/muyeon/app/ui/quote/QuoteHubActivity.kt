@@ -74,6 +74,7 @@ class QuoteHubActivity : ResultActivity() {
 
         setContent {
             val nav = rememberNavController()
+            com.muyeon.app.analytics.TrackNavigation("QuoteHub", nav)
             val token = remember { TokenManager.getAccessToken(this) }
             val api = remember { QuoteApi(token) }
             // 보낸견적 상세는 목록 항목을 통째로 넘긴다(iOS SentQuoteDetailView(item:) 동일).

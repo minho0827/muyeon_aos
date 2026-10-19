@@ -133,6 +133,7 @@ class ResumeActivity : ResultActivity() {
 
         setContent {
             val nav = rememberNavController()
+            com.muyeon.app.analytics.TrackNavigation("Resume", nav)
             val token = remember { TokenManager.getAccessToken(this) }
             val api = remember { ResumeApi(token) }
             val reviewApi = remember { ReviewApi(token) }

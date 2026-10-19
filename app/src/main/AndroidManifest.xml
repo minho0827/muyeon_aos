@@ -75,6 +75,12 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- 이용 행동 로그는 자체 서버로만 모은다(2026-10-19). Firebase Analytics 가 끌고 오는 광고 ID 권한을 뺀다
+         (Play 데이터 보안: 광고 ID 미수집). FCM 푸시는 영향 없음. -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_AD_ID" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_ATTRIBUTION" tools:node="remove" />
+
     <application
         android:name=".MuyeonApplication"
         android:allowBackup="true"
@@ -88,6 +94,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Muyeon"
         tools:targetApi="31">
+
+        <!-- Firebase Analytics 자동수집 끄기 — 이용 로그는 analytics/Analytics.kt 가 우리 서버로만 보낸다. -->
+        <meta-data android:name="firebase_analytics_collection_deactivated" android:value="true" />
+        <meta-data android:name="google_analytics_adid_collection_enabled" android:value="false" />
+        <meta-data android:name="google_analytics_default_allow_ad_personalization_signals" android:value="false" />
 
         <!-- Firebase Messaging Service -->
         <service

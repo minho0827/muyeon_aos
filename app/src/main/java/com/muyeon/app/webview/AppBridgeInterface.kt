@@ -64,7 +64,10 @@ class AppBridgeInterface(
      *  실제 표는 [NativeActionRouter] 에 있다(멤버십 혜택 카드 등 네이티브 화면도 같은 표로 연다).
      */
     private fun openNative(action: String, d: JSONObject): Boolean =
-        NativeActionRouter.open(activity, action, d)
+        NativeActionRouter.open(activity, action, d).also { opened ->
+            // 웹 버튼으로 앱 화면을 연 것 — 이용 분석의 '앱 화면 열기' 클릭(웹이 보낸 click 과 겹치지 않는다).
+            if (opened) com.muyeon.app.analytics.Analytics.click("native:$action")
+        }
 
     /** 상태 통지류 처리 — UI 를 열지 않고 네이티브 상태만 갱신한다. */
     private fun onSilentAction(action: String, data: JSONObject) {

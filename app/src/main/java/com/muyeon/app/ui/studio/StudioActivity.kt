@@ -98,6 +98,7 @@ class StudioActivity : com.muyeon.app.result.ResultActivity() {
     @Composable
     private fun StudioNav(route: String) {
         val nav = rememberNavController()
+        com.muyeon.app.analytics.TrackNavigation("Studio", nav)
         val api = remember { StudioApi(TokenManager.getAccessToken(this)) }
 
         fun back() { if (!nav.popBackStack()) finish() }

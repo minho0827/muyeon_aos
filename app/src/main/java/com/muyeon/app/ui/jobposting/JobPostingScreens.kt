@@ -583,6 +583,7 @@ class JobPostingActivity : com.muyeon.app.result.ResultActivity() {
 
         setContent {
             val nav = rememberNavController()
+            com.muyeon.app.analytics.TrackNavigation("JobPosting", nav)
             val api = remember { JobPostingApi(TokenManager.getAccessToken(this)) }
 
             fun back() { if (!nav.popBackStack()) finish() }

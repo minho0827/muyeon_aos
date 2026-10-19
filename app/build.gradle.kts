@@ -207,6 +207,8 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.4.1")
     // 백그라운드 진입 시 소켓 pause (ProcessLifecycleOwner)
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
+    // 이용 행동 로그 — 웹(Play 링크)에서 넘긴 설치 경로(aid·UTM)를 첫 실행 때 읽는다(analytics/Analytics.kt).
+    implementation("com.android.installreferrer:installreferrer:2.2")
     // 멤버십 구글 플레이 결제(자동갱신 구독) — MembershipBilling. BILLING 권한은 매니페스트 병합으로 들어온다.
     //  billing-ktx 9.x 는 Kotlin 2.2+ 메타데이터라 지금 Kotlin(2.1)으로 못 읽는다 → 자바 판 + 코루틴 래퍼.
     implementation("com.android.billingclient:billing:9.1.0")

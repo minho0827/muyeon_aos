@@ -302,7 +302,11 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
             // 알림톡 앱링크로 들어왔으면 푸시 탭 인텐트처럼 목적지를 옮겨 싣는다.
             //  푸시로 들어온 경우(notification_url 있음)는 그쪽이 우선.
             if (intent.getStringExtra("notification_url").isNullOrEmpty()) {
-                com.muyeon.app.utils.AppLinkManager.consumeInto(intent)
+                if (com.muyeon.app.utils.AppLinkManager.consumeInto(intent)) {
+                    com.muyeon.app.analytics.Analytics.deeplinkOpen(intent.getStringExtra("type"), intent.getStringExtra("notification_url"))
+                }
+            } else {
+                com.muyeon.app.analytics.Analytics.pushOpen(intent.getStringExtra("type"), intent.getStringExtra("notification_url"))
             }
             val notificationUrl = intent.getStringExtra("notification_url")
             if (!notificationUrl.isNullOrEmpty()) {
@@ -372,6 +376,7 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
         setIntent(intent)
         val notificationUrl = intent.getStringExtra("notification_url")
         if (!notificationUrl.isNullOrEmpty()) {
+            com.muyeon.app.analytics.Analytics.pushOpen(intent.getStringExtra("type"), notificationUrl)
             val baseUrl = com.muyeon.app.utils.Constants.getBaseUrl(this)
             val fullUrl = if (notificationUrl.startsWith("http")) notificationUrl else baseUrl + notificationUrl
             Log.d("WebViewActivity", "onNewIntent notification URL: $fullUrl")
@@ -387,6 +392,8 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
         //  예전엔 onPause/onResume 을 웹뷰에 넘기지 않아, 네이티브 화면을 닫고 돌아와도 웹은 계속 보이는 중으로 알았다.
         //  ★ 콜백 대기열을 흘리기 전에 부른다 — 먼저 깨워야 스크립트가 바로 돈다.
         if (::webView.isInitialized) webView.onResume()
+        // 이용 행동 로그 — 30분 넘게 쉬었다 오면 세션이 바뀌므로 웹에 새 식별값을 다시 넣는다.
+        if (::webView.isInitialized) com.muyeon.app.analytics.Analytics.injectInto(webView)
         // 채팅·알림 배지 재조회 — 예전 60초 폴링을 대신한다(돌아올 때마다 한 번).
         com.muyeon.app.ui.floating.FloatingState.requestRefresh()
         // 서버 활성유형으로 X-Active-Type 값 맞춤 — 다른 기기·웹에서 바꾼 유형, 가입 직후 낡은 값 보정.
@@ -611,6 +618,8 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                // 이용 행동 로그 — 웹 화면도 앱과 같은 aid·sid 로 보내게 식별값을 넣는다.
+                view?.let { com.muyeon.app.analytics.Analytics.injectInto(it) }
                 // webReady 를 안 보내는 옛 웹 안전망. 준비 전이면 가드가 0 을 돌려 그대로 남는다.
                 if (!webReady) flushPendingJs()
             }
