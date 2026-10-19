@@ -75,11 +75,9 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
-    <!-- 이용 행동 로그는 자체 서버로만 모은다(2026-10-19). Firebase Analytics 가 끌고 오는 광고 ID 권한을 뺀다
-         (Play 데이터 보안: 광고 ID 미수집). FCM 푸시는 영향 없음. -->
-    <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
-    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_AD_ID" tools:node="remove" />
-    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_ATTRIBUTION" tools:node="remove" />
+    <!-- ★ 2026-10-19 광고 ID 권한은 빼지 않는다(Firebase Analytics 병합분 유지). 빼면 Play 광고 ID 선언('예')과 어긋나
+         '선언 불완전함' 검사에 막히고, 선언을 '아니요'로 바꿔도 검토 전이라 반영되지 않아 출시가 막혔다.
+         실제 광고 ID 수집은 아래 google_analytics_adid_collection_enabled=false 로 끈다. -->
 
     <application
         android:name=".MuyeonApplication"
