@@ -40,6 +40,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.muyeon.app.theme.customFontFamily
+import com.muyeon.app.webview.ActiveRole
+import kotlinx.coroutines.launch
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteUi
 import org.json.JSONObject
@@ -125,6 +127,15 @@ data class RoleManagePayload(
                 RoleManagePayload(granted, status, activeType.ifEmpty { "GENERAL" }, documents)
             }.getOrDefault(RoleManagePayload(emptySet(), emptyMap(), activeType))
         }
+
+        /** 서버 응답(GET·POST /me/roles) — activeType 이 본문 안에 있다. 파싱 실패면 null. */
+        fun parseServer(json: String?): RoleManagePayload? {
+            if (json.isNullOrBlank()) return null
+            val o = runCatching { JSONObject(json) }.getOrNull() ?: return null
+            if (o.optJSONArray("held") == null) return null
+            val active = o.optString("activeType").takeIf { it.isNotBlank() && it != "null" } ?: "GENERAL"
+            return parse(json, active)
+        }
     }
 }
 
@@ -133,7 +144,11 @@ fun RoleManageScreen(
     payload: RoleManagePayload,
     heroImageUrl: String?,
     onClose: () -> Unit,
-    onAdd: (String) -> Unit,          // 개인 추가 / 사업 승인완료 → __onRoleManageAdd
+    // ★ 2026-10-19 추가·초기값은 서버로 직접 — 웹 콜백을 나갈 때 보내면 같은 화면에서 '추가 → 전환'이 늘 실패했다.
+    loadRoles: suspend () -> RoleManagePayload?,               // GET /me/roles(열 때 서버 값으로 맞춤)
+    addRole: suspend (String) -> ActiveRole.AddResult,         // POST /me/roles
+    onIdentityRequired: (String) -> Unit,                      // 본인인증 전 → 화면 닫고 웹 본인확인 안내로
+    onAddFailed: (String) -> Unit,                             // 그 밖의 추가 실패 안내
     onRemove: (String) -> Unit,       // 해제 → __onRoleRemove
     // 사업 인증 → 인증 화면. 서류를 제출했으면 콜백(true)으로 낙관적 '심사중' 전환(iOS 동일).
     onVerify: (String, (Boolean) -> Unit) -> Unit,
@@ -143,6 +158,16 @@ fun RoleManageScreen(
     var status by remember { mutableStateOf(payload.status) }
     var activeSel by remember { mutableStateOf(payload.activeType) }
     var pending by remember { mutableStateOf<RoleOption?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    // 서버 역할 → 화면 상태. 보유하지 않은 활성유형은 일반으로(iOS derive 와 같다).
+    fun apply(p: RoleManagePayload) {
+        granted = p.granted
+        status = p.status
+        activeSel = if (p.activeType == "GENERAL" || p.granted.contains(p.activeType)) p.activeType else "GENERAL"
+    }
+    LaunchedEffect(Unit) { loadRoles()?.let { if (!busy) apply(it) } }
 
     Box(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -157,10 +182,13 @@ fun RoleManageScreen(
                         onTap = { opt ->
                             if (isActiveEligible(opt, granted, status)) {
                                 val code = activeCode(opt)
-                                val before = activeSel
-                                activeSel = code
-                                // 서버 저장이 실패하면 선택 표시를 되돌린다(화면만 바뀌고 실제론 그대로인 상태 방지).
-                                onSelectActive(code) { ok -> if (!ok) activeSel = before }
+                                if (!busy && code != activeSel) {
+                                    val before = activeSel
+                                    activeSel = code
+                                    busy = true
+                                    // 서버 저장이 실패하면 선택 표시를 되돌린다(화면만 바뀌고 실제론 그대로인 상태 방지).
+                                    onSelectActive(code) { ok -> if (!ok) activeSel = before; busy = false }
+                                }
                             } else {
                                 pending = opt
                             }
@@ -186,9 +214,36 @@ fun RoleManageScreen(
                     onRemove(opt.code)
                 },
                 onAddClick = {
-                    granted = granted + opt.code
+                    val code = opt.code
                     pending = null
-                    onAdd(opt.code)
+                    if (!busy) {
+                        val before = activeSel
+                        granted = granted + code   // 저장 중 표시 — 실패하면 되돌린다
+                        busy = true
+                        scope.launch {
+                            when (val r = addRole(code)) {
+                                is ActiveRole.AddResult.Added -> {
+                                    RoleManagePayload.parseServer(r.rolesJson)?.let { apply(it) }
+                                    // 추가된 유형으로 바로 전환(종전 웹 __onRoleManageAdd 와 같은 동작). 승인 전 유형은 그대로.
+                                    if (granted.contains(code)) {
+                                        val target = activeCode(opt)
+                                        activeSel = target
+                                        onSelectActive(target) { ok -> if (!ok) activeSel = before; busy = false }
+                                        return@launch
+                                    }
+                                }
+                                ActiveRole.AddResult.IdentityRequired -> {
+                                    granted = granted - code
+                                    onIdentityRequired(code)
+                                }
+                                is ActiveRole.AddResult.Failed -> {
+                                    granted = granted - code
+                                    onAddFailed(r.message)
+                                }
+                            }
+                            busy = false
+                        }
+                    }
                 },
                 onVerifyClick = {
                     val code = opt.code

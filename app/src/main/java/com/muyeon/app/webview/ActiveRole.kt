@@ -123,6 +123,61 @@ object ActiveRole {
         }
     }
 
+    /** 역할 추가 결과 — iOS `RoleGate.AddResult` 와 같다. */
+    sealed class AddResult {
+        /** 추가 후 역할 목록(GET /me/roles 와 같은 모양) JSON. 파싱 실패면 null. */
+        data class Added(val rolesJson: String?) : AddResult()
+        /** 409 — 휴대폰 본인인증 전(강사·무용수). 안내는 웹 IdentityRequiredHost 가 한다. */
+        object IdentityRequired : AddResult()
+        data class Failed(val message: String) : AddResult()
+    }
+
+    /**
+     * 서버 역할 조회 — GET /api/me/roles 본문({held, roles, activeType}).
+     *  ★ 2026-10-19 회원유형 화면이 웹이 넘긴 값만 믿어, 웹 상태가 낡으면 강사로 바꿔 둔 회원도 일반으로 보였다.
+     */
+    suspend fun fetchRolesJson(context: Context): String? = kotlinx.coroutines.withContext(Dispatchers.IO) {
+        val token = TokenManager.getAccessToken(context.applicationContext)
+        if (token.isNullOrEmpty()) return@withContext null
+        try {
+            val req = Request.Builder()
+                .url("${BuildConfig.API_BASE_URL}/api/me/roles")
+                .addHeader("Authorization", "Bearer $token")
+                .get().build()
+            syncClient.newCall(req).execute().use { res -> if (res.isSuccessful) res.body?.string() else null }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * 역할 추가 — POST /api/me/roles. 종전엔 웹 콜백(__onRoleManageAdd)을 화면을 나갈 때 보내서,
+     *  같은 화면에서 '추가 → 그 유형 선택'을 하면 서버엔 아직 없는 유형이라 전환이 늘 실패했다(2026-10-19).
+     */
+    suspend fun addRole(context: Context, role: String): AddResult = kotlinx.coroutines.withContext(Dispatchers.IO) {
+        val fail = "회원유형을 추가하지 못했어요. 잠시 후 다시 시도해 주세요."
+        val token = TokenManager.getAccessToken(context.applicationContext)
+        if (token.isNullOrEmpty()) return@withContext AddResult.Failed(fail)
+        try {
+            val body = JSONObject().put("role", role).toString()
+                .toRequestBody("application/json".toMediaType())
+            val req = Request.Builder()
+                .url("${BuildConfig.API_BASE_URL}/api/me/roles")
+                .addHeader("Authorization", "Bearer $token")
+                .post(body).build()
+            syncClient.newCall(req).execute().use { res ->
+                val text = res.body?.string().orEmpty()
+                if (res.isSuccessful) return@use AddResult.Added(text.ifBlank { null })
+                val o = runCatching { JSONObject(text) }.getOrNull()
+                if (o?.optString("code") == "IDENTITY_REQUIRED") return@use AddResult.IdentityRequired
+                val msg = o?.optString("message")?.takeIf { it.isNotBlank() && !it.startsWith("[") }
+                AddResult.Failed(msg ?: fail)
+            }
+        } catch (_: Exception) {
+            AddResult.Failed(fail)
+        }
+    }
+
     fun current(context: Context): String {
         bind(context)
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

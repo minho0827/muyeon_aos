@@ -124,7 +124,15 @@ class OnboardingActivity : ComponentActivity() {
                         onClose = { closeAndFlush() },
                         // ★ 여기서 화면을 닫지 않는다(iOS 동일) — 콜백은 쌓아뒀다가 나갈 때 한 번에 보낸다.
                         //   매번 닫으면 유형을 하나 바꿀 때마다 화면이 튕겨 나가 연속 조작이 불가능하다.
-                        onAdd = { r -> queueWeb("if(window.__onRoleManageAdd){ window.__onRoleManageAdd('${esc(r)}'); }") },
+                        loadRoles = { RoleManagePayload.parseServer(ActiveRole.fetchRolesJson(this@OnboardingActivity)) },
+                        addRole = { r -> ActiveRole.addRole(this@OnboardingActivity, r) },
+                        // 본인인증 전 — 웹이 같은 추가를 다시 시도해 본인확인 안내(IdentityRequiredHost)를 띄우게 하고 나간다.
+                        //  이 화면이 앞에 있으면 웹 안내가 보이지 않는다.
+                        onIdentityRequired = { r ->
+                            queueWeb("if(window.__onRoleManageAdd){ window.__onRoleManageAdd('${esc(r)}'); }")
+                            closeAndFlush()
+                        },
+                        onAddFailed = { msg -> Toast.makeText(this@OnboardingActivity, msg, Toast.LENGTH_SHORT).show() },
                         onRemove = { r -> queueWeb("if(window.__onRoleRemove){ window.__onRoleRemove('${esc(r)}'); }") },
                         onVerify = { r, done -> verifyCompletion = done; nav.navigate("verify/$r") },
                         onSelectActive = { t, done -> selectActiveType(t, done) },

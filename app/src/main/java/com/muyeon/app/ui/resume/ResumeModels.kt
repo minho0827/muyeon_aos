@@ -303,6 +303,13 @@ data class PublicProfile(
     val myQuoteId: Int?,
     val myQuoteHasResponse: Boolean?,
     val badges: CredentialBadges? = null, // ★ 2026-10-12 본인 인증·전문 정보 확인 배지
+    // ★ 2026-10-19 멤버십 규칙 레이아웃(웹 TeacherDetail 과 동일) — 소유자 멤버십이 없으면 기본 폼.
+    val profileMembershipActive: Boolean? = null,
+    val detailType: String? = null,          // TEXT | IMAGE(상세컷 세로 스택)
+    val detailImages: List<String>? = null,
+    val desiredRegion: String? = null,
+    val desiredSalary: String? = null,
+    val companyCareer: String? = null,
 ) {
     companion object {
         /**
@@ -332,6 +339,7 @@ data class PublicProfile(
                 isDemoProfile = false,
                 myQuoteId = null, myQuoteHasResponse = null,
                 badges = applicant.applicantBadges,
+                profileMembershipActive = applicant.profileMembershipActive,   // 꾸민 레이아웃으로 끼워 넣을 때만 쓴다
             )
         }
 
@@ -360,6 +368,12 @@ data class PublicProfile(
             myQuoteId = o.optJSONObject("myQuote")?.intOrNull("quoteId"),
             myQuoteHasResponse = o.optJSONObject("myQuote")?.boolOrNull("hasResponse"),
             badges = CredentialBadges.from(o.optJSONObject("badges")),
+            profileMembershipActive = o.boolOrNull("profileMembershipActive"),
+            detailType = o.stringOrNull("detailType"),
+            detailImages = o.stringList("detailImages"),
+            desiredRegion = o.stringOrNull("desiredRegion"),
+            desiredSalary = o.stringOrNull("desiredSalary"),
+            companyCareer = o.stringOrNull("companyCareer"),
         )
     }
 }

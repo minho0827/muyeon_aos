@@ -262,7 +262,7 @@ fun PublicProfileScreen(
                 }
 
                 Spacer(Modifier.height(8.dp))
-                ProfileSections(p, reviews, onOpenReviews)
+                ProfileBody(p, reviews, onOpenReviews)   // 멤버십 규칙 분기
                 Spacer(Modifier.height(20.dp))
             }
 
@@ -335,45 +335,8 @@ fun PublicProfileScreen(
 
 @Composable
 private fun ProfileSections(p: PublicProfile, reviews: ReviewList?, onOpenReviews: () -> Unit) {
-    val ctx = LocalContext.current
     Column(Modifier.fillMaxWidth()) {
-        // 연락처 — 서버가 열람 권한을 판단해 contactVisible/contactPhone 을 내려준 경우만.
-        //  ★ 화면에서 권한을 판정하지 않는다. 번호가 없으면 서버가 허용하지 않은 것이다.
-        //  iOS PublicProfileView.contactSection 과 같은 조건/같은 위치(최상단).
-        val contactPhone = p.contactPhone?.trim()
-        if (p.contactVisible == true && !contactPhone.isNullOrEmpty()) {
-            ProfileSection("연락처") {
-                Row(
-                    Modifier.fillMaxWidth().clickable {
-                        val digits = contactPhone.filter { it.isDigit() }
-                        if (digits.isNotEmpty()) {
-                            runCatching {
-                                ctx.startActivity(
-                                    Intent(Intent.ACTION_DIAL, Uri.parse("tel:$digits")),
-                                )
-                            }
-                        }
-                    },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        contactPhone,
-                        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
-                        lineHeight = 18.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
-                    )
-                    Icon(
-                        Icons.Filled.Phone, contentDescription = null,
-                        tint = MuyeonColors.primary, modifier = Modifier.size(14.dp),
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        "전화하기",
-                        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                        lineHeight = 16.sp, color = MuyeonColors.primary,
-                    )
-                }
-            }
-        }
+        ContactSection(p)
         p.intro?.takeIf { it.isNotEmpty() }?.let {
             ProfileSection("소개글") {
                 Text(it, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 24.sp, color = MuyeonColors.body)
@@ -461,57 +424,223 @@ private fun ProfileSections(p: PublicProfile, reviews: ReviewList?, onOpenReview
                 }
             }
         }
-        // 후기 요약 — 태그 배지 + 상위 3개 + 전체보기
-        reviews?.items?.takeIf { it.isNotEmpty() }?.let { items ->
-            ProfileSection("레슨 후기 ${reviews.count ?: items.size}개") {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    val top = reviews.tagCounts.entries.sortedByDescending { it.value }.take(4)
-                    if (top.isNotEmpty()) {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            top.chunked(2).forEach { row ->
-                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    row.forEach { (tag, n) ->
-                                        Text(
-                                            "${ReviewOptions.tagLabel(tag)} $n",
-                                            fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp,
-                                            lineHeight = 14.sp, color = MuyeonColors.primary, maxLines = 1,
-                                            modifier = Modifier.clip(RoundedCornerShape(50))
-                                                .background(MuyeonColors.primary.copy(alpha = 0.08f))
-                                                .padding(horizontal = 10.dp, vertical = 5.dp),
-                                        )
-                                    }
+        ReviewsSection(reviews, onOpenReviews)
+    }
+}
+
+/**
+ * 본문 — 멤버십 규칙 레이아웃(웹 TeacherDetail·iOS PublicProfileView+Layouts 와 같은 분기).
+ *  · 소유자 멤버십 없음 → 기본 폼(라벨 + 읽기전용 박스, 웹 form-list 와 같은 항목·순서)
+ *  · 멤버십 + 이미지형(detailType=IMAGE) → 상세컷 전체폭 세로 스택
+ *  · 멤버십 + 텍스트형 → 꾸민 레이아웃(ProfileSections)
+ *  ★ 2026-10-19 앱은 어디서 열어도 네이티브 프로필 — 구직 탭만 웹으로 가던 이유(멤버십 규칙)를 여기로 옮겼다.
+ */
+@Composable
+private fun ProfileBody(p: PublicProfile, reviews: ReviewList?, onOpenReviews: () -> Unit) {
+    val detailImages = p.detailImages.orEmpty().filter { it.isNotBlank() }
+    when {
+        p.profileMembershipActive != true -> BasicProfileSections(p, reviews, onOpenReviews)
+        p.detailType == "IMAGE" && detailImages.isNotEmpty() -> Column(Modifier.fillMaxWidth()) {
+            ContactSection(p)
+            detailImages.forEach { url ->
+                AsyncImage(
+                    QuoteUi.imageUrl(url), null, contentScale = ContentScale.FillWidth,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            ReviewsSection(reviews, onOpenReviews)
+        }
+        else -> ProfileSections(p, reviews, onOpenReviews)
+    }
+}
+
+/** 기본 폼 — 웹 TeacherDetail 비멤버(form-list)와 같은 항목·순서. 빈 값은 그리지 않는다(웹 hideEmpty). */
+@Composable
+private fun BasicProfileSections(p: PublicProfile, reviews: ReviewList?, onOpenReviews: () -> Unit) {
+    val ctx = LocalContext.current
+    Column(Modifier.fillMaxWidth()) {
+        p.intro.nonBlank()?.let { ProfileSection("소개글") { ReadBox(it) } }
+        ProfileSection("기본 정보") {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                ReadField("활동 지역", p.activeRegion)
+                ReadField("희망 근무 지역", p.desiredRegion)
+                ReadField("경력", p.career?.let { ResumeOptions.careerLabel(it) })
+                ReadField("희망 급여", p.desiredSalary?.let { ResumeOptions.salaryLabel(it) })
+                val phone = p.contactPhone.nonBlank()
+                if (p.contactVisible == true && phone != null) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        FieldLabel("연락처")
+                        Text(
+                            "$phone · 전화하기 ›",
+                            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
+                            lineHeight = 17.sp, color = MuyeonColors.primary,
+                            modifier = Modifier.clickable {
+                                val digits = phone.filter { it.isDigit() }
+                                if (digits.isNotEmpty()) {
+                                    runCatching { ctx.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$digits"))) }
+                                }
+                            },
+                        )
+                    }
+                }
+                ReadField("지도 가능 분야", p.fields.orEmpty().joinToString(", ") { ResumeOptions.fieldLabel(it) })
+            }
+        }
+        if (!p.availableDays.isNullOrEmpty() || !p.availableTimeSlots.isNullOrEmpty()) {
+            ProfileSection("레슨 가능 시간") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ReadField("가능 요일", p.availableDays.orEmpty().joinToString(", "))
+                    ReadField("가능 시간대", p.availableTimeSlots.orEmpty().joinToString(", ") { ResumeOptions.timeSlotLabel(it) })
+                }
+            }
+        }
+        // 웹과 같은 조합 — 기관 / 직책·담당수업 / 기간, 항목 사이 빈 줄
+        p.careers.orEmpty().map { c ->
+            listOf(c.academy, listOf(c.position, c.classes).filter { it.isNotEmpty() }.joinToString(" · "), c.period)
+                .filter { it.isNotEmpty() }.joinToString("\n")
+        }.filter { it.isNotEmpty() }.takeIf { it.isNotEmpty() }?.let {
+            ProfileSection("근무 이력") { ReadBox(it.joinToString("\n\n")) }
+        }
+        p.educations.orEmpty().map { listOf(it.school, it.period).filter { s -> s.isNotEmpty() }.joinToString(" · ") }
+            .filter { it.isNotEmpty() }.takeIf { it.isNotEmpty() }?.let {
+                ProfileSection("학력") { ReadBox(it.joinToString("\n")) }
+            }
+        if (p.companyCareer.nonBlank() != null || p.certificates.nonBlank() != null) {
+            ProfileSection("경력 · 자격") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ReadField("무용단 경력", p.companyCareer, multiline = true)
+                    ReadField("자격증", p.certificates, multiline = true)
+                }
+            }
+        }
+        ReviewsSection(reviews, onOpenReviews)
+    }
+}
+
+private fun String?.nonBlank(): String? = this?.trim()?.takeIf { it.isNotEmpty() }
+
+@Composable
+private fun FieldLabel(text: String) {
+    Text(text, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 16.sp, color = MuyeonColors.textSub)
+}
+
+@Composable
+private fun ReadField(label: String, value: String?, multiline: Boolean = false) {
+    val v = value.nonBlank() ?: return
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        FieldLabel(label)
+        ReadBox(v, singleLine = !multiline)
+    }
+}
+
+/** 읽기전용 박스 — 웹 read-field(비활성 입력칸 배경)와 같은 인상. */
+@Composable
+private fun ReadBox(text: String, singleLine: Boolean = false) {
+    Text(
+        text,
+        fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 21.sp,
+        color = MuyeonColors.body, maxLines = if (singleLine) 1 else Int.MAX_VALUE,
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFFF7F7F7)).padding(horizontal = 14.dp, vertical = 12.dp),
+    )
+}
+
+/** 연락처 — 서버가 열람 권한을 판단해 내려준 경우만(꾸민·기본·이미지 레이아웃 공통). */
+@Composable
+private fun ContactSection(p: PublicProfile) {
+    val ctx = LocalContext.current
+    // 연락처 — 서버가 열람 권한을 판단해 contactVisible/contactPhone 을 내려준 경우만.
+    //  ★ 화면에서 권한을 판정하지 않는다. 번호가 없으면 서버가 허용하지 않은 것이다.
+    //  iOS PublicProfileView.contactSection 과 같은 조건/같은 위치(최상단).
+    val contactPhone = p.contactPhone?.trim()
+    if (p.contactVisible == true && !contactPhone.isNullOrEmpty()) {
+        ProfileSection("연락처") {
+            Row(
+                Modifier.fillMaxWidth().clickable {
+                    val digits = contactPhone.filter { it.isDigit() }
+                    if (digits.isNotEmpty()) {
+                        runCatching {
+                            ctx.startActivity(
+                                Intent(Intent.ACTION_DIAL, Uri.parse("tel:$digits")),
+                            )
+                        }
+                    }
+                },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    contactPhone,
+                    fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
+                    lineHeight = 18.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    Icons.Filled.Phone, contentDescription = null,
+                    tint = MuyeonColors.primary, modifier = Modifier.size(14.dp),
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    "전화하기",
+                    fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                    lineHeight = 16.sp, color = MuyeonColors.primary,
+                )
+            }
+        }
+    }
+}
+
+/** 레슨 후기 요약 — 꾸민·기본·이미지 레이아웃 공통. */
+@Composable
+private fun ReviewsSection(reviews: ReviewList?, onOpenReviews: () -> Unit) {
+    // 후기 요약 — 태그 배지 + 상위 3개 + 전체보기
+    reviews?.items?.takeIf { it.isNotEmpty() }?.let { items ->
+        ProfileSection("레슨 후기 ${reviews.count ?: items.size}개") {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                val top = reviews.tagCounts.entries.sortedByDescending { it.value }.take(4)
+                if (top.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        top.chunked(2).forEach { row ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                row.forEach { (tag, n) ->
+                                    Text(
+                                        "${ReviewOptions.tagLabel(tag)} $n",
+                                        fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp,
+                                        lineHeight = 14.sp, color = MuyeonColors.primary, maxLines = 1,
+                                        modifier = Modifier.clip(RoundedCornerShape(50))
+                                            .background(MuyeonColors.primary.copy(alpha = 0.08f))
+                                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                                    )
                                 }
                             }
                         }
                     }
-                    items.take(3).forEach { r ->
-                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Filled.Star, null, tint = MuyeonColors.primary, modifier = Modifier.size(12.dp))
-                                Text(
-                                    "${r.rating ?: 0}",
-                                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 12.sp,
-                                    lineHeight = 14.sp, color = MuyeonColors.textHead,
-                                )
-                                Text(
-                                    r.reviewerName ?: "회원",
-                                    fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 14.sp,
-                                    color = MuyeonColors.secondary,
-                                )
-                            }
-                            r.content?.takeIf { it.isNotBlank() }?.let {
-                                Text(it, fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 19.sp, color = MuyeonColors.body, maxLines = 3)
-                            }
+                }
+                items.take(3).forEach { r ->
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.Star, null, tint = MuyeonColors.primary, modifier = Modifier.size(12.dp))
+                            Text(
+                                "${r.rating ?: 0}",
+                                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                                lineHeight = 14.sp, color = MuyeonColors.textHead,
+                            )
+                            Text(
+                                r.reviewerName ?: "회원",
+                                fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 14.sp,
+                                color = MuyeonColors.secondary,
+                            )
+                        }
+                        r.content?.takeIf { it.isNotBlank() }?.let {
+                            Text(it, fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 19.sp, color = MuyeonColors.body, maxLines = 3)
                         }
                     }
-                    if (items.size > 3) {
-                        Text(
-                            "후기 전체 보기",
-                            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                            lineHeight = 16.sp, color = MuyeonColors.primary,
-                            modifier = Modifier.clickable(onClick = onOpenReviews),
-                        )
-                    }
+                }
+                if (items.size > 3) {
+                    Text(
+                        "후기 전체 보기",
+                        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                        lineHeight = 16.sp, color = MuyeonColors.primary,
+                        modifier = Modifier.clickable(onClick = onOpenReviews),
+                    )
                 }
             }
         }
