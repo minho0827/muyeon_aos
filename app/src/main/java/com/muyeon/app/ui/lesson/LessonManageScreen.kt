@@ -54,7 +54,7 @@ import java.util.Locale
 
 /**
  * 내 레슨 관리 — iOS `LessonManageView.swift` 1:1.
- *  개설 목록(수정·삭제·홈 노출권) + 보관함(복원).
+ *  개설 목록(수정·삭제) + 보관함(복원). 홈 노출은 멤버십 혜택(노출중 배지만 표시).
  *
  * ⚠️ 삭제는 하드 삭제가 아니라 **보관(ARCHIVED) 소프트 삭제**다. 복원 경로가 반드시 함께 있어야 한다
  *   (레슨 슬롯 라이프사이클 규약).
@@ -99,13 +99,7 @@ data class LessonProduct(
     }
 }
 
-data class LessonPlan(val code: String, val name: String?, val priceKrw: Int?) {
-    companion object {
-        fun from(o: JSONObject) = LessonPlan(o.optString("code"), o.stringOrNull("name"), o.intOrNull("priceKrw"))
-    }
-}
-
-/** /lesson-products, /monetization — iOS LessonProductService. */
+/** /lesson-products — iOS LessonProductService. */
 class LessonProductApi(private val token: String?) {
     private val client = OkHttpClient()
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
@@ -120,12 +114,6 @@ class LessonProductApi(private val token: String?) {
     suspend fun delete(id: Int): Result<Unit> = call("/lesson-products/$id", "DELETE").map { }
 
     suspend fun restore(id: Int): Result<Unit> = call("/lesson-products/$id/restore", "POST").map { }
-
-    suspend fun plans(featureType: String): Result<List<LessonPlan>> =
-        call("/monetization/plans?featureType=$featureType").map { JSONArray(it.ifBlank { "[]" }).map(LessonPlan::from) }
-
-    suspend fun createOrder(planCode: String, scopeRefId: Int): Result<Unit> =
-        call("/monetization/orders", "POST", JSONObject().put("planCode", planCode).put("scopeRefId", scopeRefId)).map { }
 
     private suspend fun call(path: String, method: String = "GET", body: JSONObject? = null): Result<String> =
         withContext(Dispatchers.IO) {
@@ -172,8 +160,6 @@ fun LessonManageScreen(
     var archived by remember { mutableStateOf<List<LessonProduct>>(emptyList()) }
     var showArchive by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<LessonProduct?>(null) }
-    var boostTarget by remember { mutableStateOf<LessonProduct?>(null) }
-    var plans by remember { mutableStateOf<List<LessonPlan>>(emptyList()) }
     var toast by remember { mutableStateOf<String?>(null) }
     var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -229,10 +215,6 @@ fun LessonManageScreen(
                             isAcademyViewer = isAcademyViewer,
                             onEdit = { onEdit(l.id) },
                             onSlots = { onSlots(l.id) },
-                            onBoost = {
-                                boostTarget = l
-                                scope.launch { plans = api.plans("HOME_PROMOTION").getOrDefault(emptyList()) }
-                            },
                             onDelete = { deleteTarget = l },
                         )
                     }
@@ -288,50 +270,6 @@ fun LessonManageScreen(
         }
     }
 
-    // 홈 노출권 — 플랜 선택 후 주문 생성
-    boostTarget?.let { target ->
-        ModalBottomSheet(onDismissRequest = { boostTarget = null }) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp)) {
-                Text(
-                    "홈 노출권",
-                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp,
-                    lineHeight = 20.sp, color = MuyeonColors.textHead,
-                )
-                Text(
-                    "홈 상단에 이 레슨을 노출해요.",
-                    fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp,
-                    color = MuyeonColors.textSub, modifier = Modifier.padding(bottom = 10.dp),
-                )
-                if (plans.isEmpty()) {
-                    Text("이용 가능한 상품이 없어요.", fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.textSub)
-                }
-                plans.forEach { p ->
-                    Row(
-                        Modifier.fillMaxWidth().clickable {
-                            scope.launch {
-                                api.createOrder(p.code, target.id)
-                                    .onSuccess { toast = "신청했어요."; onChanged() }.onFailure { toast = it.message }
-                                boostTarget = null; load()
-                            }
-                        }.padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            p.name ?: p.code,
-                            fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 18.sp,
-                            color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
-                        )
-                        Text(
-                            p.priceKrw?.let { LessonOptions.priceLabel(it) } ?: "",
-                            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
-                            lineHeight = 17.sp, color = MuyeonColors.primary,
-                        )
-                    }
-                }
-            }
-        }
-    }
-
     deleteTarget?.let { t ->
         QuoteDialog(
             title = "이 레슨을 삭제할까요?",
@@ -358,7 +296,6 @@ private fun LessonCard(
     isAcademyViewer: Boolean,
     onEdit: () -> Unit,
     onSlots: () -> Unit,
-    onBoost: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Column(
@@ -403,7 +340,7 @@ private fun LessonCard(
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             CardAction("수정", Modifier.weight(1f), onEdit)
             CardAction("예약 시간", Modifier.weight(1f), onSlots)
-            CardAction("홈 노출", Modifier.weight(1f), onBoost)
+            // ★ 2026-10-19 '홈 노출' 제거 — 낱개 판매 폐지(2026-08-30)로 상품이 늘 비어 있었다. 노출은 멤버십 혜택(위 노출중 배지).
             CardAction("삭제", Modifier.weight(1f), onDelete, danger = true)
         }
     }

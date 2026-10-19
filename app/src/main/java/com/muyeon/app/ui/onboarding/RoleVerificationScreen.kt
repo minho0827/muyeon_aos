@@ -251,6 +251,7 @@ fun RoleVerificationScreen(
                     verifyLater = verifyLater,
                     onVerifyLaterChange = { verifyLater = it },
                     allowsVerifyLater = allowSkip,
+                    onLater = onClose,
                     isChecking = checkingBusinessNumber,
                     isVerified = verifiedBusinessNumber == businessNumber.filter(Char::isDigit).take(10),
                     statusMessage = businessNumberMessage,
