@@ -34,7 +34,7 @@ object ActiveRole {
     /** 무용수 유형 고객측 차단 문구(레슨 요청·예약) — iOS RoleGate 와 동일 문구. */
     const val DANCER_CUSTOMER_BLOCK = "무용수 유형에서는 레슨을 요청·예약할 수 없어요. 일반 유형으로 전환한 뒤 이용해 주세요."
     /** 무용수 유형 제공측 차단 문구(레슨 운영·견적 응답) — iOS RoleGate 와 동일 문구. */
-    const val DANCER_PROVIDER_BLOCK = "레슨은 강사·학원 회원만 운영할 수 있어요. 레슨을 하려면 MY > 역할 설정에서 강사 유형을 추가해 주세요."
+    const val DANCER_PROVIDER_BLOCK = "레슨은 강사·학원 유형에서만 운영할 수 있어요. 강사 유형으로 전환해 주세요. 강사 유형이 없다면 MY > 회원유형에서 추가할 수 있어요."
 
     /**
      * 헤더 부착용 앱 컨텍스트 — 네이티브 API 클라이언트는 Context 없이 토큰만 받는 구조라,
