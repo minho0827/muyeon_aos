@@ -235,6 +235,8 @@ object Analytics {
                 listOf("source", "medium", "campaign", "content").forEach { k -> q["utm_$k"]?.let { utm.put(k, it.take(100)) } }
                 val props = JSONObject()
                 q["aid"]?.let { props.put("webAid", it) }
+                // 로그가 없던 옛 버전에서 업데이트한 첫 실행 — 서버가 새 설치로 세지 않는다.
+                if (isUpgrade()) props.put("upgrade", true)
                 referrer?.let { props.put("referrer", it.take(200)) }
                 track("first_open", props = props, utm = utm.takeIf { it.length() > 0 })
                 flush()
@@ -253,6 +255,12 @@ object Analytics {
             })
         }.onFailure { done(null) }
     }
+
+    /** 처음 설치한 뒤 업데이트된 적이 있으면 true. 앱을 지우고 다시 깔면 두 시각이 다시 같아진다. */
+    private fun isUpgrade(): Boolean = runCatching {
+        val info = app.packageManager.getPackageInfo(app.packageName, 0)
+        info.lastUpdateTime - info.firstInstallTime > 60_000L
+    }.getOrDefault(false)
 
     private fun parseQuery(s: String?): Map<String, String> =
         s.orEmpty().split('&').mapNotNull { part ->
