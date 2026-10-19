@@ -10,6 +10,7 @@ import androidx.activity.addCallback
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.remember
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -21,6 +22,7 @@ import com.muyeon.app.webview.WebCallbacks
 import com.muyeon.app.webview.WebCallbackQueue
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlinx.coroutines.launch
 
 /**
  * 온보딩/회원유형 컨테이너 — 웹 `openRoleManage` / `openRoleVerification` /
@@ -124,7 +126,7 @@ class OnboardingActivity : ComponentActivity() {
                         onAdd = { r -> queueWeb("if(window.__onRoleManageAdd){ window.__onRoleManageAdd('${esc(r)}'); }") },
                         onRemove = { r -> queueWeb("if(window.__onRoleRemove){ window.__onRoleRemove('${esc(r)}'); }") },
                         onVerify = { r, done -> verifyCompletion = done; nav.navigate("verify/$r") },
-                        onSelectActive = { t -> selectActiveType(t) },
+                        onSelectActive = { t, done -> selectActiveType(t, done) },
                     )
                 }
                 // 인증 유도 팝업(`openRoleVerification`) 직행 경로 — 관리 화면이 없으므로 제출 즉시 웹으로 돌아간다.
@@ -242,18 +244,27 @@ class OnboardingActivity : ComponentActivity() {
     }
 
     /**
-     * 활동 유형 선택 — iOS `notifyWebActiveType` 1:1.
-     *  ① 네이티브에 저장(X-Active-Type 이 옛값으로 남는 것 방지) ② 바뀌었으면 전환 토스트 ③ 웹 콜백.
+     * 활동 유형 선택 — iOS `switchTo` + `notifyWebActiveType` 1:1.
+     *  ① 서버에 먼저 저장(PATCH) ② 성공하면 네이티브에 저장 ③ 바뀌었으면 전환 토스트 ④ 웹 콜백.
      *  ★ 저장이 빠지면 네이티브 화면들이 "지금 학원인가 강사인가"를 영영 알 수 없다.
+     *  ★ 서버 저장이 빠지면 웹이 복귀 때 서버의 옛 유형으로 되돌린다(2026-10-19).
      */
-    private fun selectActiveType(type: String) {
+    private fun selectActiveType(type: String, done: (Boolean) -> Unit = {}) {
         val t = type.uppercase()
-        val changed = ActiveRole.current(this) != t
-        ActiveRole.store(this, t)
-        if (changed) {
-            Toast.makeText(this, "${ActiveRole.label(t)} 유형으로 전환됐어요", Toast.LENGTH_SHORT).show()
+        lifecycleScope.launch {
+            if (!ActiveRole.saveOnServer(this@OnboardingActivity, t)) {
+                Toast.makeText(this@OnboardingActivity, "유형 전환을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.", Toast.LENGTH_SHORT).show()
+                done(false)
+                return@launch
+            }
+            val changed = ActiveRole.current(this@OnboardingActivity) != t
+            ActiveRole.store(this@OnboardingActivity, t)
+            if (changed) {
+                Toast.makeText(this@OnboardingActivity, "${ActiveRole.label(t)} 유형으로 전환됐어요", Toast.LENGTH_SHORT).show()
+            }
+            queueWeb("if(window.__onActiveTypeChanged){ window.__onActiveTypeChanged('${esc(t)}'); }")
+            done(true)
         }
-        queueWeb("if(window.__onActiveTypeChanged){ window.__onActiveTypeChanged('${esc(t)}'); }")
     }
 
     // ── 웹 콜백 큐 ──

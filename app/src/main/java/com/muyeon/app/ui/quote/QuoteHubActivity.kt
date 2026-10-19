@@ -137,9 +137,10 @@ class QuoteHubActivity : ResultActivity() {
         }
     }
 
-    /** 강사 공개 프로필 — 네이티브 미이식이라 웹 경로로(브릿지 openPublicProfile 폴백과 동일 경로). */
+    /** 강사 공개 프로필 — 네이티브 공개 프로필(ResumeActivity). iOS 받은 견적의 PublicProfileView 와 같다. */
     private fun openTeacherProfile(userId: Int) {
-        openWebAndFinish("/teachers/$userId")
+        if (userId <= 0) return
+        com.muyeon.app.ui.resume.ResumeActivity.startProfile(this, userId, "quote")
     }
 
     /** 채팅방 — 네이티브 이식 완료(B). 채택/바로채팅이 실제 방으로 이어진다. launcher 가 있으면 결과를 받는다. */

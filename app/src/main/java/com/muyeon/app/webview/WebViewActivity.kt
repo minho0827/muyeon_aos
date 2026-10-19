@@ -111,8 +111,6 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
         keys.forEach { key -> evalWhenReady(readyGuarded(WebCallbacks.resultJs(key, payload.payloadJsonFor(key)))) }
         if (ResultKeys.CHAT_ROOMS in keys || ResultKeys.CHAT_ROOM in keys || ResultKeys.NOTIFICATIONS in keys) {
             com.muyeon.app.ui.floating.FloatingState.requestRefresh()
-        // 서버 활성유형으로 X-Active-Type 값 맞춤 — 다른 기기·웹에서 바꾼 유형, 가입 직후 낡은 값 보정.
-        ActiveRole.syncFromServer(this)
         }
     }
 
@@ -391,6 +389,9 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
         if (::webView.isInitialized) webView.onResume()
         // 채팅·알림 배지 재조회 — 예전 60초 폴링을 대신한다(돌아올 때마다 한 번).
         com.muyeon.app.ui.floating.FloatingState.requestRefresh()
+        // 서버 활성유형으로 X-Active-Type 값 맞춤 — 다른 기기·웹에서 바꾼 유형, 가입 직후 낡은 값 보정.
+        //  (종전엔 결과 전달 분기 안에 잘못 들어가 채팅·알림 결과가 있을 때만 돌았다.)
+        ActiveRole.syncFromServer(this)
         // 네이티브 화면이 쌓아둔 웹 콜백을 흘려보낸다(WebCallbackQueue).
         //  액티비티가 죽어 인텐트로 못 넘긴 것까지 여기서 회수된다 —
         //  안 하면 "화면엔 반영됐는데 서버는 모르는" 상태로 남는다.

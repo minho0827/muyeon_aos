@@ -137,7 +137,7 @@ fun RoleManageScreen(
     onRemove: (String) -> Unit,       // 해제 → __onRoleRemove
     // 사업 인증 → 인증 화면. 서류를 제출했으면 콜백(true)으로 낙관적 '심사중' 전환(iOS 동일).
     onVerify: (String, (Boolean) -> Unit) -> Unit,
-    onSelectActive: (String) -> Unit, // 활동 유형 선택 → __onActiveTypeChanged
+    onSelectActive: (String, (Boolean) -> Unit) -> Unit, // 활동 유형 선택(서버 저장 결과 콜백) → __onActiveTypeChanged
 ) {
     var granted by remember { mutableStateOf(payload.granted) }
     var status by remember { mutableStateOf(payload.status) }
@@ -157,8 +157,10 @@ fun RoleManageScreen(
                         onTap = { opt ->
                             if (isActiveEligible(opt, granted, status)) {
                                 val code = activeCode(opt)
+                                val before = activeSel
                                 activeSel = code
-                                onSelectActive(code)
+                                // 서버 저장이 실패하면 선택 표시를 되돌린다(화면만 바뀌고 실제론 그대로인 상태 방지).
+                                onSelectActive(code) { ok -> if (!ok) activeSel = before }
                             } else {
                                 pending = opt
                             }

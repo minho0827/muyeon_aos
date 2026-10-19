@@ -7,8 +7,10 @@ import com.muyeon.app.utils.TokenManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
@@ -44,8 +46,12 @@ object ActiveRole {
         if (appContext == null) appContext = context.applicationContext
     }
 
+    /** 로컬 값이 바뀔 때마다 오른다 — 응답이 늦게 온 서버 동기화가 그사이 바꾼 값을 덮지 않게 한다. */
+    @Volatile private var version = 0
+
     fun store(context: Context, type: String?) {
         bind(context)
+        version++
         val v = (type ?: "").trim().uppercase().ifEmpty { "GENERAL" }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putString(KEY, v).apply()
@@ -76,6 +82,7 @@ object ActiveRole {
             clear(app)
             return
         }
+        val startedAt = version
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val req = Request.Builder()
@@ -86,11 +93,33 @@ object ActiveRole {
                     if (!res.isSuccessful) return@use
                     val type = JSONObject(res.body?.string().orEmpty().ifBlank { "{}" })
                         .optString("activeType")
-                    if (type.isNotBlank() && type != "null") store(app, type)
+                    // ★ 조회 중에 사용자가 전환했으면(웹 syncActiveType·네이티브 선택) 이 응답은 옛 값이다.
+                    if (type.isNotBlank() && type != "null" && version == startedAt) store(app, type)
                 }
             } catch (_: Exception) {
                 // 네트워크 실패 — 기존 값 유지
             }
+        }
+    }
+
+    /**
+     * 활성유형을 서버에 저장 — iOS `RoleGate.switchTo` 의 PATCH 와 같다. 성공(2xx)이면 true.
+     *  ★ 2026-10-19 네이티브 선택이 로컬에만 저장되고 웹 콜백(나갈 때 실행)에 서버 저장을 맡겨,
+     *    웹의 복귀 시 역할 조회가 먼저 끝나면 서버의 옛 값(일반)으로 되돌아갔다.
+     */
+    suspend fun saveOnServer(context: Context, type: String): Boolean = kotlinx.coroutines.withContext(Dispatchers.IO) {
+        val token = TokenManager.getAccessToken(context.applicationContext)
+        if (token.isNullOrEmpty()) return@withContext false
+        try {
+            val body = JSONObject().put("type", type).toString()
+                .toRequestBody("application/json".toMediaType())
+            val req = Request.Builder()
+                .url("${BuildConfig.API_BASE_URL}/api/auth/me/active-type")
+                .addHeader("Authorization", "Bearer $token")
+                .patch(body).build()
+            syncClient.newCall(req).execute().use { it.isSuccessful }
+        } catch (_: Exception) {
+            false
         }
     }
 
