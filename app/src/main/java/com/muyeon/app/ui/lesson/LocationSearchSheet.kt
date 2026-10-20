@@ -1,8 +1,6 @@
 package com.muyeon.app.ui.lesson
 
 import android.content.Context
-import android.location.Address
-import android.location.Geocoder
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -32,28 +30,32 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
+import com.muyeon.app.BuildConfig
 import com.muyeon.app.ui.common.MuyeonColors
+import com.muyeon.app.utils.TokenManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.json.JSONObject
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /**
- * 장소 검색 시트 — iOS `LocationSearchView.swift` 대응.
- *  검색바 → '직접입력' 행 + 검색 결과(핀·주소) 리스트, 선택 시 onSelect(LessonPlace).
+ * 장소·주소 검색 시트 — iOS `LocationSearchView.swift` 대응.
+ *  검색바 → '직접입력' 행 + 검색 결과(장소명·주소) 리스트, 선택 시 onSelect(LessonPlace).
+ *  끝까지 내리면 다음 페이지(15개씩, 최대 45개). 결과에 좌표가 들어 있어 다시 찾지 않는다.
  *
- * ⚠️ 검색 엔진이 iOS 와 다르다 —
- *   iOS 는 MKLocalSearch(무료·키 없음)를 쓰지만 안드로이드엔 대응물이 없다.
- *   Play 서비스의 Places SDK 는 API 키 + 과금이 붙고, 네이버/카카오 로컬 API 는
- *   서버 크리덴셜이 필요하다(백엔드에 프록시 엔드포인트도 아직 없다).
- *   그래서 키 없이 쓸 수 있는 플랫폼 내장 Geocoder 로 대신한다.
- *   결과가 POI 이름 대신 주소 위주로 나오는 차이는 있으나, 반환 데이터
- *   (name·address·lat·lng)와 '직접입력' 폴백은 iOS 와 동일해 저장 형식은 1:1 이다.
+ * ★ 2026-10-20 플랫폼 Geocoder → 서버(/api/places/search, 카카오 로컬 키워드+주소).
+ *   Geocoder 는 '주소 → 좌표' 변환이라 '사당동'을 치면 1곳만 나왔다. iOS 와 같은 서버 API 를 쓴다.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocationSearchSheet(
     /** 편집기 텍스트필드에 치던 주소로 즉시 검색 — iOS initialQuery. */
     initialQuery: String = "",
+    placeholder: String = "장소·주소 검색",
     onSelect: (LessonPlace) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -61,13 +63,37 @@ fun LocationSearchSheet(
     val ctx = LocalContext.current
     var query by remember { mutableStateOf(initialQuery) }
     var results by remember { mutableStateOf<List<LessonPlace>>(emptyList()) }
+    var page by remember { mutableIntStateOf(1) }
+    var hasMore by remember { mutableStateOf(false) }
+    var loading by remember { mutableStateOf(false) }
+    var searched by remember { mutableStateOf(false) }   // 한 번이라도 검색이 끝났는지(빈 결과 안내용)
+    val scope = rememberCoroutineScope()
     val trimmed = query.trim()
 
-    // 디바운스 300ms — iOS scheduleSearch 와 동일. query 가 바뀌면 이전 검색은 취소된다.
+    // 디바운스 300ms — iOS scheduleSearch 와 동일. query 가 바뀌면 이전 검색은 취소되고 1페이지부터.
     LaunchedEffect(trimmed) {
-        if (trimmed.isEmpty()) { results = emptyList(); return@LaunchedEffect }
+        if (trimmed.isEmpty()) { results = emptyList(); searched = false; hasMore = false; return@LaunchedEffect }
         delay(300)
-        results = geocode(ctx, trimmed)
+        loading = true
+        val res = searchPlaces(ctx, trimmed, 1)
+        loading = false
+        results = res.first; hasMore = res.second; page = 1; searched = true
+    }
+
+    // 마지막 줄이 보이면 다음 페이지 — 그사이 검색어가 바뀌었으면 버린다.
+    fun loadMore() {
+        if (!hasMore || loading || trimmed.isEmpty()) return
+        val q = trimmed
+        val next = page + 1
+        loading = true
+        scope.launch {
+            val res = searchPlaces(ctx, q, next)
+            loading = false
+            if (q != query.trim()) return@launch
+            val seen = results.map { "${it.name}|${it.address}" }.toSet()
+            results = results + res.first.filter { "${it.name}|${it.address}" !in seen }
+            hasMore = res.second; page = next
+        }
     }
 
     fun pick(place: LessonPlace) { onSelect(place); onDismiss() }
@@ -82,7 +108,7 @@ fun LocationSearchSheet(
                     value = query, onValueChange = { query = it },
                     placeholder = {
                         Text(
-                            "장소·주소 검색",
+                            placeholder,
                             fontFamily = customFontFamily, fontSize = 16.sp, color = MuyeonColors.chevron,
                         )
                     },
@@ -165,6 +191,23 @@ fun LocationSearchSheet(
                             }
                         }
                     }
+                    if (i == results.lastIndex) LaunchedEffect(results.size) { loadMore() }
+                }
+                if (loading) {
+                    item(key = "loading") {
+                        Text(
+                            "찾는 중…", fontFamily = customFontFamily, fontSize = 13.sp, color = MuyeonColors.textSub,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                        )
+                    }
+                } else if (searched && results.isEmpty() && trimmed.isNotEmpty()) {
+                    item(key = "empty") {
+                        Text(
+                            "검색 결과가 없어요. 동 이름이나 장소명으로 다시 찾아보세요.",
+                            fontFamily = customFontFamily, fontSize = 13.sp, color = MuyeonColors.textSub,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                        )
+                    }
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -229,28 +272,41 @@ fun LocationPreviewCard(place: LessonPlace, onOpenMap: () -> Unit) {
     }
 }
 
-/** 지오코딩 — 최대 15건(iOS prefix(15)와 동일). 실패해도 '직접입력'은 남으므로 조용히 비운다. */
-private suspend fun geocode(ctx: Context, q: String): List<LessonPlace> = withContext(Dispatchers.IO) {
-    if (!Geocoder.isPresent()) return@withContext emptyList()
-    runCatching {
-        @Suppress("DEPRECATION")
-        Geocoder(ctx, java.util.Locale.KOREA).getFromLocationName(q, 15).orEmpty().map { a ->
-            LessonPlace(
-                name = a.featureName?.takeIf { it.isNotBlank() && it != a.thoroughfare } ?: addressLine(a).ifEmpty { q },
-                address = addressLine(a).ifEmpty { null },
-                lat = a.latitude, lng = a.longitude,
-            )
-        }
-    }.getOrDefault(emptyList())
-}
+private val placeClient = OkHttpClient()
 
-/** 표시 주소 — iOS address(item) 과 같은 순서(시도·시군구·읍면동·도로·번지). */
-private fun addressLine(a: Address): String {
-    val full = a.getAddressLine(0).orEmpty()
-    if (full.isNotEmpty()) return full.removePrefix("대한민국 ")
-    return listOfNotNull(a.adminArea, a.locality, a.subLocality, a.thoroughfare, a.subThoroughfare)
-        .joinToString(" ")
-}
+/**
+ * 서버 장소·주소 검색(카카오 로컬) — (결과, 다음 페이지 있음).
+ *  주소 결과는 장소명이 없어 주소를 제목으로 쓴다(iOS PlaceItem.title).
+ *  실패해도 '직접입력'은 남으므로 조용히 비운다.
+ */
+private suspend fun searchPlaces(ctx: Context, q: String, page: Int): Pair<List<LessonPlace>, Boolean> =
+    withContext(Dispatchers.IO) {
+        runCatching {
+            val url = (BuildConfig.API_BASE_URL + "/api/places/search").toHttpUrl().newBuilder()
+                .addQueryParameter("query", q)
+                .addQueryParameter("page", page.toString())
+                .build()
+            val token = TokenManager.getAccessToken(ctx)
+            val req = Request.Builder().url(url)
+                .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
+                .build()
+            placeClient.newCall(req).execute().use { res ->
+                if (!res.isSuccessful) return@use emptyList<LessonPlace>() to false
+                val o = JSONObject(res.body?.string().orEmpty())
+                val arr = o.optJSONArray("places")
+                val list = (0 until (arr?.length() ?: 0)).mapNotNull { i ->
+                    val p = arr!!.getJSONObject(i)
+                    val road = p.optString("roadAddress")
+                    val addr = road.ifEmpty { p.optString("jibunAddress") }
+                    val name = p.optString("name").ifEmpty { addr }
+                    if (name.isEmpty()) null
+                    else LessonPlace(name = name, address = addr.ifEmpty { null },
+                        lat = p.optDouble("latitude"), lng = p.optDouble("longitude"))
+                }
+                list to o.optBoolean("hasMore", false)
+            }
+        }.getOrDefault(emptyList<LessonPlace>() to false)
+    }
 
 /** 네이버지도 — 앱(nmap 스킴) 우선, 없으면 웹 폴백. iOS openNaverMap 과 동일. */
 fun openLessonNaverMap(ctx: Context, name: String, lat: Double?, lng: Double?) {

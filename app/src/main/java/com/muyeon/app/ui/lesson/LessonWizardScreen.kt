@@ -346,8 +346,8 @@ private fun StepLocation(d: LessonWizardDraft, token: String?, onChange: (Lesson
             WizardTextField(d.place, "예: 무용연 스튜디오 강남점") { onChange(d.copy(place = it)) }
         }
         WizardField("주소") {
-            // ★ 자유 입력이 아니라 다음 우편번호 검색 — 주소가 표준화돼야
-            //   region(지역 필터)·lat/lng(지도 핀)가 붙는다(iOS setPostcode).
+            // ★ 자유 입력이 아니라 주소 검색(카카오 로컬) — 주소가 표준화돼야
+            //   region(지역 필터)·lat/lng(지도 핀)가 붙는다(iOS setSearchedAddress).
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                     .border(1.dp, MuyeonColors.border, RoundedCornerShape(10.dp))
@@ -396,27 +396,24 @@ private fun StepLocation(d: LessonWizardDraft, token: String?, onChange: (Lesson
         )
 
         if (showPostcode) {
-            PostcodeSheet(
-                onComplete = { r ->
-                    // iOS setPostcode: 도로명 우선 저장, 지번 앞 2어절로 지역 산출, 좌표는 비동기.
-                    val region = shortRegion(r.jibunAddress.ifEmpty { r.roadAddress })
-                    onChange(d.copy(address = r.preferred, region = region, lat = null, lng = null))
-                    geocoding = true
+            // ★ 2026-10-20 주소 검색도 장소 검색과 같은 시트(카카오 로컬) — 우편번호 웹뷰 + Geocoder 재조회 대신
+            //   검색 결과의 좌표를 그대로 쓴다(iOS setSearchedAddress). '직접입력'(좌표 없음)이면 예전처럼 좌표를 찾아 본다.
+            LocationSearchSheet(
+                placeholder = "주소·건물명 검색 (예: 사당동)",
+                onSelect = { p ->
+                    val addr = (p.address ?: p.name).trim()
+                    val region = shortRegion(addr)
+                    // 장소명이 있는 결과(예: 사당역)를 골랐고 '장소명'이 비어 있으면 함께 채운다.
+                    val place = if (p.address != null && p.name != addr && d.place.isBlank()) p.name else d.place
+                    val base = d.copy(place = place, address = addr, region = region, lat = p.lat, lng = p.lng)
+                    onChange(base)
+                    geocoding = !p.hasCoord
                     scope.launch {
-                        // 도로명 → 지번 순으로 시도(한 쪽이 실패해도 다른 쪽으로 핀 확보).
-                        val coord = listOf(r.roadAddress, r.jibunAddress)
-                            .filter { it.isNotBlank() }
-                            .firstNotNullOfOrNull { geocodeOne(ctx, it) }
+                        val coord = if (p.hasCoord) p.lat!! to p.lng!! else geocodeOne(ctx, addr)
                         // regionCode 는 /regions 이름 매칭으로 채운다 — 없으면 지역 필터에서 빠진다.
                         val code = regionCodeFor(token, region)
                         geocoding = false
-                        onChange(
-                            d.copy(
-                                address = r.preferred, region = region,
-                                regionCode = code ?: d.regionCode,
-                                lat = coord?.first, lng = coord?.second,
-                            ),
-                        )
+                        onChange(base.copy(regionCode = code ?: d.regionCode, lat = coord?.first, lng = coord?.second))
                     }
                 },
                 onDismiss = { showPostcode = false },
