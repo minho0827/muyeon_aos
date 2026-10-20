@@ -81,6 +81,12 @@ fun ChatRoomScreen(
     var showAttach by remember { mutableStateOf(false) }
     var showProposal by remember { mutableStateOf(false) }
     var showSurveyPicker by remember { mutableStateOf(false) }
+    // 강사: 견적 상담 첫 채팅에 + 버튼 위 설문 안내(앱 설치 후 1회, iOS 와 같은 규칙).
+    //  견적 정보(강사 측 여부)는 방을 연 뒤 늦게 도착하므로 그 값이 바뀔 때 본다.
+    var showSurveyHint by remember { mutableStateOf(false) }
+    LaunchedEffect(vm.quoteContext?.isTeacher) {
+        if (vm.quoteContext?.isTeacher == true && !showSurveyHint && ChatSurveyHint.consume(context)) showSurveyHint = true
+    }
     var showReport by remember { mutableStateOf(false) }
     var reportMessage by remember { mutableStateOf<ChatMessage?>(null) }   // 상대 메시지 길게 누르기 → 메시지 신고
     var confirmBlock by remember { mutableStateOf(false) }
@@ -449,7 +455,13 @@ fun ChatRoomScreen(
             )
         } else {
             ReplyBanner(vm)
-            ChatInputBar(vm, onAttach = { showAttach = true })
+            if (showSurveyHint) {
+                ChatSurveyHintBubble(
+                    onOpen = { showSurveyHint = false; showSurveyPicker = true },
+                    onClose = { showSurveyHint = false },
+                )
+            }
+            ChatInputBar(vm, onAttach = { showSurveyHint = false; showAttach = true })
         }
     }
 
