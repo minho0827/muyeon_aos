@@ -19,6 +19,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -100,10 +102,12 @@ class RoleVerificationApi(private val token: String?) {
         }.getOrNull()
     }
 
-    data class BusinessNumberCheck(val verified: Boolean, val number: String, val message: String)
+    /** ownerMatched: ★ 2026-10-22 개업일자를 함께 보냈을 때만 — 대표자(본인인증 실명)·개업일자가 국세청 정보와 맞는지. */
+    data class BusinessNumberCheck(val verified: Boolean, val number: String, val message: String, val ownerMatched: Boolean? = null)
 
-    suspend fun checkAcademyBusinessNumber(number: String): BusinessNumberCheck = withContext(Dispatchers.IO) {
-        val json = JSONObject().put("businessRegistrationNumber", number).toString()
+    suspend fun checkAcademyBusinessNumber(number: String, startDate: String? = null): BusinessNumberCheck = withContext(Dispatchers.IO) {
+        val json = JSONObject().put("businessRegistrationNumber", number)
+            .apply { if (startDate?.length == 8) put("businessStartDate", startDate) }.toString()
         val req = Request.Builder()
             .url(BuildConfig.API_BASE_URL + "/api/me/roles/academy/business-number/check")
             .post(json.toRequestBody("application/json".toMediaType()))
@@ -116,6 +120,7 @@ class RoleVerificationApi(private val token: String?) {
                 verified = payload.optBoolean("verified"),
                 number = payload.optString("businessRegistrationNumber"),
                 message = payload.optString("message"),
+                ownerMatched = if (payload.has("ownerMatched")) payload.optBoolean("ownerMatched") else null,
             )
         }
     }
@@ -133,7 +138,7 @@ fun RoleVerificationScreen(
     api: RoleVerificationApi,
     role: String,
     onClose: () -> Unit,
-    onDone: (String, List<String>, String?, String?) -> Unit,
+    onDone: (String, List<String>, String?, String?, String?) -> Unit,   // (역할, 서류 URL, 학원명, 사업자번호, 개업일자)
     ownerName: String = "",
     initialImages: List<String> = emptyList(),
     allowSkip: Boolean = false,
@@ -146,22 +151,32 @@ fun RoleVerificationScreen(
     var checkingBusinessNumber by remember { mutableStateOf(false) }
     var verifiedBusinessNumber by remember { mutableStateOf<String?>(null) }
     var businessNumberMessage by remember { mutableStateOf<String?>(null) }
+    // ★ 2026-10-22 개업일자 — 대표자 이름·개업일자가 국세청 정보와 맞으면(ownerMatched) 제출 즉시 자동 승인, 사진 선택.
+    var startDate by remember { mutableStateOf("") }
+    var ownerMatched by remember { mutableStateOf<Boolean?>(null) }
     var uploading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(businessNumber, verifyLater) {
+    LaunchedEffect(businessNumber, startDate, verifyLater) {
         verifiedBusinessNumber = null
         businessNumberMessage = null
+        ownerMatched = null
         val normalized = businessNumber.filter(Char::isDigit).take(10)
         if (normalized.length != 10 || verifyLater) return@LaunchedEffect
         delay(450)
         checkingBusinessNumber = true
-        runCatching { api.checkAcademyBusinessNumber(normalized) }
+        runCatching { api.checkAcademyBusinessNumber(normalized, startDate.takeIf { it.length == 8 }) }
             .onSuccess { result ->
                 if (result.verified) verifiedBusinessNumber = result.number
-                businessNumberMessage = result.message
+                ownerMatched = if (result.verified) result.ownerMatched else null
+                businessNumberMessage = when {
+                    !result.verified -> result.message
+                    result.ownerMatched == true -> "국세청 정보와 일치해요. 제출하면 바로 승인돼요."
+                    result.ownerMatched == false -> "대표자 이름·개업일자가 국세청 정보와 달라요. 사업자등록증 사진을 올려 주시면 관리자가 확인해요."
+                    else -> "사업자등록번호 확인 완료 — 개업일자를 넣으면 바로 승인돼요."
+                }
             }
             .onFailure {
                 businessNumberMessage = "자동 확인이 지연되고 있어요. 잠시 후 다시 시도해 주세요."
@@ -202,7 +217,7 @@ fun RoleVerificationScreen(
             )
             Text(
                 // ★ 2026-10-22 학원은 사업자등록번호가 국세청에서 확인되면 서버가 바로 승인한다 — 사진은 선택.
-                if (role == "ACADEMY") "사업자등록번호가 국세청에서 확인되면 바로 승인돼요. 사업자등록증 사진은 선택이에요(최대 ${MAX_DOCS}장)."
+                if (role == "ACADEMY") "사업자등록번호·개업일자가 대표자 이름까지 국세청 정보와 맞으면 바로 승인돼요. 맞지 않으면 사업자등록증 사진(최대 ${MAX_DOCS}장)을 보고 관리자가 확인해요."
                 else "${documentGuide(role)}\n최대 ${MAX_DOCS}장까지 올릴 수 있고, 관리자 확인 후 승인되면 푸시로 알려드려요.",
                 fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 20.sp, color = MuyeonColors.textSub,
             )
@@ -255,9 +270,33 @@ fun RoleVerificationScreen(
                     allowsVerifyLater = allowSkip,
                     onLater = onClose,
                     isChecking = checkingBusinessNumber,
-                    isVerified = verifiedBusinessNumber == businessNumber.filter(Char::isDigit).take(10),
+                    isVerified = verifiedBusinessNumber == businessNumber.filter(Char::isDigit).take(10) && ownerMatched != false,
                     statusMessage = businessNumberMessage,
                 )
+                // 개업일자 — 대표자 이름·개업일자가 국세청 정보와 맞으면 제출 즉시 자동 승인(사진 선택).
+                if (!verifyLater) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "개업일자",
+                        fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                        lineHeight = 18.sp, color = MuyeonColors.textHead,
+                    )
+                    OutlinedTextField(
+                        value = startDate, singleLine = true,
+                        onValueChange = { startDate = it.filter(Char::isDigit).take(8) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        placeholder = {
+                            Text(
+                                "예: 20200115 (사업자등록증의 개업연월일)",
+                                fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.secondary,
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        "대표자 이름·개업일자가 국세청 정보와 맞으면 바로 승인돼요.",
+                        fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp, color = MuyeonColors.textSub,
+                    )
+                }
             }
 
             if (role == "TEAM") TeamBusinessNumberHelp()
@@ -302,7 +341,8 @@ fun RoleVerificationScreen(
         val normalizedNumber = businessNumber.filter(Char::isDigit).take(10)
         val canSubmit = !uploading && if (role == "ACADEMY") {
             academy != null && (verifyLater && allowSkip ||
-                verifiedBusinessNumber == normalizedNumber)
+                // 국세청 정보와 맞으면 사진 없이, 아니면(불일치·개업일자 비움) 관리자가 볼 사진이 있어야 한다.
+                (verifiedBusinessNumber == normalizedNumber && (ownerMatched == true || images.isNotEmpty())))
         } else images.isNotEmpty()
         Text(
             if (uploading) "업로드 중…" else if (role == "ACADEMY" && verifyLater) "가입 계속" else "제출하기",
@@ -314,7 +354,8 @@ fun RoleVerificationScreen(
                 .background(if (canSubmit) MuyeonColors.primary else Color.Gray.copy(alpha = 0.4f))
                 .clickable(enabled = canSubmit) {
                     onDone(role, if (verifyLater) emptyList() else images, academy,
-                        normalizedNumber.takeIf { role == "ACADEMY" && !verifyLater })
+                        normalizedNumber.takeIf { role == "ACADEMY" && !verifyLater },
+                        startDate.takeIf { role == "ACADEMY" && !verifyLater && it.length == 8 })
                 }
                 .padding(vertical = 16.dp),
         )

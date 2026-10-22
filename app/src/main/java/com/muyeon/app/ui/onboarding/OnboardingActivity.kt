@@ -145,8 +145,8 @@ class OnboardingActivity : ComponentActivity() {
                         api, role.orEmpty(),
                         ownerName = ownerName,
                         onClose = { finish() },
-                        onDone = { r, urls, academyName, businessNumber ->
-                            notifyWeb(verifyJs("__onRoleVerify", r, urls, academyName, businessNumber))
+                        onDone = { r, urls, academyName, businessNumber, startDate ->
+                            notifyWeb(verifyJs("__onRoleVerify", r, urls, academyName, businessNumber, startDate))
                         },
                     )
                 }
@@ -159,9 +159,10 @@ class OnboardingActivity : ComponentActivity() {
                             verifyCompletion?.invoke(false); verifyCompletion = null
                             if (!nav.popBackStack()) closeAndFlush()
                         },
-                        onDone = { r, urls, academyName, businessNumber ->
-                            val submitted = urls.isNotEmpty()
-                            verifyDone(r, urls, academyName, businessNumber)
+                        onDone = { r, urls, academyName, businessNumber, startDate ->
+                            // ★ 2026-10-22 학원은 사진 없이 사업자등록번호만으로도 제출된다(국세청 진위확인 자동 승인).
+                            val submitted = urls.isNotEmpty() || businessNumber != null
+                            verifyDone(r, urls, academyName, businessNumber, startDate)
                             verifyCompletion?.invoke(submitted); verifyCompletion = null
                             // 제출을 마쳤으면 인증 화면만이 아니라 회원유형 관리 화면까지 함께 닫는다(iOS 동일).
                             //  관리 화면이 남으면 방금 제출이 처리됐는지 알 수 없고, 웹의 제출완료 안내도
@@ -196,8 +197,8 @@ class OnboardingActivity : ComponentActivity() {
                         // 최초 가입 온보딩 — 여기서만 건너뛰기를 허용한다(닫을 다른 수단이 없다).
                         //  ★ iOS allowSkip:true 와 같은 취지. 빈 목록으로 통지해 '미제출'을 그대로 알린다.
                         onClose = { notifyWeb(verifyJs("__onRoleComplete", code, emptyList(), null)) },
-                        onDone = { r, urls, academyName, businessNumber ->
-                            notifyWeb(verifyJs("__onRoleComplete", r, urls, academyName, businessNumber))
+                        onDone = { r, urls, academyName, businessNumber, startDate ->
+                            notifyWeb(verifyJs("__onRoleComplete", r, urls, academyName, businessNumber, startDate))
                         },
                         allowSkip = true,
                     )
@@ -239,17 +240,18 @@ class OnboardingActivity : ComponentActivity() {
     }
 
     /** 서류 제출 완료 → 웹 콜백으로 제출 API 수행 + 심사중 반영. */
-    private fun verifyDone(role: String, urls: List<String>, academyName: String?, businessNumber: String?) =
-        queueWeb(verifyJs("__onRoleManageVerify", role, urls, academyName, businessNumber))
+    private fun verifyDone(role: String, urls: List<String>, academyName: String?, businessNumber: String?, startDate: String?) =
+        queueWeb(verifyJs("__onRoleManageVerify", role, urls, academyName, businessNumber, startDate))
 
     /**
      * 인증 콜백 JS 한 줄. (역할, 서류 URL **JSON 문자열**, 학원명)
      *  ★ 웹은 2번째 인자를 `JSON.parse` 한다 — 배열 리터럴을 넘기면 파싱이 실패해
      *    서류가 **한 장도 제출되지 않는다**(화면상으론 제출된 것처럼 보인다). iOS 와 같은 문자열 계약.
      */
-    private fun verifyJs(fn: String, role: String, urls: List<String>, academyName: String?, businessNumber: String? = null): String {
+    //  5번째 인자 = 개업일자(YYYYMMDD) — 웹 2026-10-22~ 가 받는다(구웹은 무시).
+    private fun verifyJs(fn: String, role: String, urls: List<String>, academyName: String?, businessNumber: String? = null, startDate: String? = null): String {
         val json = JSONArray(urls).toString()
-        return "if(window.$fn){ window.$fn('${esc(role)}', '${esc(json)}', '${esc(academyName.orEmpty())}', '${esc(businessNumber.orEmpty())}'); }"
+        return "if(window.$fn){ window.$fn('${esc(role)}', '${esc(json)}', '${esc(academyName.orEmpty())}', '${esc(businessNumber.orEmpty())}', '${esc(startDate.orEmpty().filter(Char::isDigit))}'); }"
     }
 
     /**
