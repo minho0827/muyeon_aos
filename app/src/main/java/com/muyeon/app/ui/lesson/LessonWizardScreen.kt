@@ -474,11 +474,8 @@ private fun StepSchedule(d: LessonWizardDraft, onChange: (LessonWizardDraft) -> 
         WizardIntMenu(d.price, LessonOptions.prices, LessonOptions::priceLabel) { onChange(d.copy(price = it)) }
     }
     LessonPaymentSection(d, onChange)
-    // 원데이는 1회 — 서버가 가장 가까운 수업일 하루만 연다(반복 메뉴 숨김, 2026-10-22, iOS 와 같음).
-    if (d.lessonKind != "ONEDAY") {
-        WizardField("예약 반복") {
-            WizardIntMenu(d.weeksAhead, LessonOptions.weeks, LessonOptions::weeksLabel) { onChange(d.copy(weeksAhead = it)) }
-        }
+    WizardField("예약 반복") {
+        WizardIntMenu(d.weeksAhead, LessonOptions.weeks, LessonOptions::weeksLabel) { onChange(d.copy(weeksAhead = it)) }
     }
     if (d.days.isNotEmpty()) {
         Text(
@@ -535,8 +532,7 @@ private fun scheduleSummary(d: LessonWizardDraft): String {
     // 월~일 순 정렬(0=일을 맨 뒤로)
     val sorted = d.days.sortedBy { (it + 6) % 7 }
     val end = LessonOptions.addMinutes(d.startTime, d.duration)
-    val repeat = if (d.lessonKind == "ONEDAY") "가장 가까운 날 1회" else LessonOptions.weeksLabel(d.weeksAhead)
-    return "${sorted.joinToString("·") { LessonOptions.dayLabel(it) }} ${d.startTime}~$end · $repeat"
+    return "${sorted.joinToString("·") { LessonOptions.dayLabel(it) }} ${d.startTime}~$end · ${LessonOptions.weeksLabel(d.weeksAhead)}"
 }
 
 // ============================================================
