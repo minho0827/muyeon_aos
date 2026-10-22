@@ -209,8 +209,10 @@ fun LessonWizardScreen(
                 submitting = true
                 scope.launch {
                     // 명의 키는 개설에만 붙인다(수정은 서버가 명의를 바꾸지 않는다).
-                    val result = if (lessonId != null) api.updateProduct(lessonId, draft.toPayload())
-                    else api.createProduct(draft.toCreatePayload(isAcademy))
+                    // 체험 칸이 안 보이는 경우(강사 개인 레슨)엔 체험을 보내지 않는다 — 숨긴 값이 남아 있을 수 있다.
+                    val sendDraft = if (draft.experienceVisible(isAcademy, lessonId != null)) draft else draft.copy(isExperience = false)
+                    val result = if (lessonId != null) api.updateProduct(lessonId, sendDraft.toPayload())
+                    else api.createProduct(sendDraft.toCreatePayload(isAcademy))
                     result.onSuccess { id -> onCreated(if (id > 0) id else (lessonId ?: 0)) }
                         .onFailure { if (it is LessonLimitException) lessonLimit = it else errorMessage = it.message }
                     submitting = false
@@ -290,7 +292,9 @@ private fun StepBasic(
             onChange(d.copy(lessonKind = LessonOptions.lessonKinds.firstOrNull { it.second == picked }?.first ?: "REGULAR"))
         }
     }
-    WizardToggle("체험 가능", d.isExperience) { onChange(d.copy(isExperience = it)) }
+    if (d.experienceVisible(isAcademy, isEdit)) {
+        WizardToggle("체험 가능", d.isExperience) { onChange(d.copy(isExperience = it)) }
+    }
 }
 
 @Composable
@@ -470,8 +474,11 @@ private fun StepSchedule(d: LessonWizardDraft, onChange: (LessonWizardDraft) -> 
         WizardIntMenu(d.price, LessonOptions.prices, LessonOptions::priceLabel) { onChange(d.copy(price = it)) }
     }
     LessonPaymentSection(d, onChange)
-    WizardField("예약 반복") {
-        WizardIntMenu(d.weeksAhead, LessonOptions.weeks, LessonOptions::weeksLabel) { onChange(d.copy(weeksAhead = it)) }
+    // 원데이는 1회 — 서버가 가장 가까운 수업일 하루만 연다(반복 메뉴 숨김, 2026-10-22, iOS 와 같음).
+    if (d.lessonKind != "ONEDAY") {
+        WizardField("예약 반복") {
+            WizardIntMenu(d.weeksAhead, LessonOptions.weeks, LessonOptions::weeksLabel) { onChange(d.copy(weeksAhead = it)) }
+        }
     }
     if (d.days.isNotEmpty()) {
         Text(
@@ -528,7 +535,8 @@ private fun scheduleSummary(d: LessonWizardDraft): String {
     // 월~일 순 정렬(0=일을 맨 뒤로)
     val sorted = d.days.sortedBy { (it + 6) % 7 }
     val end = LessonOptions.addMinutes(d.startTime, d.duration)
-    return "${sorted.joinToString("·") { LessonOptions.dayLabel(it) }} ${d.startTime}~$end · ${LessonOptions.weeksLabel(d.weeksAhead)}"
+    val repeat = if (d.lessonKind == "ONEDAY") "가장 가까운 날 1회" else LessonOptions.weeksLabel(d.weeksAhead)
+    return "${sorted.joinToString("·") { LessonOptions.dayLabel(it) }} ${d.startTime}~$end · $repeat"
 }
 
 // ============================================================

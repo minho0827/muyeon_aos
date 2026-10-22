@@ -149,6 +149,13 @@ data class LessonWizardDraft(
      * 개설(POST)에만 붙이는 명의 키. 수정(PUT)은 서버가 명의를 바꾸지 않으므로 넣지 않는다.
      *  넣어봐야 무시되고 "바꿨는데 안 바뀐다"는 오해만 만든다.
      */
+    /**
+     * '체험 가능' 은 학원 수업에만 의미가 있다 — 홈 '체험 가능한 학원' 칸이 학원 수업만 보여서(2026-10-22, iOS 와 같음).
+     *  학원 본인, 학원 수업으로 올리는 강사(명의 선택), 이미 체험으로 켜 둔 레슨 수정(끌 수 있게)만 보인다.
+     */
+    fun experienceVisible(isAcademy: Boolean, isEdit: Boolean): Boolean =
+        isAcademy || bylinePartyId != null || (isEdit && isExperience)
+
     fun toCreatePayload(isAcademy: Boolean): JSONObject = toPayload().apply {
         bylinePartyId?.let { put(if (isAcademy) "asTeacherId" else "atAcademyId", it) }
     }
