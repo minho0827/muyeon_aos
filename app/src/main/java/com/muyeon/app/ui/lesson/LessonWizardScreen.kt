@@ -139,7 +139,10 @@ fun LessonWizardScreen(
     val isLast = step == STEP_TITLES.lastIndex
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(title = if (lessonId != null) "레슨 수정" else "레슨 개설", onClose = { showExit = true })
+        QuoteNavBar(
+            title = if (isAcademy) (if (lessonId != null) "수업 수정" else "수업 등록") else (if (lessonId != null) "레슨 수정" else "레슨 개설"),
+            onClose = { showExit = true },
+        )
 
         // 진행바
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -281,7 +284,13 @@ private fun StepBasic(
     WizardField("난이도") {
         WizardMenu(d.level, "난이도를 선택하세요", LessonOptions.levels) { onChange(d.copy(level = it)) }
     }
-    WizardToggle("원데이 체험 레슨", d.isExperience) { onChange(d.copy(isExperience = it)) }
+    // 수업 종류 — 홈 '이번 주 원데이 클래스'는 원데이로 고른 수업만 나온다(2026-10-22, iOS 와 같음).
+    WizardField("수업 종류", required = true) {
+        WizardMenu(LessonOptions.lessonKindLabel(d.lessonKind), "수업 종류를 선택하세요", LessonOptions.lessonKinds.map { it.second }) { picked ->
+            onChange(d.copy(lessonKind = LessonOptions.lessonKinds.firstOrNull { it.second == picked }?.first ?: "REGULAR"))
+        }
+    }
+    WizardToggle("체험 가능", d.isExperience) { onChange(d.copy(isExperience = it)) }
 }
 
 @Composable

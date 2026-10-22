@@ -223,7 +223,7 @@ fun LessonManageScreen(
         }
 
         Text(
-            "새 레슨 개설",
+            if (isAcademyViewer) "새 수업 등록" else "새 레슨 개설",
             fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
             lineHeight = 19.sp, color = Color.White, textAlign = TextAlign.Center,
             modifier = Modifier

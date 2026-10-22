@@ -59,6 +59,10 @@ object LessonOptions {
     fun priceLabel(p: Int): String = if (p == 0) "무료" else "${String.format(Locale.KOREA, "%,d", p)}원"
 
     fun weeksLabel(w: Int): String = if (w >= WEEKS_RECURRING) "매주 반복" else "${w}주"
+
+    /** 수업 종류(서버 lesson_products.lessonKind) — iOS LessonWizardVM.lessonKinds 와 같음. */
+    val lessonKinds: List<Pair<String, String>> = listOf("REGULAR" to "정규 수업", "ONEDAY" to "원데이 클래스")
+    fun lessonKindLabel(kind: String): String = lessonKinds.firstOrNull { it.first == kind }?.second ?: "정규 수업"
 }
 
 /** 위저드 입력 스냅샷 — iOS LessonWizardDraft(로컬 임시저장). */
@@ -67,6 +71,7 @@ data class LessonWizardDraft(
     var genre: String = "",
     var level: String = "",
     var isExperience: Boolean = false,
+    var lessonKind: String = "REGULAR", // REGULAR(정규 수업) / ONEDAY(원데이 클래스)
     var intro: String = "",
     var images: List<String> = emptyList(),
     var detailType: String = "TEXT",
@@ -106,6 +111,7 @@ data class LessonWizardDraft(
         put("genre", genre)
         put("level", level)
         put("isExperience", isExperience)
+        put("lessonKind", lessonKind)
         put("description", intro)
         put("images", JSONArray(images))
         put("detailType", detailType)
@@ -166,6 +172,7 @@ data class LessonProductDetail(
     val genre: String?,
     val level: String?,
     val isExperience: Boolean?,
+    val lessonKind: String?,
     val description: String?,
     val images: List<String>?,
     val place: String?,
@@ -199,6 +206,7 @@ data class LessonProductDetail(
     fun toDraft() = LessonWizardDraft(
         title = title.orEmpty(), genre = genre.orEmpty(), level = level.orEmpty(),
         isExperience = isExperience == true, intro = description.orEmpty(),
+        lessonKind = if (lessonKind == "ONEDAY") "ONEDAY" else "REGULAR",
         images = images ?: emptyList(),
         detailType = detailType ?: "TEXT", detailImages = detailImages ?: emptyList(),
         place = place.orEmpty(), address = address.orEmpty(),
@@ -217,7 +225,8 @@ data class LessonProductDetail(
     companion object {
         fun from(o: JSONObject) = LessonProductDetail(
             title = o.stringOrNull("title"), genre = o.stringOrNull("genre"), level = o.stringOrNull("level"),
-            isExperience = o.boolOrNull("isExperience"), description = o.stringOrNull("description"),
+            isExperience = o.boolOrNull("isExperience"), lessonKind = o.stringOrNull("lessonKind"),
+            description = o.stringOrNull("description"),
             images = o.stringList("images"),
             place = o.stringOrNull("place"), address = o.stringOrNull("address"),
             region = o.stringOrNull("region"), regionCode = o.stringOrNull("regionCode"),

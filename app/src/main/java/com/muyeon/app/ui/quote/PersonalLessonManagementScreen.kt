@@ -52,6 +52,10 @@ enum class LessonStudioTab(val title: String, val guide: String) {
         "개인레슨을 원하는 수강생의 공개 요청을 검색하고, 조건에 맞는 제안이 가능해요.",
     ),
     LESSON("레슨 소개", "내가 제공하는 개인레슨을 등록하고 수정할 수 있어요."),
+    ;
+
+    /** 원장은 '수업 소개' — 학원 수업을 올리는 곳임을 이름으로 알린다(2026-10-22, iOS 와 같음). */
+    fun titleFor(academy: Boolean): String = if (academy && this == LESSON) "수업 소개" else title
 }
 
 @Composable
@@ -83,7 +87,11 @@ fun PersonalLessonManagementScreen(
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.groupedBg)) {
         QuoteNavBar(
-            title = if (roleLabel.isEmpty()) "개인레슨 관리" else "개인레슨 관리 ($roleLabel)",
+            title = when {
+                roleLabel == "학원" -> "학원 수업 관리"
+                roleLabel.isEmpty() -> "개인레슨 관리"
+                else -> "개인레슨 관리 ($roleLabel)"
+            },
             onBack = onClose,
             trailing = {
                 // 자동응답은 상담 탭에서만 — 다른 탭에서는 할 일이 아니다.
@@ -97,7 +105,7 @@ fun PersonalLessonManagementScreen(
                 }
             },
         )
-        SubTabRow(tab) { target ->
+        SubTabRow(tab, academy = roleLabel == "학원") { target ->
             scope.launch { pagerState.animateScrollToPage(tabs.indexOf(target)) }
         }
         HorizontalDivider(color = MuyeonColors.border)
@@ -143,7 +151,7 @@ fun PersonalLessonManagementScreen(
  *  밑줄은 형태 신호라 색과 무관하게 읽힌다.
  */
 @Composable
-private fun SubTabRow(selected: LessonStudioTab, onSelect: (LessonStudioTab) -> Unit) {
+private fun SubTabRow(selected: LessonStudioTab, academy: Boolean = false, onSelect: (LessonStudioTab) -> Unit) {
     Row(
         Modifier.fillMaxWidth().background(MuyeonColors.surface)
             .horizontalScroll(rememberScrollState()).height(48.dp).padding(horizontal = 20.dp),
@@ -159,7 +167,7 @@ private fun SubTabRow(selected: LessonStudioTab, onSelect: (LessonStudioTab) -> 
             ) {
                 Spacer(Modifier.weight(1f))
                 Text(
-                    entry.title,
+                    entry.titleFor(academy),
                     fontFamily = customFontFamily,
                     fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
                     fontSize = 16.sp, lineHeight = 20.sp,
