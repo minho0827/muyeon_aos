@@ -75,7 +75,7 @@ fun AcademyBusinessVerificationSection(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("사업자등록증명원을 첨부해 주세요", fontFamily = customFontFamily,
+            Text("사업자등록증명원이 있으면 첨부해 주세요 (선택)", fontFamily = customFontFamily,
                 fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MuyeonColors.textHead)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 DocumentSample("사업자등록증명원", true, Modifier.weight(1f))
@@ -135,7 +135,7 @@ fun AcademyBusinessVerificationSection(
 
 // 건너뛰면 서버는 원장 인증행만 'NONE'(MY 카드: 인증 필요)으로 만들고 활동유형은 그대로 둔다(iOS 와 같은 문구).
 private fun noNumberMessage(allowsVerifyLater: Boolean): String {
-    val head = "학원 원장 인증에는 사업자등록번호와 사업자등록증명원이 필요해요."
+    val head = "학원 원장 인증에는 사업자등록번호가 필요해요."
     return if (allowsVerifyLater) {
         "$head\n\n번호가 없다면 ‘다음에 인증할게요’로 먼저 가입해 두세요. 학원 원장 유형은 ‘인증 필요’ 상태로 등록되고, " +
             "그동안 공고를 비공개로 미리 작성해 둘 수 있어요. 번호가 준비되면 MY > 회원유형 관리에서 인증하면 바로 이용할 수 있어요."

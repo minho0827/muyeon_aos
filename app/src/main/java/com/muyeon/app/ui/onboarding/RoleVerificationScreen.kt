@@ -196,12 +196,14 @@ fun RoleVerificationScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                "인증 서류를 올려주세요",
+                if (role == "ACADEMY") "학원 정보를 입력해 주세요" else "인증 서류를 올려주세요",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp,
                 lineHeight = 24.sp, color = MuyeonColors.textHead, modifier = Modifier.padding(top = 14.dp),
             )
             Text(
-                "${documentGuide(role)}\n최대 ${MAX_DOCS}장까지 올릴 수 있고, 관리자 확인 후 승인되면 푸시로 알려드려요.",
+                // ★ 2026-10-22 학원은 사업자등록번호가 국세청에서 확인되면 서버가 바로 승인한다 — 사진은 선택.
+                if (role == "ACADEMY") "사업자등록번호가 국세청에서 확인되면 바로 승인돼요. 사업자등록증 사진은 선택이에요(최대 ${MAX_DOCS}장)."
+                else "${documentGuide(role)}\n최대 ${MAX_DOCS}장까지 올릴 수 있고, 관리자 확인 후 승인되면 푸시로 알려드려요.",
                 fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 20.sp, color = MuyeonColors.textSub,
             )
 
@@ -295,11 +297,12 @@ fun RoleVerificationScreen(
         }
 
         // 학원 인증은 학원명이 있어야 제출된다 — 비면 프로필·공고·홈 추천에 이름 없이 노출된다.
+        //  ★ 2026-10-22 국세청 확인이 끝난 번호면 사진 없이도 제출된다(서버 자동 승인, 웹 submitDocs 가 번호만 와도 제출).
         val academy = academyName.trim().takeIf { role == "ACADEMY" && it.isNotEmpty() }
         val normalizedNumber = businessNumber.filter(Char::isDigit).take(10)
         val canSubmit = !uploading && if (role == "ACADEMY") {
             academy != null && (verifyLater && allowSkip ||
-                (images.isNotEmpty() && verifiedBusinessNumber == normalizedNumber))
+                verifiedBusinessNumber == normalizedNumber)
         } else images.isNotEmpty()
         Text(
             if (uploading) "업로드 중…" else if (role == "ACADEMY" && verifyLater) "가입 계속" else "제출하기",

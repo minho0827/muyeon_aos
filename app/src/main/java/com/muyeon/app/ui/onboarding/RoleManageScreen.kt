@@ -367,7 +367,7 @@ private fun ProfilePanel(
         }
         Text(
             "카드를 탭하면 그 유형으로 활동이 전환돼요(하단 탭·홈이 바뀜).\n" +
-                "길게 누르면 추가·인증·해제. 일반회원 외 유형은 승인 후에 추가돼요.",
+                "길게 누르면 추가·인증·해제. 학원·공연팀은 인증을 마치면 추가돼요.",
             fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp,
             color = MuyeonColors.textSub, textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
@@ -521,7 +521,9 @@ private fun sheetDesc(opt: RoleOption, isGranted: Boolean, st: String): String {
         "APPROVED" -> "이미 인증을 마쳐서 다시 인증하지 않고 바로 바꿀 수 있어요."
         "PENDING" -> "인증 심사 중이에요. 서류를 다시 제출할 수 있어요."
         "REJECTED" -> "인증이 반려됐어요. 서류를 다시 제출해 주세요."
-        else -> "서류를 내고 승인을 받으면 추가되는 회원유형이에요."
+        // ★ 2026-10-22 학원은 사업자등록번호가 국세청에서 확인되면 바로 승인된다.
+        else -> if (opt.code == "ACADEMY") "사업자등록번호가 확인되면 바로 추가되는 회원유형이에요."
+            else "서류를 내고 승인을 받으면 추가되는 회원유형이에요."
     }
 }
 
