@@ -59,7 +59,7 @@ import kotlinx.coroutines.withContext
  */
 private val STEP_TITLES = listOf("기본 정보", "소개·사진", "위치", "시간·정원·가격", "예약 안내", "미리보기")
 private val STEP_SUBTITLES = listOf(
-    "레슨명과 장르를 정해 주세요.",
+    "이름·장르·수업 종류를 정해 주세요.",
     "레슨을 소개하고 사진을 올려주세요.",
     "수업 장소와 주소를 등록하세요.",
     "요일·시간·정원·가격을 설정하면 예약 시간이 자동 생성돼요.",
@@ -275,7 +275,7 @@ private fun StepBasic(
             )
         }
     }
-    WizardField("레슨명", required = true) {
+    WizardField(if (isAcademy) "수업명" else "레슨명", required = true) {
         WizardTextField(d.title, "예: 성인 취미 발레 (초급)") { onChange(d.copy(title = it)) }
     }
     WizardField("장르", required = true) {
