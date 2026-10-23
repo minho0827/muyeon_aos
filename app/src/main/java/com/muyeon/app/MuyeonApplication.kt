@@ -16,5 +16,7 @@ class MuyeonApplication : Application() {
         super.onCreate()
         MembershipBilling.start(this)
         Analytics.start(this)
+        // AI 도우미 플로팅 — 모든 화면 위에 버튼을 붙인다(ui/assistant/AssistantOverlay).
+        com.muyeon.app.ui.assistant.AssistantOverlay.start(this)
     }
 }
