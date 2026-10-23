@@ -156,6 +156,19 @@ class ChatRoomViewModel(
     }
 
     var quickReplies by mutableStateOf<List<ChatQuickReply>>(emptyList())
+
+    // ── AI 답장 추천(10-23, 프로 · 강사/원장) — 칩을 누르면 입력창에 채우고, 보내면 그 답을 서버가 기억한다.
+    var aiReplies by mutableStateOf<List<String>>(emptyList())
+    var aiReplyIntent: String? = null
+    /** 지금 입력창 글이 AI 칩에서 왔는지(고쳐서 보내도 기억한다). */
+    private var aiReplyPicked = false
+    /** 화면이 넣어 준다 — 칩으로 채운 글을 보냈을 때(intent, 보낸 글). */
+    var onAiReplySent: ((String?, String) -> Unit)? = null
+
+    fun pickAiReply(text: String) {
+        onInputChange(text)
+        aiReplyPicked = true
+    }
     var replyingTo by mutableStateOf<ChatMessage?>(null)
     var editingMessage by mutableStateOf<ChatMessage?>(null)
     var isUploadingMedia by mutableStateOf(false)
@@ -577,6 +590,8 @@ class ChatRoomViewModel(
         val p = Pending(type = "TEXT", content = text, imageUrl = null, replyToId = replyingTo?.id)
         pending.add(p)
         replyingTo = null
+        if (aiReplyPicked) { onAiReplySent?.invoke(aiReplyIntent, text); aiReplyPicked = false }
+        aiReplies = emptyList()
         clearInput()
         dispatch(p)
     }

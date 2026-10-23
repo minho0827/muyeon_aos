@@ -60,6 +60,8 @@ import com.muyeon.app.ui.survey.SurveyPickerSheet
 import com.muyeon.app.ui.quote.QuoteAvatar
 import com.muyeon.app.ui.quote.QuoteUi
 import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.border
 
 /**
  * 채팅방 — iOS `ChatRoomView.swift` + `ChatRoomView+Rendering.swift` 이식(코어).
@@ -420,6 +422,41 @@ fun ChatRoomScreen(
 
             // 안내 문구(복사·신고·전송 거절 사유 등) — 견적 화면과 같은 하단 캡슐 토스트.
             vm.toast?.let { com.muyeon.app.ui.quote.ToastBubble(it, Modifier.align(Alignment.BottomCenter)) }
+        }
+
+        // AI 답장 추천 칩(프로 · 강사/원장) — 상대의 마지막 메시지에 아직 답하지 않았을 때. 누르면 입력창에 채운다(바로 보내지 않음).
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        val lastOther = vm.messages.lastOrNull { it.type != "SYSTEM" }?.takeIf { it.senderId != vm.currentUserId }
+        LaunchedEffect(lastOther?.id) {
+            vm.onAiReplySent = { intent, text ->
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                    com.muyeon.app.ui.assistant.AssistantApi.call(ctx, "POST", "/assistant/chat-replies/used",
+                        org.json.JSONObject().put("roomId", vm.roomId).put("intent", intent).put("text", text))
+                }
+            }
+            if (lastOther == null) { vm.aiReplies = emptyList(); return@LaunchedEffect }
+            kotlinx.coroutines.delay(600) // 연달아 오는 메시지를 묶어서 한 번만
+            val r = com.muyeon.app.ui.assistant.AssistantApi.call(ctx, "POST", "/assistant/chat-replies", org.json.JSONObject().put("roomId", vm.roomId))
+            val arr = r.json?.optJSONArray("replies")
+            vm.aiReplyIntent = r.json?.optString("intent")?.takeIf { it.isNotEmpty() && it != "null" }
+            vm.aiReplies = (0 until (arr?.length() ?: 0)).mapNotNull { arr!!.optJSONObject(it)?.optString("text")?.takeIf { t -> t.isNotBlank() } }
+        }
+        if (vm.aiReplies.isNotEmpty() && vm.input.isEmpty() && vm.editingMessage == null) {
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("AI 추천", fontFamily = customFontFamily, fontSize = 12.sp, color = MuyeonColors.textSub)
+                vm.aiReplies.forEach { t ->
+                    Text(
+                        t, fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 16.sp, color = MuyeonColors.textHead, maxLines = 1,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).border(1.dp, MuyeonColors.border, RoundedCornerShape(50))
+                            .clickable { vm.pickAiReply(t) }.padding(horizontal = 12.dp, vertical = 7.dp)
+                            .testTag("chat.aiReply"),
+                    )
+                }
+            }
         }
 
         // 빠른 답변 칩 — 상대(강사)가 등록해둔 질문을 탭 한 번으로 전송.
