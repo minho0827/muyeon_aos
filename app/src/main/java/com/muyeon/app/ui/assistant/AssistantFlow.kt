@@ -150,6 +150,16 @@ fun AssistantFlowPage(
     }
     var pageTitle by remember { mutableStateOf(title) }
 
+    var resumeOffer by remember { mutableStateOf<JSONObject?>(null) } // 이어서 작성할 대화
+    var showExit by remember { mutableStateOf(false) }                // 나가기 확인 팝업
+
+    suspend fun startNew() {
+        val r = AssistantApi.call(context, "POST", "/assistant/sessions", JSONObject().put("flow", flowId))
+        if (!r.ok) return fail(r)
+        sessionId = r.json?.optInt("sessionId") ?: 0
+        applyQuestion(r.json)
+    }
+
     LaunchedEffect(flowId, draftId) {
         if (draftId != null) {
             val r = AssistantApi.call(context, "GET", "/assistant/drafts/$draftId")
@@ -159,10 +169,11 @@ fun AssistantFlowPage(
             phase = Phase.RESULT
             return@LaunchedEffect
         }
-        val r = AssistantApi.call(context, "POST", "/assistant/sessions", JSONObject().put("flow", flowId))
-        if (!r.ok) return@LaunchedEffect fail(r)
-        sessionId = r.json?.optInt("sessionId") ?: 0
-        applyQuestion(r.json)
+        // 7일 안에 답하다 나간 대화가 있으면 [이어서 작성하기]/[새로 작성하기]를 묻는다.
+        val res = AssistantApi.call(context, "GET", "/assistant/sessions/resume?flow=$flowId")
+        val prev = res.json?.optJSONObject("session")
+        if (res.ok && prev != null) { resumeOffer = prev; return@LaunchedEffect }
+        startNew()
     }
 
     fun next() {
@@ -214,6 +225,40 @@ fun AssistantFlowPage(
 
     BackHandler { back() }
 
+    if (showExit) com.muyeon.app.ui.common.WriteExitDialog(
+        onKeepAndLeave = onClose,
+        onDeleteAndLeave = {
+            val id = sessionId
+            scope.launch { AssistantApi.call(context, "POST", "/assistant/sessions/$id/abandon") }
+            onClose()
+        },
+        onDismiss = { showExit = false },
+    )
+    resumeOffer?.let { prev ->
+        com.muyeon.app.ui.common.MuyeonDialog(
+            title = "작성하던 내용이 있어요",
+            message = "이전에 답한 내용에 이어서 작성할 수 있어요.",
+            actions = listOf(
+                com.muyeon.app.ui.common.MuyeonDialogAction("이어서 작성하기", com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY) {
+                    sessionId = prev.optInt("sessionId")
+                    if (prev.optString("status") == "READY" || prev.optJSONObject("question") == null) {
+                        prev.optJSONObject("progress")?.let { done = it.optInt("done"); total = maxOf(1, it.optInt("total")) }
+                        scope.launch { generate() }
+                    } else applyQuestion(prev)
+                },
+                com.muyeon.app.ui.common.MuyeonDialogAction("새로 작성하기", com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL) {
+                    val old = prev.optInt("sessionId")
+                    scope.launch {
+                        AssistantApi.call(context, "POST", "/assistant/sessions/$old/abandon")
+                        startNew()
+                    }
+                },
+            ),
+            force = true, // 둘 중 하나는 골라야 화면이 시작된다
+            onDismiss = { resumeOffer = null },
+        )
+    }
+
     Column(Modifier.fillMaxSize().background(if (phase == Phase.RESULT) Bg else Color.White).statusBarsPadding().navigationBarsPadding().imePadding()) {
         // 진행 막대
         val progress by animateFloatAsState(if (phase == Phase.RESULT || phase == Phase.GENERATING) 1f else done.toFloat() / total, label = "p")
@@ -225,8 +270,12 @@ fun AssistantFlowPage(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "뒤로", tint = Ink)
             }
             Text(pageTitle, fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, color = Ink, modifier = Modifier.align(Alignment.Center))
-            if (phase == Phase.RESULT || phase == Phase.LOCKED || phase == Phase.ERROR) {
-                IconButton(onClick = onClose, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 4.dp)) { Icon(Icons.Filled.Close, "닫기", tint = Ink) }
+            // 어느 단계에서든 한 번에 나간다. 직접 답한 게 있으면 나가기 확인(작성 내용 유지/삭제), 만드는 중이면 그냥 닫는다(생성은 계속·완료 알림).
+            if (phase != Phase.LOADING) {
+                IconButton(
+                    onClick = { if (phase == Phase.ASK && canBack) showExit = true else onClose() },
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 4.dp).testTag("assistant.flow.close"),
+                ) { Icon(Icons.Filled.Close, "닫기", tint = Ink) }
             }
         }
         when (phase) {
