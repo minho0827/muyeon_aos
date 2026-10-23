@@ -66,8 +66,8 @@ class ResumeActivity : ResultActivity() {
                 .putExtra(EXTRA_SEEK_PROFILE, seekProfile)
 
         /** 이력서 편집(resumeId 없으면 신규). seekProfile=구직 프로필 등록 모드. */
-        fun startEdit(context: Context, resumeId: Int?, mode: String?, seekProfile: Boolean = false) =
-            context.go(editIntent(context, resumeId, mode, seekProfile))
+        fun startEdit(context: Context, resumeId: Int?, mode: String?, seekProfile: Boolean = false, aiDraftId: String? = null) =
+            context.go(editIntent(context, resumeId, mode, seekProfile).putExtra(com.muyeon.app.ui.assistant.AssistantDraft.EXTRA, aiDraftId))
 
         fun startVisibility(context: Context, mode: String?) =
             context.go(intent(context, "visibility").putExtra(EXTRA_MODE, mode ?: ""))
@@ -161,6 +161,7 @@ class ResumeActivity : ResultActivity() {
                         isSeekProfile = seekProfileExtra,
                         onVisibility = { nav.navigate("visibility") },
                         settingsReload = settingsReload,
+                        aiDraftId = intent.getStringExtra(com.muyeon.app.ui.assistant.AssistantDraft.EXTRA),
                     )
                 }
                 composable("edit/{id}") { e ->

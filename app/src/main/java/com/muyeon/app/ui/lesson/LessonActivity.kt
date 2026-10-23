@@ -64,6 +64,9 @@ class LessonActivity : ResultActivity() {
         fun startCalendar(context: Context) = context.launchScreen(calendarIntent(context))
         fun startManage(context: Context) = context.launchScreen(manageIntent(context))
         fun startCreate(context: Context) = context.launchScreen(createIntent(context))
+        /** AI 도우미 초안(3단계)으로 개설 화면 열기 — 위저드가 초안을 받아 칸을 채운다. */
+        fun startCreate(context: Context, aiDraftId: String?) =
+            context.launchScreen(createIntent(context).putExtra(com.muyeon.app.ui.assistant.AssistantDraft.EXTRA, aiDraftId))
         fun startEdit(context: Context, lessonId: Int) = context.launchScreen(editIntent(context, lessonId))
         fun startSlots(context: Context, productId: Int?) = context.launchScreen(slotsIntent(context, productId))
         fun startBooking(context: Context, productId: Int) = context.launchScreen(bookingIntent(context, productId))
@@ -160,7 +163,8 @@ class LessonActivity : ResultActivity() {
                     )
                 }
                 composable("create") {
-                    LessonWizardScreen(wizardApi, null, onClose = { back() }, onCreated = { lessonSaved() })
+                    LessonWizardScreen(wizardApi, null, onClose = { back() }, onCreated = { lessonSaved() },
+                        aiDraftId = intent.getStringExtra(com.muyeon.app.ui.assistant.AssistantDraft.EXTRA))
                 }
                 composable("edit") {
                     LessonWizardScreen(wizardApi, id.takeIf { it > 0 }, onClose = { back() }, onCreated = { lessonSaved() })

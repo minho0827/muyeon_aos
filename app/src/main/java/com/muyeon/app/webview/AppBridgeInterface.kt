@@ -259,7 +259,7 @@ object NativeActionRouter {
             "openLessonCreate" -> {
                 val lid = d.optString("lessonId").toIntOrNull()
                 if (lid != null && lid > 0) com.muyeon.app.ui.lesson.LessonActivity.startEdit(activity, lid)
-                else com.muyeon.app.ui.lesson.LessonActivity.startCreate(activity)
+                else com.muyeon.app.ui.lesson.LessonActivity.startCreate(activity, d.optString("aiDraftId").ifEmpty { null })
             }
             "openLessonSlotManage" -> com.muyeon.app.ui.lesson.LessonActivity.startSlots(
                 activity, d.optString("lessonProductId").toIntOrNull(),
@@ -275,6 +275,7 @@ object NativeActionRouter {
             "openResumeEdit" -> com.muyeon.app.ui.resume.ResumeActivity.startEdit(
                 activity, d.optString("resumeId").toIntOrNull(), d.optString("mode"),
                 seekProfile = d.optString("seekProfile") == "1",
+                aiDraftId = d.optString("aiDraftId").ifEmpty { null },
             )
             "openFieldVisibility" -> com.muyeon.app.ui.resume.ResumeActivity.startVisibility(activity, d.optString("mode"))
             "openPublicProfile", "openTeacherProfile" -> {

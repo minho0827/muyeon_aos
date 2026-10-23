@@ -74,6 +74,7 @@ fun LessonWizardScreen(
     lessonId: Int?,            // null = 개설, 값 = 수정
     onClose: () -> Unit,
     onCreated: (Int) -> Unit,
+    aiDraftId: String? = null, // AI 도우미 초안(3단계) — 개설 모드에서 칸을 채운다
 ) {
     var step by remember { mutableIntStateOf(0) }
     var draft by remember { mutableStateOf(LessonWizardDraft()) }
@@ -99,6 +100,19 @@ fun LessonWizardScreen(
                     // iOS: 장소명이 '온라인 레슨'이거나 주소·좌표가 모두 없으면 온라인으로 판정.
                     it.isOnline = d.place == "온라인 레슨" || (d.address.isNullOrEmpty() && d.lat == null)
                 }
+            }
+        }
+        // AI 초안: 제목·소개·공지·취소 규정(AI 가 쓴 칸은 덮어쓴다), 장르는 비어 있을 때만 — iOS applyAiDraft 와 같다.
+        if (lessonId == null && aiDraftId != null) {
+            com.muyeon.app.ui.assistant.AssistantDraft.payload(context, aiDraftId)?.let { p ->
+                fun s(k: String) = p.optString(k).takeIf { it.isNotEmpty() && it != "null" }
+                draft = draft.copy(
+                    title = s("title") ?: draft.title,
+                    intro = s("description") ?: draft.intro,
+                    notice = s("notice") ?: draft.notice,
+                    cancelPolicy = s("cancelPolicy") ?: draft.cancelPolicy,
+                    genre = draft.genre.ifEmpty { s("genre") ?: "" },
+                )
             }
         }
     }
@@ -215,7 +229,10 @@ fun LessonWizardScreen(
                     else draft.copy(lessonKind = "REGULAR")
                     val result = if (lessonId != null) api.updateProduct(lessonId, sendDraft.toPayload())
                     else api.createProduct(sendDraft.toCreatePayload(isAcademy))
-                    result.onSuccess { id -> onCreated(if (id > 0) id else (lessonId ?: 0)) }
+                    result.onSuccess { id ->
+                        if (lessonId == null) com.muyeon.app.ui.assistant.AssistantDraft.saved(context, aiDraftId, "LESSON", id, draft.intro) // AI 초안 채택 기록
+                        onCreated(if (id > 0) id else (lessonId ?: 0))
+                    }
                         .onFailure { if (it is LessonLimitException) lessonLimit = it else errorMessage = it.message }
                     submitting = false
                 }

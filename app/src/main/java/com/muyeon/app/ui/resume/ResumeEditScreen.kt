@@ -133,6 +133,8 @@ fun ResumeEditScreen(
     onVisibility: () -> Unit = {},
     /** 공개 범위 화면에서 돌아옴(RESUME 결과) — 부모가 올린다. 폼은 그대로 두고 설정 값만 다시 읽는다. */
     settingsReload: Int = 0,
+    /** AI 도우미 초안(3단계) — 불러온 뒤 자기소개를 채운다. iOS ResumeEditView.aiDraftId 와 같다. */
+    aiDraftId: String? = null,
 ) {
     // ★ 폼 상태는 NavHost 항목 수명의 ViewModel 에 둔다(ResumeEditForm).
     //   예전엔 remember 라 '공개 범위'(visibility) 화면에 다녀오면 이 목적지가 composition 에서 빠지며
@@ -203,6 +205,22 @@ fun ResumeEditScreen(
         if (!isSeekProfile || dispatch != null) return@LaunchedEffect
         val prefs = api.getSubDispatchPrefs() ?: return@LaunchedEffect
         dispatch = prefs.copy(enabled = prefs.enabled && context.notificationsEnabled())
+    }
+
+    // AI 초안: 서버 값을 채운 뒤 한 번 — 자기소개(+경력 요약), 한줄 소개는 비어 있을 때 강점 2개.
+    //  구조화된 경력 행은 회원이 직접(지어낸 경력이 행으로 들어가지 않게).
+    var aiApplied by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(aiDraftId, form.loaded) {
+        if (aiDraftId == null || aiApplied || (resumeId != null && !form.loaded)) return@LaunchedEffect
+        aiApplied = true
+        val p = com.muyeon.app.ui.assistant.AssistantDraft.payload(context, aiDraftId) ?: return@LaunchedEffect
+        val ai = p.optString("intro").takeIf { it.isNotEmpty() && it != "null" } ?: return@LaunchedEffect
+        val career = p.optString("careerSummary").takeIf { it.isNotEmpty() && it != "null" }
+        intro = listOfNotNull(ai, career).joinToString("\n\n")
+        val strengths = p.optJSONArray("strengths")
+        if (oneLiner.isEmpty() && strengths != null && strengths.length() > 0) {
+            oneLiner = (0 until minOf(2, strengths.length())).joinToString(" · ") { strengths.optString(it) }
+        }
     }
 
     // 서버 값으로 폼을 채우는 건 한 번뿐 — 재진입마다 다시 채우면 입력 중이던 내용이 날아간다.
@@ -336,6 +354,7 @@ fun ResumeEditScreen(
                         //  (iOS `ResumeEditVM.save` 와 동일. 신규는 기본이력서 지정만 한다)
                         if (resumeId == null) api.setDefault(newId)
                     }
+                    com.muyeon.app.ui.assistant.AssistantDraft.saved(context, aiDraftId, "RESUME", newId, intro) // AI 초안 채택 기록
                     onSaved()
                 }
                 .onFailure { errorMessage = it.message }
