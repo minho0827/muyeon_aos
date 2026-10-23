@@ -551,8 +551,9 @@ private fun StepSchedule(d: LessonWizardDraft, onChange: (LessonWizardDraft) -> 
             }
         }
         Box(Modifier.weight(1f)) {
-            WizardField("가격") {
-                WheelField("가격", LessonOptions.wheelPrices, d.price, LessonOptions::priceLabel) { onChange(d.copy(price = it)) }
+            // 수업료는 무용연이 받지 않고 현장에서 학원·강사에게 낸다(★ 2026-10-23 — 대행 결제로 오해하지 않게).
+            WizardField("수업료 (현장 결제)") {
+                WheelField("수업료", LessonOptions.wheelPrices, d.price, LessonOptions::priceLabel) { onChange(d.copy(price = it)) }
             }
         }
     }
@@ -592,7 +593,7 @@ private fun StepPreview(d: LessonWizardDraft) {
         PreviewRow("일정", scheduleSummary(d))
         PreviewRow("장소", if (d.isOnline) "온라인 레슨" else listOf(d.place, d.address).filter { it.isNotEmpty() }.joinToString(" · "))
         PreviewRow("정원", "${d.capacity}명")
-        PreviewRow("가격", LessonOptions.priceLabel(d.price) + if (d.priceUnit == "PER_BOOKING") " · 예약 1건당" else " · 1인당")
+        PreviewRow("수업료", LessonOptions.priceLabel(d.price) + (if (d.priceUnit == "PER_BOOKING") " · 예약 1건당" else " · 1인당") + " · 현장 결제")
         PreviewRow("예약 결제", paymentSummary(d))
         if (d.intro.isNotEmpty()) PreviewRow("소개", d.intro)
     }
