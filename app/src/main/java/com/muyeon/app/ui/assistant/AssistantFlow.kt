@@ -47,7 +47,7 @@ import org.json.JSONObject
  * AI 작성 도우미 — 단계형 질문 화면(10-23 '보험 찾기' 시안, 색은 무용연 주황). iOS AssistantFlowView 와 1:1.
  *  - 한 화면에 질문 하나: 진행 막대 · 뒤로(이전 질문, 서버 POST back) · 흐름 이름 / 큰 질문 / 선택지 / 아래 [다음](고르기 전 흐림),
  *    마지막은 [AI로 작성하기]. 선택지 모양은 서버 display(cards·grid·checklist·checkgrid·text).
- *  - 작성 중: 2초마다 GET jobs/:id. 결과: 칸별 카드 + [이대로 등록 화면 열기](초안 id 를 붙여 기존 등록 화면) · [다시 쓰기] · [복사하기].
+ *  - 작성 중: 2초마다 GET jobs/:id. 결과: 칸별 카드 + [이어서 등록하기](초안 id 를 붙여 기존 등록 화면) · [다시 쓰기] · [복사하기].
  *  - 프로가 아니면(AI_PRO_REQUIRED) 안내 + [멤버십 보기]. 새 Activity·웹뷰 없음(같은 Dialog 안).
  */
 private val Ink = Color(0xFF101116)
@@ -114,7 +114,7 @@ fun AssistantFlowPage(
         busy = false
         when (r.code) {
             "AI_PRO_REQUIRED", "AI_QUOTA_EXCEEDED" -> { errorMsg = r.message; phase = Phase.LOCKED }
-            else -> { errorMsg = r.message ?: "잠시 후 다시 해 주세요."; if (phase == Phase.LOADING) phase = Phase.ERROR else Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show() }
+            else -> { errorMsg = r.message ?: "잠시 후 다시 시도해 주세요."; if (phase == Phase.LOADING) phase = Phase.ERROR else Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show() }
         }
     }
 
@@ -128,12 +128,12 @@ fun AssistantFlowPage(
             if (st == "FAILED") {
                 busy = false; phase = Phase.ASK
                 val code = r.json?.optString("errorCode")
-                Toast.makeText(context, if (code == "MODERATION") "적어 주신 내용으로는 글을 쓸 수 없어요. 내용을 바꿔 주세요." else "글을 쓰지 못했어요. 횟수는 차감되지 않았어요. 다시 해 주세요.", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, if (code == "MODERATION") "입력하신 내용으로는 글을 만들 수 없어요. 내용을 바꿔서 다시 시도해 주세요." else "글을 만들지 못했어요. 이용 횟수는 그대로예요. 다시 시도해 주세요.", Toast.LENGTH_LONG).show()
                 return
             }
         }
         busy = false; phase = Phase.ASK
-        Toast.makeText(context, "시간이 오래 걸려요. 잠시 후 다시 열어 주세요.", Toast.LENGTH_LONG).show()
+        Toast.makeText(context, "생각보다 오래 걸리고 있어요. 완료되면 알림으로 알려 드릴게요.", Toast.LENGTH_LONG).show()
     }
 
     suspend fun generate() {
@@ -231,22 +231,22 @@ fun AssistantFlowPage(
         }
         when (phase) {
             Phase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = AppColor.Primary) }
-            Phase.ERROR -> Message("AI 도우미를 열지 못했어요", errorMsg ?: "잠시 후 다시 해 주세요.", "닫기", onClose)
-            Phase.LOCKED -> Message("AI 작성 도우미는\n프로 멤버십 혜택이에요", errorMsg ?: "프로 멤버십이면 이력서·레슨 소개·공고를 AI가 대신 써 드려요.", "멤버십 보기") {
+            Phase.ERROR -> Message("AI 도우미를 열지 못했어요", errorMsg ?: "잠시 후 다시 시도해 주세요.", "닫기", onClose)
+            Phase.LOCKED -> Message("AI 작성 도우미는\n프로 멤버십 혜택이에요", errorMsg ?: "프로 멤버십에 가입하면 이력서, 레슨 소개, 공고를 AI가 작성해 드려요.", "멤버십 보기") {
                 onOpen(AssistantItem("membership", "멤버십", null, "멤버십", "NATIVE", "openMembership", emptyMap(), "/pricing", null, false, emptyList(), emptyList()))
             }
             Phase.GENERATING -> Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                 CircularProgressIndicator(color = AppColor.Primary, strokeWidth = 3.dp, modifier = Modifier.size(44.dp))
                 Spacer(Modifier.height(20.dp))
-                Text("AI가 ${title.replace(" 쓰기", "")}를\n쓰고 있어요", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 31.sp, color = Ink, textAlign = TextAlign.Center)
+                Text("AI가 ${withObject(title.removeSuffix(" 쓰기"))}\n만들고 있어요", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 31.sp, color = Ink, textAlign = TextAlign.Center)
                 Spacer(Modifier.height(8.dp))
-                Text("10초쯤 걸려요. 이 화면을 닫아도 계속 써요.", fontFamily = customFontFamily, fontSize = 15.sp, color = Sub)
+                Text("10초쯤 걸려요.\n앱을 닫아도 자동으로 만들어지고, 다 되면 알림으로 알려 드려요.", fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 22.sp, color = Sub, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 24.dp))
             }
             Phase.ASK -> q?.let { cur ->
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp)) {
                     if (known.isNotEmpty()) KnownBox(known.filter { it.first != cur.key }) { reask(it) }
                     Text(cur.ask, fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 36.sp, color = Ink, modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
-                    Text(when (cur.type) { "multi" -> "여러 개 골라도 돼요"; "text" -> if (cur.required) "짧게 적어 주세요" else "건너뛰어도 돼요"; else -> "하나만 골라 주세요" },
+                    Text(when (cur.type) { "multi" -> "여러 개 선택할 수 있어요"; "text" -> if (cur.required) "간단히 입력해 주세요" else "입력하지 않아도 돼요"; else -> "하나를 선택해 주세요" },
                         fontFamily = customFontFamily, fontSize = 15.sp, color = Sub, modifier = Modifier.padding(bottom = 24.dp))
                     Options(cur, picked, text, onPick = { picked = it }, onText = { text = it })
                     Spacer(Modifier.height(24.dp))
@@ -264,6 +264,13 @@ fun AssistantFlowPage(
     }
 }
 
+/** 받침에 맞춰 을/를 — "레슨 소개를", "공지·취소 규정을". */
+private fun withObject(word: String): String {
+    val c = word.lastOrNull() ?: return word
+    val hasFinal = c in '가'..'힣' && (c - '가') % 28 != 0
+    return word + if (hasFinal) "을" else "를"
+}
+
 @Composable
 private fun Options(q: FlowQuestion, picked: List<String>, text: String, onPick: (List<String>) -> Unit, onText: (String) -> Unit) {
     val multi = q.type == "multi"
@@ -271,7 +278,7 @@ private fun Options(q: FlowQuestion, picked: List<String>, text: String, onPick:
     when (q.display) {
         "text" -> Column {
             Box(Modifier.fillMaxWidth().heightIn(min = 160.dp).clip(RoundedCornerShape(16.dp)).border(1.dp, Line, RoundedCornerShape(16.dp)).padding(16.dp)) {
-                if (text.isEmpty()) Text(q.placeholder ?: "여기에 적어 주세요", fontFamily = customFontFamily, fontSize = 16.sp, color = Color(0xFFA8AAB0))
+                if (text.isEmpty()) Text(q.placeholder ?: "내용을 입력해 주세요", fontFamily = customFontFamily, fontSize = 16.sp, color = Color(0xFFA8AAB0))
                 BasicTextField(text, { if (it.length <= (q.max ?: 300)) onText(it) }, textStyle = TextStyle(fontFamily = customFontFamily, fontSize = 16.sp, color = Ink, lineHeight = 24.sp),
                     cursorBrush = SolidColor(AppColor.Primary), modifier = Modifier.fillMaxWidth().testTag("assistant.flow.text"))
             }
@@ -333,12 +340,12 @@ private fun Options(q: FlowQuestion, picked: List<String>, text: String, onPick:
 private fun KnownBox(items: List<Triple<String, String, String>>, onChange: (String) -> Unit) {
     if (items.isEmpty()) return
     Column(Modifier.fillMaxWidth().padding(top = 16.dp).clip(RoundedCornerShape(14.dp)).background(Bg).padding(horizontal = 16.dp, vertical = 10.dp)) {
-        Text("지난번 답으로 채웠어요", fontFamily = customFontFamily, fontSize = 13.sp, color = Sub, modifier = Modifier.padding(bottom = 4.dp))
+        Text("이전에 답한 내용으로 채웠어요", fontFamily = customFontFamily, fontSize = 13.sp, color = Sub, modifier = Modifier.padding(bottom = 4.dp))
         items.forEach { (key, label, value) ->
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                 Text(label, fontFamily = customFontFamily, fontSize = 15.sp, color = Sub, modifier = Modifier.width(76.dp))
                 Text(value, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp, color = Ink, maxLines = 1, modifier = Modifier.weight(1f))
-                Text("바꾸기", fontFamily = customFontFamily, fontSize = 14.sp, color = AppColor.Primary,
+                Text("변경", fontFamily = customFontFamily, fontSize = 14.sp, color = AppColor.Primary,
                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onChange(key) }.padding(horizontal = 8.dp, vertical = 4.dp).testTag("assistant.flow.change.$key"))
             }
         }
@@ -388,8 +395,8 @@ private fun ResultView(d: JSONObject, onOpen: (AssistantItem) -> Unit, onRegener
         .joinToString("\n\n") { "${it.optString("label")}\n${valueOf(it.optString("key"))}" }
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp)) {
-            Text("AI가 이렇게 써 봤어요", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp, color = Ink, modifier = Modifier.padding(top = 16.dp))
-            Text("등록 화면에서 마음껏 고칠 수 있어요.", fontFamily = customFontFamily, fontSize = 15.sp, color = Sub, modifier = Modifier.padding(top = 6.dp, bottom = 20.dp))
+            Text("AI가 작성한 초안이에요", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp, color = Ink, modifier = Modifier.padding(top = 16.dp))
+            Text("등록하면서 원하는 대로 수정할 수 있어요.", fontFamily = customFontFamily, fontSize = 15.sp, color = Sub, modifier = Modifier.padding(top = 6.dp, bottom = 20.dp))
             (0 until (fields?.length() ?: 0)).mapNotNull { fields!!.optJSONObject(it) }.forEach { f ->
                 val v = valueOf(f.optString("key"))
                 if (v.isNotBlank()) Column(Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(20.dp)).background(Color.White).padding(20.dp)) {
@@ -400,7 +407,7 @@ private fun ResultView(d: JSONObject, onOpen: (AssistantItem) -> Unit, onRegener
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)) {
                 onEdit?.let { SmallButton("수정하기", Modifier.weight(1f), it) }
-                onRegenerate?.let { SmallButton("다시 쓰기", Modifier.weight(1f), it) }
+                onRegenerate?.let { SmallButton("다시 만들기", Modifier.weight(1f), it) }
                 SmallButton("복사하기", Modifier.weight(1f)) {
                     (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("AI 작성", allText))
                     Toast.makeText(context, "복사했어요", Toast.LENGTH_SHORT).show()
@@ -415,7 +422,7 @@ private fun ResultView(d: JSONObject, onOpen: (AssistantItem) -> Unit, onRegener
                 put("aiDraftId", draftId)
             }
             val webPath = path?.let { it + (if ('?' in it) "&" else "?") + "aiDraft=$draftId" }
-            BottomButton("이대로 등록 화면 열기", true) {
+            BottomButton("이어서 등록하기", true) {
                 onOpen(AssistantItem("ai.draft.$draftId", "등록", null, "AI 도우미", "NATIVE", action, params, webPath, null, false, emptyList(), emptyList()))
             }
         }

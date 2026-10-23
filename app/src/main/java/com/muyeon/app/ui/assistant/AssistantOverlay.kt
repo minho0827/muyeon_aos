@@ -380,7 +380,7 @@ private fun AssistantSheet(startDraftId: String? = null, onDismiss: () -> Unit, 
     ) {
         draftView?.let { id ->
             // 푸시로 바로 왔으면 닫을 때 AI 창도 닫는다(목록에서 왔으면 목록으로).
-            AssistantFlowPage("", "AI로 쓴 글", draftId = id,
+            AssistantFlowPage("", "AI 작성 내역", draftId = id,
                 onClose = { draftView = null; if (!history) close() },
                 onOpen = { item -> draftView = null; pick(item) })
             return@Dialog

@@ -78,14 +78,14 @@ fun AssistantHistoryPage(onBack: () -> Unit, onOpenDraft: (String) -> Unit) {
             IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart).padding(start = 4.dp)) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "뒤로", tint = Color(0xFF101116))
             }
-            Text("AI로 쓴 글", fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 17.sp,
+            Text("AI 작성 내역", fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 17.sp,
                 color = Color(0xFF101116), modifier = Modifier.align(Alignment.Center))
         }
         if (!loading && rows.isEmpty()) {
             Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("아직 AI로 쓴 글이 없어요", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color(0xFF101116))
+                Text("아직 AI로 만든 글이 없어요", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color(0xFF101116))
                 Spacer(Modifier.height(8.dp))
-                Text("AI 작성 도우미로 글을 쓰면 여기에 모여요.", fontFamily = customFontFamily, fontSize = 15.sp, color = Color(0xFF6D6E71))
+                Text("AI로 만든 글은 여기에 모아 둘게요.", fontFamily = customFontFamily, fontSize = 15.sp, color = Color(0xFF6D6E71))
             }
             return@Column
         }
@@ -98,7 +98,7 @@ fun AssistantHistoryPage(onBack: () -> Unit, onOpenDraft: (String) -> Unit) {
                         Text(r.flowTitle, fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = AppColor.Primary)
                         if (r.saved) {
                             Spacer(Modifier.width(8.dp))
-                            Text("등록함", fontFamily = customFontFamily, fontSize = 12.sp, color = Color(0xFF6D6E71),
+                            Text("등록 완료", fontFamily = customFontFamily, fontSize = 12.sp, color = Color(0xFF6D6E71),
                                 modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(Color(0xFFF2F3F5)).padding(horizontal = 6.dp, vertical = 2.dp))
                         }
                         Spacer(Modifier.weight(1f))
