@@ -75,6 +75,11 @@ fun ChatRoomScreen(
     initialSurveyDispatchId: Int? = null,   // 설문 응답 푸시 진입 — 이 설문 카드로 스크롤·강조
     initialProposalId: Int? = null,         // 약속 제안 푸시·웹 진입 — 이 제안 카드로 스크롤·강조
 ) {
+    // 채팅방에선 AI 버튼을 숨긴다 — 보내기 버튼과 겹친다(10-23 요청, iOS ChatRoomView 와 같음).
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        com.muyeon.app.ui.assistant.AssistantOverlay.chatRooms++
+        onDispose { com.muyeon.app.ui.assistant.AssistantOverlay.chatRooms = maxOf(0, com.muyeon.app.ui.assistant.AssistantOverlay.chatRooms - 1) }
+    }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current

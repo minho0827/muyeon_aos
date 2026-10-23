@@ -79,6 +79,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -124,6 +125,9 @@ object AssistantOverlay {
     private const val PREFS = "muyeon.assistant"
     private const val KEY_Y = "fabBottomDp"
     private val SKIP = setOf("SplashActivity", "LoginActivity", "IpConnectActivity", "QrScannerActivity", "ImageViewerActivity")
+
+    /** 채팅방 안 — 보내기 버튼과 겹쳐서 숨긴다(10-23 요청). ChatRoomScreen 이 켜고 끈다(겹쳐 열려도 세어서). */
+    var chatRooms by mutableIntStateOf(0)
 
     /** 이번 실행 동안 숨김(길게 눌러 숨기기). 앱을 다시 켜면 다시 보인다. */
     var hiddenThisRun by mutableStateOf(false)
@@ -235,7 +239,7 @@ private fun AssistantLayer(activity: Activity) {
     // 웹 라우트·웹 모달 상태는 웹뷰 화면에서만 의미가 있다(네이티브 화면은 웹 상태와 무관하게 보인다).
     val onWeb = activity is com.muyeon.app.webview.WebViewActivity
     val loggedIn = !TokenManager.getAccessToken(context).isNullOrEmpty()
-    val show = loggedIn && !AssistantOverlay.hiddenThisRun && !imeVisible && !open &&
+    val show = loggedIn && !AssistantOverlay.hiddenThisRun && !imeVisible && !open && AssistantOverlay.chatRooms == 0 &&
         !(onWeb && (FloatingState.isAuthRoute || FloatingState.floatingHidden))
 
     Box(Modifier.fillMaxSize()) {

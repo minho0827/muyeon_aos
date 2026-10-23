@@ -339,8 +339,8 @@ fun AssistantFlowPage(
                 BottomButton(label, enabled || (cur.type == "text" && !cur.required && !busy)) { next() }
             }
             Phase.RESULT -> draft?.let { d ->
-                if (draftId != null) ResultView(d, onOpen = onOpen, onRegenerate = null, onEdit = null)
-                else ResultView(d, onOpen = onOpen, onRegenerate = { scope.launch { generate() } }, onEdit = { back() })
+                if (draftId != null) ResultView(d, onOpen = onOpen, onRegenerate = null, onSaved = { draft = it })
+                else ResultView(d, onOpen = onOpen, onRegenerate = { scope.launch { generate() } }, onSaved = { draft = it })
             }
         }
     }
@@ -507,7 +507,12 @@ private fun Message(title: String, body: String, button: String, onClick: () -> 
 }
 
 @Composable
-private fun ResultView(d: JSONObject, onOpen: (AssistantItem) -> Unit, onRegenerate: (() -> Unit)?, onEdit: (() -> Unit)?) {
+private fun ResultView(d: JSONObject, onOpen: (AssistantItem) -> Unit, onRegenerate: (() -> Unit)?, onSaved: (JSONObject) -> Unit) {
+    // [수정하기] = 이 자리에서 글을 고친다(질문으로 돌아가지 않음, 10-23). 저장하면 서버 초안도 바뀐다(PUT drafts/:id).
+    var editing by remember { mutableStateOf(false) }
+    var saving by remember { mutableStateOf(false) }
+    val edits = remember { mutableStateMapOf<String, String>() }
+    val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val payload = d.optJSONObject("payload") ?: JSONObject()
     val fields = d.optJSONArray("fields")
@@ -523,24 +528,49 @@ private fun ResultView(d: JSONObject, onOpen: (AssistantItem) -> Unit, onRegener
         .joinToString("\n\n") { "${it.optString("label")}\n${valueOf(it.optString("key"))}" }
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp)) {
-            Text("AI가 작성한 초안이에요", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp, color = Ink, modifier = Modifier.padding(top = 16.dp))
-            Text("등록하면서 원하는 대로 수정할 수 있어요.", fontFamily = customFontFamily, fontSize = 15.sp, color = Sub, modifier = Modifier.padding(top = 6.dp, bottom = 20.dp))
+            Text(if (editing) "초안을 수정해 주세요" else "AI가 작성한 초안이에요", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp, color = Ink, modifier = Modifier.padding(top = 16.dp))
+            Text(if (editing) "수정한 내용으로 이어서 등록할 수 있어요." else "등록하면서 원하는 대로 수정할 수 있어요.", fontFamily = customFontFamily, fontSize = 15.sp, color = Sub, modifier = Modifier.padding(top = 6.dp, bottom = 20.dp))
             (0 until (fields?.length() ?: 0)).mapNotNull { fields!!.optJSONObject(it) }.forEach { f ->
-                val v = valueOf(f.optString("key"))
-                if (v.isNotBlank()) Column(Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(20.dp)).background(Color.White).padding(20.dp)) {
+                val key = f.optString("key")
+                val v = valueOf(key)
+                if (v.isNotBlank() || editing) Column(Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(20.dp)).background(Color.White)
+                    .border(if (editing) 1.dp else 0.dp, if (editing) Line else Color.Transparent, RoundedCornerShape(20.dp)).padding(20.dp)) {
                     Text(f.optString("label"), fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = AppColor.Primary)
                     Spacer(Modifier.height(8.dp))
-                    Text(v, fontFamily = customFontFamily, fontSize = 16.sp, lineHeight = 25.sp, color = Ink)
+                    if (editing) {
+                        BasicTextField(edits[key] ?: v, { edits[key] = it.take(3000) },
+                            textStyle = TextStyle(fontFamily = customFontFamily, fontSize = 16.sp, lineHeight = 25.sp, color = Ink),
+                            cursorBrush = SolidColor(AppColor.Primary), modifier = Modifier.fillMaxWidth().testTag("assistant.result.edit.$key"))
+                    } else Text(v, fontFamily = customFontFamily, fontSize = 16.sp, lineHeight = 25.sp, color = Ink)
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)) {
-                onEdit?.let { SmallButton("수정하기", Modifier.weight(1f), it) }
+            if (!editing) Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)) {
+                SmallButton("수정하기", Modifier.weight(1f)) { edits.clear(); editing = true }
                 onRegenerate?.let { SmallButton("다시 만들기", Modifier.weight(1f), it) }
                 SmallButton("복사하기", Modifier.weight(1f)) {
                     (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("AI 작성", allText))
                     Toast.makeText(context, "복사했어요", Toast.LENGTH_SHORT).show()
                 }
             }
+        }
+        if (editing) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                SmallButton("취소", Modifier.weight(1f)) { edits.clear(); editing = false }
+                Text(if (saving) "저장 중…" else "저장", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White, textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(2f).clip(RoundedCornerShape(14.dp)).background(AppColor.Primary)
+                        .clickable(enabled = !saving) {
+                            if (edits.isEmpty()) { editing = false; return@clickable }
+                            saving = true
+                            scope.launch {
+                                val body = JSONObject().put("values", JSONObject(edits.toMap()))
+                                val r = AssistantApi.call(context, "PUT", "/assistant/drafts/$draftId", body)
+                                saving = false
+                                if (r.ok && r.json != null) { onSaved(r.json!!); edits.clear(); editing = false; Toast.makeText(context, "수정했어요", Toast.LENGTH_SHORT).show() }
+                                else Toast.makeText(context, r.message ?: "저장하지 못했어요. 다시 시도해 주세요.", Toast.LENGTH_SHORT).show()
+                            }
+                        }.padding(vertical = 14.dp).testTag("assistant.result.save"))
+            }
+            return@Column
         }
         val action = open?.optString("nativeAction")?.takeIf { it.isNotEmpty() && it != "null" }
         val path = open?.optString("webPath")?.takeIf { it.isNotEmpty() && it != "null" }

@@ -47,7 +47,7 @@ object AssistantApi {
     suspend fun call(context: Context, method: String, path: String, body: JSONObject? = null): Res = withContext(Dispatchers.IO) {
         val b = builder(context, path) ?: return@withContext Res(401, null)
         val rb = (body ?: JSONObject()).toString().toRequestBody("application/json".toMediaType())
-        val req = when (method) { "POST" -> b.post(rb); else -> b.get() }.build()
+        val req = when (method) { "POST" -> b.post(rb); "PUT" -> b.put(rb); else -> b.get() }.build()
         runCatching {
             client.newCall(req).execute().use { res ->
                 val txt = res.body?.string().orEmpty()
