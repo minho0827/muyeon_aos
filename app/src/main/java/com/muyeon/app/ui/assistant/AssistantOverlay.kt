@@ -288,6 +288,7 @@ private fun AssistantSheet(onDismiss: () -> Unit, onPick: (AssistantItem) -> Uni
     var failed by remember { mutableStateOf(false) }
     var tab by remember { mutableStateOf(ResultTab.ALL) }
     var searching by remember { mutableStateOf(false) }
+    var flow by remember { mutableStateOf<AssistantItem?>(null) } // AI 작성 흐름(단계형 화면)
     var sections by remember { mutableStateOf(AssistantOverlay.cache[ActiveRole.current(context)]?.sections ?: emptyList()) }
     var recentMenus by remember { mutableStateOf(AssistantRecent.loadMenus(context)) }
     var faqs by remember { mutableStateOf(AssistantOverlay.faqCache ?: emptyList()) }
@@ -318,6 +319,7 @@ private fun AssistantSheet(onDismiss: () -> Unit, onPick: (AssistantItem) -> Uni
     }
 
     fun pick(item: AssistantItem) {
+        if (item.kind == "FLOW") { flow = item; return } // 창 안에서 단계형 화면으로(3단계)
         val q = query.trim()
         if (q.isNotEmpty()) {
             logs.add(q to item.id)
@@ -339,6 +341,10 @@ private fun AssistantSheet(onDismiss: () -> Unit, onPick: (AssistantItem) -> Uni
         onDismissRequest = { if (searching) { searching = false; query = "" } else close() },
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
+        flow?.let { f ->
+            AssistantFlowPage(f.flow ?: "", f.title.removePrefix("AI "), onClose = { flow = null }, onOpen = { item -> flow = null; pick(item) })
+            return@Dialog
+        }
         if (!searching) {
             AllMenuPage(
                 items = items, sections = sections, recentIds = recentMenus, loading = loading, failed = failed,

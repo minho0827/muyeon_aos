@@ -37,6 +37,25 @@ object AssistantApi {
         }.getOrNull()
     }
 
+    /** 응답 코드 + JSON(오류 본문 포함) — AI 작성 흐름은 403 AI_PRO_REQUIRED 같은 코드를 화면에서 구분한다. */
+    data class Res(val status: Int, val json: JSONObject?) {
+        val ok get() = status in 200..299
+        val code get() = json?.optString("code")?.takeIf { it.isNotEmpty() } ?: json?.optJSONObject("data")?.optString("code")
+        val message get() = json?.optString("message")?.takeIf { it.isNotEmpty() && it != "null" }
+    }
+
+    suspend fun call(context: Context, method: String, path: String, body: JSONObject? = null): Res = withContext(Dispatchers.IO) {
+        val b = builder(context, path) ?: return@withContext Res(401, null)
+        val rb = (body ?: JSONObject()).toString().toRequestBody("application/json".toMediaType())
+        val req = when (method) { "POST" -> b.post(rb); else -> b.get() }.build()
+        runCatching {
+            client.newCall(req).execute().use { res ->
+                val txt = res.body?.string().orEmpty()
+                Res(res.code, runCatching { JSONObject(txt) }.getOrNull())
+            }
+        }.getOrElse { Res(0, null) }
+    }
+
     suspend fun catalog(context: Context): AssistantCatalog? = get(context, "/assistant/catalog")?.let(AssistantCatalog::from)
     suspend fun config(context: Context): AssistantConfig? = get(context, "/assistant/config")?.let(AssistantConfig::from)
 
