@@ -215,6 +215,8 @@ dependencies {
 
     // Testing
     testImplementation("junit:junit:4.13.2")
+    // 위저드 payload(JSONObject) 단위 테스트 — 안드로이드 스텁 대신 실제 org.json 구현.
+    testImplementation("org.json:json:20240303")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

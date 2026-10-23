@@ -60,9 +60,57 @@ object LessonOptions {
 
     fun weeksLabel(w: Int): String = if (w >= WEEKS_RECURRING) "매주 반복" else "${w}주"
 
-    /** 수업 종류(서버 lesson_products.lessonKind) — iOS LessonWizardVM.lessonKinds 와 같음. */
-    val lessonKinds: List<Pair<String, String>> = listOf("REGULAR" to "정규 수업", "ONEDAY" to "원데이 클래스")
-    fun lessonKindLabel(kind: String): String = lessonKinds.firstOrNull { it.first == kind }?.second ?: "정규 수업"
+    /**
+     * 수업 유형(서버 lesson_products.lessonKind) — ★ 2026-10-23 3종. 체험은 학원 수업만(서버도 막는다).
+     *  정규 = 요일 + 반복, 원데이·체험 = 진행 날짜 여러 개. iOS LessonOptions.kinds · 웹 LESSON_KIND_OPTIONS 와 같음.
+     */
+    val lessonKinds: List<Pair<String, String>> =
+        listOf("REGULAR" to "정규 클래스", "ONEDAY" to "원데이 클래스", "EXPERIENCE" to "체험 클래스")
+    fun lessonKindLabel(kind: String): String = lessonKinds.firstOrNull { it.first == kind }?.second ?: "정규 클래스"
+    fun isDatedKind(kind: String) = kind == "ONEDAY" || kind == "EXPERIENCE"
+
+    /** 휠 선택지 — 시작 시간 06:00~23:50(10분), 수업 시간 40~240분(5분), 정원 1~20명, 가격 0~50만원(5천원). */
+    val wheelStartTimes: List<String> = buildList {
+        for (h in 6..23) for (m in 0 until 60 step 10) add(String.format(Locale.US, "%02d:%02d", h, m))
+    }
+    val wheelDurations = (40..240 step 5).toList()
+    val wheelCapacities = (1..20).toList()
+    fun capacityLabel(n: Int) = if (n == 1) "1명 (개인레슨)" else "${n}명"
+    val wheelPrices = (0..500_000 step 5_000).toList()
+
+    /** 정규 클래스 예약 반복 — 서버 repeatWeeks(0 = 매주 반복, 서버가 종료일 계산). */
+    val repeatWeeks = listOf(4, 8, 12, 0)
+    fun repeatLabel(w: Int) = if (w == 0) "매주 반복" else "${w}주"
+    /** 날짜형 회차 상한(서버 MAX_LESSON_DATES·183일과 같게). */
+    const val MAX_DATES = 30
+    const val MAX_DAYS_AHEAD = 183
+
+    fun won(n: Int): String = String.format(Locale.KOREA, "%,d", n) + "원"
+
+    /** 가격 기준 설명 — 서버 reserve 와 같은 규칙(1건당이면 ×1). */
+    fun priceFormula(price: Int, unit: String, headcount: Int): String {
+        val n = maxOf(1, headcount)
+        if (unit == "PER_BOOKING") {
+            return if (n > 1) "예약 1건당 ${won(price)} (${n}명이 함께 와도 ${won(price)})" else "예약 1건당 ${won(price)}"
+        }
+        return "1인당 ${won(price)} × ${n}명 = ${won(price * n)}"
+    }
+    fun totalPrice(price: Int, unit: String, headcount: Int) = price * (if (unit == "PER_BOOKING") 1 else maxOf(1, headcount))
+
+    /** 날짜형 일정 문구 — 서버 datedScheduleText 와 같은 모양("10/25(토)·11/1(토) 14:00~15:00", 4개부터 "외 N회"). */
+    fun datedText(dates: List<String>, start: String, end: String): String {
+        val sorted = dates.sorted()
+        if (sorted.isEmpty() || start.isEmpty()) return ""
+        fun lbl(ymd: String): String {
+            val p = ymd.split("-").mapNotNull { it.toIntOrNull() }
+            if (p.size != 3) return ymd
+            return "${p[1]}/${p[2]}(${dayLabel(weekday(ymd))})"
+        }
+        val time = "$start~$end"
+        return if (sorted.size <= 3) "${sorted.joinToString("·") { lbl(it) }} $time"
+        else "${lbl(sorted[0])} $time 외 ${sorted.size - 1}회"
+    }
+    fun weekday(ymd: String): Int = runCatching { java.time.LocalDate.parse(ymd).dayOfWeek.value % 7 }.getOrDefault(0)
 }
 
 /** 위저드 입력 스냅샷 — iOS LessonWizardDraft(로컬 임시저장). */
@@ -71,7 +119,7 @@ data class LessonWizardDraft(
     var genre: String = "",
     var level: String = "",
     var isExperience: Boolean = false,
-    var lessonKind: String = "REGULAR", // REGULAR(정규 수업) / ONEDAY(원데이 클래스)
+    var lessonKind: String = "REGULAR", // REGULAR(정규) / ONEDAY(원데이) / EXPERIENCE(체험, 학원만)
     var intro: String = "",
     var images: List<String> = emptyList(),
     var detailType: String = "TEXT",
@@ -95,6 +143,12 @@ data class LessonWizardDraft(
     var paymentMode: String = "NONE",
     var depositAmount: Int = 0,
     var weeksAhead: Int = 8,
+    // ★ 2026-10-23 원데이·체험 = 진행 날짜(YYYY-MM-DD) 여러 개, 정규 = 요일 + 반복 주수(0=매주, 서버가 종료일 계산).
+    var dates: List<String> = emptyList(),
+    var repeatWeeks: Int = 8,
+    /** 수정: 예전 '종료일 지정'으로 저장된 정규 레슨 — 반복을 안 건드리면 그 종료일을 그대로 둔다(웹 KEEP_END 와 같다). */
+    var keptEndDate: String? = null,
+    var keepEndDate: Boolean = false,
     var phone: String = "",
     var parkingInfo: String = "",
     var valetInfo: String = "",
@@ -105,13 +159,25 @@ data class LessonWizardDraft(
     //  학원이면 이 강사 이름으로 노출(asTeacherId), 강사면 이 학원이 함께 관리(atAcademyId).
     var bylinePartyId: Int? = null,
 ) {
+    val isDated: Boolean get() = LessonOptions.isDatedKind(lessonKind)
+
+    /** 일정 문구 — 정규 "매주 월·수 19:00~20:00", 날짜형 "10/25(토)·11/1(토) 14:00~15:00"(서버 scheduleText 와 같은 모양). */
+    fun scheduleText(): String {
+        val end = LessonOptions.addMinutes(startTime, duration)
+        if (isDated) return LessonOptions.datedText(dates, startTime, end)
+        if (days.isEmpty()) return ""
+        return "매주 ${days.sortedBy { (it + 6) % 7 }.joinToString("·") { LessonOptions.dayLabel(it) }} $startTime~$end"
+    }
+
+    /** 반복 표시 — "8주" / "매주 반복" / "2026-12-31까지". */
+    fun repeatText(): String = if (keepEndDate) "${keptEndDate.orEmpty()}까지" else LessonOptions.repeatLabel(repeatWeeks)
+
     /** 서버 payload — 키 이름은 iOS/웹과 동일해야 한다(레슨 개설·수정 공용). */
     fun toPayload(): JSONObject = JSONObject().apply {
         put("title", title)
         put("genre", genre)
         put("level", level)
-        put("isExperience", isExperience)
-        put("lessonKind", lessonKind)
+        put("lessonKind", lessonKind) // 서버가 isExperience 를 유형에 맞춰 둔다
         put("description", intro)
         put("images", JSONArray(images))
         put("detailType", detailType)
@@ -123,20 +189,24 @@ data class LessonWizardDraft(
         put("regionCode", regionCode)
         lat?.let { put("lat", it) }
         lng?.let { put("lng", it) }
-        // schedule: 요일 × 시작시간(서버가 duration 으로 종료 계산 + weeksAhead 만큼 슬롯 생성)
+        // schedule — 날짜형(원데이·체험)은 날짜 항목만, 정규는 요일 항목만(서버가 섞이면 거부). 종료 시간도 같이 보낸다.
+        val end = LessonOptions.addMinutes(startTime, duration)
         put(
             "schedule",
             JSONArray().apply {
-                days.forEach { d -> put(JSONObject().put("dayOfWeek", d).put("startTime", startTime)) }
+                if (isDated) dates.sorted().forEach { put(JSONObject().put("date", it).put("startTime", startTime).put("endTime", end)) }
+                else days.sortedBy { (it + 6) % 7 }.forEach { d -> put(JSONObject().put("dayOfWeek", d).put("startTime", startTime).put("endTime", end)) }
             },
         )
+        scheduleText().takeIf { it.isNotEmpty() }?.let { put("scheduleText", it) }
+        // 정규 반복 주수 — 서버가 종료일을 계산한다(0 = 매주 반복). '지금 종료일 유지'면 보내지 않는다.
+        if (!isDated && !keepEndDate) put("repeatWeeks", repeatWeeks)
         put("duration", duration)
         put("maxParticipants", capacity)
         put("price", price)
         put("priceUnit", priceUnit)
         put("paymentMode", paymentMode)
         put("depositAmount", if (paymentMode == "DEPOSIT") depositAmount else 0)
-        put("weeksAhead", weeksAhead)
         put("phone", phone)
         put("parkingInfo", parkingInfo)
         put("valetInfo", valetInfo)
@@ -155,6 +225,10 @@ data class LessonWizardDraft(
      */
     fun experienceVisible(isAcademy: Boolean, isEdit: Boolean): Boolean =
         isAcademy || bylinePartyId != null || (isEdit && isExperience)
+
+    /** 고를 수 있는 유형 — 체험은 학원 수업만. */
+    fun kindOptions(isAcademy: Boolean, isEdit: Boolean): List<Pair<String, String>> =
+        LessonOptions.lessonKinds.filter { it.first != "EXPERIENCE" || experienceVisible(isAcademy, isEdit) }
 
     fun toCreatePayload(isAcademy: Boolean): JSONObject = toPayload().apply {
         bylinePartyId?.let { put(if (isAcademy) "asTeacherId" else "atAcademyId", it) }
@@ -189,6 +263,8 @@ data class LessonProductDetail(
     val lat: Double?,
     val lng: Double?,
     val schedule: List<Pair<Int, String>>?,   // (dayOfWeek, startTime)
+    val scheduleDates: List<String>?,         // 날짜형(원데이·체험) 회차 날짜
+    val endDate: String?,
     val duration: Int?,
     val maxParticipants: Int?,
     val price: Int?,
@@ -213,12 +289,18 @@ data class LessonProductDetail(
     fun toDraft() = LessonWizardDraft(
         title = title.orEmpty(), genre = genre.orEmpty(), level = level.orEmpty(),
         isExperience = isExperience == true, intro = description.orEmpty(),
-        lessonKind = if (lessonKind == "ONEDAY") "ONEDAY" else "REGULAR",
+        lessonKind = lessonKind?.takeIf { k -> LessonOptions.lessonKinds.any { it.first == k } }
+            ?: if (isExperience == true) "EXPERIENCE" else "REGULAR",
+        dates = scheduleDates ?: emptyList(),
+        // 예전에 종료일을 지정한 정규 레슨은 그 종료일을 그대로 둘 수 있게(반복 선택지 맨 앞). 없으면 매주 반복.
+        keptEndDate = endDate?.take(10)?.takeIf { it.isNotEmpty() && scheduleDates.isNullOrEmpty() },
+        keepEndDate = !endDate.isNullOrEmpty() && scheduleDates.isNullOrEmpty(),
+        repeatWeeks = 0,
         images = images ?: emptyList(),
         detailType = detailType ?: "TEXT", detailImages = detailImages ?: emptyList(),
         place = place.orEmpty(), address = address.orEmpty(),
         region = region.orEmpty(), regionCode = regionCode.orEmpty(), lat = lat, lng = lng,
-        days = schedule?.map { it.first }?.distinct() ?: emptyList(),
+        days = if (scheduleDates.isNullOrEmpty()) schedule?.map { it.first }?.distinct() ?: emptyList() else emptyList(),
         startTime = schedule?.firstOrNull()?.second ?: "19:00",
         duration = duration ?: 60, capacity = maxParticipants ?: 8, price = price ?: 20000,
         // 예전 상품은 depositRequired 만 있다 — iOS LessonWizardModels 와 같은 규칙(있으면 DEPOSIT·2만원).
@@ -239,6 +321,8 @@ data class LessonProductDetail(
             region = o.stringOrNull("region"), regionCode = o.stringOrNull("regionCode"),
             lat = o.doubleOrNull("lat"), lng = o.doubleOrNull("lng"),
             schedule = o.optJSONArray("schedule")?.map { it.optInt("dayOfWeek") to it.optString("startTime") },
+            scheduleDates = o.optJSONArray("schedule")?.map { it.stringOrNull("date") }?.filterNotNull()?.takeIf { it.isNotEmpty() },
+            endDate = o.stringOrNull("endDate"),
             duration = o.intOrNull("duration"), maxParticipants = o.intOrNull("maxParticipants"),
             price = o.intOrNull("price"),
             priceUnit = o.stringOrNull("priceUnit"), paymentMode = o.stringOrNull("paymentMode"),

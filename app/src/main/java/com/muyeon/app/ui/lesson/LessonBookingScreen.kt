@@ -283,6 +283,13 @@ private fun BookingPaymentBlock(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 AmountRow("총 레슨비", "${total.won()}원")
+                // 계산식 — 가격 기준(1인당·예약 1건당)대로(★ 2026-10-23, 웹·iOS 예약 화면과 같은 문구).
+                if ((product.price ?: 0) > 0) {
+                    Text(
+                        LessonOptions.priceFormula(product.price ?: 0, product.priceUnit ?: "PER_PERSON", headcount),
+                        fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 17.sp, color = MuyeonColors.textSub,
+                    )
+                }
                 if (deposit > 0) {
                     AmountRow("지금 결제할 예약금", "${deposit.won()}원")
                     AmountRow("현장 결제 예정액", "${remaining.won()}원")

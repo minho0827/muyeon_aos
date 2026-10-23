@@ -23,10 +23,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
+import com.muyeon.app.ui.common.WheelField
 import java.util.Locale
 
 /** 가격 기준 선택지 — 서버 priceUnit 값 to 표시 문구(iOS LessonPaymentSection 과 같은 값). */
-private val PRICE_UNITS = listOf("PER_PERSON" to "1인당", "PER_BOOKING" to "예약 1건당")
+private val PRICE_UNITS = listOf("PER_PERSON" to "1인당 가격", "PER_BOOKING" to "예약 1건당 가격")
 
 /**
  * 레슨 개설 4단계 '가격 기준 · 예약금' 섹션 — iOS `LessonPaymentSection.swift` 1:1.
@@ -47,6 +48,17 @@ internal fun LessonPaymentSection(d: LessonWizardDraft, onChange: (LessonWizardD
             "가격 기준",
             PRICE_UNITS.map { it.second },
         ) { label -> PRICE_UNITS.firstOrNull { it.second == label }?.let { onChange(d.copy(priceUnit = it.first)) } }
+        // 가격 기준 예시 — 지금 가격으로 3명이 함께 예약할 때(웹·iOS 와 같은 문구). 고른 기준을 굵게.
+        val p = if (d.price > 0) d.price else 30_000
+        listOf("PER_PERSON", "PER_BOOKING").forEach { unit ->
+            Text(
+                "· " + LessonOptions.priceFormula(p, unit, 3),
+                fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 17.sp,
+                fontWeight = if (d.priceUnit == unit) FontWeight.Bold else FontWeight.Normal,
+                color = MuyeonColors.textHead,
+            )
+        }
+        PaymentHint("여러 명이 함께 예약할 때 수강료를 계산하는 방식이에요.")
     }
     WizardToggle("예약금 받기", takesDeposit) { on ->
         onChange(
@@ -65,22 +77,8 @@ internal fun LessonPaymentSection(d: LessonWizardDraft, onChange: (LessonWizardD
         )
         return
     }
-    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        choices.forEach { v ->
-            val on = d.depositAmount == v
-            Text(
-                "${String.format(Locale.KOREA, "%,d", v)}원",
-                fontFamily = customFontFamily,
-                fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
-                fontSize = 14.sp, lineHeight = 17.sp,
-                color = if (on) Color.White else MuyeonColors.textHead,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(if (on) MuyeonColors.primary else Color(0xFFF2F2F7))
-                    .clickable { onChange(d.copy(depositAmount = v)) }
-                    .padding(horizontal = 14.dp, vertical = 9.dp),
-            )
-        }
+    WheelField("예약금", choices, d.depositAmount.takeIf { it in choices } ?: choices.first(), { LessonOptions.won(it) }) {
+        onChange(d.copy(depositAmount = it))
     }
     PaymentHint(
         (if (d.priceUnit == "PER_PERSON") "예약 인원수만큼 곱해서 받아요. " else "") +

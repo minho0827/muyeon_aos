@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
+import com.muyeon.app.ui.common.WheelField
 import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.ui.quote.QuoteDialog
 import com.muyeon.app.ui.quote.QuoteNavBar
@@ -55,7 +56,7 @@ import kotlinx.coroutines.withContext
  *  lessonId 가 있으면 수정 모드(프리필 + PUT).
  *
  * ⚠️ 단계 진행 조건(canProceed)은 iOS 와 동일:
- *   0=제목+장르 / 2=온라인이거나 장소·주소 중 하나 / 3=요일 1개 이상 / 나머지 자유.
+ *   0=제목+장르 / 2=온라인이거나 장소·주소 중 하나 / 3=요일 1개 이상(원데이·체험은 날짜 1개 이상) / 나머지 자유.
  */
 private val STEP_TITLES = listOf("기본 정보", "소개·사진", "위치", "시간·정원·가격", "예약 안내", "미리보기")
 private val STEP_SUBTITLES = listOf(
@@ -133,7 +134,7 @@ fun LessonWizardScreen(
     val canProceed = when (step) {
         0 -> draft.title.trim().isNotEmpty() && draft.genre.isNotEmpty()
         2 -> draft.isOnline || draft.place.trim().isNotEmpty() || draft.address.trim().isNotEmpty()
-        3 -> draft.days.isNotEmpty()
+        3 -> if (draft.isDated) draft.dates.isNotEmpty() else draft.days.isNotEmpty()
         else -> true
     }
     val isLast = step == STEP_TITLES.lastIndex
@@ -209,8 +210,9 @@ fun LessonWizardScreen(
                 submitting = true
                 scope.launch {
                     // 명의 키는 개설에만 붙인다(수정은 서버가 명의를 바꾸지 않는다).
-                    // 체험 칸이 안 보이는 경우(강사 개인 레슨)엔 체험을 보내지 않는다 — 숨긴 값이 남아 있을 수 있다.
-                    val sendDraft = if (draft.experienceVisible(isAcademy, lessonId != null)) draft else draft.copy(isExperience = false)
+                    // 체험을 고를 수 없는 경우(강사 개인 레슨)엔 체험으로 보내지 않는다 — 명의를 바꾸기 전 값이 남아 있을 수 있다.
+                    val sendDraft = if (draft.lessonKind != "EXPERIENCE" || draft.experienceVisible(isAcademy, lessonId != null)) draft
+                    else draft.copy(lessonKind = "REGULAR")
                     val result = if (lessonId != null) api.updateProduct(lessonId, sendDraft.toPayload())
                     else api.createProduct(sendDraft.toCreatePayload(isAcademy))
                     result.onSuccess { id -> onCreated(if (id > 0) id else (lessonId ?: 0)) }
@@ -286,14 +288,39 @@ private fun StepBasic(
     WizardField("난이도") {
         WizardMenu(d.level, "난이도를 선택하세요", LessonOptions.levels) { onChange(d.copy(level = it)) }
     }
-    // 수업 종류 — 홈 '이번 주 원데이 클래스'는 원데이로 고른 수업만 나온다(2026-10-22, iOS 와 같음).
-    WizardField("수업 종류", required = true) {
-        WizardMenu(LessonOptions.lessonKindLabel(d.lessonKind), "수업 종류를 선택하세요", LessonOptions.lessonKinds.map { it.second }) { picked ->
-            onChange(d.copy(lessonKind = LessonOptions.lessonKinds.firstOrNull { it.second == picked }?.first ?: "REGULAR"))
-        }
+    // 수업 유형 — 홈은 유형별 한 칸(정규→추천 레슨, 원데이→원데이 클래스, 체험→체험 클래스).
+    //  ★ 2026-10-23 '체험 가능' 토글 대신 유형으로 고른다. 체험은 학원 수업만 보인다(iOS 와 같음).
+    val kinds = d.kindOptions(isAcademy, isEdit)
+    LaunchedEffect(kinds) { if (kinds.none { it.first == d.lessonKind }) onChange(d.copy(lessonKind = "REGULAR")) }
+    WizardField("수업 유형", required = true) {
+        WizardChips(kinds, d.lessonKind) { onChange(d.copy(lessonKind = it)) }
+        Text(
+            if (d.isDated) "진행 날짜를 직접 골라요. 반복 설정은 없어요."
+            else "요일과 시간을 정하면 예약 일정이 반복해서 만들어져요.",
+            fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp, color = MuyeonColors.textSub,
+        )
     }
-    if (d.experienceVisible(isAcademy, isEdit)) {
-        WizardToggle("체험 가능", d.isExperience) { onChange(d.copy(isExperience = it)) }
+}
+
+/** 한 줄 선택 칩(단일 선택) — 유형·반복 주수. */
+@Composable
+private fun WizardChips(options: List<Pair<String, String>>, selected: String, onSelect: (String) -> Unit) {
+    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { (value, label) ->
+            val on = value == selected
+            Text(
+                label,
+                fontFamily = customFontFamily,
+                fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
+                fontSize = 14.sp, lineHeight = 17.sp,
+                color = if (on) Color.White else MuyeonColors.textHead,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(if (on) MuyeonColors.primary else Color(0xFFF2F2F7))
+                    .clickable { onSelect(value) }
+                    .padding(horizontal = 14.dp, vertical = 9.dp),
+            )
+        }
     }
 }
 
@@ -442,50 +469,94 @@ private fun StepLocation(d: LessonWizardDraft, token: String?, onChange: (Lesson
 
 @Composable
 private fun StepSchedule(d: LessonWizardDraft, onChange: (LessonWizardDraft) -> Unit) {
-    WizardField("요일", required = true) {
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            LessonOptions.weekdays.forEach { (value, label) ->
-                val on = d.days.contains(value)
-                Text(
-                    label,
-                    fontFamily = customFontFamily,
-                    fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
-                    fontSize = 13.sp, lineHeight = 16.sp, textAlign = TextAlign.Center,
-                    color = if (on) Color.White else MuyeonColors.textSub,
-                    modifier = Modifier.weight(1f)
-                        .clip(RoundedCornerShape(50))
-                        .background(if (on) MuyeonColors.primary else Color(0xFFF2F2F7))
-                        .clickable { onChange(d.copy(days = if (on) d.days - value else d.days + value)) }
-                        .padding(vertical = 9.dp),
+    // ★ 2026-10-23 유형별 일정 — 정규 = 요일 + 반복, 원데이·체험 = 진행 날짜 여러 개(반복 없음). 값은 휠로 고른다.
+    if (d.isDated) {
+        WizardField("진행 날짜 (여러 날 선택)", required = true) {
+            LessonMultiDateCalendar(d.dates) { ymd ->
+                onChange(
+                    d.copy(
+                        dates = when {
+                            ymd in d.dates -> d.dates - ymd
+                            d.dates.size < LessonOptions.MAX_DATES -> d.dates + ymd
+                            else -> d.dates
+                        },
+                    ),
                 )
+            }
+            Text(
+                if (d.dates.isEmpty()) "수업을 여는 날을 모두 눌러 주세요." else "${d.dates.size}일 선택 · 날짜를 다시 누르면 빠져요.",
+                fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp, color = MuyeonColors.textSub,
+            )
+        }
+    } else {
+        WizardField("요일", required = true) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                LessonOptions.weekdays.forEach { (value, label) ->
+                    val on = d.days.contains(value)
+                    Text(
+                        label,
+                        fontFamily = customFontFamily,
+                        fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
+                        fontSize = 13.sp, lineHeight = 16.sp, textAlign = TextAlign.Center,
+                        color = if (on) Color.White else MuyeonColors.textSub,
+                        modifier = Modifier.weight(1f)
+                            .clip(RoundedCornerShape(50))
+                            .background(if (on) MuyeonColors.primary else Color(0xFFF2F2F7))
+                            .clickable { onChange(d.copy(days = if (on) d.days - value else d.days + value)) }
+                            .padding(vertical = 9.dp),
+                    )
+                }
             }
         }
     }
-    WizardField("시작 시간") {
-        WizardMenu(d.startTime, "시작 시간", LessonOptions.startTimes) { onChange(d.copy(startTime = it)) }
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Box(Modifier.weight(1f)) {
+            WizardField("시작 시간") {
+                WheelField("시작 시간", LessonOptions.wheelStartTimes, d.startTime, { it }) { onChange(d.copy(startTime = it)) }
+            }
+        }
+        Box(Modifier.weight(1f)) {
+            WizardField("수업 시간") {
+                WheelField("수업 시간", LessonOptions.wheelDurations, d.duration, { "${it}분" }) { onChange(d.copy(duration = it)) }
+            }
+        }
     }
-    WizardField("수업 시간") {
-        WizardIntMenu(d.duration, LessonOptions.durations, { "${it}분" }) { onChange(d.copy(duration = it)) }
+    if (!d.isDated) {
+        WizardField("예약 반복") {
+            val keep = d.keptEndDate?.let { listOf("keep" to "지금 종료일 유지 (${it}까지)") }.orEmpty()
+            WizardChips(keep + LessonOptions.repeatWeeks.map { it.toString() to LessonOptions.repeatLabel(it) },
+                if (d.keepEndDate) "keep" else d.repeatWeeks.toString()) { v ->
+                onChange(if (v == "keep") d.copy(keepEndDate = true) else d.copy(keepEndDate = false, repeatWeeks = v.toInt()))
+            }
+            Text(
+                "선택한 요일과 시간에 예약 가능한 수업 일정이 반복해서 생성돼요.",
+                fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp, color = MuyeonColors.textSub,
+            )
+        }
     }
-    WizardField("정원") {
-        WizardIntMenu(d.capacity, LessonOptions.capacities, { "${it}명" }) { onChange(d.copy(capacity = it)) }
-    }
-    WizardField("가격") {
-        WizardIntMenu(d.price, LessonOptions.prices, LessonOptions::priceLabel) { onChange(d.copy(price = it)) }
-    }
-    LessonPaymentSection(d, onChange)
-    WizardField("예약 반복") {
-        WizardIntMenu(d.weeksAhead, LessonOptions.weeks, LessonOptions::weeksLabel) { onChange(d.copy(weeksAhead = it)) }
-    }
-    if (d.days.isNotEmpty()) {
+    val summary = scheduleSummary(d)
+    if (summary.isNotEmpty()) {
         Text(
-            scheduleSummary(d),
+            "예약 일정 자동 생성: $summary",
             fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
             lineHeight = 18.sp, color = MuyeonColors.primary,
             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                 .background(MuyeonColors.primary.copy(alpha = 0.08f)).padding(12.dp),
         )
     }
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Box(Modifier.weight(1f)) {
+            WizardField("정원") {
+                WheelField("정원", LessonOptions.wheelCapacities, d.capacity, LessonOptions::capacityLabel) { onChange(d.copy(capacity = it)) }
+            }
+        }
+        Box(Modifier.weight(1f)) {
+            WizardField("가격") {
+                WheelField("가격", LessonOptions.wheelPrices, d.price, LessonOptions::priceLabel) { onChange(d.copy(price = it)) }
+            }
+        }
+    }
+    LessonPaymentSection(d, onChange)
 }
 
 @Composable
@@ -517,22 +588,21 @@ private fun StepPreview(d: LessonWizardDraft) {
             listOf(d.genre, d.level).filter { it.isNotEmpty() }.joinToString(" · "),
             fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 18.sp, color = MuyeonColors.textSub,
         )
+        PreviewRow("수업 유형", LessonOptions.lessonKindLabel(d.lessonKind))
         PreviewRow("일정", scheduleSummary(d))
         PreviewRow("장소", if (d.isOnline) "온라인 레슨" else listOf(d.place, d.address).filter { it.isNotEmpty() }.joinToString(" · "))
         PreviewRow("정원", "${d.capacity}명")
-        PreviewRow("가격", LessonOptions.priceLabel(d.price))
+        PreviewRow("가격", LessonOptions.priceLabel(d.price) + if (d.priceUnit == "PER_BOOKING") " · 예약 1건당" else " · 1인당")
         PreviewRow("예약 결제", paymentSummary(d))
         if (d.intro.isNotEmpty()) PreviewRow("소개", d.intro)
     }
 }
 
-/** "월·수 19:00~20:00 · 8주" — iOS scheduleText. */
+/** "매주 월·수 19:00~20:00 · 8주" / "10/25(토)·11/1(토) 14:00~15:00" — iOS scheduleText + 반복. */
 private fun scheduleSummary(d: LessonWizardDraft): String {
-    if (d.days.isEmpty()) return ""
-    // 월~일 순 정렬(0=일을 맨 뒤로)
-    val sorted = d.days.sortedBy { (it + 6) % 7 }
-    val end = LessonOptions.addMinutes(d.startTime, d.duration)
-    return "${sorted.joinToString("·") { LessonOptions.dayLabel(it) }} ${d.startTime}~$end · ${LessonOptions.weeksLabel(d.weeksAhead)}"
+    val text = d.scheduleText()
+    if (text.isEmpty()) return ""
+    return if (d.isDated) text else "$text · ${d.repeatText()}"
 }
 
 // ============================================================

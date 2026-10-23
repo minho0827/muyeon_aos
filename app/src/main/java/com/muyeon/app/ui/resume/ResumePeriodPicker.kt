@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
+import com.muyeon.app.ui.common.WheelColumn
 import java.util.Calendar
 
 /**
@@ -196,67 +197,5 @@ private fun WheelRow(
         )
         WheelColumn(years, year, { "${it}년" }, enabled, onYear, Modifier.weight(1f))
         WheelColumn(months, month, { "${it}월" }, enabled, onMonth, Modifier.weight(1f))
-    }
-}
-
-private val WHEEL_ITEM = 32.dp
-
-/** 3행(96dp) 스냅 휠 — 가운데 행이 선택값. iOS `.pickerStyle(.wheel)` 대응. */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun WheelColumn(
-    items: List<Int>,
-    selected: Int,
-    label: (Int) -> String,
-    enabled: Boolean,
-    onSelect: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val state = rememberLazyListState(initialFirstVisibleItemIndex = items.indexOf(selected).coerceAtLeast(0))
-    val itemPx = with(LocalDensity.current) { WHEEL_ITEM.toPx() }
-    val center by remember(items) {
-        derivedStateOf {
-            val idx = state.firstVisibleItemIndex + if (state.firstVisibleItemScrollOffset > itemPx / 2) 1 else 0
-            idx.coerceIn(0, (items.size - 1).coerceAtLeast(0))
-        }
-    }
-    // 스크롤이 멈추면 가운데 값을 확정
-    LaunchedEffect(state.isScrollInProgress, items) {
-        if (!state.isScrollInProgress && items.isNotEmpty()) {
-            val v = items[center]
-            if (v != selected) onSelect(v)
-        }
-    }
-    // 외부 보정(종료 clamp)·목록 변경 시 휠 위치 동기화
-    LaunchedEffect(selected, items) {
-        val idx = items.indexOf(selected)
-        if (idx >= 0 && !state.isScrollInProgress && idx != center) state.scrollToItem(idx)
-    }
-    Box(modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
-        Box(
-            Modifier.fillMaxWidth().padding(horizontal = 4.dp).height(WHEEL_ITEM)
-                .clip(RoundedCornerShape(8.dp)).background(MuyeonColors.tileIdle),
-        )
-        LazyColumn(
-            state = state,
-            flingBehavior = rememberSnapFlingBehavior(lazyListState = state),
-            userScrollEnabled = enabled,
-            contentPadding = PaddingValues(vertical = WHEEL_ITEM),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            itemsIndexed(items) { i, v ->
-                val on = i == center
-                Box(Modifier.height(WHEEL_ITEM).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text(
-                        label(v),
-                        fontFamily = customFontFamily,
-                        fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
-                        fontSize = if (on) 17.sp else 15.sp,
-                        color = if (on) MuyeonColors.textHead else MuyeonColors.hint,
-                    )
-                }
-            }
-        }
     }
 }
