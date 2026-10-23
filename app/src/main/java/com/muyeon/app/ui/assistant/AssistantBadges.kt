@@ -60,8 +60,14 @@ object AssistantBadges {
             return
         }
         if (token != connectedToken) {
+            // 다른 계정으로 바뀌었으면 최근 검색어·최근 메뉴를 지운다. 토큰은 같은 계정이어도 갱신되면 바뀌므로 회원 번호(JWT sub)로 비교.
+            val prefs = context.getSharedPreferences("muyeon.assistant", Context.MODE_PRIVATE)
+            val uid = jwtSub(token)
+            val prevUid = prefs.getString("lastUserId", null)
+            if (uid != null && prevUid != null && uid != prevUid) AssistantRecent.clearAll(context)
+            if (uid != null) prefs.edit().putString("lastUserId", uid).apply()
             connectedToken = token
-            counts = emptyMap(); total = 0 // 계정이 바뀌면 옛 숫자를 지운다
+            counts = emptyMap(); total = 0 // 토큰이 바뀌면(계정 전환·갱신) 숫자를 다시 센다
             ChatSocketManager.connect(context)
             ChatSocketLifecycleObserver.ensureAttached(context)
         }
@@ -82,4 +88,11 @@ object AssistantBadges {
     }
 
     fun count(key: String?): Int = key?.let { counts[it] } ?: 0
+
+    /** JWT 가운데 부분의 sub(회원 번호). 못 읽으면 null. */
+    private fun jwtSub(token: String): String? = runCatching {
+        val part = token.split(".")[1]
+        val json = String(android.util.Base64.decode(part, android.util.Base64.URL_SAFE or android.util.Base64.NO_PADDING or android.util.Base64.NO_WRAP))
+        org.json.JSONObject(json).opt("sub")?.toString()
+    }.getOrNull()
 }

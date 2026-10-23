@@ -1,43 +1,54 @@
 package com.muyeon.app.ui.assistant
 
 import android.content.Context
+import com.muyeon.app.webview.ActiveRole
 import org.json.JSONArray
 
-/** 최근 검색어(기기 저장, 최대 10개, 최근 것이 앞). 서버로 보내지 않는다 — 검색 기록 통계는 search-logs 가 따로. */
+/**
+ * 최근 검색어(10개)·최근 연 메뉴(6개) — 기기 저장, **활성 유형별로 따로**(10-23 사용자 요청).
+ *  강사로 찾던 메뉴가 일반 유형 화면에 섞이면 헷갈린다 → 키에 유형을 붙인다(recentQueries.TEACHER …).
+ *  계정이 바뀌면(AssistantBadges.onScreenResumed 가 토큰 변화를 감지) clearAll 로 전부 지운다.
+ *  예전(유형 구분 없던) 키는 어느 유형 기록인지 몰라 버린다. 서버로 보내지 않는다(통계는 search-logs 가 유형과 함께 따로).
+ */
 object AssistantRecent {
     private const val PREFS = "muyeon.assistant"
-    private const val KEY = "recentQueries"
-    private const val MAX = 10
+    private const val Q = "recentQueries"
+    private const val M = "recentMenus"
 
-    fun load(context: Context): List<String> = runCatching {
-        val arr = JSONArray(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, "[]"))
+    private fun key(context: Context, base: String) = "$base.${ActiveRole.current(context)}"
+
+    private fun read(context: Context, k: String): List<String> = runCatching {
+        val arr = JSONArray(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(k, "[]"))
         (0 until arr.length()).map { arr.getString(it) }
     }.getOrDefault(emptyList())
 
-    private fun save(context: Context, list: List<String>): List<String> {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY, JSONArray(list).toString()).apply()
+    private fun write(context: Context, k: String, list: List<String>): List<String> {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(k, JSONArray(list).toString()).apply()
         return list
     }
+
+    fun load(context: Context) = read(context, key(context, Q))
 
     fun add(context: Context, q: String): List<String> {
         val t = q.trim().take(40)
         if (t.isEmpty()) return load(context)
-        return save(context, (listOf(t) + load(context).filter { it != t }).take(MAX))
+        return write(context, key(context, Q), (listOf(t) + load(context).filter { it != t }).take(10))
     }
 
-    fun remove(context: Context, q: String) = save(context, load(context).filter { it != q })
-    fun clear(context: Context) = save(context, emptyList())
+    fun remove(context: Context, q: String) = write(context, key(context, Q), load(context).filter { it != q })
+    fun clear(context: Context) = write(context, key(context, Q), emptyList())
 
-    // ── 최근 연 메뉴(전체 메뉴의 [최근] 묶음, 6개) ──
-    private const val KEY_MENUS = "recentMenus"
-
-    fun loadMenus(context: Context): List<String> = runCatching {
-        val arr = JSONArray(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_MENUS, "[]"))
-        (0 until arr.length()).map { arr.getString(it) }
-    }.getOrDefault(emptyList())
+    fun loadMenus(context: Context) = read(context, key(context, M))
 
     fun addMenu(context: Context, id: String) {
-        val next = (listOf(id) + loadMenus(context).filter { it != id }).take(6)
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_MENUS, JSONArray(next).toString()).apply()
+        write(context, key(context, M), (listOf(id) + loadMenus(context).filter { it != id }).take(6))
+    }
+
+    /** 계정이 바뀌면 모든 유형의 기록을 지운다(+예전 구분 없던 키). */
+    fun clearAll(context: Context) {
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val e = p.edit()
+        p.all.keys.filter { it == Q || it == M || it.startsWith("$Q.") || it.startsWith("$M.") }.forEach { e.remove(it) }
+        e.apply()
     }
 }
