@@ -321,6 +321,7 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
 
         // 네이티브 화면이 지정한 SPA 이동/콜백(있으면) — 최초 진입 시에도 처리.
         consumeNativeRoute(intent)
+        com.muyeon.app.ui.assistant.AssistantOverlay.takeDraftPush(intent) // 'AI가 글을 다 썼어요' 푸시 탭 → AI 창 결과 화면
 
         composeView.setContent {
             val showImagePicker by fileViewModel.showImagePicker.collectAsStateWithLifecycle()
@@ -383,6 +384,7 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
             webView.loadUrl(fullUrl)
         }
         consumeNativeRoute(intent)
+        com.muyeon.app.ui.assistant.AssistantOverlay.takeDraftPush(intent)
     }
 
     override fun onResume() {

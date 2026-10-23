@@ -42,6 +42,7 @@ class SplashActivity : ComponentActivity() {
 
         navigator = SplashRouterImpl(this)
         authRepository = AuthRepositoryImpl(this)
+        com.muyeon.app.ui.assistant.AssistantOverlay.takeDraftPush(intent) // 'AI가 글을 다 썼어요' 푸시 탭(앱이 꺼져 있던 경우)
         viewModel = SplashViewModel(navigator)
 
         permissionManager = PermissionManager(this) {

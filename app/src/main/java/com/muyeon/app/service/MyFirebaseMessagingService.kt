@@ -127,6 +127,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         //  그 외는 기존 웹뷰 경로 유지.
         val chatRoomId = customData["roomId"]?.toIntOrNull()?.takeIf { it > 0 }
         val pushType = customData["type"]
+        // AI 작성 완료 — 그 흐름 화면을 앞에서 보고 있으면 화면이 이미 결과로 바뀌므로 알림을 띄우지 않는다.
+        if (pushType == com.muyeon.app.ui.assistant.AssistantOverlay.PUSH_DRAFT_READY && com.muyeon.app.ui.assistant.AssistantOverlay.isWatchingFlow) return
         val isSurveyResponse = pushType == "survey_response"
         val opensChat = chatRoomId != null &&
             (isSurveyResponse || pushType == null || pushType in CHAT_PUSH_TYPES)

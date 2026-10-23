@@ -77,35 +77,12 @@ private data class FlowQuestion(
 
 private enum class Phase { LOADING, ASK, GENERATING, RESULT, LOCKED, ERROR }
 
-/** 칩 아이콘 키 → 아이콘(일러스트가 생기면 같은 키로 바꾼다). */
-private fun chipIcon(key: String?): ImageVector? = when (key) {
-    "ballet", "korean", "modern", "practical", "musical", "barre", "balletfit", "hobby" -> Icons.Filled.AccessibilityNew
-    "kids", "child" -> Icons.Filled.ChildCare
-    "teen" -> Icons.Filled.School
-    "adult" -> Icons.Filled.Person
-    "senior" -> Icons.Filled.Elderly
-    "one" -> Icons.Filled.Person
-    "small" -> Icons.Filled.People
-    "group" -> Icons.Filled.Groups
-    "level1", "level2", "level3", "level4" -> Icons.Filled.SignalCellularAlt
-    "trophy" -> Icons.Filled.EmojiEvents
-    "heart" -> Icons.Filled.Favorite
-    "body" -> Icons.Filled.SelfImprovement
-    "base" -> Icons.Filled.Foundation
-    "star" -> Icons.Filled.Star
-    "cash" -> Icons.Filled.Payments
-    "card" -> Icons.Filled.CreditCard
-    "job" -> Icons.Filled.Work
-    "clock" -> Icons.Filled.Schedule
-    "free" -> Icons.Filled.Laptop
-    "smile" -> Icons.Filled.SentimentSatisfied
-    "bow" -> Icons.Filled.Handshake
-    "short" -> Icons.Filled.ShortText
-    else -> null
-}
-
 @Composable
-fun AssistantFlowPage(flowId: String, title: String, onClose: () -> Unit, onOpen: (AssistantItem) -> Unit) {
+fun AssistantFlowPage(
+    flowId: String, title: String, onClose: () -> Unit, onOpen: (AssistantItem) -> Unit,
+    /** 지난 초안 다시 보기('AI로 쓴 글' 목록·완료 푸시) — 질문 없이 결과 화면만. 답 고치기·다시 쓰기는 없다. */
+    draftId: String? = null,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var phase by remember { mutableStateOf(Phase.LOADING) }
@@ -160,7 +137,22 @@ fun AssistantFlowPage(flowId: String, title: String, onClose: () -> Unit, onOpen
         waitJob(r.json?.optString("jobId").orEmpty())
     }
 
-    LaunchedEffect(flowId) {
+    // 이 화면을 보는 동안은 완료 푸시를 띄우지 않는다(AssistantOverlay.isWatchingFlow).
+    DisposableEffect(Unit) {
+        AssistantOverlay.flowOnScreen = true
+        onDispose { AssistantOverlay.flowOnScreen = false }
+    }
+    var pageTitle by remember { mutableStateOf(title) }
+
+    LaunchedEffect(flowId, draftId) {
+        if (draftId != null) {
+            val r = AssistantApi.call(context, "GET", "/assistant/drafts/$draftId")
+            if (!r.ok) return@LaunchedEffect fail(r)
+            draft = r.json
+            r.json?.optString("flowTitle")?.takeIf { it.isNotEmpty() && it != "null" }?.let { pageTitle = it }
+            phase = Phase.RESULT
+            return@LaunchedEffect
+        }
         val r = AssistantApi.call(context, "POST", "/assistant/sessions", JSONObject().put("flow", flowId))
         if (!r.ok) return@LaunchedEffect fail(r)
         sessionId = r.json?.optInt("sessionId") ?: 0
@@ -195,7 +187,7 @@ fun AssistantFlowPage(flowId: String, title: String, onClose: () -> Unit, onOpen
                     if (r.ok) applyQuestion(r.json, r.json?.opt("previous")) else fail(r)
                 }
             }
-            Phase.RESULT -> scope.launch { // 답 고치기 = 마지막 질문으로
+            Phase.RESULT -> if (draftId != null) onClose() else scope.launch { // 답 고치기 = 마지막 질문으로
                 val r = AssistantApi.call(context, "POST", "/assistant/sessions/$sessionId/back")
                 if (r.ok) applyQuestion(r.json, r.json?.opt("previous"))
             }
@@ -216,7 +208,7 @@ fun AssistantFlowPage(flowId: String, title: String, onClose: () -> Unit, onOpen
             IconButton(onClick = { back() }, modifier = Modifier.align(Alignment.CenterStart).padding(start = 4.dp)) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "뒤로", tint = Ink)
             }
-            Text(title, fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, color = Ink, modifier = Modifier.align(Alignment.Center))
+            Text(pageTitle, fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, color = Ink, modifier = Modifier.align(Alignment.Center))
             if (phase == Phase.RESULT || phase == Phase.LOCKED || phase == Phase.ERROR) {
                 IconButton(onClick = onClose, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 4.dp)) { Icon(Icons.Filled.Close, "닫기", tint = Ink) }
             }
@@ -247,7 +239,10 @@ fun AssistantFlowPage(flowId: String, title: String, onClose: () -> Unit, onOpen
                 val label = when { busy -> "잠시만요…"; cur.type == "text" && !cur.required && text.isBlank() -> if (last) "건너뛰고 AI로 작성하기" else "건너뛰기"; last -> "AI로 작성하기"; else -> "다음" }
                 BottomButton(label, enabled || (cur.type == "text" && !cur.required && !busy)) { next() }
             }
-            Phase.RESULT -> draft?.let { d -> ResultView(d, onOpen = onOpen, onRegenerate = { scope.launch { generate() } }, onEdit = { back() }) }
+            Phase.RESULT -> draft?.let { d ->
+                if (draftId != null) ResultView(d, onOpen = onOpen, onRegenerate = null, onEdit = null)
+                else ResultView(d, onOpen = onOpen, onRegenerate = { scope.launch { generate() } }, onEdit = { back() })
+            }
         }
     }
 }
@@ -265,16 +260,16 @@ private fun Options(q: FlowQuestion, picked: List<String>, text: String, onPick:
             }
             Text("${text.length} / ${q.max ?: 300}", fontFamily = customFontFamily, fontSize = 13.sp, color = Sub, modifier = Modifier.align(Alignment.End).padding(top = 6.dp))
         }
+        // 아이콘 없이 글자만(10-23 사용자 요청 — 어설픈 아이콘은 뺀다). 서버 icons 값은 쓰지 않는다.
         "grid" -> q.chips.chunked(3).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(bottom = 12.dp)) {
                 row.forEach { c ->
                     val on = c in picked
                     Column(
-                        Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(20.dp)).background(if (on) Peach else Color(0xFFF2F3F5))
+                        Modifier.weight(1f).height(76.dp).clip(RoundedCornerShape(20.dp)).background(if (on) Peach else Color(0xFFF2F3F5))
                             .border(if (on) 2.dp else 0.dp, if (on) AppColor.Primary else Color.Transparent, RoundedCornerShape(20.dp)).clickable { toggle(c) },
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
                     ) {
-                        chipIcon(q.icons[c])?.let { Icon(it, null, tint = AppColor.Primary, modifier = Modifier.size(34.dp)); Spacer(Modifier.height(10.dp)) }
                         Text(c, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp, color = Ink, textAlign = TextAlign.Center)
                     }
                 }
@@ -309,8 +304,6 @@ private fun Options(q: FlowQuestion, picked: List<String>, text: String, onPick:
                 if (q.display == "checklist") {
                     Icon(Icons.Filled.Check, null, tint = if (on) AppColor.Primary else Color(0xFFC4C6CC), modifier = Modifier.size(22.dp))
                     Spacer(Modifier.width(16.dp))
-                } else chipIcon(q.icons[c])?.let {
-                    Icon(it, null, tint = AppColor.Primary, modifier = Modifier.size(30.dp)); Spacer(Modifier.width(18.dp))
                 }
                 Text(c, fontFamily = customFontFamily, fontWeight = if (q.display == "cards") FontWeight.SemiBold else FontWeight.Normal, fontSize = 17.sp, color = Ink)
             }
@@ -345,7 +338,7 @@ private fun Message(title: String, body: String, button: String, onClick: () -> 
 }
 
 @Composable
-private fun ResultView(d: JSONObject, onOpen: (AssistantItem) -> Unit, onRegenerate: () -> Unit, onEdit: () -> Unit) {
+private fun ResultView(d: JSONObject, onOpen: (AssistantItem) -> Unit, onRegenerate: (() -> Unit)?, onEdit: (() -> Unit)?) {
     val context = LocalContext.current
     val payload = d.optJSONObject("payload") ?: JSONObject()
     val fields = d.optJSONArray("fields")
@@ -372,8 +365,8 @@ private fun ResultView(d: JSONObject, onOpen: (AssistantItem) -> Unit, onRegener
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)) {
-                SmallButton("답 고치기", Modifier.weight(1f), onEdit)
-                SmallButton("다시 쓰기", Modifier.weight(1f), onRegenerate)
+                onEdit?.let { SmallButton("답 고치기", Modifier.weight(1f), it) }
+                onRegenerate?.let { SmallButton("다시 쓰기", Modifier.weight(1f), it) }
                 SmallButton("복사하기", Modifier.weight(1f)) {
                     (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("AI 작성", allText))
                     Toast.makeText(context, "복사했어요", Toast.LENGTH_SHORT).show()

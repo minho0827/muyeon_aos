@@ -76,6 +76,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -144,18 +145,36 @@ object AssistantOverlay {
     /** 인기 검색어 캐시(유형별). */
     internal val popularCache = mutableMapOf<String, List<String>>()
 
+    // ── AI 작성 완료 푸시(10-23) ──
+    const val PUSH_DRAFT_READY = "ai_draft_ready"
+    /** 앞에 있는 화면 수 — 0 이면 앱이 뒤에 있다. */
+    @Volatile private var resumedCount = 0
+    /** 단계형 화면(질문·작성 중·결과)이 떠 있는지 — AssistantFlowPage 가 켜고 끈다. */
+    @Volatile internal var flowOnScreen = false
+    /** 앱이 앞에 있고 AI 흐름을 보고 있으면 true — 이때는 완료 푸시를 띄우지 않는다. */
+    val isWatchingFlow get() = flowOnScreen && resumedCount > 0
+    /** 푸시를 눌러 열어야 할 초안 — 맨 앞 화면의 AI 층이 받아 결과 화면으로 연다. */
+    internal var pendingDraft by mutableStateOf<String?>(null)
+
+    fun takeDraftPush(intent: android.content.Intent?) {
+        if (intent?.getStringExtra("type") != PUSH_DRAFT_READY) return
+        intent.getStringExtra("aiDraftId")?.takeIf { it.isNotEmpty() }?.let { pendingDraft = it }
+        intent.removeExtra("type") // 화면을 다시 만들 때 또 열리지 않게
+    }
+
     fun start(app: Application) {
         bottomDp = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getFloat(KEY_Y, 286f)
         nativeBottomDp = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getFloat(KEY_Y_NATIVE, NATIVE_DEFAULT)
         AssistantBadges.start(app)
         app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
             override fun onActivityResumed(activity: Activity) {
+                resumedCount++
                 attach(activity)
                 if (activity.javaClass.simpleName !in SKIP) AssistantBadges.onScreenResumed(activity)
             }
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
             override fun onActivityStarted(activity: Activity) {}
-            override fun onActivityPaused(activity: Activity) {}
+            override fun onActivityPaused(activity: Activity) { resumedCount = maxOf(0, resumedCount - 1) }
             override fun onActivityStopped(activity: Activity) {}
             override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
             override fun onActivityDestroyed(activity: Activity) {}
@@ -198,7 +217,20 @@ object AssistantOverlay {
 private fun AssistantLayer(activity: Activity) {
     val context = LocalContext.current
     var open by remember { mutableStateOf(false) }
+    var startDraft by remember { mutableStateOf<String?>(null) }
     val density = LocalDensity.current
+    // 완료 푸시를 눌러 들어왔으면 맨 앞 화면의 층이 AI 창을 결과 화면으로 연다.
+    val lifecycle = (activity as ComponentActivity).lifecycle
+    val lifeState by lifecycle.currentStateFlow.collectAsState()
+    val pending = AssistantOverlay.pendingDraft
+    LaunchedEffect(pending, lifeState) {
+        if (pending != null && lifeState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED) &&
+            activity.javaClass.simpleName !in setOf("SplashActivity", "LoginActivity")) {
+            AssistantOverlay.pendingDraft = null
+            startDraft = pending
+            open = true
+        }
+    }
     val imeVisible = WindowInsets.ime.getBottom(density) > 0
     // 웹 라우트·웹 모달 상태는 웹뷰 화면에서만 의미가 있다(네이티브 화면은 웹 상태와 무관하게 보인다).
     val onWeb = activity is com.muyeon.app.webview.WebViewActivity
@@ -211,9 +243,11 @@ private fun AssistantLayer(activity: Activity) {
     }
     if (open) {
         AssistantSheet(
-            onDismiss = { open = false },
+            startDraftId = startDraft,
+            onDismiss = { open = false; startDraft = null },
             onPick = { item ->
                 open = false
+                startDraft = null
                 when (AssistantExecutor.run(activity, item)) {
                     AssistantExecutor.Outcome.Opened -> Unit
                     AssistantExecutor.Outcome.NeedsUpdate -> Toast.makeText(activity, "앱을 업데이트하면 쓸 수 있어요.", Toast.LENGTH_SHORT).show()
@@ -277,7 +311,7 @@ private fun AssistantFab(modifier: Modifier, onWeb: Boolean, onOpen: () -> Unit)
  *  새 Activity·웹뷰 없이 같은 ComposeView 의 Dialog 로 띄운다(웹 콜백 대상이 흔들리지 않게).
  */
 @Composable
-private fun AssistantSheet(onDismiss: () -> Unit, onPick: (AssistantItem) -> Unit) {
+private fun AssistantSheet(startDraftId: String? = null, onDismiss: () -> Unit, onPick: (AssistantItem) -> Unit) {
     val context = LocalContext.current
     var query by remember { mutableStateOf("") }
     var items by remember { mutableStateOf(AssistantOverlay.cache[ActiveRole.current(context)]?.items ?: emptyList()) }
@@ -289,6 +323,8 @@ private fun AssistantSheet(onDismiss: () -> Unit, onPick: (AssistantItem) -> Uni
     var tab by remember { mutableStateOf(ResultTab.ALL) }
     var searching by remember { mutableStateOf(false) }
     var flow by remember { mutableStateOf<AssistantItem?>(null) } // AI 작성 흐름(단계형 화면)
+    var history by remember { mutableStateOf(false) } // 'AI로 쓴 글' 목록
+    var draftView by remember { mutableStateOf(startDraftId) } // 지난 초안 다시 보기(목록·푸시)
     var sections by remember { mutableStateOf(AssistantOverlay.cache[ActiveRole.current(context)]?.sections ?: emptyList()) }
     var recentMenus by remember { mutableStateOf(AssistantRecent.loadMenus(context)) }
     var faqs by remember { mutableStateOf(AssistantOverlay.faqCache ?: emptyList()) }
@@ -320,6 +356,7 @@ private fun AssistantSheet(onDismiss: () -> Unit, onPick: (AssistantItem) -> Uni
 
     fun pick(item: AssistantItem) {
         if (item.kind == "FLOW") { flow = item; return } // 창 안에서 단계형 화면으로(3단계)
+        if (item.kind == "AI_HISTORY") { history = true; return } // 창 안에서 'AI로 쓴 글' 목록으로
         val q = query.trim()
         if (q.isNotEmpty()) {
             logs.add(q to item.id)
@@ -341,8 +378,19 @@ private fun AssistantSheet(onDismiss: () -> Unit, onPick: (AssistantItem) -> Uni
         onDismissRequest = { if (searching) { searching = false; query = "" } else close() },
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
+        draftView?.let { id ->
+            // 푸시로 바로 왔으면 닫을 때 AI 창도 닫는다(목록에서 왔으면 목록으로).
+            AssistantFlowPage("", "AI로 쓴 글", draftId = id,
+                onClose = { draftView = null; if (!history) close() },
+                onOpen = { item -> draftView = null; pick(item) })
+            return@Dialog
+        }
         flow?.let { f ->
             AssistantFlowPage(f.flow ?: "", f.title.removePrefix("AI "), onClose = { flow = null }, onOpen = { item -> flow = null; pick(item) })
+            return@Dialog
+        }
+        if (history) {
+            AssistantHistoryPage(onBack = { history = false }, onOpenDraft = { draftView = it })
             return@Dialog
         }
         if (!searching) {
