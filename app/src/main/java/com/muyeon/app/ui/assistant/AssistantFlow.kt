@@ -80,7 +80,7 @@ private enum class Phase { LOADING, ASK, GENERATING, RESULT, LOCKED, ERROR }
 @Composable
 fun AssistantFlowPage(
     flowId: String, title: String, onClose: () -> Unit, onOpen: (AssistantItem) -> Unit,
-    /** 지난 초안 다시 보기('AI로 쓴 글' 목록·완료 푸시) — 질문 없이 결과 화면만. 답 고치기·다시 쓰기는 없다. */
+    /** 지난 초안 다시 보기('AI로 쓴 글' 목록·완료 푸시) — 질문 없이 결과 화면만. 수정하기·다시 쓰기는 없다. */
     draftId: String? = null,
 ) {
     val context = LocalContext.current
@@ -193,7 +193,7 @@ fun AssistantFlowPage(
                     if (r.ok) applyQuestion(r.json, r.json?.opt("previous")) else fail(r)
                 }
             }
-            Phase.RESULT -> if (draftId != null) onClose() else scope.launch { // 답 고치기 = 마지막 질문으로
+            Phase.RESULT -> if (draftId != null) onClose() else scope.launch { // 수정하기 = 마지막 질문으로
                 val r = AssistantApi.call(context, "POST", "/assistant/sessions/$sessionId/back")
                 if (r.ok) applyQuestion(r.json, r.json?.opt("previous"))
             }
@@ -399,7 +399,7 @@ private fun ResultView(d: JSONObject, onOpen: (AssistantItem) -> Unit, onRegener
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)) {
-                onEdit?.let { SmallButton("답 고치기", Modifier.weight(1f), it) }
+                onEdit?.let { SmallButton("수정하기", Modifier.weight(1f), it) }
                 onRegenerate?.let { SmallButton("다시 쓰기", Modifier.weight(1f), it) }
                 SmallButton("복사하기", Modifier.weight(1f)) {
                     (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("AI 작성", allText))
