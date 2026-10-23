@@ -313,10 +313,7 @@ fun AssistantFlowPage(
                     Text(cur.ask, fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 36.sp, color = Ink, modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
                     Text(when (cur.type) { "multi" -> "여러 개 선택할 수 있어요"; "text" -> if (cur.required) "간단히 입력해 주세요" else "입력하지 않아도 돼요"; else -> "하나를 선택해 주세요" },
                         fontFamily = customFontFamily, fontSize = 15.sp, color = Sub, modifier = Modifier.padding(bottom = 24.dp))
-                    Options(cur, picked, text, onPick = { picked = it; if (cur.type == "single" && it.isNotEmpty()) customOn = false }, onText = { text = it })
-                    if (cur.allowCustom) CustomRow(customOn, customText,
-                        onToggle = { on -> customOn = on; if (on && cur.type == "single") picked = emptyList() },
-                        onText = { customText = it })
+                    // 글 입력 질문은 추천 칩을 입력칸 위에 — 칸을 눌러 키보드가 올라와도 칩이 보인다(10-23 요청).
                     if (cur.type == "text") {
                         LaunchedEffect(cur.key, sessionId) {
                             val r = AssistantApi.call(context, "GET", "/assistant/sessions/$sessionId/suggestions?key=${cur.key}")
@@ -328,7 +325,12 @@ fun AssistantFlowPage(
                             val next = if (text.isBlank()) phrase else "${text.trimEnd()}, $phrase"
                             if (next.length <= max) text = next
                         }
+                        if (suggestMine.isNotEmpty() || suggestAi.isNotEmpty()) Spacer(Modifier.height(16.dp))
                     }
+                    Options(cur, picked, text, onPick = { picked = it; if (cur.type == "single" && it.isNotEmpty()) customOn = false }, onText = { text = it })
+                    if (cur.allowCustom) CustomRow(customOn, customText,
+                        onToggle = { on -> customOn = on; if (on && cur.type == "single") picked = emptyList() },
+                        onText = { customText = it })
                     Spacer(Modifier.height(24.dp))
                 }
                 val last = done >= total - 1
@@ -359,7 +361,10 @@ private fun Options(q: FlowQuestion, picked: List<String>, text: String, onPick:
         "text" -> Column {
             Box(Modifier.fillMaxWidth().heightIn(min = 160.dp).clip(RoundedCornerShape(16.dp)).border(1.dp, Line, RoundedCornerShape(16.dp)).padding(16.dp)) {
                 if (text.isEmpty()) Text(q.placeholder ?: "내용을 입력해 주세요", fontFamily = customFontFamily, fontSize = 16.sp, color = Color(0xFFA8AAB0))
-                BasicTextField(text, { if (it.length <= (q.max ?: 300)) onText(it) }, textStyle = TextStyle(fontFamily = customFontFamily, fontSize = 16.sp, color = Ink, lineHeight = 24.sp),
+                // 추천 칩으로 글이 바뀌면 커서를 글 끝으로(String 판은 커서가 맨 앞에 남는다 — 10-23 제보).
+                var tfv by remember { mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(text, androidx.compose.ui.text.TextRange(text.length))) }
+                if (tfv.text != text) tfv = androidx.compose.ui.text.input.TextFieldValue(text, androidx.compose.ui.text.TextRange(text.length))
+                BasicTextField(tfv, { if (it.text.length <= (q.max ?: 300)) { tfv = it; onText(it.text) } }, textStyle = TextStyle(fontFamily = customFontFamily, fontSize = 16.sp, color = Ink, lineHeight = 24.sp),
                     cursorBrush = SolidColor(AppColor.Primary), modifier = Modifier.fillMaxWidth().testTag("assistant.flow.text"))
             }
             Text("${text.length} / ${q.max ?: 300}", fontFamily = customFontFamily, fontSize = 13.sp, color = Sub, modifier = Modifier.align(Alignment.End).padding(top = 6.dp))
@@ -446,7 +451,7 @@ private fun SuggestChips(mine: List<String>, ai: List<String>, onPick: (String) 
     @Composable
     fun group(title: String, items: List<String>) {
         if (items.isEmpty()) return
-        Text(title, fontFamily = customFontFamily, fontSize = 13.sp, color = Sub, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
+        Text(title, fontFamily = customFontFamily, fontSize = 13.sp, color = Sub, modifier = Modifier.padding(top = 4.dp, bottom = 8.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items.forEach { p ->
                 Text(p, fontFamily = customFontFamily, fontSize = 14.sp, color = Ink, maxLines = 2,
