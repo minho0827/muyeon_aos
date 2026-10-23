@@ -40,6 +40,26 @@ object AssistantApi {
     suspend fun catalog(context: Context): AssistantCatalog? = get(context, "/assistant/catalog")?.let(AssistantCatalog::from)
     suspend fun config(context: Context): AssistantConfig? = get(context, "/assistant/config")?.let(AssistantConfig::from)
 
+    /** 자주 묻는 질문(공개 API, 토큰 불필요). */
+    suspend fun faqs(): List<AssistantFaq>? = withContext(Dispatchers.IO) {
+        runCatching {
+            client.newCall(Request.Builder().url("$apiBase/faqs").build()).execute().use { res ->
+                if (!res.isSuccessful) return@use null
+                val arr = JSONArray(res.body?.string() ?: "[]")
+                (0 until arr.length()).map { i ->
+                    val o = arr.getJSONObject(i)
+                    AssistantFaq(o.optInt("id"), o.optString("category"), o.optString("question"), o.optString("answer").takeIf { it != "null" } ?: "")
+                }
+            }
+        }.getOrNull()
+    }
+
+    /** 인기 검색어 — (활성 유형, 10개). */
+    suspend fun popular(context: Context): Pair<String, List<String>>? = get(context, "/assistant/popular")?.let { o ->
+        val arr = o.optJSONArray("items")
+        o.optString("activeType") to (0 until (arr?.length() ?: 0)).map { arr!!.optString(it) }
+    }
+
     /** 검색 기록 묶음 — 실패해도 조용히. */
     fun logSearches(context: Context, rows: List<Pair<String, String?>>) {
         if (rows.isEmpty()) return

@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -35,7 +37,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.filled.MilitaryTech
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Apartment
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.EventNote
+import androidx.compose.material.icons.filled.Forum
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Search
@@ -73,6 +89,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -108,6 +125,12 @@ object AssistantOverlay {
 
     /** 기능 목록 캐시(유형별) — 창을 다시 열 때 바로 보여 주고 뒤에서 새로 받는다. */
     internal val cache = mutableMapOf<String, AssistantCatalog>()
+
+    /** 자주 묻는 질문 캐시(앱 실행 중 한 번). */
+    internal var faqCache: List<AssistantFaq>? = null
+
+    /** 인기 검색어 캐시(유형별). */
+    internal val popularCache = mutableMapOf<String, List<String>>()
 
     fun start(app: Application) {
         bottomDp = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getFloat(KEY_Y, 286f)
@@ -218,28 +241,38 @@ private fun AssistantFab(modifier: Modifier, onOpen: () -> Unit) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * 빠른 이동 검색 화면(전체 화면) — 시안: 뒤로·검색창·돋보기 / 최근 검색어 칩 / 인기 검색어 1~10.
+ *  ★ 키보드를 자동으로 올리지 않는다(사용자 요청 10-23) — 검색창을 눌렀을 때만.
+ *  새 Activity·웹뷰 없이 같은 ComposeView 의 Dialog 로 띄운다(웹 콜백 대상이 흔들리지 않게).
+ */
 @Composable
 private fun AssistantSheet(onDismiss: () -> Unit, onPick: (AssistantItem) -> Unit) {
     val context = LocalContext.current
-    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var query by remember { mutableStateOf("") }
     var items by remember { mutableStateOf(AssistantOverlay.cache[ActiveRole.current(context)]?.items ?: emptyList()) }
     var config by remember { mutableStateOf<AssistantConfig?>(null) }
+    var popular by remember { mutableStateOf(AssistantOverlay.popularCache[ActiveRole.current(context)] ?: emptyList()) }
+    var recent by remember { mutableStateOf(AssistantRecent.load(context)) }
     var loading by remember { mutableStateOf(items.isEmpty()) }
     var failed by remember { mutableStateOf(false) }
+    var tab by remember { mutableStateOf(ResultTab.ALL) }
+    var faqs by remember { mutableStateOf(AssistantOverlay.faqCache ?: emptyList()) }
     val logs = remember { mutableStateListOf<Pair<String, String?>>() }
-    val focus = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
+        if (faqs.isEmpty()) AssistantApi.faqs()?.let { AssistantOverlay.faqCache = it; faqs = it }
         val catalog = AssistantApi.catalog(context)
-        config = AssistantApi.config(context)
         loading = false
         if (catalog != null) {
             AssistantOverlay.cache[catalog.activeType] = catalog
             items = catalog.items
         } else if (items.isEmpty()) failed = true
-        runCatching { focus.requestFocus() }
+        AssistantApi.popular(context)?.let { (type, list) ->
+            AssistantOverlay.popularCache[type] = list
+            popular = list
+        }
+        config = AssistantApi.config(context)
     }
 
     fun close() {
@@ -251,76 +284,176 @@ private fun AssistantSheet(onDismiss: () -> Unit, onPick: (AssistantItem) -> Uni
 
     fun pick(item: AssistantItem) {
         val q = query.trim()
-        if (q.isNotEmpty()) logs.add(q to item.id)
+        if (q.isNotEmpty()) {
+            logs.add(q to item.id)
+            recent = AssistantRecent.add(context, q)
+        }
         AssistantApi.logSearches(context, logs.toList())
         onPick(item)
     }
 
-    ModalBottomSheet(onDismissRequest = { close() }, sheetState = state, containerColor = Color.White) {
-        Column(Modifier.fillMaxWidth().navigationBarsPadding()) {
-            Row(Modifier.padding(horizontal = 20.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = AppColor.Primary, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("무엇을 도와드릴까요?", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF101116))
-                Spacer(Modifier.weight(1f))
-                IconButton(onClick = { close() }) { Icon(Icons.Filled.Close, contentDescription = "닫기", tint = Color(0xFF6D6E71)) }
+    fun submit() {
+        val q = query.trim()
+        if (q.isEmpty()) return
+        recent = AssistantRecent.add(context, q)
+        AssistantSearch.search(items, q).firstOrNull()?.let { pick(it) }
+    }
+
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = { close() },
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+    ) {
+        Column(Modifier.fillMaxSize().background(Color.White).statusBarsPadding().navigationBarsPadding().imePadding()) {
+            // 위쪽: 뒤로 · 검색창 · 돋보기
+            Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { close() }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로", tint = Color(0xFF101116))
+                }
+                Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                    if (query.isEmpty()) Text("메뉴, 기능을 검색해 보세요", fontSize = 17.sp, color = Color(0xFFA8AAB0), maxLines = 1)
+                    androidx.compose.foundation.text.BasicTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        singleLine = true,
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 17.sp, color = Color(0xFF101116)),
+                        cursorBrush = androidx.compose.ui.graphics.SolidColor(AppColor.Primary),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { submit() }),
+                        modifier = Modifier.fillMaxWidth().testTag("assistant.search"),
+                    )
+                }
+                if (query.isNotEmpty()) {
+                    IconButton(onClick = { query = "" }) { Icon(Icons.Filled.Cancel, contentDescription = "지우기", tint = Color(0xFFC4C6CC)) }
+                }
+                IconButton(onClick = { submit() }) { Icon(Icons.Filled.Search, contentDescription = "검색", tint = Color(0xFF101116)) }
             }
-            TextField(
-                value = query,
-                onValueChange = { query = it },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp).focusRequester(focus).testTag("assistant.search"),
-                placeholder = { Text("가고 싶은 메뉴를 검색해 보세요 (예: 레슨, 학원)", fontSize = 14.sp) },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { AssistantSearch.search(items, query).firstOrNull()?.let { pick(it) } }),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color(0xFFF5F5F5), unfocusedContainerColor = Color(0xFFF5F5F5),
-                    focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
-                ),
-            )
-            HorizontalDivider(color = Color(0xFFEAEAEA))
+            HorizontalDivider(color = Color(0xFFEEEEEE), thickness = 2.dp)
             val trimmed = query.trim()
-            LazyColumn(Modifier.fillMaxWidth().height(520.dp)) {
-                when {
-                    loading -> item { Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = AppColor.Primary) } }
-                    failed -> item { EmptyText("목록을 불러오지 못했어요. 잠시 후 다시 열어 주세요.") }
-                    trimmed.isEmpty() -> {
-                        val flows = items.filter { it.kind == "FLOW" }
-                        if (flows.isNotEmpty()) {
-                            item { SectionTitle("AI 작성 도우미") }
-                            item {
-                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp)) {
-                                    items(flows, key = { it.id }) { f ->
-                                        val locked = config?.flows?.firstOrNull { it.id == f.flow }?.locked ?: true
-                                        Row(
-                                            Modifier.clip(CircleShape).background(AppColor.Primary.copy(alpha = 0.1f)).clickable { pick(f) }
-                                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                        ) {
-                                            Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = AppColor.Primary, modifier = Modifier.size(14.dp))
-                                            Spacer(Modifier.width(4.dp))
-                                            Text(f.title.removePrefix("AI "), color = AppColor.Primary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                                            if (locked) {
-                                                Spacer(Modifier.width(4.dp))
-                                                Icon(Icons.Filled.Lock, contentDescription = "프로 전용", tint = AppColor.Primary, modifier = Modifier.size(12.dp))
-                                            }
-                                        }
-                                    }
+            LazyColumn(Modifier.fillMaxSize()) {
+                if (trimmed.isNotEmpty()) {
+                    item {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 4.dp)) {
+                            items(ResultTab.entries, key = { it.name }) { t ->
+                                val on = t == tab
+                                Text(t.label, fontSize = 16.sp, color = if (on) Color.White else Color(0xFF6D6E71),
+                                    modifier = Modifier.clip(CircleShape).background(if (on) Color(0xFF101116) else Color(0xFFF2F3F5))
+                                        .clickable { tab = t }.padding(horizontal = 18.dp, vertical = 9.dp))
+                            }
+                        }
+                    }
+                    when {
+                        loading -> item { Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = AppColor.Primary) } }
+                        failed -> item { EmptyText("목록을 불러오지 못했어요. 잠시 후 다시 열어 주세요.") }
+                        else -> {
+                            val menus = AssistantSearch.search(items, trimmed)
+                            val faqHits = AssistantSearch.searchFaqs(faqs, trimmed)
+                            val showMenus = tab != ResultTab.FAQ
+                            val showFaqs = tab != ResultTab.MENU
+                            if ((!showMenus || menus.isEmpty()) && (!showFaqs || faqHits.isEmpty())) {
+                                item { EmptyText("'$trimmed'에 맞는 결과가 없어요.\n다른 말로 검색해 보세요.") }
+                            }
+                            if (showMenus && menus.isNotEmpty()) {
+                                item { CountTitle("메뉴", menus.size) }
+                                items(menus, key = { it.id }) { ItemRow(it, trimmed) { pick(it) } }
+                            }
+                            if (showMenus && showFaqs && menus.isNotEmpty() && faqHits.isNotEmpty()) {
+                                item { Box(Modifier.fillMaxWidth().padding(top = 16.dp).height(10.dp).background(Color(0xFFF5F6F8))) }
+                            }
+                            if (showFaqs && faqHits.isNotEmpty()) {
+                                item { CountTitle("고객센터", faqHits.size) }
+                                items(faqHits.take(if (tab == ResultTab.FAQ) 30 else 5), key = { "faq${it.id}" }) { f ->
+                                    FaqRow(f, trimmed) { pick(FAQ_ITEM.copy(id = "faq.${f.id}")) }
+                                }
+                                item {
+                                    Text("더 궁금한 것이 있다면?  ›", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = AppColor.Primary,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth().padding(20.dp).clip(RoundedCornerShape(14.dp))
+                                            .background(AppColor.Primary.copy(alpha = 0.08f)).clickable { pick(INQUIRY_ITEM) }.padding(vertical = 16.dp))
                                 }
                             }
                         }
-                        item { SectionTitle("자주 쓰는 메뉴") }
-                        items(items.filter { it.kind != "FLOW" }.take(8), key = { it.id }) { ItemRow(it) { pick(it) } }
                     }
-                    else -> {
-                        val results = AssistantSearch.search(items, trimmed)
-                        if (results.isEmpty()) item { EmptyText("'$trimmed'에 맞는 메뉴가 없어요.\n다른 말로 검색해 보세요.") }
-                        else items(results, key = { it.id }) { ItemRow(it) { pick(it) } }
+                    item { Spacer(Modifier.height(24.dp)) }
+                    return@LazyColumn
+                }
+                // AI 작성 도우미(서버 스위치가 켜졌을 때만 온다)
+                val flows = items.filter { it.kind == "FLOW" }
+                if (flows.isNotEmpty()) {
+                    item { HeaderRow(Icons.Filled.AutoAwesome, AppColor.Primary, "AI 작성 도우미") }
+                    item {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp)) {
+                            items(flows, key = { it.id }) { f ->
+                                val locked = config?.flows?.firstOrNull { it.id == f.flow }?.locked ?: true
+                                Pill(f.title.removePrefix("AI "), trailing = if (locked) Icons.Filled.Lock else null, onClick = { pick(f) })
+                            }
+                        }
+                    }
+                    item { Spacer(Modifier.height(24.dp)) }
+                    item { Box(Modifier.fillMaxWidth().height(10.dp).background(Color(0xFFF5F6F8))) }
+                }
+                // 최근 검색어
+                item {
+                    HeaderRow(Icons.Filled.Schedule, Color(0xFF101116), "최근 검색어") {
+                        if (recent.isNotEmpty()) Text("모두 지우기", fontSize = 14.sp, color = Color(0xFF9A9CA3),
+                            modifier = Modifier.clickable { recent = AssistantRecent.clear(context) }.padding(4.dp))
                     }
                 }
+                item {
+                    if (recent.isEmpty()) {
+                        Text("최근 검색어가 없어요.", fontSize = 14.sp, color = Color(0xFFA8AAB0), modifier = Modifier.padding(start = 20.dp, bottom = 4.dp))
+                    } else {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp)) {
+                            items(recent, key = { it }) { r ->
+                                Pill(r, trailing = Icons.Filled.Close, onClick = { query = r }, onTrailing = { recent = AssistantRecent.remove(context, r) })
+                            }
+                        }
+                    }
+                }
+                item { Spacer(Modifier.height(28.dp)) }
+                item { Box(Modifier.fillMaxWidth().height(10.dp).background(Color(0xFFF5F6F8))) }
+                // 인기 검색어
+                if (popular.isNotEmpty()) {
+                    item { HeaderRow(Icons.Filled.MilitaryTech, Color(0xFFF5C344), "인기 검색어") }
+                    items(popular.take(10).mapIndexed { i, q -> i to q }, key = { "p${it.first}" }) { (i, q) ->
+                        val strong = i < 3
+                        Row(
+                            Modifier.fillMaxWidth().clickable { query = q }.padding(horizontal = 20.dp, vertical = 11.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("${i + 1}", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = if (strong) Color(0xFF101116) else Color(0xFF9A9CA3), modifier = Modifier.width(32.dp))
+                            Text(q, fontSize = 17.sp, color = if (strong) Color(0xFF101116) else Color(0xFF9A9CA3), maxLines = 1)
+                        }
+                    }
+                    item { Spacer(Modifier.height(24.dp)) }
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun HeaderRow(icon: androidx.compose.ui.graphics.vector.ImageVector, tint: Color, title: String, trailing: @Composable () -> Unit = {}) {
+    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 28.dp, bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF101116))
+        Spacer(Modifier.weight(1f))
+        trailing()
+    }
+}
+
+@Composable
+private fun Pill(text: String, trailing: androidx.compose.ui.graphics.vector.ImageVector?, onClick: () -> Unit, onTrailing: (() -> Unit)? = null) {
+    Row(
+        Modifier.clip(CircleShape).border(1.dp, Color(0xFFE3E4E8), CircleShape).clickable(onClick = onClick)
+            .padding(start = 16.dp, end = if (trailing != null) 10.dp else 16.dp, top = 9.dp, bottom = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text, fontSize = 15.sp, color = Color(0xFF101116), maxLines = 1)
+        if (trailing != null) {
+            Spacer(Modifier.width(6.dp))
+            Icon(trailing, contentDescription = if (onTrailing != null) "삭제" else null, tint = Color(0xFF101116),
+                modifier = Modifier.size(16.dp).then(if (onTrailing != null) Modifier.clickable(onClick = onTrailing) else Modifier))
         }
     }
 }
@@ -336,24 +469,85 @@ private fun EmptyText(t: String) {
 }
 
 @Composable
-private fun ItemRow(item: AssistantItem, onClick: () -> Unit) {
+private fun ItemRow(item: AssistantItem, query: String = "", onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 10.dp).testTag("assistant.item.${item.id}"),
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 12.dp).testTag("assistant.item.${item.id}"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(34.dp).clip(CircleShape).background(AppColor.Primary.copy(alpha = 0.08f)), contentAlignment = Alignment.Center) {
-            Icon(Icons.Filled.AutoAwesome.takeIf { item.kind == "FLOW" } ?: Icons.Filled.Search, contentDescription = null, tint = AppColor.Primary, modifier = Modifier.size(16.dp))
+        Box(Modifier.size(46.dp).clip(CircleShape).background(Color(0xFFF2F4F7)), contentAlignment = Alignment.Center) {
+            Icon(sectionIcon(item), contentDescription = null, tint = AppColor.Primary, modifier = Modifier.size(20.dp))
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(item.title, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Color(0xFF101116))
-            Text(item.subtitle ?: item.section, fontSize = 12.sp, color = Color(0xFF6D6E71), maxLines = 1)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(highlight(item.title, query), fontSize = 17.sp, color = Color(0xFF101116), maxLines = 1)
+                if (item.proOnly) {
+                    Spacer(Modifier.width(6.dp))
+                    Text("프로", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clip(CircleShape).background(AppColor.Primary).padding(horizontal = 6.dp, vertical = 2.dp))
+                }
+            }
+            Spacer(Modifier.height(3.dp))
+            Text("전체메뉴 → ${item.section} → ${item.title}", fontSize = 14.sp, color = Color(0xFF9A9CA3), maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         }
-        if (item.proOnly) {
-            Text("프로", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold,
-                modifier = Modifier.clip(CircleShape).background(AppColor.Primary).padding(horizontal = 6.dp, vertical = 2.dp))
-            Spacer(Modifier.width(6.dp))
-        }
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color(0xFFBFBFBF))
     }
+}
+
+@Composable
+private fun FaqRow(f: AssistantFaq, query: String, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(46.dp).clip(CircleShape).background(Color(0xFFF2F4F7)), contentAlignment = Alignment.Center) {
+            Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = null, tint = Color(0xFF8A8D94), modifier = Modifier.size(22.dp))
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(highlight(f.question, query), fontSize = 17.sp, color = Color(0xFF101116), maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            if (f.answer.isNotBlank()) {
+                Spacer(Modifier.height(3.dp))
+                Text(f.answer.replace(Regex("\\s+"), " "), fontSize = 14.sp, color = Color(0xFF9A9CA3), maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CountTitle(label: String, n: Int) {
+    Row(Modifier.padding(start = 20.dp, top = 24.dp, bottom = 8.dp)) {
+        Text(label, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF101116))
+        Spacer(Modifier.width(8.dp))
+        Text("${n}건", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = AppColor.Primary)
+    }
+}
+
+/** 검색어와 같은 부분을 주황색으로(초성 검색은 강조하지 않는다). */
+private fun highlight(text: String, query: String) = androidx.compose.ui.text.buildAnnotatedString {
+    val q = query.trim()
+    val idx = if (q.isEmpty() || AssistantSearch.isChosungQuery(q)) -1 else text.lowercase().indexOf(q.lowercase())
+    if (idx < 0) { append(text); return@buildAnnotatedString }
+    append(text.substring(0, idx))
+    withStyle(androidx.compose.ui.text.SpanStyle(color = AppColor.Primary, fontWeight = FontWeight.SemiBold)) { append(text.substring(idx, idx + q.length)) }
+    append(text.substring(idx + q.length))
+}
+
+private enum class ResultTab(val label: String) { ALL("전체"), MENU("메뉴"), FAQ("고객센터") }
+
+/** 자주 묻는 질문을 누르면 웹 FAQ, '더 궁금한 것이 있다면?'은 1:1 문의(웹). 실행기는 일반 웹 항목처럼 처리한다. */
+private val FAQ_ITEM = AssistantItem("faq", "자주 묻는 질문", null, "고객센터", "WEB", null, emptyMap(), "/faq", null, false, emptyList(), emptyList())
+private val INQUIRY_ITEM = AssistantItem("support.inquiry", "1:1 문의", null, "고객센터", "WEB", null, emptyMap(), "/support/inquiry", null, false, emptyList(), emptyList())
+
+/** 묶음별 아이콘(iOS AssistantSheetView.icon 과 같은 구분). */
+private fun sectionIcon(item: AssistantItem) = when (item.section) {
+    "레슨" -> Icons.Filled.EventNote
+    "견적" -> Icons.Filled.Description
+    "구인" -> Icons.Filled.Groups
+    "이력서" -> Icons.Filled.Badge
+    "학원" -> Icons.Filled.Apartment
+    "멤버십" -> Icons.Filled.WorkspacePremium
+    "채팅" -> Icons.Filled.Forum
+    "알림" -> Icons.Filled.Notifications
+    "AI 도우미" -> Icons.Filled.AutoAwesome
+    else -> Icons.Filled.Apps
 }

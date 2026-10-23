@@ -49,6 +49,9 @@ data class AssistantCatalog(val etag: String, val activeType: String, val items:
     }
 }
 
+/** 자주 묻는 질문(GET /api/faqs, 공개). */
+data class AssistantFaq(val id: Int, val category: String, val question: String, val answer: String)
+
 data class AssistantFlowSummary(val id: String, val title: String, val locked: Boolean)
 
 data class AssistantConfig(val enabled: Boolean, val flows: List<AssistantFlowSummary>) {
@@ -93,6 +96,27 @@ object AssistantSearch {
             words.any { it.contains(q) } -> 50
             else -> 0
         }
+    }
+
+    private fun chosungOf(s: String) = buildString {
+        for (ch in s) { val c = ch.code - 0xAC00; if (c in 0..11171) append(CHO[c / 588]) }
+    }
+
+    /** 자주 묻는 질문 검색 — 질문 우선, 답 포함, 초성은 질문만. */
+    fun searchFaqs(faqs: List<AssistantFaq>, raw: String): List<AssistantFaq> {
+        val q = raw.trim().lowercase().replace(" ", "")
+        if (q.isEmpty()) return emptyList()
+        val cho = isChosungQuery(q)
+        return faqs.mapNotNull { f ->
+            val question = f.question.lowercase().replace(" ", "")
+            val s = when {
+                cho -> if (chosungOf(f.question).contains(q)) 20 else 0
+                question.contains(q) -> 100
+                f.answer.lowercase().replace(" ", "").contains(q) -> 40
+                else -> 0
+            }
+            if (s > 0) f to s else null
+        }.sortedByDescending { it.second }.map { it.first }
     }
 
     /** 검색 결과(최대 30개) — 점수순, 같으면 서버 순서. */
