@@ -524,24 +524,42 @@ private fun AllMenuPage(
             Text("메뉴, 기능을 검색해 보세요", fontSize = 16.sp, color = Color(0xFFA8AAB0), modifier = Modifier.weight(1f))
             Icon(Icons.Filled.Search, contentDescription = "검색", tint = Color(0xFFB0B3B9))
         }
-        // 묶음 칩(여러 줄, 접기·펴기)
+        // 묶음 칩 — 펼치면 여러 줄, 접으면 한 줄 가로 스크롤(지금 묶음 칩이 늘 보이게 자동으로 따라감). iOS 와 1:1.
         if (secList.isNotEmpty()) {
-            Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp)) {
-                androidx.compose.foundation.layout.FlowRow(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    maxLines = if (expanded) Int.MAX_VALUE else 1,
-                ) {
-                    secList.forEach { sec ->
-                        val on = sec.key == current
-                        Text(sec.title, fontSize = 15.sp, color = if (on) Color.White else Color(0xFF6D6E71),
-                            modifier = Modifier.clip(CircleShape).background(if (on) Color(0xFF101116) else Color(0xFFF2F3F5))
-                                .clickable { scope.launch { listState.animateScrollToItem(headerIndex[sec.key] ?: 0) } }
-                                .padding(horizontal = 16.dp, vertical = 8.dp))
-                    }
+            val chipRow = androidx.compose.foundation.lazy.rememberLazyListState()
+            // 맨 위면 칩을 접고, 내려가면 펼친다(어느 묶음인지 보이게). 화살표로 직접 바꾼 것은 다음 위치 변화까지 유지. iOS 와 1:1.
+            val atTop by androidx.compose.runtime.remember {
+                androidx.compose.runtime.derivedStateOf { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 8 }
+            }
+            LaunchedEffect(atTop) { expanded = !atTop }
+            LaunchedEffect(current, expanded) {
+                val idx = secList.indexOfFirst { it.key == current }
+                if (!expanded && idx >= 0) chipRow.animateScrollToItem(maxOf(idx - 1, 0))
+            }
+            val chip: @Composable (AssistantSection) -> Unit = { sec ->
+                val on = sec.key == current
+                Text(sec.title, fontSize = 15.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (on) Color.White else Color(0xFF6D6E71), maxLines = 1,
+                    modifier = Modifier.clip(CircleShape).background(if (on) Color(0xFF101116) else Color(0xFFF2F3F5))
+                        .clickable { scope.launch { listState.animateScrollToItem(headerIndex[sec.key] ?: 0) } }
+                        .padding(horizontal = 16.dp, vertical = 8.dp))
+            }
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.Top) {
+                if (expanded) {
+                    androidx.compose.foundation.layout.FlowRow(
+                        modifier = Modifier.weight(1f).padding(start = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) { secList.forEach { chip(it) } }
+                } else {
+                    LazyRow(
+                        state = chipRow,
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 8.dp),
+                    ) { items(secList, key = { it.key }) { chip(it) } }
                 }
-                IconButton(onClick = { expanded = !expanded }) {
+                IconButton(onClick = { expanded = !expanded }, modifier = Modifier.padding(end = 4.dp)) {
                     Icon(if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
                         contentDescription = if (expanded) "접기" else "펼치기", tint = Color(0xFF6D6E71))
                 }
