@@ -524,6 +524,8 @@ private fun AllMenuPage(
     var expanded by remember { mutableStateOf(false) }
     val current by androidx.compose.runtime.remember(groups) {
         androidx.compose.runtime.derivedStateOf {
+            // 끝까지 내렸으면 마지막 묶음 — 맨 아래 묶음(내 정보·설정)은 화면 위쪽까지 올라오지 못해 잡히지 않았다(10-23).
+            if (!listState.canScrollForward && listState.firstVisibleItemIndex > 0) return@derivedStateOf secList.lastOrNull()?.key
             val first = listState.firstVisibleItemIndex
             headerIndex.entries.filter { it.value <= first }.maxByOrNull { it.value }?.key ?: secList.firstOrNull()?.key
         }

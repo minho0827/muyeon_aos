@@ -129,7 +129,7 @@ class QuoteDashboardActivity : ResultActivity() {
                 }
                 QuoteDashboardScreen(
                     api = api,
-                    title = "레슨 요청 허브",
+                    title = "내 레슨 요청", // '허브'는 낯선 말이라 쉬운 이름으로(10-23 사용자)
                     role = "customer",
                     functions = customerFunctions { quoteLauncher.launch(it) },
                     onClose = { finish() },

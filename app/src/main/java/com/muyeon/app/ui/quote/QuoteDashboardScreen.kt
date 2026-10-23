@@ -114,7 +114,8 @@ fun QuoteDashboardScreen(
                 Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                if (isSectioned) TodayCard(tiles.take(2), onTileAction) else TileGrid(tiles, onTileAction)
+                // 2026-10-23 모니모 '자산' 시안 — 그룹 없는 화면(일반 회원 '내 레슨 요청')은 숫자 타일+기능 목록 대신 카드 격자 하나(iOS 와 1:1).
+                if (isSectioned) TodayCard(tiles.take(2), onTileAction) else QuoteDashCardGrid(role, dashCards(role, data, functions, onTileAction))
 
                 // 강사 — 채택됐지만 날짜 미정인 레슨(놓치기 쉬운 액션) 배너
                 val pending = data?.pendingSchedules ?: 0
@@ -124,7 +125,7 @@ fun QuoteDashboardScreen(
                 if (upcoming.isNotEmpty()) UpcomingSection(upcoming, onUpcomingTap)
 
                 val unreadQuotes = data?.unreadQuotes ?: 0
-                if (isSectioned) GroupedFunctionSections(functions, unreadQuotes) else LegacyFunctionList(functions, unreadQuotes)
+                if (isSectioned) GroupedFunctionSections(functions, unreadQuotes)
             }
         }
     }
@@ -148,7 +149,32 @@ private fun dashTiles(role: String, d: QuoteDashboardData?): List<DashTile> =
         DashTile("done", "완료", Icons.Filled.CheckCircle, Color(0xFF34C759), d?.doneLessons ?: 0),
     )
 
-/** 2×2 컬러 통계 타일 — iOS tileGrid(최소높이 86, r16, 색 0.92). */
+/**
+ * 카드 격자 목록 — 숫자 카드(값이 있으면 주황 숫자 문구, 없으면 할 일) + 기능 카드.
+ *  '새 견적' 타일과 '레슨 요청 내역' 기능은 같은 화면이라 기능 카드 하나로 합치고 숫자를 그 카드에 싣는다(iOS dashCards 와 같음).
+ */
+private fun dashCards(role: String, d: QuoteDashboardData?, functions: List<QuoteDashFunction>, onTileAction: (String) -> Unit): List<QuoteDashCard> {
+    fun metric(id: String, title: String, icon: ImageVector, n: Int, value: String, idle: String) =
+        QuoteDashCard(id, title, if (n > 0) value.replace("{n}", "$n") else idle, n > 0, icon) { onTileAction(id) }
+    val out = if (role == "teacher") mutableListOf(
+        metric("today", "오늘 레슨", Icons.Filled.CalendarMonth, d?.todayLessons ?: 0, "{n}개 있어요", "일정 보기"),
+        metric("new", "새 견적 요청", Icons.Filled.Notifications, d?.newRequests ?: 0, "{n}건 보기", "둘러보기"),
+        metric("sent", "답 기다리는 견적", Icons.AutoMirrored.Filled.Send, d?.sentPending ?: 0, "{n}건", "내역 보기"),
+        metric("accepted", "채택된 견적", Icons.Filled.CheckCircle, d?.accepted ?: 0, "{n}건", "내역 보기"),
+    ) else mutableListOf(
+        metric("reservations", "다가오는 예약", Icons.Filled.CalendarMonth, d?.upcomingReservations ?: 0, "{n}건 예정", "예약 보기"),
+        metric("open", "진행 중 요청", Icons.AutoMirrored.Filled.Send, d?.openRequests ?: 0, "{n}건 진행 중", "요청 보기"),
+        metric("done", "들은 레슨", Icons.Filled.CheckCircle, d?.doneLessons ?: 0, "{n}회 들었어요", "내역 보기"),
+    )
+    val unread = d?.unreadQuotes ?: 0
+    functions.forEach { fn ->
+        val n = if (fn.activityKey == "receivedQuotes") unread else 0
+        out += QuoteDashCard("fn.${fn.title}", fn.title, if (n > 0) "새 견적 ${n}건" else (fn.subtitle ?: "바로가기"), n > 0, fn.icon, dot = n > 0, action = fn.action)
+    }
+    return out
+}
+
+/** 2×2 컬러 통계 타일 — iOS tileGrid(최소높이 86, r16, 색 0.92). (카드 격자로 바뀐 뒤 그룹형 화면에서는 쓰지 않음) */
 @Composable
 private fun TileGrid(tiles: List<DashTile>, onTileAction: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
