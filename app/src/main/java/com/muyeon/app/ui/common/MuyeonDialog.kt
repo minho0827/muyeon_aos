@@ -60,6 +60,8 @@ fun MuyeonDialog(
     message: String? = null,
     actions: List<MuyeonDialogAction>,
     force: Boolean = false,
+    /** false 면 버튼을 눌러도 onDismiss 를 먼저 부르지 않는다 — 예전 팝업(QuoteDialog)의 버튼 동작을 그대로 두려고. */
+    dismissOnAction: Boolean = true,
     onDismiss: () -> Unit,
 ) {
     Dialog(
@@ -81,7 +83,7 @@ fun MuyeonDialog(
                     modifier = Modifier.padding(top = 8.dp))
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 20.dp)) {
-                actions.forEach { DialogButton(it, onDismiss) }
+                actions.forEach { DialogButton(it, if (dismissOnAction) onDismiss else ({})) }
             }
         }
     }

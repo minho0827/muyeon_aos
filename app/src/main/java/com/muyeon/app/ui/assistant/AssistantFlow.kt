@@ -105,6 +105,8 @@ fun AssistantFlowPage(
     var customText by remember { mutableStateOf("") }
     var suggestMine by remember { mutableStateOf<List<String>>(emptyList()) }
     var suggestAi by remember { mutableStateOf<List<String>>(emptyList()) }
+    // 써 둔 이력서·학원 소개가 있으면 첫 화면에서 [다듬기]/[새로 쓰기]를 묻는다(서버 existing).
+    var existing by remember { mutableStateOf<JSONObject?>(null) }
     var known by remember { mutableStateOf<List<Triple<String, String, String>>>(emptyList()) }
     var canBack by remember { mutableStateOf(false) }
 
@@ -173,6 +175,7 @@ fun AssistantFlowPage(
         if (!r.ok) return fail(r)
         sessionId = r.json?.optInt("sessionId") ?: 0
         applyQuestion(r.json)
+        existing = r.json?.optJSONObject("existing")
     }
 
     LaunchedEffect(flowId, draftId) {
@@ -229,11 +232,11 @@ fun AssistantFlowPage(
         }
     }
 
-    fun reask(key: String) {
+    fun reask(key: String, fresh: Boolean = false) {
         if (busy) return
         busy = true
         scope.launch {
-            val r = AssistantApi.call(context, "POST", "/assistant/sessions/$sessionId/reask", JSONObject().put("key", key))
+            val r = AssistantApi.call(context, "POST", "/assistant/sessions/$sessionId/reask", JSONObject().put("key", key).put("fresh", fresh))
             busy = false
             if (r.ok) applyQuestion(r.json, r.json?.opt("previous")) else fail(r)
         }
@@ -307,9 +310,14 @@ fun AssistantFlowPage(
                 Spacer(Modifier.height(8.dp))
                 Text("10초쯤 걸려요.\n앱을 닫아도 자동으로 만들어지고, 다 되면 알림으로 알려 드려요.", fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 22.sp, color = Sub, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 24.dp))
             }
-            Phase.ASK -> q?.let { cur ->
+            Phase.ASK -> if (existing != null) BaseChoice(existing!!) { use ->
+                val ex = existing
+                existing = null
+                scope.launch { AssistantApi.call(context, "POST", "/assistant/sessions/$sessionId/base", JSONObject().put("use", use)) }
+                if (ex != null && use) Toast.makeText(context, "써 둔 ${withObject(ex.optString("label"))} 바탕으로 다듬을게요", Toast.LENGTH_SHORT).show()
+            } else q?.let { cur ->
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp)) {
-                    if (known.isNotEmpty()) KnownBox(known.filter { it.first != cur.key }) { reask(it) }
+                    if (known.isNotEmpty()) KnownBox(known.filter { it.first != cur.key }, onChange = { reask(it) }, onRemove = { reask(it, fresh = true) })
                     Text(cur.ask, fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 36.sp, color = Ink, modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
                     Text(when (cur.type) { "multi" -> "여러 개 선택할 수 있어요"; "text" -> if (cur.required) "간단히 입력해 주세요" else "입력하지 않아도 돼요"; else -> "하나를 선택해 주세요" },
                         fontFamily = customFontFamily, fontSize = 15.sp, color = Sub, modifier = Modifier.padding(bottom = 24.dp))
@@ -420,7 +428,6 @@ private fun Options(q: FlowQuestion, picked: List<String>, text: String, onPick:
     }
 }
 
-/** '이미 알고 있어요' — 지난번 답으로 채운 질문. [바꾸기]를 누르면 그 질문을 다시 묻는다(iOS knownBox 와 같음). */
 /** [직접 입력] — 누르면 한 줄 입력칸이 열린다(40자). 하나만 고르는 질문이면 보기 선택이 풀린다. */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -464,19 +471,43 @@ private fun SuggestChips(mine: List<String>, ai: List<String>, onPick: (String) 
     group("이런 내용은 어때요?", ai)
 }
 
+/** 이전에 입력한 정보로 채운 질문 — 칩을 누르면 변경(예전 답을 골라 둔 채), ✕ 는 그 값을 빼고 처음부터 다시 묻는다(iOS knownBox 와 같음). */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun KnownBox(items: List<Triple<String, String, String>>, onChange: (String) -> Unit) {
+private fun KnownBox(items: List<Triple<String, String, String>>, onChange: (String) -> Unit, onRemove: (String) -> Unit) {
     if (items.isEmpty()) return
-    Column(Modifier.fillMaxWidth().padding(top = 16.dp).clip(RoundedCornerShape(14.dp)).background(Bg).padding(horizontal = 16.dp, vertical = 10.dp)) {
-        Text("이전에 답한 내용으로 채웠어요", fontFamily = customFontFamily, fontSize = 13.sp, color = Sub, modifier = Modifier.padding(bottom = 4.dp))
-        items.forEach { (key, label, value) ->
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                Text(label, fontFamily = customFontFamily, fontSize = 15.sp, color = Sub, modifier = Modifier.width(76.dp))
-                Text(value, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp, color = Ink, maxLines = 1, modifier = Modifier.weight(1f))
-                Text("변경", fontFamily = customFontFamily, fontSize = 14.sp, color = AppColor.Primary,
-                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onChange(key) }.padding(horizontal = 8.dp, vertical = 4.dp).testTag("assistant.flow.change.$key"))
+    Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
+        Text("이전에 입력한 정보로 채웠어요", fontFamily = customFontFamily, fontSize = 13.sp, color = Sub, modifier = Modifier.padding(bottom = 8.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items.forEach { (key, label, value) ->
+                Row(
+                    Modifier.clip(RoundedCornerShape(50)).background(Peach).border(1.dp, AppColor.Primary.copy(alpha = 0.35f), RoundedCornerShape(50)),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("$label · $value", fontFamily = customFontFamily, fontSize = 14.sp, color = Ink, maxLines = 1,
+                        modifier = Modifier.clickable { onChange(key) }.padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 8.dp).testTag("assistant.flow.change.$key"))
+                    Icon(Icons.Filled.Close, "빼기", tint = Sub, modifier = Modifier.clip(CircleShape).clickable { onRemove(key) }
+                        .padding(start = 4.dp, end = 10.dp, top = 8.dp, bottom = 8.dp).size(16.dp).testTag("assistant.flow.remove.$key"))
+                }
             }
         }
+    }
+}
+
+/** 써 둔 자기소개·학원 소개가 있을 때 첫 화면 — [이 내용을 바탕으로 다듬기] / [처음부터 새로 쓰기]. */
+@Composable
+private fun BaseChoice(existing: JSONObject, onChoose: (Boolean) -> Unit) {
+    val label = existing.optString("label")
+    Column(Modifier.fillMaxSize()) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp)) {
+            Text("써 둔 ${label}가 있어요", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 36.sp, color = Ink, modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
+            Text("이 내용을 바탕으로 다듬거나, 처음부터 새로 쓸 수 있어요.", fontFamily = customFontFamily, fontSize = 15.sp, color = Sub, modifier = Modifier.padding(bottom = 20.dp))
+            Text(existing.optString("preview") + "…", fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 23.sp, color = Ink,
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Bg).padding(18.dp))
+        }
+        BottomButton("이 내용을 바탕으로 다듬기", true) { onChoose(true) }
+        Text("처음부터 새로 쓰기", fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 16.sp, color = Sub, textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().clickable { onChoose(false) }.padding(top = 2.dp, bottom = 16.dp).testTag("assistant.flow.base.new"))
     }
 }
 

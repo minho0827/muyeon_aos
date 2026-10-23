@@ -858,12 +858,17 @@ internal fun QuoteDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { DialogTitle(title) },
-        text = { DialogMessage(message) },
-        confirmButton = { TextButton(onClick = onConfirm) { DialogAction(confirmText) } },
-        dismissButton = { TextButton(onClick = onDismiss) { DialogAction("취소") } },
+    // 10-23 앱 공통 팝업 모양으로(PACERA 팝업 이식 MuyeonDialog). 버튼 동작은 예전 그대로 —
+    //  확인은 onConfirm 만, 취소·바깥 탭은 onDismiss 만 부른다(호출부 66곳의 순서 가정을 깨지 않게).
+    com.muyeon.app.ui.common.MuyeonDialog(
+        title = title,
+        message = message,
+        actions = listOf(
+            com.muyeon.app.ui.common.MuyeonDialogAction(confirmText, com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY, onConfirm),
+            com.muyeon.app.ui.common.MuyeonDialogAction("취소", com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL, onDismiss),
+        ),
+        dismissOnAction = false,
+        onDismiss = onDismiss,
     )
 }
 
