@@ -27,4 +27,17 @@ object AssistantRecent {
 
     fun remove(context: Context, q: String) = save(context, load(context).filter { it != q })
     fun clear(context: Context) = save(context, emptyList())
+
+    // ── 최근 연 메뉴(전체 메뉴의 [최근] 묶음, 6개) ──
+    private const val KEY_MENUS = "recentMenus"
+
+    fun loadMenus(context: Context): List<String> = runCatching {
+        val arr = JSONArray(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_MENUS, "[]"))
+        (0 until arr.length()).map { arr.getString(it) }
+    }.getOrDefault(emptyList())
+
+    fun addMenu(context: Context, id: String) {
+        val next = (listOf(id) + loadMenus(context).filter { it != id }).take(6)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_MENUS, JSONArray(next).toString()).apply()
+    }
 }

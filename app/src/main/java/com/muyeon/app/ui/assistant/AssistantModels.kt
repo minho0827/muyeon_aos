@@ -39,13 +39,22 @@ data class AssistantItem(
     }
 }
 
-data class AssistantCatalog(val etag: String, val activeType: String, val items: List<AssistantItem>) {
+/** 전체 메뉴 묶음(칩·머리글) — 서버 assistant_sections. key 는 항목의 section 값. */
+data class AssistantSection(val key: String, val title: String, val icon: String)
+
+data class AssistantCatalog(val etag: String, val activeType: String, val items: List<AssistantItem>, val sections: List<AssistantSection> = emptyList()) {
     companion object {
-        fun from(o: JSONObject) = AssistantCatalog(
-            o.optString("etag"),
-            o.optString("activeType"),
-            (0 until (o.optJSONArray("items")?.length() ?: 0)).mapNotNull { i -> o.optJSONArray("items")?.optJSONObject(i)?.let(AssistantItem::from) },
-        )
+        fun from(o: JSONObject): AssistantCatalog {
+            val secs = o.optJSONArray("sections")
+            return AssistantCatalog(
+                o.optString("etag"),
+                o.optString("activeType"),
+                (0 until (o.optJSONArray("items")?.length() ?: 0)).mapNotNull { i -> o.optJSONArray("items")?.optJSONObject(i)?.let(AssistantItem::from) },
+                (0 until (secs?.length() ?: 0)).mapNotNull { i ->
+                    secs?.optJSONObject(i)?.let { AssistantSection(it.optString("key"), it.optString("title"), it.optString("icon")) }
+                },
+            )
+        }
     }
 }
 

@@ -39,6 +39,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Settings
+import kotlinx.coroutines.launch
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.MilitaryTech
 import androidx.compose.material.icons.filled.Schedule
@@ -152,7 +157,12 @@ object AssistantOverlay {
         if (content.findViewWithTag<ComposeView>(TAG_VIEW) != null) return
         val view = ComposeView(activity).apply {
             tag = TAG_VIEW
-            setContent { AssistantLayer(activity) }
+            // 앱 글꼴(Pretendard) — 이 화면 안의 모든 글자가 따르게 기본 글자 모양을 바꾼다(iOS 와 같은 글꼴).
+            setContent {
+                androidx.compose.runtime.CompositionLocalProvider(
+                    androidx.compose.material3.LocalTextStyle provides androidx.compose.material3.LocalTextStyle.current.copy(fontFamily = com.muyeon.app.theme.customFontFamily),
+                ) { AssistantLayer(activity) }
+            }
         }
         content.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
     }
@@ -257,6 +267,9 @@ private fun AssistantSheet(onDismiss: () -> Unit, onPick: (AssistantItem) -> Uni
     var loading by remember { mutableStateOf(items.isEmpty()) }
     var failed by remember { mutableStateOf(false) }
     var tab by remember { mutableStateOf(ResultTab.ALL) }
+    var searching by remember { mutableStateOf(false) }
+    var sections by remember { mutableStateOf(AssistantOverlay.cache[ActiveRole.current(context)]?.sections ?: emptyList()) }
+    var recentMenus by remember { mutableStateOf(AssistantRecent.loadMenus(context)) }
     var faqs by remember { mutableStateOf(AssistantOverlay.faqCache ?: emptyList()) }
     val logs = remember { mutableStateListOf<Pair<String, String?>>() }
 
@@ -267,6 +280,7 @@ private fun AssistantSheet(onDismiss: () -> Unit, onPick: (AssistantItem) -> Uni
         if (catalog != null) {
             AssistantOverlay.cache[catalog.activeType] = catalog
             items = catalog.items
+            sections = catalog.sections
         } else if (items.isEmpty()) failed = true
         AssistantApi.popular(context)?.let { (type, list) ->
             AssistantOverlay.popularCache[type] = list
@@ -289,6 +303,7 @@ private fun AssistantSheet(onDismiss: () -> Unit, onPick: (AssistantItem) -> Uni
             recent = AssistantRecent.add(context, q)
         }
         AssistantApi.logSearches(context, logs.toList())
+        if (item.kind != "FLOW") AssistantRecent.addMenu(context, item.id)
         onPick(item)
     }
 
@@ -300,13 +315,24 @@ private fun AssistantSheet(onDismiss: () -> Unit, onPick: (AssistantItem) -> Uni
     }
 
     androidx.compose.ui.window.Dialog(
-        onDismissRequest = { close() },
+        onDismissRequest = { if (searching) { searching = false; query = "" } else close() },
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
+        if (!searching) {
+            AllMenuPage(
+                items = items, sections = sections, recentIds = recentMenus, loading = loading, failed = failed,
+                onClose = { close() },
+                onHome = { pick(HOME_ITEM) },
+                onSearch = { searching = true },
+                onPick = { pick(it) },
+            )
+            return@Dialog
+        }
+        androidx.activity.compose.BackHandler { searching = false; query = "" }
         Column(Modifier.fillMaxSize().background(Color.White).statusBarsPadding().navigationBarsPadding().imePadding()) {
             // 위쪽: 뒤로 · 검색창 · 돋보기
             Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { close() }) {
+                IconButton(onClick = { searching = false; query = "" }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로", tint = Color(0xFF101116))
                 }
                 Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
@@ -315,7 +341,7 @@ private fun AssistantSheet(onDismiss: () -> Unit, onPick: (AssistantItem) -> Uni
                         value = query,
                         onValueChange = { query = it },
                         singleLine = true,
-                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 17.sp, color = Color(0xFF101116)),
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 17.sp, color = Color(0xFF101116), fontFamily = com.muyeon.app.theme.customFontFamily),
                         cursorBrush = androidx.compose.ui.graphics.SolidColor(AppColor.Primary),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = { submit() }),
@@ -431,6 +457,149 @@ private fun AssistantSheet(onDismiss: () -> Unit, onPick: (AssistantItem) -> Uni
     }
 }
 
+/**
+ * 전체 메뉴(시안: 삼성카드 전체 메뉴) — 뒤로·"전체 메뉴"·[홈] / 검색 상자(누르면 검색 화면) / 묶음 칩(접기·펴기) / 묶음별 메뉴 이름 목록.
+ *  묶음·메뉴는 전부 서버(관리자 MY 메뉴 + 기능 목록)에서 온다. [최근] 은 이 기기에서 최근 연 메뉴.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun AllMenuPage(
+    items: List<AssistantItem>,
+    sections: List<AssistantSection>,
+    recentIds: List<String>,
+    loading: Boolean,
+    failed: Boolean,
+    onClose: () -> Unit,
+    onHome: () -> Unit,
+    onSearch: () -> Unit,
+    onPick: (AssistantItem) -> Unit,
+) {
+    val byId = items.associateBy { it.id }
+    val recent = recentIds.mapNotNull { byId[it] }
+    // 묶음 순서: 서버 sections 순서(없으면 항목 등장 순서), [최근] 은 맨 앞.
+    val secList = buildList {
+        if (recent.isNotEmpty()) add(AssistantSection("__recent", "최근", "recent"))
+        val keys = if (sections.isNotEmpty()) sections else items.map { it.section }.distinct().map { AssistantSection(it, it, "etc") }
+        keys.filter { k -> items.any { it.section == k.key } }.forEach { add(it) }
+    }
+    val groups = secList.map { sec -> sec to (if (sec.key == "__recent") recent else items.filter { it.section == sec.key }) }
+    // 목록에서 각 묶음 머리의 위치(칩 → 스크롤, 스크롤 → 칩 강조).
+    val headerIndex = remember(groups) {
+        var i = 0
+        groups.map { (sec, list) -> (sec.key to i).also { i += 1 + list.size } }.toMap()
+    }
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var expanded by remember { mutableStateOf(false) }
+    val current by androidx.compose.runtime.remember(groups) {
+        androidx.compose.runtime.derivedStateOf {
+            val first = listState.firstVisibleItemIndex
+            headerIndex.entries.filter { it.value <= first }.maxByOrNull { it.value }?.key ?: secList.firstOrNull()?.key
+        }
+    }
+
+    Column(Modifier.fillMaxSize().background(Color.White).statusBarsPadding().navigationBarsPadding()) {
+        Box(Modifier.fillMaxWidth().height(56.dp)) {
+            IconButton(onClick = onClose, modifier = Modifier.align(Alignment.CenterStart).padding(start = 4.dp)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "닫기", tint = Color(0xFF101116))
+            }
+            Text("전체 메뉴", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF101116), modifier = Modifier.align(Alignment.Center))
+            Row(
+                Modifier.align(Alignment.CenterEnd).padding(end = 16.dp).clip(CircleShape).border(1.5.dp, Color(0xFF101116), CircleShape)
+                    .clickable(onClick = onHome).padding(horizontal = 12.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.Home, contentDescription = null, tint = AppColor.Primary, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("홈", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF101116))
+            }
+        }
+        // 검색 상자 — 누르면 검색 화면(키보드는 거기서 칸을 눌렀을 때만)
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).clip(RoundedCornerShape(14.dp))
+                .border(1.dp, Color(0xFFE3E4E8), RoundedCornerShape(14.dp)).clickable(onClick = onSearch)
+                .padding(horizontal = 16.dp, vertical = 15.dp).testTag("assistant.searchBox"),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("메뉴, 기능을 검색해 보세요", fontSize = 16.sp, color = Color(0xFFA8AAB0), modifier = Modifier.weight(1f))
+            Icon(Icons.Filled.Search, contentDescription = "검색", tint = Color(0xFFB0B3B9))
+        }
+        // 묶음 칩(여러 줄, 접기·펴기)
+        if (secList.isNotEmpty()) {
+            Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp)) {
+                androidx.compose.foundation.layout.FlowRow(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    maxLines = if (expanded) Int.MAX_VALUE else 1,
+                ) {
+                    secList.forEach { sec ->
+                        val on = sec.key == current
+                        Text(sec.title, fontSize = 15.sp, color = if (on) Color.White else Color(0xFF6D6E71),
+                            modifier = Modifier.clip(CircleShape).background(if (on) Color(0xFF101116) else Color(0xFFF2F3F5))
+                                .clickable { scope.launch { listState.animateScrollToItem(headerIndex[sec.key] ?: 0) } }
+                                .padding(horizontal = 16.dp, vertical = 8.dp))
+                    }
+                }
+                IconButton(onClick = { expanded = !expanded }) {
+                    Icon(if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                        contentDescription = if (expanded) "접기" else "펼치기", tint = Color(0xFF6D6E71))
+                }
+            }
+        }
+        when {
+            loading && items.isEmpty() -> Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = AppColor.Primary) }
+            failed && items.isEmpty() -> EmptyText("메뉴를 불러오지 못했어요. 잠시 후 다시 열어 주세요.")
+            else -> LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                groups.forEach { (sec, list) ->
+                    item(key = "h_${sec.key}") {
+                        Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 28.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(iconForKey(sec.icon), contentDescription = null, tint = AppColor.Primary, modifier = Modifier.size(22.dp))
+                                Spacer(Modifier.width(10.dp))
+                                Text(sec.title, fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Color(0xFF101116))
+                            }
+                            HorizontalDivider(color = Color(0xFFEAEAEA), modifier = Modifier.padding(top = 14.dp))
+                        }
+                    }
+                    items(list, key = { "${sec.key}_${it.id}" }) { item ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable { onPick(item) }.padding(horizontal = 16.dp, vertical = 13.dp).testTag("assistant.menu.${item.id}"),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(item.title, fontSize = 17.sp, color = Color(0xFF101116))
+                            if (item.proOnly) {
+                                Spacer(Modifier.width(6.dp))
+                                Text("프로", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.clip(CircleShape).background(AppColor.Primary).padding(horizontal = 6.dp, vertical = 2.dp))
+                            }
+                        }
+                    }
+                }
+                item { Spacer(Modifier.height(40.dp)) }
+            }
+        }
+    }
+}
+
+/** 서버 묶음 아이콘 키 → 아이콘. 모르는 키는 기본 아이콘. */
+private fun iconForKey(key: String) = when (key) {
+    "recent" -> Icons.Filled.Schedule
+    "ai" -> Icons.Filled.AutoAwesome
+    "lesson" -> Icons.Filled.EventNote
+    "quote" -> Icons.Filled.Description
+    "job" -> Icons.Filled.Groups
+    "resume" -> Icons.Filled.Badge
+    "academy" -> Icons.Filled.Apartment
+    "space" -> Icons.Filled.Home
+    "membership" -> Icons.Filled.WorkspacePremium
+    "chat" -> Icons.Filled.Forum
+    "bell" -> Icons.Filled.Notifications
+    "support" -> Icons.AutoMirrored.Filled.HelpOutline
+    "settings" -> Icons.Filled.Settings
+    else -> Icons.Filled.Apps
+}
+
 @Composable
 private fun HeaderRow(icon: androidx.compose.ui.graphics.vector.ImageVector, tint: Color, title: String, trailing: @Composable () -> Unit = {}) {
     Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 28.dp, bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -535,6 +704,7 @@ private fun highlight(text: String, query: String) = androidx.compose.ui.text.bu
 private enum class ResultTab(val label: String) { ALL("전체"), MENU("메뉴"), FAQ("고객센터") }
 
 /** 자주 묻는 질문을 누르면 웹 FAQ, '더 궁금한 것이 있다면?'은 1:1 문의(웹). 실행기는 일반 웹 항목처럼 처리한다. */
+private val HOME_ITEM = AssistantItem("home", "홈", null, "기타", "WEB", null, emptyMap(), "/home", null, false, emptyList(), emptyList())
 private val FAQ_ITEM = AssistantItem("faq", "자주 묻는 질문", null, "고객센터", "WEB", null, emptyMap(), "/faq", null, false, emptyList(), emptyList())
 private val INQUIRY_ITEM = AssistantItem("support.inquiry", "1:1 문의", null, "고객센터", "WEB", null, emptyMap(), "/support/inquiry", null, false, emptyList(), emptyList())
 
