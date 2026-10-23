@@ -128,8 +128,12 @@ object AssistantOverlay {
     var hiddenThisRun by mutableStateOf(false)
         private set
 
-    /** 버튼 위치(아래에서 dp) — 모든 화면이 같은 값을 본다. */
+    /** 버튼 위치(아래에서 dp) — 웹 화면(채팅 버튼 위)과 네이티브 화면(채팅 버튼 없음 → 구석 가까이)을 따로 기억한다(10-23:
+     *  네이티브 카드 화면에서 오른쪽 아래 카드를 가렸다). */
     private var bottomDp by mutableFloatStateOf(286f)
+    private var nativeBottomDp by mutableFloatStateOf(NATIVE_DEFAULT)
+    private const val NATIVE_DEFAULT = 28f
+    private const val KEY_Y_NATIVE = "fabBottomDpNative"
 
     /** 기능 목록 캐시(유형별) — 창을 다시 열 때 바로 보여 주고 뒤에서 새로 받는다. */
     internal val cache = mutableMapOf<String, AssistantCatalog>()
@@ -142,6 +146,7 @@ object AssistantOverlay {
 
     fun start(app: Application) {
         bottomDp = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getFloat(KEY_Y, 286f)
+        nativeBottomDp = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getFloat(KEY_Y_NATIVE, NATIVE_DEFAULT)
         AssistantBadges.start(app)
         app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
             override fun onActivityResumed(activity: Activity) {
@@ -176,15 +181,17 @@ object AssistantOverlay {
 
     internal fun hide() { hiddenThisRun = true }
 
-    internal fun saveY(context: Context) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putFloat(KEY_Y, bottomDp).apply()
+    internal fun saveY(context: Context, onWeb: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putFloat(if (onWeb) KEY_Y else KEY_Y_NATIVE, if (onWeb) bottomDp else nativeBottomDp).apply()
     }
 
-    internal fun moveBy(dyDp: Float, maxDp: Float) {
-        bottomDp = (bottomDp - dyDp).coerceIn(120f, maxDp)
+    internal fun moveBy(dyDp: Float, maxDp: Float, onWeb: Boolean) {
+        if (onWeb) bottomDp = (bottomDp - dyDp).coerceIn(120f, maxDp)
+        else nativeBottomDp = (nativeBottomDp - dyDp).coerceIn(16f, maxDp)
     }
 
-    internal val currentBottomDp get() = bottomDp
+    internal fun bottomFor(onWeb: Boolean) = if (onWeb) bottomDp else nativeBottomDp
 }
 
 @Composable
@@ -200,7 +207,7 @@ private fun AssistantLayer(activity: Activity) {
         !(onWeb && (FloatingState.isAuthRoute || FloatingState.floatingHidden))
 
     Box(Modifier.fillMaxSize()) {
-        if (show) AssistantFab(Modifier.align(Alignment.BottomEnd), onOpen = { open = true })
+        if (show) AssistantFab(Modifier.align(Alignment.BottomEnd).then(if (onWeb) Modifier else Modifier.navigationBarsPadding()), onWeb = onWeb, onOpen = { open = true })
     }
     if (open) {
         AssistantSheet(
@@ -219,7 +226,7 @@ private fun AssistantLayer(activity: Activity) {
 }
 
 @Composable
-private fun AssistantFab(modifier: Modifier, onOpen: () -> Unit) {
+private fun AssistantFab(modifier: Modifier, onWeb: Boolean, onOpen: () -> Unit) {
     val context = LocalContext.current
     val density = LocalDensity.current
     var menu by remember { mutableStateOf(false) }
@@ -227,7 +234,7 @@ private fun AssistantFab(modifier: Modifier, onOpen: () -> Unit) {
     Box(
         modifier
             .padding(end = 16.dp)
-            .offset { IntOffset(0, -with(density) { AssistantOverlay.currentBottomDp.dp.roundToPx() }) }
+            .offset { IntOffset(0, -with(density) { AssistantOverlay.bottomFor(onWeb).dp.roundToPx() }) }
             .size(52.dp)
             .shadow(6.dp, CircleShape)
             .clip(CircleShape)
@@ -235,10 +242,10 @@ private fun AssistantFab(modifier: Modifier, onOpen: () -> Unit) {
             .border(1.5.dp, AppColor.Primary, CircleShape)
             .pointerInput(Unit) {
                 detectVerticalDragGestures(
-                    onDragEnd = { AssistantOverlay.saveY(context) },
+                    onDragEnd = { AssistantOverlay.saveY(context, onWeb) },
                     onVerticalDrag = { change, dy ->
                         change.consume()
-                        AssistantOverlay.moveBy(with(density) { dy.toDp().value }, screenDp - 140f)
+                        AssistantOverlay.moveBy(with(density) { dy.toDp().value }, screenDp - 140f, onWeb)
                     },
                 )
             }
