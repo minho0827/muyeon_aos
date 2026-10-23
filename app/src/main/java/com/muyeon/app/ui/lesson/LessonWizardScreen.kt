@@ -410,8 +410,18 @@ private fun StepLocation(d: LessonWizardDraft, token: String?, recent: List<Less
                     Text(p.place.ifBlank { p.address }, fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.textHead, maxLines = 1,
                         modifier = Modifier.clip(RoundedCornerShape(50)).border(1.dp, MuyeonColors.border, RoundedCornerShape(50))
                             .clickable {
-                                onChange(d.copy(place = p.place, address = p.address, region = p.region, regionCode = p.regionCode,
-                                    lat = p.lat, lng = p.lng, phone = d.phone.ifBlank { p.phone }, parkingInfo = d.parkingInfo.ifBlank { p.parkingInfo }))
+                                // 지역은 주소에서 다시 계산(예전에 저장된 지역이 주소와 어긋난 경우가 있다), 좌표가 없으면 주소로 다시 찾는다.
+                                val region = shortRegion(p.address)
+                                val base = d.copy(place = p.place, address = p.address, region = region, regionCode = p.regionCode,
+                                    lat = p.lat, lng = p.lng, phone = d.phone.ifBlank { p.phone }, parkingInfo = d.parkingInfo.ifBlank { p.parkingInfo })
+                                onChange(base)
+                                geocoding = p.lat == null
+                                scope.launch {
+                                    val coord = if (p.lat != null && p.lng != null) p.lat to p.lng else geocodeOne(ctx, p.address)
+                                    val code = regionCodeFor(token, region)
+                                    geocoding = false
+                                    onChange(base.copy(regionCode = code ?: p.regionCode, lat = coord?.first, lng = coord?.second))
+                                }
                             }
                             .padding(horizontal = 14.dp, vertical = 8.dp))
                 }
