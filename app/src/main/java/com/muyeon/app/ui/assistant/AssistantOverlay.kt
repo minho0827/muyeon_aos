@@ -375,7 +375,14 @@ private fun AssistantSheet(startDraftId: String? = null, onDismiss: () -> Unit, 
     }
 
     androidx.compose.ui.window.Dialog(
-        onDismissRequest = { if (searching) { searching = false; query = "" } else close() },
+        // 질문·내역·다시 보기 화면은 각자 BackHandler 가 뒤로를 맡는다 — 여기서 창 전체를 닫지 않는다(10-23 ESC 키로 창이 통째로 닫힘).
+        onDismissRequest = {
+            when {
+                draftView != null || flow != null || history -> Unit
+                searching -> { searching = false; query = "" }
+                else -> close()
+            }
+        },
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
         draftView?.let { id ->

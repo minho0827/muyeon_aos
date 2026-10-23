@@ -31,6 +31,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -415,6 +417,7 @@ private fun Options(q: FlowQuestion, picked: List<String>, text: String, onPick:
 
 /** '이미 알고 있어요' — 지난번 답으로 채운 질문. [바꾸기]를 누르면 그 질문을 다시 묻는다(iOS knownBox 와 같음). */
 /** [직접 입력] — 누르면 한 줄 입력칸이 열린다(40자). 하나만 고르는 질문이면 보기 선택이 풀린다. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun CustomRow(on: Boolean, value: String, onToggle: (Boolean) -> Unit, onText: (String) -> Unit) {
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (on) Peach else Color.White)
@@ -422,11 +425,15 @@ private fun CustomRow(on: Boolean, value: String, onToggle: (Boolean) -> Unit, o
         Text("직접 입력", fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, color = Ink,
             modifier = Modifier.fillMaxWidth().clickable { onToggle(!on) }.padding(horizontal = 22.dp, vertical = 20.dp).testTag("assistant.flow.custom"))
         if (on) {
-            Box(Modifier.fillMaxWidth().padding(start = 22.dp, end = 22.dp, bottom = 18.dp)) {
+            // 열면 바로 입력 — 초점을 주고 아래 버튼에 가리지 않게 화면을 끌어올린다.
+            val focus = remember { androidx.compose.ui.focus.FocusRequester() }
+            val bring = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
+            LaunchedEffect(Unit) { focus.requestFocus(); delay(300); bring.bringIntoView() }
+            Box(Modifier.fillMaxWidth().bringIntoViewRequester(bring).padding(start = 22.dp, end = 22.dp, bottom = 18.dp)) {
                 if (value.isEmpty()) Text("원하는 내용을 입력해 주세요", fontFamily = customFontFamily, fontSize = 16.sp, color = Color(0xFFA8AAB0))
                 BasicTextField(value, { if (it.length <= 40) onText(it) }, singleLine = true,
                     textStyle = TextStyle(fontFamily = customFontFamily, fontSize = 16.sp, color = Ink),
-                    cursorBrush = SolidColor(AppColor.Primary), modifier = Modifier.fillMaxWidth().testTag("assistant.flow.custom.text"))
+                    cursorBrush = SolidColor(AppColor.Primary), modifier = Modifier.fillMaxWidth().focusRequester(focus).testTag("assistant.flow.custom.text"))
             }
         }
     }
