@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit
 
 /** AI 도우미 서버 호출 — 실패하면 null(창 안에서 안내). 활성 유형 헤더(withActiveType)를 붙인다. */
 object AssistantApi {
-    private val client = OkHttpClient.Builder().callTimeout(15, TimeUnit.SECONDS).build()
+    private val client = OkHttpClient.Builder().callTimeout(40, TimeUnit.SECONDS).build() // 채팅 답장·추천 문구는 AI 를 바로 불러 10초 넘게 걸릴 수 있다
     private val apiBase get() = BuildConfig.API_BASE_URL + "/api"
 
     private fun builder(context: Context, path: String): Request.Builder? {
