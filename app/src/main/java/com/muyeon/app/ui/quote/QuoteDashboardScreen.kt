@@ -164,7 +164,7 @@ private fun dashCards(role: String, d: QuoteDashboardData?, functions: List<Quot
     ) else mutableListOf(
         metric("reservations", "다가오는 예약", Icons.Filled.CalendarMonth, d?.upcomingReservations ?: 0, "{n}건 예정", "예약 보기"),
         metric("open", "진행 중 요청", Icons.AutoMirrored.Filled.Send, d?.openRequests ?: 0, "{n}건 진행 중", "요청 보기"),
-        metric("done", "들은 레슨", Icons.Filled.CheckCircle, d?.doneLessons ?: 0, "{n}회 들었어요", "내역 보기"),
+        metric("done", "지난 레슨", Icons.Filled.CheckCircle, d?.doneLessons ?: 0, "{n}회 받았어요", "내역 보기"),
     )
     val unread = d?.unreadQuotes ?: 0
     functions.forEach { fn ->
