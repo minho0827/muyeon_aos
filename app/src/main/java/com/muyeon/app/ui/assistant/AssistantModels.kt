@@ -20,6 +20,8 @@ data class AssistantItem(
     val proOnly: Boolean,
     val keywords: List<String>,
     val chosung: List<String>,
+    /** 뱃지 종류(notifications·chat·quotes) — 없으면 뱃지 없음. */
+    val badgeKey: String? = null,
 ) {
     companion object {
         fun from(o: JSONObject) = AssistantItem(
@@ -35,6 +37,7 @@ data class AssistantItem(
             proOnly = o.optBoolean("proOnly", false),
             keywords = o.optJSONArray("keywords").strings(),
             chosung = o.optJSONArray("chosung").strings(),
+            badgeKey = o.optString("badgeKey").takeIf { it.isNotEmpty() && it != "null" },
         )
     }
 }

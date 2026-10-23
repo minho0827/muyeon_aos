@@ -54,6 +54,11 @@ object AssistantApi {
         }.getOrNull()
     }
 
+    /** 뱃지 숫자 { notifications, chat, quotes } (total 은 합계로 앱이 계산). */
+    suspend fun badges(context: Context): Map<String, Int>? = get(context, "/assistant/badges")?.let { o ->
+        mapOf("notifications" to o.optInt("notifications"), "chat" to o.optInt("chat"), "quotes" to o.optInt("quotes"))
+    }
+
     /** 인기 검색어 — (활성 유형, 10개). */
     suspend fun popular(context: Context): Pair<String, List<String>>? = get(context, "/assistant/popular")?.let { o ->
         val arr = o.optJSONArray("items")

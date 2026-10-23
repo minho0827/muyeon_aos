@@ -74,4 +74,10 @@ sealed class ChatEvent {
      *  iOS FloatingSocketManager 의 'notification' 핸들러 대응. payload 는 쓰지 않는다.
      */
     data object ServerNotification : ChatEvent()
+
+    /**
+     * 받은 견적 도착·읽음(quote-received·quote-unread-changed) — AI 도우미 뱃지(받은 견적 숫자)가 다시 센다.
+     *  payload 는 쓰지 않는다.
+     */
+    data object QuoteBadge : ChatEvent()
 }

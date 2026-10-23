@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
@@ -87,6 +88,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
@@ -139,8 +142,12 @@ object AssistantOverlay {
 
     fun start(app: Application) {
         bottomDp = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getFloat(KEY_Y, 286f)
+        AssistantBadges.start(app)
         app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
-            override fun onActivityResumed(activity: Activity) = attach(activity)
+            override fun onActivityResumed(activity: Activity) {
+                attach(activity)
+                if (activity.javaClass.simpleName !in SKIP) AssistantBadges.onScreenResumed(activity)
+            }
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
             override fun onActivityStarted(activity: Activity) {}
             override fun onActivityPaused(activity: Activity) {}
@@ -244,7 +251,13 @@ private fun AssistantFab(modifier: Modifier, onOpen: () -> Unit) {
             .testTag("assistant.floating"),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Filled.AutoAwesome, contentDescription = "AI 도우미", tint = AppColor.Primary, modifier = Modifier.size(22.dp))
+        Icon(Icons.Filled.AutoAwesome, contentDescription = if (AssistantBadges.total > 0) "AI 도우미, 새 소식 있음" else "AI 도우미",
+            tint = AppColor.Primary, modifier = Modifier.size(22.dp))
+        // 안읽음(알림·채팅·받은 견적)이 있으면 빨간 점 — 소켓으로 실시간(iOS 와 같음).
+        if (AssistantBadges.total > 0) {
+            Box(Modifier.align(Alignment.TopEnd).padding(top = 3.dp, end = 3.dp).size(11.dp).clip(CircleShape)
+                .background(Color.White).padding(2.dp).clip(CircleShape).background(Color(0xFFFF3B30)).testTag("assistant.floating.dot"))
+        }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             DropdownMenuItem(text = { Text("이번에는 숨기기") }, onClick = { menu = false; AssistantOverlay.hide() })
         }
@@ -293,6 +306,7 @@ private fun AssistantSheet(onDismiss: () -> Unit, onPick: (AssistantItem) -> Uni
         val q = query.trim()
         if (q.isNotEmpty()) logs.add(q to null)
         AssistantApi.logSearches(context, logs.toList())
+        AssistantBadges.refreshSoon()
         onDismiss()
     }
 
@@ -330,30 +344,43 @@ private fun AssistantSheet(onDismiss: () -> Unit, onPick: (AssistantItem) -> Uni
         }
         androidx.activity.compose.BackHandler { searching = false; query = "" }
         Column(Modifier.fillMaxSize().background(Color.White).statusBarsPadding().navigationBarsPadding().imePadding()) {
-            // 위쪽: 뒤로 · 검색창 · 돋보기
-            Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { searching = false; query = "" }) {
+            // ★ 전체 메뉴 화면과 같은 자리·같은 모양의 검색 상자(사용자 요청 10-23, iOS 와 1:1) — 누른 칸이 그대로 입력칸이 된다.
+            val searchFocus = remember { FocusRequester() }
+            var searchFocused by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) { delay(250); runCatching { searchFocus.requestFocus() } } // 검색 상자를 직접 눌러 들어왔으니 바로 입력
+            Box(Modifier.fillMaxWidth().height(56.dp)) {
+                IconButton(onClick = { searching = false; query = "" }, modifier = Modifier.align(Alignment.CenterStart).padding(start = 4.dp)) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로", tint = Color(0xFF101116))
                 }
+                Text("검색", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF101116), modifier = Modifier.align(Alignment.Center))
+            }
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).clip(RoundedCornerShape(14.dp))
+                    .border(1.dp, if (searchFocused) AppColor.Primary else Color(0xFFE3E4E8), RoundedCornerShape(14.dp))
+                    .padding(start = 16.dp, end = 8.dp).height(52.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                    if (query.isEmpty()) Text("메뉴, 기능을 검색해 보세요", fontSize = 17.sp, color = Color(0xFFA8AAB0), maxLines = 1)
+                    if (query.isEmpty()) Text("메뉴, 기능을 검색해 보세요", fontSize = 16.sp, color = Color(0xFFA8AAB0), maxLines = 1)
                     androidx.compose.foundation.text.BasicTextField(
                         value = query,
                         onValueChange = { query = it },
                         singleLine = true,
-                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 17.sp, color = Color(0xFF101116), fontFamily = com.muyeon.app.theme.customFontFamily),
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 16.sp, color = Color(0xFF101116), fontFamily = com.muyeon.app.theme.customFontFamily),
                         cursorBrush = androidx.compose.ui.graphics.SolidColor(AppColor.Primary),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = { submit() }),
-                        modifier = Modifier.fillMaxWidth().testTag("assistant.search"),
+                        modifier = Modifier.fillMaxWidth().focusRequester(searchFocus)
+                            .onFocusChanged { searchFocused = it.isFocused }.testTag("assistant.search"),
                     )
                 }
                 if (query.isNotEmpty()) {
                     IconButton(onClick = { query = "" }) { Icon(Icons.Filled.Cancel, contentDescription = "지우기", tint = Color(0xFFC4C6CC)) }
                 }
-                IconButton(onClick = { submit() }) { Icon(Icons.Filled.Search, contentDescription = "검색", tint = Color(0xFF101116)) }
+                IconButton(onClick = { submit() }) {
+                    Icon(Icons.Filled.Search, contentDescription = "검색", tint = if (query.isEmpty()) Color(0xFFB0B3B9) else Color(0xFF101116))
+                }
             }
-            HorizontalDivider(color = Color(0xFFEEEEEE), thickness = 2.dp)
             val trimmed = query.trim()
             LazyColumn(Modifier.fillMaxSize()) {
                 if (trimmed.isNotEmpty()) {
@@ -490,6 +517,10 @@ private fun AllMenuPage(
     }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
+    // 목록을 받아 오는 사이 맨 위 묶음(최근 등)이 바뀌면 LazyColumn 이 예전 첫 줄을 붙잡아 아래로 밀린다 → 아직 손대기 전이면 맨 위로.
+    var userScrolled by remember { mutableStateOf(false) }
+    LaunchedEffect(listState.isScrollInProgress) { if (listState.isScrollInProgress) userScrolled = true }
+    LaunchedEffect(secList.firstOrNull()?.key, items.size) { if (!userScrolled) listState.scrollToItem(0) }
     var expanded by remember { mutableStateOf(false) }
     val current by androidx.compose.runtime.remember(groups) {
         androidx.compose.runtime.derivedStateOf {
@@ -527,22 +558,35 @@ private fun AllMenuPage(
         // 묶음 칩 — 펼치면 여러 줄, 접으면 한 줄 가로 스크롤(지금 묶음 칩이 늘 보이게 자동으로 따라감). iOS 와 1:1.
         if (secList.isNotEmpty()) {
             val chipRow = androidx.compose.foundation.lazy.rememberLazyListState()
-            // 맨 위면 칩을 접고, 내려가면 펼친다(어느 묶음인지 보이게). 화살표로 직접 바꾼 것은 다음 위치 변화까지 유지. iOS 와 1:1.
+            // 펼치기 규칙(사용자 요청 10-23, iOS 와 1:1): 스크롤을 시작해도 접힌 채로 두고,
+            //  지금 묶음의 칩이 접힌 한 줄에서 화면 밖으로 벗어났을 때만 펼친다. 맨 위로 돌아오면 다시 접는다.
             val atTop by androidx.compose.runtime.remember {
                 androidx.compose.runtime.derivedStateOf { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 8 }
             }
-            LaunchedEffect(atTop) { expanded = !atTop }
-            LaunchedEffect(current, expanded) {
+            LaunchedEffect(atTop) { if (atTop) expanded = false }
+            LaunchedEffect(current) {
+                if (atTop || expanded) return@LaunchedEffect
                 val idx = secList.indexOfFirst { it.key == current }
-                if (!expanded && idx >= 0) chipRow.animateScrollToItem(maxOf(idx - 1, 0))
+                val info = chipRow.layoutInfo
+                if (info.visibleItemsInfo.isEmpty()) return@LaunchedEffect // 칩 줄을 아직 재지 않았으면 판단하지 않는다
+                val seen = info.visibleItemsInfo.firstOrNull { it.index == idx }
+                val fullyVisible = seen != null && seen.offset >= info.viewportStartOffset && seen.offset + seen.size <= info.viewportEndOffset
+                if (idx >= 0 && !fullyVisible) expanded = true
             }
             val chip: @Composable (AssistantSection) -> Unit = { sec ->
                 val on = sec.key == current
-                Text(sec.title, fontSize = 15.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
-                    color = if (on) Color.White else Color(0xFF6D6E71), maxLines = 1,
-                    modifier = Modifier.clip(CircleShape).background(if (on) Color(0xFF101116) else Color(0xFFF2F3F5))
+                val hasBadge = groups.firstOrNull { it.first.key == sec.key }?.second?.any { AssistantBadges.count(it.badgeKey) > 0 } == true
+                Row(
+                    Modifier.clip(CircleShape).background(if (on) Color(0xFF101116) else Color(0xFFF2F3F5))
                         .clickable { scope.launch { listState.animateScrollToItem(headerIndex[sec.key] ?: 0) } }
-                        .padding(horizontal = 16.dp, vertical = 8.dp))
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(sec.title, fontSize = 15.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (on) Color.White else Color(0xFF6D6E71), maxLines = 1)
+                    // 이 묶음에 안읽음이 있으면 빨간 점
+                    if (hasBadge) { Spacer(Modifier.width(5.dp)); Box(Modifier.size(6.dp).clip(CircleShape).background(Color(0xFFFF3B30))) }
+                }
             }
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.Top) {
                 if (expanded) {
@@ -591,6 +635,8 @@ private fun AllMenuPage(
                                 Text("프로", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold,
                                     modifier = Modifier.clip(CircleShape).background(AppColor.Primary).padding(horizontal = 6.dp, vertical = 2.dp))
                             }
+                            Spacer(Modifier.weight(1f))
+                            CountBadge(AssistantBadges.count(item.badgeKey))
                         }
                     }
                 }
@@ -667,7 +713,7 @@ private fun ItemRow(item: AssistantItem, query: String = "", onClick: () -> Unit
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(highlight(item.title, query), fontSize = 17.sp, color = Color(0xFF101116), maxLines = 1)
+                Text(highlight(item.title, query), fontSize = 17.sp, color = Color(0xFF101116), maxLines = 1, modifier = Modifier.weight(1f, fill = false))
                 if (item.proOnly) {
                     Spacer(Modifier.width(6.dp))
                     Text("프로", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold,
@@ -678,7 +724,17 @@ private fun ItemRow(item: AssistantItem, query: String = "", onClick: () -> Unit
             Text("전체메뉴 → ${item.section} → ${item.title}", fontSize = 14.sp, color = Color(0xFF9A9CA3), maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         }
+        CountBadge(AssistantBadges.count(item.badgeKey))
     }
+}
+
+/** 숫자 뱃지(빨강, 99+). 0 이면 그리지 않는다. */
+@Composable
+private fun CountBadge(n: Int) {
+    if (n <= 0) return
+    Text(if (n > 99) "99+" else "$n", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        modifier = Modifier.defaultMinSize(minWidth = 20.dp).clip(CircleShape).background(Color(0xFFFF3B30)).padding(horizontal = 6.dp, vertical = 2.dp))
 }
 
 @Composable

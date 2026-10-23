@@ -175,6 +175,9 @@ object ChatSocketManager {
             ChatEventBus.emit(ChatEvent.ChatRoomRemoved(json.optInt("roomId")))
         }
         s.on("notification") { ChatEventBus.emit(ChatEvent.ServerNotification) }
+        // 받은 견적 도착·읽음 — AI 도우미 뱃지용(iOS FloatingSocketManager 와 같음).
+        s.on("quote-received") { ChatEventBus.emit(ChatEvent.QuoteBadge) }
+        s.on("quote-unread-changed") { ChatEventBus.emit(ChatEvent.QuoteBadge) }
 
         s.connect()
     }
