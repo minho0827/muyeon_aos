@@ -59,6 +59,7 @@ private val Bg = Color(0xFFF8F9FB)
 private data class FlowQuestion(
     val key: String, val ask: String, val type: String, val chips: List<String>, val required: Boolean,
     val max: Int?, val placeholder: String?, val display: String, val icons: Map<String, String>,
+    val allowCustom: Boolean = false,
 ) {
     companion object {
         fun from(o: JSONObject?): FlowQuestion? = o?.let {
@@ -70,6 +71,7 @@ private data class FlowQuestion(
                 it.optInt("max").takeIf { m -> m > 0 }, it.optString("placeholder").takeIf { p -> p.isNotEmpty() && p != "null" },
                 it.optString("display", "cards"),
                 icons?.keys()?.asSequence()?.associateWith { k -> icons.optString(k) } ?: emptyMap(),
+                it.optBoolean("allowCustom"),
             )
         }
     }
@@ -96,13 +98,24 @@ fun AssistantFlowPage(
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var draft by remember { mutableStateOf<JSONObject?>(null) }
     // 반복 질문 줄이기 — 서버가 지난 답으로 미리 채운 질문들([바꾸기]로 다시 물음)과 뒤로 버튼이 서버에 물을지.
+    // [직접 입력] — 보기 밖의 답 한 줄. 글 입력 질문은 아래 추천 칩(내가 전에 쓴 글 + AI 문구).
+    var customOn by remember { mutableStateOf(false) }
+    var customText by remember { mutableStateOf("") }
+    var suggestMine by remember { mutableStateOf<List<String>>(emptyList()) }
+    var suggestAi by remember { mutableStateOf<List<String>>(emptyList()) }
     var known by remember { mutableStateOf<List<Triple<String, String, String>>>(emptyList()) }
     var canBack by remember { mutableStateOf(false) }
 
     fun applyQuestion(o: JSONObject?, previous: Any? = null) {
         q = FlowQuestion.from(o?.optJSONObject("question"))
         o?.optJSONObject("progress")?.let { done = it.optInt("done"); total = maxOf(1, it.optInt("total")) }
-        picked = when (previous) { is JSONArray -> (0 until previous.length()).map { previous.optString(it) }; is String -> if (q?.type == "text") emptyList() else listOf(previous); else -> emptyList() }
+        val prevList = when (previous) { is JSONArray -> (0 until previous.length()).map { previous.optString(it) }; is String -> if (q?.type == "text") emptyList() else listOf(previous); else -> emptyList() }
+        // 예전 답 중 보기에 없는 값은 직접 입력했던 것.
+        val chipsNow = q?.chips?.toSet() ?: emptySet()
+        picked = prevList.filter { it in chipsNow }
+        customText = prevList.firstOrNull { it !in chipsNow }.orEmpty()
+        customOn = customText.isNotEmpty()
+        suggestMine = emptyList(); suggestAi = emptyList()
         text = if (q?.type == "text" && previous is String) previous else ""
         val k = o?.optJSONArray("known")
         known = (0 until (k?.length() ?: 0)).mapNotNull { k!!.optJSONObject(it) }.map { Triple(it.optString("key"), it.optString("label"), it.optString("value")) }
@@ -188,6 +201,7 @@ fun AssistantFlowPage(
                 cur.type == "multi" -> body.put("value", JSONArray(picked)).put("fromChip", true)
                 else -> body.put("value", picked.firstOrNull()).put("fromChip", true)
             }
+            if (cur.type != "text" && customOn && customText.isNotBlank()) body.put("custom", customText.trim())
             val r = AssistantApi.call(context, "POST", "/assistant/sessions/$sessionId/answers", body)
             if (!r.ok) return@launch fail(r)
             if (r.json?.optString("status") == "READY") { done = total; generate() } else { busy = false; applyQuestion(r.json) }
@@ -297,11 +311,26 @@ fun AssistantFlowPage(
                     Text(cur.ask, fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 36.sp, color = Ink, modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
                     Text(when (cur.type) { "multi" -> "여러 개 선택할 수 있어요"; "text" -> if (cur.required) "간단히 입력해 주세요" else "입력하지 않아도 돼요"; else -> "하나를 선택해 주세요" },
                         fontFamily = customFontFamily, fontSize = 15.sp, color = Sub, modifier = Modifier.padding(bottom = 24.dp))
-                    Options(cur, picked, text, onPick = { picked = it }, onText = { text = it })
+                    Options(cur, picked, text, onPick = { picked = it; if (cur.type == "single" && it.isNotEmpty()) customOn = false }, onText = { text = it })
+                    if (cur.allowCustom) CustomRow(customOn, customText,
+                        onToggle = { on -> customOn = on; if (on && cur.type == "single") picked = emptyList() },
+                        onText = { customText = it })
+                    if (cur.type == "text") {
+                        LaunchedEffect(cur.key, sessionId) {
+                            val r = AssistantApi.call(context, "GET", "/assistant/sessions/$sessionId/suggestions?key=${cur.key}")
+                            fun list(k: String) = r.json?.optJSONArray(k)?.let { a -> (0 until a.length()).map { a.optString(it) } }.orEmpty()
+                            suggestMine = list("mine"); suggestAi = list("ai")
+                        }
+                        SuggestChips(suggestMine, suggestAi) { phrase ->
+                            val max = cur.max ?: 300
+                            val next = if (text.isBlank()) phrase else "${text.trimEnd()}, $phrase"
+                            if (next.length <= max) text = next
+                        }
+                    }
                     Spacer(Modifier.height(24.dp))
                 }
                 val last = done >= total - 1
-                val enabled = !busy && when (cur.type) { "text" -> !cur.required || text.isNotBlank(); else -> picked.isNotEmpty() }
+                val enabled = !busy && when (cur.type) { "text" -> !cur.required || text.isNotBlank(); else -> picked.isNotEmpty() || (customOn && customText.isNotBlank()) }
                 val label = when { busy -> "잠시만요…"; cur.type == "text" && !cur.required && text.isBlank() -> if (last) "건너뛰고 AI로 작성하기" else "건너뛰기"; last -> "AI로 작성하기"; else -> "다음" }
                 BottomButton(label, enabled || (cur.type == "text" && !cur.required && !busy)) { next() }
             }
@@ -385,6 +414,44 @@ private fun Options(q: FlowQuestion, picked: List<String>, text: String, onPick:
 }
 
 /** '이미 알고 있어요' — 지난번 답으로 채운 질문. [바꾸기]를 누르면 그 질문을 다시 묻는다(iOS knownBox 와 같음). */
+/** [직접 입력] — 누르면 한 줄 입력칸이 열린다(40자). 하나만 고르는 질문이면 보기 선택이 풀린다. */
+@Composable
+private fun CustomRow(on: Boolean, value: String, onToggle: (Boolean) -> Unit, onText: (String) -> Unit) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (on) Peach else Color.White)
+        .border(if (on) 2.dp else 1.dp, if (on) AppColor.Primary else Line, RoundedCornerShape(20.dp))) {
+        Text("직접 입력", fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, color = Ink,
+            modifier = Modifier.fillMaxWidth().clickable { onToggle(!on) }.padding(horizontal = 22.dp, vertical = 20.dp).testTag("assistant.flow.custom"))
+        if (on) {
+            Box(Modifier.fillMaxWidth().padding(start = 22.dp, end = 22.dp, bottom = 18.dp)) {
+                if (value.isEmpty()) Text("원하는 내용을 입력해 주세요", fontFamily = customFontFamily, fontSize = 16.sp, color = Color(0xFFA8AAB0))
+                BasicTextField(value, { if (it.length <= 40) onText(it) }, singleLine = true,
+                    textStyle = TextStyle(fontFamily = customFontFamily, fontSize = 16.sp, color = Ink),
+                    cursorBrush = SolidColor(AppColor.Primary), modifier = Modifier.fillMaxWidth().testTag("assistant.flow.custom.text"))
+            }
+        }
+    }
+}
+
+/** 글 입력 질문 아래 추천 칩 — 누르면 입력칸에 이어 붙는다(바로 보내지 않음). */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun SuggestChips(mine: List<String>, ai: List<String>, onPick: (String) -> Unit) {
+    @Composable
+    fun group(title: String, items: List<String>) {
+        if (items.isEmpty()) return
+        Text(title, fontFamily = customFontFamily, fontSize = 13.sp, color = Sub, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items.forEach { p ->
+                Text(p, fontFamily = customFontFamily, fontSize = 14.sp, color = Ink, maxLines = 2,
+                    modifier = Modifier.clip(RoundedCornerShape(50)).border(1.dp, Line, RoundedCornerShape(50)).clickable { onPick(p) }
+                        .padding(horizontal = 14.dp, vertical = 9.dp).testTag("assistant.flow.suggest"))
+            }
+        }
+    }
+    group("내가 전에 쓴 내용", mine)
+    group("이런 내용은 어때요?", ai)
+}
+
 @Composable
 private fun KnownBox(items: List<Triple<String, String, String>>, onChange: (String) -> Unit) {
     if (items.isEmpty()) return
