@@ -229,12 +229,16 @@ fun LocationPreviewCard(place: LessonPlace, onOpenMap: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // 좌표가 있으면 미니 지도(네이버 지도, 핀 1개) — iOS LocationMapPreview(MapKit)와 같은 자리. 없으면 핀 아이콘.
+            val lat = place.lat?.takeIf { !it.isNaN() }
+            val lng = place.lng?.takeIf { !it.isNaN() }
             Box(
                 Modifier.size(width = 96.dp, height = 72.dp).clip(RoundedCornerShape(10.dp))
                     .background(MuyeonColors.primary.copy(alpha = 0.10f)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Filled.Place, null, tint = MuyeonColors.primary, modifier = Modifier.size(26.dp))
+                if (lat != null && lng != null && !naverMapAuthFailed) MiniNaverMap(lat, lng)
+                else Icon(Icons.Filled.Place, null, tint = MuyeonColors.primary, modifier = Modifier.size(26.dp))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(
@@ -301,7 +305,7 @@ private suspend fun searchPlaces(ctx: Context, q: String, page: Int): Pair<List<
                     val name = p.optString("name").ifEmpty { addr }
                     if (name.isEmpty()) null
                     else LessonPlace(name = name, address = addr.ifEmpty { null },
-                        lat = p.optDouble("latitude"), lng = p.optDouble("longitude"))
+                        lat = p.optDouble("latitude").takeIf { !it.isNaN() }, lng = p.optDouble("longitude").takeIf { !it.isNaN() }) // 좌표 없으면 NaN → null(지오코딩으로 다시 찾게)
                 }
                 list to o.optBoolean("hasMore", false)
             }
@@ -322,4 +326,53 @@ fun openLessonNaverMap(ctx: Context, name: String, lat: Double?, lng: Double?) {
         android.net.Uri.parse("nmap://place?lat=$lat&lng=$lng&name=$q&appname=com.muyeon.app"),
     )
     runCatching { ctx.startActivity(app) }.onFailure { runCatching { ctx.startActivity(web) } }
+}
+
+
+/**
+ * 미니 지도(10-23) — 네이버 지도 SDK 라이트 모드(정지 이미지처럼 가볍게), 손으로 움직이지 않는다.
+ *  MapView 는 화면 수명(onStart/onResume…)을 받아야 그려진다 → 이 칸의 수명에 맞춰 넘긴다.
+ */
+/** 네이버 지도 인증 실패(콘솔에 앱 패키지 미등록 등, 401) — 빈 격자 대신 핀 아이콘으로 돌아간다. */
+private var naverMapAuthFailed by androidx.compose.runtime.mutableStateOf(false)
+
+@Composable
+private fun MiniNaverMap(lat: Double, lng: Double) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        com.naver.maps.map.NaverMapSdk.getInstance(context).onAuthFailedListener =
+            com.naver.maps.map.NaverMapSdk.OnAuthFailedListener { e ->
+                android.util.Log.w("NaverMap", "인증 실패 — NCP 콘솔에 com.muyeon.app 등록 필요: ${e.message}")
+                naverMapAuthFailed = true
+            }
+    }
+    val pinW = with(androidx.compose.ui.platform.LocalDensity.current) { 18.dp.roundToPx() }
+    val pinH = with(androidx.compose.ui.platform.LocalDensity.current) { 24.dp.roundToPx() }
+    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val pos = com.naver.maps.geometry.LatLng(lat, lng)
+    val mapView = androidx.compose.runtime.remember(lat, lng) {
+        com.naver.maps.map.MapView(context, com.naver.maps.map.NaverMapOptions()
+            .liteModeEnabled(true)
+            .camera(com.naver.maps.map.CameraPosition(pos, 16.0))
+            .scrollGesturesEnabled(false).zoomGesturesEnabled(false).rotateGesturesEnabled(false).tiltGesturesEnabled(false)
+            .zoomControlEnabled(false).scaleBarEnabled(false).logoClickEnabled(false)).apply {
+            onCreate(null)
+            getMapAsync { map -> com.naver.maps.map.overlay.Marker().apply { position = pos; width = pinW; height = pinH; this.map = map } }
+        }
+    }
+    androidx.compose.runtime.DisposableEffect(owner, mapView) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            when (e) {
+                androidx.lifecycle.Lifecycle.Event.ON_START -> mapView.onStart()
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> mapView.onResume()
+                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> mapView.onPause()
+                androidx.lifecycle.Lifecycle.Event.ON_STOP -> mapView.onStop()
+                else -> Unit
+            }
+        }
+        owner.lifecycle.addObserver(obs)
+        mapView.onStart(); mapView.onResume()
+        onDispose { owner.lifecycle.removeObserver(obs); mapView.onPause(); mapView.onStop(); mapView.onDestroy() }
+    }
+    androidx.compose.ui.viewinterop.AndroidView({ mapView }, Modifier.fillMaxSize())
 }

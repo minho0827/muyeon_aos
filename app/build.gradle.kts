@@ -172,6 +172,7 @@ dependencies {
     implementation(libs.androidx.ui.test.android)
     implementation(libs.play.services.location)
     implementation("io.coil-kt.coil3:coil-compose:3.2.0")
+    implementation("com.naver.maps:map-sdk:3.24.0") // 레슨 개설 위치 미니 지도(iOS MapKit 미리보기와 같은 자리)
     // ★ Coil 3 는 네트워크 로더가 별도 아티팩트다. 이게 없으면 http/https URL 이
     //   에러도 로그도 없이 **아무것도 그리지 않는다**(로컬 리소스만 동작).
     //   AsyncImage 를 쓰는 화면 전부가 원격 이미지를 못 띄우던 원인(2026-08-13).
