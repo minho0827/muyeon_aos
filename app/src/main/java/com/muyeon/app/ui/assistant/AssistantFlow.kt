@@ -95,12 +95,18 @@ fun AssistantFlowPage(
     var busy by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var draft by remember { mutableStateOf<JSONObject?>(null) }
+    // 반복 질문 줄이기 — 서버가 지난 답으로 미리 채운 질문들([바꾸기]로 다시 물음)과 뒤로 버튼이 서버에 물을지.
+    var known by remember { mutableStateOf<List<Triple<String, String, String>>>(emptyList()) }
+    var canBack by remember { mutableStateOf(false) }
 
     fun applyQuestion(o: JSONObject?, previous: Any? = null) {
         q = FlowQuestion.from(o?.optJSONObject("question"))
         o?.optJSONObject("progress")?.let { done = it.optInt("done"); total = maxOf(1, it.optInt("total")) }
         picked = when (previous) { is JSONArray -> (0 until previous.length()).map { previous.optString(it) }; is String -> if (q?.type == "text") emptyList() else listOf(previous); else -> emptyList() }
         text = if (q?.type == "text" && previous is String) previous else ""
+        val k = o?.optJSONArray("known")
+        known = (0 until (k?.length() ?: 0)).mapNotNull { k!!.optJSONObject(it) }.map { Triple(it.optString("key"), it.optString("label"), it.optString("value")) }
+        canBack = o?.optBoolean("canBack") ?: false
         phase = Phase.ASK
     }
 
@@ -179,7 +185,7 @@ fun AssistantFlowPage(
 
     fun back() {
         when (phase) {
-            Phase.ASK -> if (done == 0) onClose() else if (!busy) {
+            Phase.ASK -> if (!canBack) onClose() else if (!busy) {
                 busy = true
                 scope.launch {
                     val r = AssistantApi.call(context, "POST", "/assistant/sessions/$sessionId/back")
@@ -193,6 +199,16 @@ fun AssistantFlowPage(
             }
             Phase.GENERATING -> Unit
             else -> onClose()
+        }
+    }
+
+    fun reask(key: String) {
+        if (busy) return
+        busy = true
+        scope.launch {
+            val r = AssistantApi.call(context, "POST", "/assistant/sessions/$sessionId/reask", JSONObject().put("key", key))
+            busy = false
+            if (r.ok) applyQuestion(r.json, r.json?.opt("previous")) else fail(r)
         }
     }
 
@@ -228,6 +244,7 @@ fun AssistantFlowPage(
             }
             Phase.ASK -> q?.let { cur ->
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp)) {
+                    if (known.isNotEmpty()) KnownBox(known.filter { it.first != cur.key }) { reask(it) }
                     Text(cur.ask, fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 36.sp, color = Ink, modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
                     Text(when (cur.type) { "multi" -> "여러 개 골라도 돼요"; "text" -> if (cur.required) "짧게 적어 주세요" else "건너뛰어도 돼요"; else -> "하나만 골라 주세요" },
                         fontFamily = customFontFamily, fontSize = 15.sp, color = Sub, modifier = Modifier.padding(bottom = 24.dp))
@@ -306,6 +323,23 @@ private fun Options(q: FlowQuestion, picked: List<String>, text: String, onPick:
                     Spacer(Modifier.width(16.dp))
                 }
                 Text(c, fontFamily = customFontFamily, fontWeight = if (q.display == "cards") FontWeight.SemiBold else FontWeight.Normal, fontSize = 17.sp, color = Ink)
+            }
+        }
+    }
+}
+
+/** '이미 알고 있어요' — 지난번 답으로 채운 질문. [바꾸기]를 누르면 그 질문을 다시 묻는다(iOS knownBox 와 같음). */
+@Composable
+private fun KnownBox(items: List<Triple<String, String, String>>, onChange: (String) -> Unit) {
+    if (items.isEmpty()) return
+    Column(Modifier.fillMaxWidth().padding(top = 16.dp).clip(RoundedCornerShape(14.dp)).background(Bg).padding(horizontal = 16.dp, vertical = 10.dp)) {
+        Text("지난번 답으로 채웠어요", fontFamily = customFontFamily, fontSize = 13.sp, color = Sub, modifier = Modifier.padding(bottom = 4.dp))
+        items.forEach { (key, label, value) ->
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                Text(label, fontFamily = customFontFamily, fontSize = 15.sp, color = Sub, modifier = Modifier.width(76.dp))
+                Text(value, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp, color = Ink, maxLines = 1, modifier = Modifier.weight(1f))
+                Text("바꾸기", fontFamily = customFontFamily, fontSize = 14.sp, color = AppColor.Primary,
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onChange(key) }.padding(horizontal = 8.dp, vertical = 4.dp).testTag("assistant.flow.change.$key"))
             }
         }
     }

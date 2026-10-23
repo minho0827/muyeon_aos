@@ -356,7 +356,7 @@ private fun AssistantSheet(startDraftId: String? = null, onDismiss: () -> Unit, 
 
     fun pick(item: AssistantItem) {
         if (item.kind == "FLOW") { flow = item; return } // 창 안에서 단계형 화면으로(3단계)
-        if (item.kind == "AI_HISTORY") { history = true; return } // 창 안에서 'AI로 쓴 글' 목록으로
+        if (item.kind == "HISTORY") { history = true; return } // 창 안에서 'AI로 쓴 글' 목록으로
         val q = query.trim()
         if (q.isNotEmpty()) {
             logs.add(q to item.id)
