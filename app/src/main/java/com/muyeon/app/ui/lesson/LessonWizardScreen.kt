@@ -91,7 +91,9 @@ fun LessonWizardScreen(
     var bylines by remember { mutableStateOf<List<LessonByline>>(emptyList()) }
     val isAcademy = remember { ActiveRole.isAcademy(context) }
 
+    var recentPlaces by remember { mutableStateOf<List<LessonWizardDraft>>(emptyList()) }
     LaunchedEffect(lessonId) {
+        if (lessonId == null) recentPlaces = api.recentPlaces()
         hasDetailImageEnt = api.hasDetailImage()
         if (lessonId == null) bylines = api.affiliations(isAcademy)
         if (lessonId != null) {
@@ -194,7 +196,7 @@ fun LessonWizardScreen(
                 1 -> StepIntro(draft, hasDetailImageEnt, uploading, { draft = it },
                     onPickPhotos = { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                     onPickDetail = { detailPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
-                2 -> StepLocation(draft, api.token) { draft = it }
+                2 -> StepLocation(draft, api.token, if (lessonId == null) recentPlaces else emptyList()) { draft = it }
                 3 -> StepSchedule(draft) { draft = it }
                 4 -> StepExtra(draft) { draft = it }
                 else -> StepPreview(draft)
@@ -387,7 +389,7 @@ private fun StepIntro(
 }
 
 @Composable
-private fun StepLocation(d: LessonWizardDraft, token: String?, onChange: (LessonWizardDraft) -> Unit) {
+private fun StepLocation(d: LessonWizardDraft, token: String?, recent: List<LessonWizardDraft>, onChange: (LessonWizardDraft) -> Unit) {
     var showPostcode by remember { mutableStateOf(false) }
     var geocoding by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
@@ -399,6 +401,22 @@ private fun StepLocation(d: LessonWizardDraft, token: String?, onChange: (Lesson
         onChange(d.copy(isOnline = on, place = "", address = "", addressDetail = "", region = "", regionCode = "", lat = null, lng = null))
     }
     if (!d.isOnline) {
+        // 지난 레슨 장소 — 누르면 장소·주소·지역·좌표·전화·주차를 한 번에 채운다(개설할 때만, 10-23).
+        val others = recent.filter { it.address != d.address }
+        if (others.isNotEmpty()) {
+            Text("지난 레슨 장소", fontFamily = customFontFamily, fontSize = 13.sp, color = MuyeonColors.textSub)
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                others.forEach { p ->
+                    Text(p.place.ifBlank { p.address }, fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.textHead, maxLines = 1,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).border(1.dp, MuyeonColors.border, RoundedCornerShape(50))
+                            .clickable {
+                                onChange(d.copy(place = p.place, address = p.address, region = p.region, regionCode = p.regionCode,
+                                    lat = p.lat, lng = p.lng, phone = d.phone.ifBlank { p.phone }, parkingInfo = d.parkingInfo.ifBlank { p.parkingInfo }))
+                            }
+                            .padding(horizontal = 14.dp, vertical = 8.dp))
+                }
+            }
+        }
         WizardField("장소명") {
             WizardTextField(d.place, "예: 무용연 스튜디오 강남점") { onChange(d.copy(place = it)) }
         }

@@ -531,19 +531,10 @@ private fun QuoteDialogTwoActions(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    androidx.compose.material3.AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { com.muyeon.app.ui.quote.DialogTitle(title) },
-        text = { com.muyeon.app.ui.quote.DialogMessage(message) },
-        confirmButton = {
-            androidx.compose.material3.TextButton(onClick = onConfirm) {
-                com.muyeon.app.ui.quote.DialogAction(confirmText)
-            }
-        },
-        dismissButton = {
-            androidx.compose.material3.TextButton(onClick = onDismiss) {
-                com.muyeon.app.ui.quote.DialogAction(dismissText)
-            }
-        },
+    com.muyeon.app.ui.common.MuyeonDialog(
+        title = title, message = message,
+        actions = listOf(com.muyeon.app.ui.common.MuyeonDialogAction(confirmText, com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY, onConfirm), com.muyeon.app.ui.common.MuyeonDialogAction(dismissText, com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL, onDismiss)),
+        dismissOnAction = false, // 예전처럼 확인=onConfirm 만, 취소=onDismiss 만
+        onDismiss = onDismiss,
     )
 }

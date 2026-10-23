@@ -645,25 +645,11 @@ fun ChatRoomScreen(
     }
     // 강사 방향 레슨 — 후기 대상 아님 안내(확인 버튼 하나).
     if (teacherReviewInfo) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { teacherReviewInfo = false },
-            title = {
-                Text(
-                    "이 레슨에서는 후기를 쓸 수 없어요",
-                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp,
-                )
-            },
-            text = {
-                Text(
-                    "이 레슨에서 회원님은 강사예요. 후기는 수강한 회원이 남길 수 있어요.",
-                    fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
-                )
-            },
-            confirmButton = {
-                androidx.compose.material3.TextButton(onClick = { teacherReviewInfo = false }) {
-                    Text("확인", fontFamily = customFontFamily, color = MuyeonColors.primary)
-                }
-            },
+        com.muyeon.app.ui.common.MuyeonDialog(
+            title = "이 레슨에서는 후기를 쓸 수 없어요",
+            message = "이 레슨에서 회원님은 강사예요. 후기는 수강한 회원이 남길 수 있어요.",
+            actions = listOf(com.muyeon.app.ui.common.MuyeonDialogAction("확인")),
+            onDismiss = { teacherReviewInfo = false },
         )
     }
     if (confirmBlock) {
@@ -1028,25 +1014,15 @@ private fun MessageEditCard(
 /** 선택복사 — 원문 일부만 골라 복사할 수 있는 창(iOS SelectCopySheet). */
 @Composable
 private fun SelectCopyDialog(text: String, onDismiss: () -> Unit) {
-    androidx.compose.material3.AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text("선택복사", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-        },
-        text = {
+    com.muyeon.app.ui.common.MuyeonDialog(
+        title = "선택복사",
+        actions = listOf(com.muyeon.app.ui.common.MuyeonDialogAction("완료")),
+        onDismiss = onDismiss,
+        content = {
             Box(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
                 androidx.compose.foundation.text.selection.SelectionContainer {
-                    Text(
-                        text,
-                        fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 21.sp,
-                        color = MuyeonColors.textHead,
-                    )
+                    Text(text, fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 21.sp, color = MuyeonColors.textHead)
                 }
-            }
-        },
-        confirmButton = {
-            androidx.compose.material3.TextButton(onClick = onDismiss) {
-                Text("완료", fontFamily = customFontFamily, color = MuyeonColors.primary)
             }
         },
     )
@@ -1084,9 +1060,12 @@ private fun ChatInputBar(vm: ChatRoomViewModel, onAttach: () -> Unit) {
                     color = MuyeonColors.secondary,
                 )
             }
+            // AI 추천 칩·드래프트처럼 바깥에서 글이 바뀌면 커서를 글 끝으로(String 판은 맨 앞에 남는다 — 10-23).
+            var tfv by remember { mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(vm.input, androidx.compose.ui.text.TextRange(vm.input.length))) }
+            if (tfv.text != vm.input) tfv = androidx.compose.ui.text.input.TextFieldValue(vm.input, androidx.compose.ui.text.TextRange(vm.input.length))
             BasicTextField(
-                value = vm.input,
-                onValueChange = vm::onInputChange,
+                value = tfv,
+                onValueChange = { tfv = it; if (it.text != vm.input) vm.onInputChange(it.text) },
                 textStyle = TextStyle(
                     fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 20.sp,
                     color = MuyeonColors.textHead,

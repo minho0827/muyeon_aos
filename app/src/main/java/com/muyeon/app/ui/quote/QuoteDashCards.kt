@@ -193,11 +193,10 @@ private fun QuoteDashCardEditor(initial: List<QuoteDashCard>, onReset: () -> Uni
             )
         }
         if (askLeave) {
-            AlertDialog(
-                onDismissRequest = { askLeave = false },
-                title = { Text("변경된 목록을 저장할까요?", fontFamily = customFontFamily, fontSize = 17.sp) },
-                confirmButton = { TextButton(onClick = { askLeave = false; save() }) { Text("저장", color = AppColor.Primary) } },
-                dismissButton = { TextButton(onClick = { askLeave = false; onDone(null) }) { Text("취소", color = Sub) } },
+            com.muyeon.app.ui.common.MuyeonDialog(
+                title = "변경된 목록을 저장할까요?",
+                actions = listOf(com.muyeon.app.ui.common.MuyeonDialogAction("저장", com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY) { save() }, com.muyeon.app.ui.common.MuyeonDialogAction("취소", com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL) { onDone(null) }),
+                onDismiss = { askLeave = false },
             )
         }
     }

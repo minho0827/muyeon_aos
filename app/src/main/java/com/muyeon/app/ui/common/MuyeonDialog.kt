@@ -62,6 +62,8 @@ fun MuyeonDialog(
     force: Boolean = false,
     /** false 면 버튼을 눌러도 onDismiss 를 먼저 부르지 않는다 — 예전 팝업(QuoteDialog)의 버튼 동작을 그대로 두려고. */
     dismissOnAction: Boolean = true,
+    /** 본문을 글 대신 직접 그릴 때(목록·링크 등). message 아래에 붙는다. */
+    content: (@Composable () -> Unit)? = null,
     onDismiss: () -> Unit,
 ) {
     Dialog(
@@ -82,6 +84,7 @@ fun MuyeonDialog(
                 Text(message, fontFamily = customFontFamily, color = MuyeonColors.textSub, fontSize = 14.sp, lineHeight = 20.sp,
                     modifier = Modifier.padding(top = 8.dp))
             }
+            if (content != null) Column(Modifier.padding(top = 8.dp)) { content() }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 20.dp)) {
                 actions.forEach { DialogButton(it, if (dismissOnAction) onDismiss else ({})) }
             }

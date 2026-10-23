@@ -228,11 +228,7 @@ fun RequestedQuotesList(api: QuoteApi, onOpen: (Int) -> Unit, reloadSignal: Int 
     }
 
     if (toast != null) {
-        AlertDialog(
-            onDismissRequest = { toast = null },
-            text = { Text(toast ?: "", fontFamily = customFontFamily, fontSize = 14.sp) },
-            confirmButton = { TextButton(onClick = { toast = null }) { Text("확인") } },
-        )
+        com.muyeon.app.ui.common.MuyeonDialog(title = toast ?: "", actions = listOf(com.muyeon.app.ui.common.MuyeonDialogAction("확인")), onDismiss = { toast = null })
     }
 }
 
@@ -395,11 +391,7 @@ fun SentQuotesList(api: QuoteApi, onOpen: (SentQuoteItem) -> Unit, reloadSignal:
         }
     }
     if (toast != null) {
-        AlertDialog(
-            onDismissRequest = { toast = null },
-            text = { Text(toast ?: "", fontFamily = customFontFamily, fontSize = 14.sp) },
-            confirmButton = { TextButton(onClick = { toast = null }) { Text("확인") } },
-        )
+        com.muyeon.app.ui.common.MuyeonDialog(title = toast ?: "", actions = listOf(com.muyeon.app.ui.common.MuyeonDialogAction("확인")), onDismiss = { toast = null })
     }
 }
 /** 내 응답 상태 배지(요청 마감이면 마감 우선) — iOS SentQuoteRow.badge / SentQuoteDetailView.badge 공용. */

@@ -100,35 +100,21 @@ fun AcademyBusinessVerificationSection(
     }
 
     if (dialog != null) {
-        AlertDialog(
-            onDismissRequest = { dialog = null },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (dialog == "document") "사업자등록증명원이 뭐예요?" else "사업자등록번호가 없어요",
-                        fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp,
-                        modifier = Modifier.weight(1f))
-                    Icon(Icons.Filled.Close, "닫기", modifier = Modifier.clickable { dialog = null })
-                }
-            },
-            text = {
-                Text(
-                    if (dialog == "document") "사업자등록증과 달리 위조 방지용 번호와 발급 일자가 표시된 서류예요. 정부24에서 발급한 최근 3개월 이내 사업자등록증명원을 제출해 주세요."
-                    else noNumberMessage(allowsVerifyLater),
-                    fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 22.sp,
+        val isDoc = dialog == "document"
+        com.muyeon.app.ui.common.MuyeonDialog(
+            title = if (isDoc) "사업자등록증명원이 뭐예요?" else "사업자등록번호가 없어요",
+            message = if (isDoc) "사업자등록증과 달리 위조 방지용 번호와 발급 일자가 표시된 서류예요. 정부24에서 발급한 최근 3개월 이내 사업자등록증명원을 제출해 주세요."
+                else noNumberMessage(allowsVerifyLater),
+            actions = when {
+                isDoc -> listOf(
+                    com.muyeon.app.ui.common.MuyeonDialogAction("정부24에서 발급하기", com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY) { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.gov.kr"))) },
+                    com.muyeon.app.ui.common.MuyeonDialogAction("닫기", com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL),
                 )
+                // ★ 2026-10-19 안내문이 '다음에 인증할게요'를 고르라는데 건너뛰기 없는 흐름엔 그 버튼이 없었다(iOS 동일).
+                laterAction != null -> listOf(com.muyeon.app.ui.common.MuyeonDialogAction("다음에 인증할게요", com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY) { laterAction() }, com.muyeon.app.ui.common.MuyeonDialogAction("닫기", com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL))
+                else -> listOf(com.muyeon.app.ui.common.MuyeonDialogAction("확인"))
             },
-            confirmButton = {
-                if (dialog == "document") {
-                    Button(onClick = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.gov.kr")))
-                    }) { Text("정부24에서 발급하기", fontFamily = customFontFamily) }
-                } else if (laterAction != null) {
-                    // ★ 2026-10-19 안내문이 '다음에 인증할게요'를 고르라는데 건너뛰기 없는 흐름엔 그 버튼이 없었다(iOS 동일).
-                    Button(onClick = { dialog = null; laterAction() }) { Text("다음에 인증할게요", fontFamily = customFontFamily) }
-                } else {
-                    TextButton(onClick = { dialog = null }) { Text("확인", fontFamily = customFontFamily) }
-                }
-            },
+            onDismiss = { dialog = null },
         )
     }
 }
@@ -158,14 +144,11 @@ fun TeamBusinessNumberHelp() {
             fontSize = 14.sp, color = MuyeonColors.primary, modifier = Modifier.clickable { isOpen = true })
     }
     if (isOpen) {
-        AlertDialog(
-            onDismissRequest = { isOpen = false },
-            title = { Text("사업자등록번호가 없어요", fontFamily = customFontFamily, fontWeight = FontWeight.Bold) },
-            text = {
-                Text("해외 공연팀·기획자는 해당 국가에서 발급한 사업자 또는 단체 증빙을 첨부해 주세요. 국내 비영리 단체는 고유번호증을, 프로젝트 공연팀은 단체명과 활동 내역을 확인할 수 있는 공연 증빙을 제출할 수 있어요.",
-                    fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 22.sp)
-            },
-            confirmButton = { TextButton(onClick = { isOpen = false }) { Text("확인", fontFamily = customFontFamily) } },
+        com.muyeon.app.ui.common.MuyeonDialog(
+            title = "사업자등록번호가 없어요",
+            message = "해외 공연팀·기획자는 해당 국가에서 발급한 사업자 또는 단체 증빙을 첨부해 주세요. 국내 비영리 단체는 고유번호증을, 프로젝트 공연팀은 단체명과 활동 내역을 확인할 수 있는 공연 증빙을 제출할 수 있어요.",
+            actions = listOf(com.muyeon.app.ui.common.MuyeonDialogAction("확인")),
+            onDismiss = { isOpen = false },
         )
     }
 }

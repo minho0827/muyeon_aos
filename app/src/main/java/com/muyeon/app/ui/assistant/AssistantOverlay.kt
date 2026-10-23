@@ -137,7 +137,8 @@ object AssistantOverlay {
      *  네이티브 카드 화면에서 오른쪽 아래 카드를 가렸다). */
     private var bottomDp by mutableFloatStateOf(286f)
     private var nativeBottomDp by mutableFloatStateOf(NATIVE_DEFAULT)
-    private const val NATIVE_DEFAULT = 28f
+    /** 네이티브 화면 기본 위치 — 아래 고정 버튼([다음]·[저장] 56dp+여백) 위로(10-23: 레슨 개설 [다음]을 가렸다). */
+    private const val NATIVE_DEFAULT = 96f
     private const val KEY_Y_NATIVE = "fabBottomDpNative"
 
     /** 기능 목록 캐시(유형별) — 창을 다시 열 때 바로 보여 주고 뒤에서 새로 받는다. */
@@ -168,7 +169,8 @@ object AssistantOverlay {
 
     fun start(app: Application) {
         bottomDp = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getFloat(KEY_Y, 286f)
-        nativeBottomDp = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getFloat(KEY_Y_NATIVE, NATIVE_DEFAULT)
+        // 예전 기본값(28)으로 저장된 위치는 새 기본값으로 올린다 — 손으로 옮긴 위치(그보다 높은 곳)는 그대로.
+        nativeBottomDp = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getFloat(KEY_Y_NATIVE, NATIVE_DEFAULT).let { if (it < NATIVE_DEFAULT) NATIVE_DEFAULT else it }
         AssistantBadges.start(app)
         app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
             override fun onActivityResumed(activity: Activity) {

@@ -369,6 +369,35 @@ class LessonWizardApi(internal val token: String?) {
         }.getOrDefault(emptyList())
     }
 
+    /**
+     * 지난 레슨 장소(10-23 '반복 입력 줄이기') — 내 레슨에서 주소가 다른 것만 최근순 3개.
+     *  레슨 개설 위치 단계에서 칩으로 골라 장소·주소·지역·좌표·전화·주차를 한 번에 채운다.
+     */
+    suspend fun recentPlaces(): List<LessonWizardDraft> = withContext(Dispatchers.IO) {
+        runCatching {
+            val req = Request.Builder().url("$apiBase/lesson-products/mine")
+                .apply { token?.let { header("Authorization", "Bearer $it") } }.withActiveType().build()
+            client.newCall(req).execute().use { res ->
+                if (!res.isSuccessful) return@use emptyList()
+                val arr = JSONArray(res.body?.string().orEmpty().ifBlank { "[]" })
+                (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }
+                    .filter { it.optString("address").isNotBlank() && it.optString("place") != "온라인 레슨" }
+                    .distinctBy { it.optString("address").trim() }
+                    .take(3)
+                    .map { o ->
+                        LessonWizardDraft(
+                            place = o.optString("place"), address = o.optString("address"),
+                            region = o.optString("region"), regionCode = o.optString("regionCode"),
+                            lat = o.optDouble("lat").takeIf { v -> !v.isNaN() && v != 0.0 },
+                            lng = o.optDouble("lng").takeIf { v -> !v.isNaN() && v != 0.0 },
+                            phone = o.optString("phone").takeIf { v -> v != "null" }.orEmpty(),
+                            parkingInfo = o.optString("parkingInfo").takeIf { v -> v != "null" }.orEmpty(),
+                        )
+                    }
+            }
+        }.getOrDefault(emptyList())
+    }
+
     suspend fun getProduct(id: Int): Result<LessonProductDetail> = withContext(Dispatchers.IO) {
         runCatching {
             val req = Request.Builder().url("$apiBase/lesson-products/$id")

@@ -32,46 +32,32 @@ fun ApplicantDecisionPromptDialog(
     onBulkNotify: () -> Unit,
 ) {
     when (prompt) {
-        is ApplicantDecisionPrompt.Confirmed -> AlertDialog(
-            onDismissRequest = { onPrompt(null) },
-            title = { DialogTitle(prompt.title) },
-            confirmButton = { TextButton(onClick = { onPrompt(null) }) { DialogAction("확인") } },
+        is ApplicantDecisionPrompt.Confirmed -> com.muyeon.app.ui.common.MuyeonDialog(
+            title = prompt.title, actions = listOf(com.muyeon.app.ui.common.MuyeonDialogAction("확인")), onDismiss = { onPrompt(null) },
         )
 
-        is ApplicantDecisionPrompt.SubConfirmed -> AlertDialog(
-            onDismissRequest = { onPrompt(null) },
-            title = { DialogTitle("대타가 확정됐어요") },
-            text = { DialogMessage("나머지 지원자 ${prompt.count}명을 미선정 처리하고 결과 알림을 발송할까요?") },
-            confirmButton = {
-                TextButton(onClick = { onPrompt(null); onBulkNotify() }) { DialogAction("일괄 안내하기") }
-            },
-            dismissButton = { TextButton(onClick = { onPrompt(null) }) { DialogAction("계속 검토하기") } },
+        is ApplicantDecisionPrompt.SubConfirmed -> com.muyeon.app.ui.common.MuyeonDialog(
+            title = "대타가 확정됐어요",
+            message = "나머지 지원자 ${prompt.count}명을 미선정 처리하고 결과 알림을 발송할까요?",
+            actions = listOf(com.muyeon.app.ui.common.MuyeonDialogAction("일괄 안내하기", com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY) { onBulkNotify() }, com.muyeon.app.ui.common.MuyeonDialogAction("계속 검토하기", com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL)),
+            onDismiss = { onPrompt(null) },
         )
 
-        is ApplicantDecisionPrompt.JobConfirmed -> AlertDialog(
-            onDismissRequest = { onPrompt(null) },
-            title = { DialogTitle("${prompt.name} 님을 채용 확정했어요") },
-            text = { DialogMessage("다른 지원자 ${prompt.count}명도 계속 검토할까요?") },
-            confirmButton = { TextButton(onClick = { onPrompt(null) }) { DialogAction("계속 검토하기") } },
-            dismissButton = {
-                TextButton(
-                    onClick = { onPrompt(ApplicantDecisionPrompt.JobCloseConfirmation(prompt.count)) },
-                ) { DialogAction("채용 마감하기") }
-            },
+        is ApplicantDecisionPrompt.JobConfirmed -> com.muyeon.app.ui.common.MuyeonDialog(
+            title = "${prompt.name} 님을 채용 확정했어요",
+            message = "다른 지원자 ${prompt.count}명도 계속 검토할까요?",
+            actions = listOf(
+                com.muyeon.app.ui.common.MuyeonDialogAction("계속 검토하기", com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY),
+                com.muyeon.app.ui.common.MuyeonDialogAction("채용 마감하기", com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL) { onPrompt(ApplicantDecisionPrompt.JobCloseConfirmation(prompt.count)) },
+            ),
+            onDismiss = { onPrompt(null) }, // 버튼을 누르면 먼저 닫고(null) 그다음 동작 — 마감 확인은 닫힌 뒤 새로 뜬다
         )
 
-        is ApplicantDecisionPrompt.JobCloseConfirmation -> AlertDialog(
-            onDismissRequest = { onPrompt(null) },
-            title = { DialogTitle("채용을 마감할까요?") },
-            text = {
-                DialogMessage(
-                    "채용을 마감하면 남은 지원자 ${prompt.count}명이 미선정 처리되고 결과 알림이 가요.",
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { onPrompt(null); onBulkNotify() }) { DialogAction("마감하고 일괄 안내") }
-            },
-            dismissButton = { TextButton(onClick = { onPrompt(null) }) { DialogAction("취소") } },
+        is ApplicantDecisionPrompt.JobCloseConfirmation -> com.muyeon.app.ui.common.MuyeonDialog(
+            title = "채용을 마감할까요?",
+            message = "채용을 마감하면 남은 지원자 ${prompt.count}명이 미선정 처리되고 결과 알림이 가요.",
+            actions = listOf(com.muyeon.app.ui.common.MuyeonDialogAction("마감하고 일괄 안내", com.muyeon.app.ui.common.MuyeonDialogKind.DESTRUCTIVE) { onBulkNotify() }, com.muyeon.app.ui.common.MuyeonDialogAction("취소", com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL)),
+            onDismiss = { onPrompt(null) },
         )
     }
 }

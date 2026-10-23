@@ -129,6 +129,15 @@ fun AssistantFlowPage(
 
     fun fail(r: AssistantApi.Res) {
         busy = false
+        // 다른 기기에서 같은 대화를 이어 써서 질문이 바뀌었으면 서버의 지금 질문으로 다시 맞춘다(10-23).
+        if (r.code == "AI_QUESTION_MISMATCH" && sessionId > 0) {
+            scope.launch {
+                val s = AssistantApi.call(context, "GET", "/assistant/sessions/$sessionId")
+                if (s.ok && s.json?.optJSONObject("question") != null) applyQuestion(s.json)
+                Toast.makeText(context, "다른 기기에서 답한 내용으로 맞췄어요", Toast.LENGTH_SHORT).show()
+            }
+            return
+        }
         when (r.code) {
             "AI_PRO_REQUIRED", "AI_QUOTA_EXCEEDED" -> { errorMsg = r.message; phase = Phase.LOCKED }
             else -> { errorMsg = r.message ?: "잠시 후 다시 시도해 주세요."; if (phase == Phase.LOADING) phase = Phase.ERROR else Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show() }

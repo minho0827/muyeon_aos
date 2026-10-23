@@ -342,12 +342,7 @@ private fun LinkText(text: String, bold: Boolean = false, enabled: Boolean = tru
 
 @Composable
 private fun InfoDialog(title: String, message: String, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { DialogTitle(title) },
-        text = { DialogMessage(message) },
-        confirmButton = { TextButton(onClick = onDismiss) { DialogAction("확인") } },
-    )
+    com.muyeon.app.ui.common.MuyeonDialog(title = title, message = message, actions = listOf(com.muyeon.app.ui.common.MuyeonDialogAction("확인")), onDismiss = onDismiss)
 }
 
 /** 구글 상품의 결제 주기(P1M·P3M·P6M·P1Y)로 개월 수. 모르면 서버 durationDays 기준. */

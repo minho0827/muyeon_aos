@@ -314,24 +314,15 @@ fun ReceivedQuoteDetailScreen(
 
     // 기존 채팅/진행 중 요청이 있는 강사 — 이동/새 요청 분기(MATCHED 는 이동만: 채택 보호)
     dialogFor?.let { teacher ->
-        AlertDialog(
-            onDismissRequest = { dialogFor = null },
-            title = { DialogTitle("레슨 요청") },
-            text = {
-                DialogMessage(
-                    if (teacher.activeQuoteStatus == "MATCHED")
-                        "${teacher.displayName}님과 진행 중인 레슨이 있어요."
-                    else "${teacher.displayName}님과 진행 중인 요청/채팅이 있어요. 어떻게 할까요?"
-                )
-            },
-            confirmButton = {
-                Column {
-                    teacher.existingRoomId?.let { rid ->
-                        TextButton(onClick = { dialogFor = null; onOpenChat(rid) }) { DialogAction("기존 채팅방으로 이동") }
-                    }
-                    if (teacher.activeQuoteStatus != "MATCHED") {
-                        TextButton(onClick = {
-                            dialogFor = null
+        com.muyeon.app.ui.common.MuyeonDialog(
+            title = "레슨 요청",
+            message = if (teacher.activeQuoteStatus == "MATCHED") "${teacher.displayName}님과 진행 중인 레슨이 있어요."
+                else "${teacher.displayName}님과 진행 중인 요청/채팅이 있어요. 어떻게 할까요?",
+            onDismiss = { dialogFor = null },
+            actions = buildList {
+                teacher.existingRoomId?.let { rid -> add(com.muyeon.app.ui.common.MuyeonDialogAction("기존 채팅방으로 이동", com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY) { onOpenChat(rid) }) }
+                if (teacher.activeQuoteStatus != "MATCHED") {
+                    add(com.muyeon.app.ui.common.MuyeonDialogAction("그래도 새로 견적 요청", if (teacher.existingRoomId == null) com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY else com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL) {
                             scope.launch {
                                 reRequesting = true
                                 api.reRequestQuote(quoteId, teacher.id, force = true)
@@ -342,11 +333,10 @@ fun ReceivedQuoteDetailScreen(
                                     .onFailure { toast = "요청을 보내지 못했어요. 잠시 후 다시 시도해 주세요." }
                                 reRequesting = false
                             }
-                        }) { DialogAction("그래도 새로 견적 요청") }
-                    }
+                    })
                 }
+                add(com.muyeon.app.ui.common.MuyeonDialogAction("취소", com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL))
             },
-            dismissButton = { TextButton(onClick = { dialogFor = null }) { DialogAction("취소") } },
         )
     }
 
@@ -863,9 +853,10 @@ internal fun QuoteDialog(
     com.muyeon.app.ui.common.MuyeonDialog(
         title = title,
         message = message,
-        actions = listOf(
+        // 안내용('확인')이면 버튼 하나 — 알릴 뿐인 창에 '취소'가 붙으면 무엇을 취소하는지 헷갈린다.
+        actions = listOfNotNull(
             com.muyeon.app.ui.common.MuyeonDialogAction(confirmText, com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY, onConfirm),
-            com.muyeon.app.ui.common.MuyeonDialogAction("취소", com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL, onDismiss),
+            if (confirmText == "확인") null else com.muyeon.app.ui.common.MuyeonDialogAction("취소", com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL, onDismiss),
         ),
         dismissOnAction = false,
         onDismiss = onDismiss,

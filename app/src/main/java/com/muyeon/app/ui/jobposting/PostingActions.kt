@@ -150,12 +150,7 @@ fun rememberPostingActions(
 /** 확인 버튼 하나짜리 안내창 — QuoteDialog 는 '취소'가 늘 붙어 안내용으로는 어색하다. */
 @Composable
 internal fun PostingInfoDialog(title: String, message: String, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { DialogTitle(title) },
-        text = { DialogMessage(message) },
-        confirmButton = { TextButton(onClick = onDismiss) { DialogAction("확인") } },
-    )
+    com.muyeon.app.ui.common.MuyeonDialog(title = title, message = message, actions = listOf(com.muyeon.app.ui.common.MuyeonDialogAction("확인")), onDismiss = onDismiss)
 }
 
 /** 확인·취소 문구를 모두 지정하는 확인창(멤버십 안내의 '다음에' 등). */
@@ -168,11 +163,10 @@ internal fun PostingConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { DialogTitle(title) },
-        text = { DialogMessage(message) },
-        confirmButton = { TextButton(onClick = onConfirm) { DialogAction(confirmText) } },
-        dismissButton = { TextButton(onClick = onDismiss) { DialogAction(dismissText) } },
+    com.muyeon.app.ui.common.MuyeonDialog(
+        title = title, message = message,
+        actions = listOf(com.muyeon.app.ui.common.MuyeonDialogAction(confirmText, com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY, onConfirm), com.muyeon.app.ui.common.MuyeonDialogAction(dismissText, com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL, onDismiss)),
+        dismissOnAction = false, // 예전처럼 확인=onConfirm 만, 취소=onDismiss 만
+        onDismiss = onDismiss,
     )
 }

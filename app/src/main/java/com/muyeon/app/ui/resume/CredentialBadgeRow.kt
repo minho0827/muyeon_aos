@@ -88,16 +88,11 @@ fun CredentialBadgeRow(badges: CredentialBadges?, modifier: Modifier = Modifier)
         }
     }
     shown?.let { b ->
-        AlertDialog(
-            onDismissRequest = { shown = null },
-            confirmButton = { TextButton(onClick = { shown = null }) { Text("확인") } },
-            title = { Text(b.label, fontFamily = customFontFamily, fontWeight = FontWeight.Bold) },
-            text = {
-                Text(
-                    listOfNotNull(b.desc, listOfNotNull(b.title, b.years?.let { "${it}년" }).joinToString(" · ").takeIf { it.isNotEmpty() }).joinToString("\n"),
-                    fontFamily = customFontFamily,
-                )
-            },
+        com.muyeon.app.ui.common.MuyeonDialog(
+            title = b.label,
+            message = listOfNotNull(b.desc, listOfNotNull(b.title, b.years?.let { "${it}년" }).joinToString(" · ").takeIf { it.isNotEmpty() }).joinToString("\n"),
+            actions = listOf(com.muyeon.app.ui.common.MuyeonDialogAction("확인")),
+            onDismiss = { shown = null },
         )
     }
 }
