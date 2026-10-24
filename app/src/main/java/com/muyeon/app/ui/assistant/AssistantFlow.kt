@@ -36,6 +36,7 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.AppColor
@@ -470,7 +471,7 @@ private fun SuggestChips(mine: List<String>, ai: List<String>, onPick: (String) 
         Text(title, fontFamily = customFontFamily, fontSize = 13.sp, color = Sub, modifier = Modifier.padding(top = 4.dp, bottom = 8.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items.forEach { p ->
-                Text(p, fontFamily = customFontFamily, fontSize = 14.sp, color = Ink, maxLines = 2,
+                Text(chipLabel(p), fontFamily = customFontFamily, fontSize = 14.sp, color = Ink, maxLines = 2, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.clip(RoundedCornerShape(50)).border(1.dp, Line, RoundedCornerShape(50)).clickable { onPick(p) }
                         .padding(horizontal = 14.dp, vertical = 9.dp).testTag("assistant.flow.suggest"))
             }
@@ -478,6 +479,27 @@ private fun SuggestChips(mine: List<String>, ai: List<String>, onPick: (String) 
     }
     group("내가 전에 쓴 내용", mine)
     group("이런 내용은 어때요?", ai)
+}
+
+/** 칩 글자 — 16자 넘으면 띄어쓰기에서 줄을 바꾸고 2줄까지만(넘으면 …). 보이는 글자만 바꾸고 누르면 원문이 들어간다(iOS chipLabel 과 같음). */
+internal fun chipLabel(text: String, perLine: Int = 16): String {
+    val lines = mutableListOf<String>()
+    var cur = ""
+    for (word in text.split(' ', '\n').filter { it.isNotEmpty() }) {
+        var w = word
+        while (w.length > perLine) { // 띄어쓰기 없이 긴 낱말은 잘라서
+            if (cur.isNotEmpty()) { lines += cur; cur = "" }
+            lines += w.take(perLine); w = w.drop(perLine)
+        }
+        cur = when {
+            cur.isEmpty() -> w
+            cur.length + 1 + w.length <= perLine -> "$cur $w"
+            else -> { lines += cur; w }
+        }
+    }
+    if (cur.isNotEmpty()) lines += cur
+    if (lines.size <= 2) return lines.joinToString("\n")
+    return lines[0] + "\n" + lines[1].take(perLine - 1) + "…"
 }
 
 /** 이전에 입력한 정보로 채운 질문 — 칩을 누르면 변경(예전 답을 골라 둔 채), ✕ 는 그 값을 빼고 처음부터 다시 묻는다(iOS knownBox 와 같음). */
