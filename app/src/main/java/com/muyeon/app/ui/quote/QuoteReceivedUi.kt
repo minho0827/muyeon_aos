@@ -114,10 +114,12 @@ object QuoteUi {
         return "협의 가능"
     }
 
-    /** 견적 만료(요청 생성 + N일, 기본 14일)까지 남은 일수. 양수=남음, 0=오늘, 음수=지남. */
-    fun daysUntilExpiry(createdAtISO: String?, days: Int = 14): Int? {
-        val created = parseDate(createdAtISO) ?: return null
-        val expiry = created + days * 86_400_000L
+    /**
+     * 견적 만료까지 남은 일수. 양수=남음, 0=오늘, 음수=지남.
+     *  서버 만료 시각(expiresAt)을 먼저 쓰고, 없으면 요청일 + 60일(서버 QUOTE_EXPIRY_DAYS 와 같게, 10-24).
+     */
+    fun daysUntilExpiry(createdAtISO: String?, expiresAtISO: String? = null, days: Int = 60): Int? {
+        val expiry = parseDate(expiresAtISO) ?: ((parseDate(createdAtISO) ?: return null) + days * 86_400_000L)
         return ceil((expiry - System.currentTimeMillis()) / 86_400_000.0).toInt()
     }
 

@@ -138,6 +138,8 @@ data class QuoteFull(
     val answers: List<QuoteAnswerRaw>?,
     val targetTeacherId: Int?,
     val targetTeacher: QuotePro?,
+    /** 서버가 정한 만료 시각(10-24~, 요청일+60일). 없으면 예전 서버 → createdAt 으로 계산. */
+    val expiresAt: String? = null,
 ) {
     val isDirect: Boolean get() = targetTeacherId != null
 
@@ -152,6 +154,7 @@ data class QuoteFull(
             answers = o.optJSONArray("answers")?.map { QuoteAnswerRaw.from(it) },
             targetTeacherId = o.intOrNull("targetTeacherId"),
             targetTeacher = QuotePro.from(o.optJSONObject("targetTeacher")),
+            expiresAt = o.stringOrNull("expiresAt"),
         )
     }
 }

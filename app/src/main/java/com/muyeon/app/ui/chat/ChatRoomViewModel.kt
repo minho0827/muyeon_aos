@@ -96,7 +96,7 @@ class ChatRoomViewModel(
                 progress?.step == "ACCEPTED"
         }
 
-    /** 견적요청이 마감(14일 경과)됐는지 — 헤더 '견적 마감' 표시. */
+    /** 견적요청이 마감(서버 EXPIRED, 요청 후 60일)됐는지 — 헤더 '견적 마감' 표시. */
     val isQuoteExpired: Boolean get() = quoteContext?.quoteStatus == "EXPIRED"
 
     /** 내가 이 방의 강사 측인지. */
