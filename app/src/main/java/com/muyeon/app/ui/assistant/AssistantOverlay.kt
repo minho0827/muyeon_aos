@@ -634,20 +634,27 @@ private fun AllMenuPage(
         // 묶음 칩 — 펼치면 여러 줄, 접으면 한 줄 가로 스크롤(지금 묶음 칩이 늘 보이게 자동으로 따라감). iOS 와 1:1.
         if (secList.isNotEmpty()) {
             val chipRow = androidx.compose.foundation.lazy.rememberLazyListState()
-            // 접기 규칙(10-24, PACERA AllMenuView·iOS 와 같음): 칩 묶음을 펼친 채 목록이 움직이면 바로 접는다.
-            LaunchedEffect(listState) {
-                var last = listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
-                androidx.compose.runtime.snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }.collect { now ->
-                    val moved = now.first != last.first || kotlin.math.abs(now.second - last.second) > 8
-                    if (moved) { last = now; if (expanded) expanded = false }
-                }
+            // 펼치기 규칙(사용자 요청 10-23, iOS 와 1:1): 스크롤을 시작해도 접힌 채로 두고,
+            //  지금 묶음의 칩이 접힌 한 줄에서 화면 밖으로 벗어났을 때만 펼친다. 맨 위로 돌아오면 다시 접는다.
+            val atTop by androidx.compose.runtime.remember {
+                androidx.compose.runtime.derivedStateOf { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 8 }
+            }
+            LaunchedEffect(atTop) { if (atTop) expanded = false }
+            LaunchedEffect(current) {
+                if (atTop || expanded) return@LaunchedEffect
+                val idx = secList.indexOfFirst { it.key == current }
+                val info = chipRow.layoutInfo
+                if (info.visibleItemsInfo.isEmpty()) return@LaunchedEffect // 칩 줄을 아직 재지 않았으면 판단하지 않는다
+                val seen = info.visibleItemsInfo.firstOrNull { it.index == idx }
+                val fullyVisible = seen != null && seen.offset >= info.viewportStartOffset && seen.offset + seen.size <= info.viewportEndOffset
+                if (idx >= 0 && !fullyVisible) expanded = true
             }
             val chip: @Composable (AssistantSection) -> Unit = { sec ->
                 val on = sec.key == current
                 val hasBadge = groups.firstOrNull { it.first.key == sec.key }?.second?.any { AssistantBadges.count(it.badgeKey) > 0 } == true
                 Row(
                     Modifier.clip(CircleShape).background(if (on) Color(0xFF101116) else Color(0xFFF2F3F5))
-                        .clickable { expanded = false; scope.launch { listState.animateScrollToItem(headerIndex[sec.key] ?: 0) } } // 고르면 접는다
+                        .clickable { scope.launch { listState.animateScrollToItem(headerIndex[sec.key] ?: 0) } }
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
