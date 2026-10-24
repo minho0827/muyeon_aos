@@ -75,6 +75,8 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -178,7 +180,7 @@ object AssistantOverlay {
                 attach(activity)
                 if (activity.javaClass.simpleName !in SKIP) AssistantBadges.onScreenResumed(activity)
             }
-            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = NativeScreens.onCreated(activity)
             override fun onActivityStarted(activity: Activity) {}
             override fun onActivityPaused(activity: Activity) { resumedCount = maxOf(0, resumedCount - 1) }
             override fun onActivityStopped(activity: Activity) {}
@@ -241,19 +243,36 @@ private fun AssistantLayer(activity: Activity) {
     // 웹 라우트·웹 모달 상태는 웹뷰 화면에서만 의미가 있다(네이티브 화면은 웹 상태와 무관하게 보인다).
     val onWeb = activity is com.muyeon.app.webview.WebViewActivity
     val loggedIn = !TokenManager.getAccessToken(context).isNullOrEmpty()
-    val show = loggedIn && !AssistantOverlay.hiddenThisRun && !imeVisible && !open && AssistantOverlay.chatRooms == 0 &&
+    // 예약금 결제 창 위에는 띄우지 않는다 — 결제 중 다른 화면으로 나가면 결제 창이 닫히지 않은 채 남는다(iOS 와 같다).
+    val inPayment = activity is com.muyeon.app.ui.lesson.LessonPaymentActivity
+    val show = loggedIn && !inPayment && !AssistantOverlay.hiddenThisRun && !imeVisible && !open && AssistantOverlay.chatRooms == 0 &&
         !(onWeb && (FloatingState.isAuthRoute || FloatingState.floatingHidden))
 
     Box(Modifier.fillMaxSize()) {
         if (show) AssistantFab(Modifier.align(Alignment.BottomEnd).then(if (onWeb) Modifier else Modifier.navigationBarsPadding()), onWeb = onWeb, onOpen = { open = true })
     }
     if (open) {
+        // 지금 보고 있는 화면 — 웹 화면 위에서 열었을 때만(웹이 routeChanged 로 알려 준 경로, FloatingState.currentRoute).
+        //  네이티브 화면 위에서 열었으면 웹 메뉴를 눌러야 그 화면이 보이므로 '현재 화면'이 아니다.
+        val currentPath = remember {
+            when {
+                onWeb && !FloatingState.floatingHidden -> normalizedPath(FloatingState.currentRoute)
+                onWeb -> null
+                else -> NativeScreens.actionFor(activity)?.let { "native:$it" }
+            }
+        }
+        CompositionLocalProvider(LocalCurrentPath provides currentPath) {
         AssistantSheet(
             startDraftId = startDraft,
             onDismiss = { open = false; startDraft = null },
             onPick = { item ->
                 open = false
                 startDraft = null
+                // 이미 보고 있는 화면이면 이동할 게 없다 — 창만 닫고 알려 준다(예전엔 아무 일도 안 일어난 것처럼 보였다).
+                if (isCurrentItem(item, currentPath)) {
+                    Toast.makeText(activity, "지금 보고 있는 화면이에요.", Toast.LENGTH_SHORT).show()
+                    return@AssistantSheet
+                }
                 when (AssistantExecutor.run(activity, item)) {
                     AssistantExecutor.Outcome.Opened -> Unit
                     AssistantExecutor.Outcome.NeedsUpdate -> Toast.makeText(activity, "앱을 업데이트하면 쓸 수 있어요.", Toast.LENGTH_SHORT).show()
@@ -262,7 +281,62 @@ private fun AssistantLayer(activity: Activity) {
                 }
             },
         )
+        }
     }
+}
+
+/** 창을 연 순간 보던 웹 경로(정규화). null 이면 웹 화면이 아니었다. */
+private val LocalCurrentPath = staticCompositionLocalOf<String?> { null }
+
+/** 물음표 뒤·끝 / 는 무시하고 비교한다 — iOS AssistantSheetModel.normalizedPath 와 같다. */
+internal fun normalizedPath(p: String): String {
+    var s = p.substringBefore('?')
+    while (s.length > 1 && s.endsWith("/")) s = s.dropLast(1)
+    return s.ifEmpty { "/" }
+}
+
+/**
+ * 지금 보고 있는 화면 — 웹 화면이면 경로("/lessons"), 네이티브 화면이면 그 화면을 연 동작("native:openQuoteWizard").
+ *  '레슨 요청하기'처럼 웹 버튼·메뉴가 앱 화면(팝업)으로 여는 메뉴도 현재 위치로 보이게(10-24).
+ */
+internal fun isCurrentItem(item: AssistantItem, current: String?): Boolean {
+    if (current == null || item.kind == "FLOW") return false
+    if (current.startsWith("native:")) return item.nativeAction != null && "native:${item.nativeAction}" == current
+    val path = item.webPath ?: return false
+    // 앱 화면으로 여는 메뉴는 웹 경로가 같아도 웹 화면 위에선 '현재'가 아니다(누르면 앱 화면이 뜬다).
+    if (item.kind == "NATIVE" && item.nativeAction != null && AssistantExecutor.canOpenNative(item)) return false
+    return normalizedPath(path) == current
+}
+
+/**
+ * 네이티브 화면 ↔ 그 화면을 연 동작 — 웹 버튼·AI 메뉴가 NativeActionRouter 로 화면을 열면 동작 이름을 맡겨 두고,
+ *  곧 만들어지는 화면(Activity)에 붙인다. 한 Activity 가 여러 화면을 담기도 해서(LessonActivity) 클래스 이름으로는 못 가린다.
+ */
+internal object NativeScreens {
+    private var pending: Pair<String, Long>? = null
+    private val byActivity = java.util.WeakHashMap<Activity, String>()
+
+    fun opening(action: String) { pending = action to System.currentTimeMillis() }
+
+    fun onCreated(activity: Activity) {
+        val p = pending ?: return
+        if (activity is com.muyeon.app.webview.WebViewActivity) return
+        pending = null
+        if (System.currentTimeMillis() - p.second < 3000) byActivity[activity] = p.first
+    }
+
+    fun actionFor(activity: Activity): String? = byActivity[activity]
+}
+
+/** '현재 화면' 표시 — iOS CurrentScreenBadge 와 같은 모양(주황 테두리 글자). */
+@Composable
+private fun CurrentScreenBadge() {
+    Spacer(Modifier.width(6.dp))
+    Text(
+        "현재 화면", color = AppColor.Primary, fontSize = 10.sp, fontWeight = FontWeight.Bold,
+        modifier = Modifier.border(1.dp, AppColor.Primary, CircleShape).padding(horizontal = 6.dp, vertical = 2.dp)
+            .testTag("assistant.currentBadge"),
+    )
 }
 
 @Composable
@@ -711,6 +785,8 @@ private fun AllMenuPage(
                                 Text("프로", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold,
                                     modifier = Modifier.clip(CircleShape).background(AppColor.Primary).padding(horizontal = 6.dp, vertical = 2.dp))
                             }
+                            // [최근] 묶음에는 붙이지 않는다 — 같은 메뉴가 두 군데 표시되면 헷갈린다(10-24 사용자 확인).
+                            if (sec.key != "__recent" && isCurrentItem(item, LocalCurrentPath.current)) CurrentScreenBadge()
                             Spacer(Modifier.weight(1f))
                             CountBadge(AssistantBadges.count(item.badgeKey))
                         }
@@ -795,6 +871,7 @@ private fun ItemRow(item: AssistantItem, query: String = "", onClick: () -> Unit
                     Text("프로", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold,
                         modifier = Modifier.clip(CircleShape).background(AppColor.Primary).padding(horizontal = 6.dp, vertical = 2.dp))
                 }
+                if (isCurrentItem(item, LocalCurrentPath.current)) CurrentScreenBadge()
             }
             Spacer(Modifier.height(3.dp))
             Text("전체메뉴 → ${item.section} → ${item.title}", fontSize = 14.sp, color = Color(0xFF9A9CA3), maxLines = 1,

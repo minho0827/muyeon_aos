@@ -186,9 +186,12 @@ class LessonActivity : ResultActivity() {
                         // 0원 레슨 예약 확정 — 웹 예약내역을 다시 읽게 하고 내 예약으로 보낸다(iOS 와 같은 결말).
                         //  (RESERVATIONS 는 기본 결과 키 — 웹이 결과로 다시 읽는다.)
                         onDone = { openWebAndFinish("/myReservations") },
-                        // 예약금 결제는 웹 결제창으로 넘긴다(iOS 와 동일 경로).
-                        //  /reservations/:id?pay=1 이 토스 결제창을 띄우고, 승인되면 예약이 확정된다.
-                        onNeedPayment = { rid -> openWebAndFinish("/reservations/$rid?pay=1") },
+                        // 예약금 결제 완료(예약 화면 위 결제 창에서 승인) — 웹 예약내역이 그 건을 다시 읽게 하고
+                        //  방금 예약 상세로 보낸다(iOS 결제 완료 → 내 예약 상세와 같은 결말).
+                        onPaid = { rid ->
+                            reservationChanged(rid)
+                            openWebAndFinish("/reservations/$rid")
+                        },
                     )
                 }
                 composable("detail") {

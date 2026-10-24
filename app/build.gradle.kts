@@ -51,8 +51,8 @@ android {
         applicationId = "com.muyeon.app"
         minSdk = rootProject.extra["minSdkVersion"] as Int
         targetSdk = rootProject.extra["targetSdkVersion"] as Int
-        versionCode = 22
-        versionName = "1.0.6"
+        versionCode = 23
+        versionName = "1.0.7"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Inject BuildConfig fields for service account (use empty defaults if not provided)
@@ -162,6 +162,8 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.activity:activity-compose:1.9.3")
+    // 예약금 결제 창 — 문서 시작 전에 결제 창 표시(__muyeonPaymentAppScheme)를 심는다(addDocumentStartJavaScript).
+    implementation("androidx.webkit:webkit:1.12.1")
     implementation("androidx.constraintlayout:constraintlayout-compose:1.1.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose")

@@ -31,6 +31,9 @@ object AssistantExecutor {
         data class Flow(val flow: String) : Outcome
     }
 
+    /** 이 앱이 앱 화면으로 열 수 있는 메뉴인가(허용 목록). */
+    fun canOpenNative(item: AssistantItem): Boolean = item.nativeAction != null && item.nativeAction in allowedActions
+
     fun run(activity: Activity, item: AssistantItem): Outcome {
         if (item.kind == "FLOW") return item.flow?.let { Outcome.Flow(it) } ?: Outcome.NeedsUpdate
         com.muyeon.app.analytics.Analytics.click("assistant:${item.id}")
