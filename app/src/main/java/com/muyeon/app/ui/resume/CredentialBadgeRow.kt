@@ -43,9 +43,10 @@ data class CredentialBadges(
 ) {
     data class Item(val kind: String, val label: String, val desc: String?, val title: String?, val years: Int?)
 
-    /** 표시 순서: 본인 인증 → 전공·경력·자격·지도경력 */
+    /** 표시: 전공·경력·자격·지도경력(관리자가 확인한 항목)만. */
     val all: List<Item>
-        get() = (if (identity) listOf(Item("IDENTITY", "본인인증", "휴대폰 본인인증으로 실명을 확인한 회원이에요.", null, null)) else emptyList()) + items
+        // ★ 2026-10-24 본인인증은 보여 주지 않는다 — 가입 때 휴대폰 인증이 필수라 모두가 가진 표시다(서버도 identity=false).
+        get() = items
 
     companion object {
         fun from(o: JSONObject?): CredentialBadges? {
