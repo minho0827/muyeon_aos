@@ -34,6 +34,11 @@ object WebCallbacks {
         enqueue(context, "window.onQuoteSubmitted && window.onQuoteSubmitted()")
     }
 
+    /** 알림 허용 안내 결과 — 웹이 기기 정보를 다시 저장해 서버의 '알림 꺼짐'을 켠다(PushPrimer). */
+    fun notificationConsent(context: Context, granted: Boolean) {
+        enqueue(context, "if(window.__onNotificationConsent){ window.__onNotificationConsent($granted); }")
+    }
+
     /**
      * 리뷰 수정 저장 — **웹이 이 콜백으로 실제 저장 API(callWriteReview)를 호출한다.**
      *  네이티브는 UI 만 담당하므로 이 콜백이 빠지면 수정이 아무 데도 반영되지 않는다.

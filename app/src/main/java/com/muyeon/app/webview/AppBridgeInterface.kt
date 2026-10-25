@@ -222,8 +222,11 @@ object NativeActionRouter {
             // 온보딩·이용권·학원 프로필 — E 이식 완료
             "openSignupTerms" -> com.muyeon.app.ui.onboarding.OnboardingActivity.startTerms(activity)
             "openAddressSetup" -> com.muyeon.app.ui.onboarding.OnboardingActivity.startAddress(activity)
-            "openNotificationConsent" ->
+            // 아직 묻지 않았을 때만(PushPrimer) — 이미 물었으면 조용히 넘어간다(iOS 와 같음).
+            "openNotificationConsent" -> if (com.muyeon.app.utils.PushPrimer.shouldAsk(activity)) {
+                com.muyeon.app.utils.PushPrimer.markAsked(activity)
                 com.muyeon.app.ui.onboarding.OnboardingActivity.startNotificationConsent(activity)
+            }
             // 멤버십은 계정에 하나 — featureType·memberType 은 받기만 하고 쓰지 않는다.
             "openMembership" -> com.muyeon.app.ui.membership.MembershipActivity.start(activity)
             // 멤버십 성과 — 네이티브 이식 완료(iOS MembershipPerformanceView).

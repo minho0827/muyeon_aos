@@ -55,12 +55,7 @@ fun PermissionExplanationDialog(
             descriptionRes = R.string.perm_photo_desc,
             iconRes = R.drawable.ic_photo
         ),
-        PermissionItem(
-            nameRes = R.string.perm_notif_name,
-            isOptional = true,
-            descriptionRes = R.string.perm_notif_desc,
-            iconRes = R.drawable.ic_notifications
-        ),
+        // ★ 2026-10-25 알림은 첫 실행에서 묻지 않는다(PushPrimer 로 옮김).
         PermissionItem(
             nameRes = R.string.perm_location_name,
             isOptional = true,

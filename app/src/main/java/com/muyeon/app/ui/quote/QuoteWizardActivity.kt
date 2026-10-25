@@ -163,11 +163,28 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                 )
               }
               "done" -> {
-                QuoteSubmittedScreen(
-                    onViewQuotes = { openWebAndFinish("/myQuotes") },
-                    onGoHome = { openWebAndFinish("/home") },
-                    onClose = { finish() },
-                )
+                // 완료 화면 위에서 알림 허용을 묻는다 — 답을 기다리는 지금이 허용 이유가 가장 분명한 때(iOS 와 같음, 2026-10-25).
+                var askPush by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) {
+                    if (com.muyeon.app.utils.PushPrimer.shouldAsk(this@QuoteWizardActivity)) {
+                        com.muyeon.app.utils.PushPrimer.markAsked(this@QuoteWizardActivity)
+                        kotlinx.coroutines.delay(600)
+                        askPush = true
+                    }
+                }
+                Box(Modifier.fillMaxSize()) {
+                    QuoteSubmittedScreen(
+                        onViewQuotes = { openWebAndFinish("/myQuotes") },
+                        onGoHome = { openWebAndFinish("/home") },
+                        onClose = { finish() },
+                    )
+                    if (askPush) {
+                        com.muyeon.app.ui.onboarding.NotificationConsentSheet(onFinish = { g ->
+                            askPush = false
+                            WebCallbacks.notificationConsent(this@QuoteWizardActivity, g)
+                        })
+                    }
+                }
               }
               else -> {
             Box(Modifier.fillMaxSize()) {

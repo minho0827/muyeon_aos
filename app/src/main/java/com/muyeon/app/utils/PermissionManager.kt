@@ -16,7 +16,6 @@ class PermissionManager(
 ) {
     private lateinit var cameraPermissionLauncher: ActivityResultLauncher<String>
     private lateinit var storagePermissionLauncher: ActivityResultLauncher<String>
-    private lateinit var notificationPermissionLauncher: ActivityResultLauncher<String>
     private lateinit var locationPermissionLauncher: ActivityResultLauncher<String>
 
     private var onShowExplanationDialog: ((Boolean) -> Unit)? = null
@@ -35,14 +34,7 @@ class PermissionManager(
             ActivityResultContracts.RequestPermission()
         ) { _ ->
             savePermissionRequested(KEY_STORAGE_REQUESTED)
-            maybeRequestNotificationPermission()
-        }
-
-        // Notification launcher
-        notificationPermissionLauncher = activity.registerForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { _ ->
-            savePermissionRequested(KEY_NOTIF_REQUESTED)
+            // ★ 2026-10-25 알림은 첫 실행에서 묻지 않는다 — 견적 요청·강사 추가 직후 PushPrimer 가 이유와 함께 묻는다.
             maybeRequestLocationPermission()
         }
 
@@ -106,14 +98,10 @@ class PermissionManager(
         val storageNeeded = !checkPermission(storagePermission) &&
                 !getPrefs().getBoolean(KEY_STORAGE_REQUESTED, false)
 
-        val notifNeeded = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                !checkPermission(Manifest.permission.POST_NOTIFICATIONS) &&
-                !getPrefs().getBoolean(KEY_NOTIF_REQUESTED, false)
-
         val locationNeeded = !checkPermission(Manifest.permission.ACCESS_FINE_LOCATION) &&
                 !getPrefs().getBoolean(KEY_LOCATION_REQUESTED, false)
 
-        return cameraNeeded || storageNeeded || notifNeeded || locationNeeded
+        return cameraNeeded || storageNeeded || locationNeeded
     }
 
     /**
@@ -148,27 +136,10 @@ class PermissionManager(
         val hasPermission = checkPermission(permission)
 
         if (hasPermission || alreadyRequested) {
-            maybeRequestNotificationPermission()
+            maybeRequestLocationPermission()
             return
         }
         storagePermissionLauncher.launch(permission)
-    }
-
-    // 3. Notification Permission
-    private fun maybeRequestNotificationPermission() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            maybeRequestLocationPermission()
-            return
-        }
-
-        val alreadyRequested = getPrefs().getBoolean(KEY_NOTIF_REQUESTED, false)
-        val hasPermission = checkPermission(Manifest.permission.POST_NOTIFICATIONS)
-
-        if (hasPermission || alreadyRequested) {
-            maybeRequestLocationPermission()
-            return
-        }
-        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     // 4. Location Permission

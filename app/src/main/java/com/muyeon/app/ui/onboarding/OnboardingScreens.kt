@@ -22,19 +22,14 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
@@ -60,7 +55,6 @@ private object OnbMetric {
 
 private val cAFAFAF = Color(0xFFAFAFAF)
 private val cF4F4F4 = Color(0xFFF4F4F4)
-private val c8E8E8E = Color(0xFF8E8E8E)
 
 // ─────────────────────────────────────────────────────────── 약관 동의
 
@@ -207,17 +201,18 @@ private fun CheckIcon(on: Boolean, size: Int) {
 // ─────────────────────────────────────────────────────── 알림 허용 바텀시트
 
 /**
- * 알림 허용 시트 — iOS `NotificationConsentView`.
- *  Android 13+ 는 POST_NOTIFICATIONS 런타임 권한, 그 이하는 항상 granted.
+ * 알림 허용 안내 시트 — iOS `NotificationConsentView` 와 같은 화면·문구.
+ *  ★ 2026-10-25 애플 HIG(권한 요청 전 안내) 규칙을 양쪽에 똑같이 맞춘다.
+ *   버튼은 하나("계속하기")이고 누르면 시스템 허용 창이 뜬다. '나중에' 버튼·가짜 스위치·광고 문구는 두지 않는다.
+ *  Android 13 미만은 권한이 없어(항상 허용) 바로 true 로 끝난다. 띄울지 판단은 PushPrimer.
  */
 @Composable
-fun NotificationConsentSheet(onAllow: (Boolean) -> Unit, onLater: () -> Unit) {
-    var toggleOn by remember { mutableStateOf(true) }
+fun NotificationConsentSheet(onFinish: (Boolean) -> Unit) {
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown = true }
 
     val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        onAllow(granted)
+        onFinish(granted)
     }
 
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)), Alignment.BottomCenter) {
@@ -231,61 +226,23 @@ fun NotificationConsentSheet(onAllow: (Boolean) -> Unit, onLater: () -> Unit) {
             ) {
                 Spacer(Modifier.height(40.dp))
                 Text(
-                    "휴대폰 알림을 켜고",
+                    "견적 소식을 바로 알려 드릴게요",
                     fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp,
                     lineHeight = 26.sp, color = MuyeonColors.textHead, textAlign = TextAlign.Center,
                 )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    buildAnnotatedString {
-                        withStyle(SpanStyle(color = MuyeonColors.primary)) { append("중요한 정보") }
-                        withStyle(SpanStyle(color = MuyeonColors.textHead)) { append("를 받아보세요!") }
-                    },
-                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp,
-                    lineHeight = 26.sp, textAlign = TextAlign.Center,
-                )
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "강사·고객 메시지, 추천 서비스, 이벤트 등",
+                    "새 견적 요청이나 도착한 견적, 메시지를\n놓치지 않도록 알림을 보내요.",
                     fontFamily = customFontFamily, fontWeight = FontWeight.Normal, fontSize = 15.sp,
-                    lineHeight = 18.sp, color = MuyeonColors.textSub, textAlign = TextAlign.Center,
+                    lineHeight = 21.sp, color = MuyeonColors.textSub, textAlign = TextAlign.Center,
                 )
-
                 Spacer(Modifier.height(32.dp))
-                Row(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(OnbMetric.corner.dp)).background(cF4F4F4)
-                        .padding(horizontal = 20.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "무용연 앱 알림",
-                        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 16.sp,
-                        lineHeight = 19.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
-                    )
-                    Switch(
-                        checked = toggleOn, onCheckedChange = { toggleOn = it },
-                        colors = SwitchDefaults.colors(checkedTrackColor = MuyeonColors.primary),
-                    )
-                }
-
-                Spacer(Modifier.height(40.dp))
-                QuotePrimaryButton("알림 허용하기", Modifier.fillMaxWidth()) {
+                QuotePrimaryButton("계속하기", Modifier.fillMaxWidth()) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         permLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                     } else {
-                        onAllow(true)   // 13 미만은 매니페스트 권한만으로 발송 가능
+                        onFinish(true)   // 13 미만은 매니페스트 권한만으로 발송 가능
                     }
-                }
-                Spacer(Modifier.height(4.dp))
-                Box(
-                    Modifier.fillMaxWidth().clickable { onLater() }.padding(vertical = 14.dp),
-                    Alignment.Center,
-                ) {
-                    Text(
-                        "나중에 받기",
-                        fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp,
-                        lineHeight = 18.sp, color = c8E8E8E,
-                    )
                 }
             }
         }

@@ -160,6 +160,9 @@ fun RoleManageScreen(
     var pending by remember { mutableStateOf<RoleOption?>(null) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    // 강사는 견적 요청을 받는다 — 유형을 막 추가한 지금 알림 허용을 묻는다(iOS RoleManageView 와 같음, 2026-10-25).
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var askPush by remember { mutableStateOf(false) }
 
     // 서버 역할 → 화면 상태. 보유하지 않은 활성유형은 일반으로(iOS derive 와 같다).
     fun apply(p: RoleManagePayload) {
@@ -228,7 +231,14 @@ fun RoleManageScreen(
                                     if (granted.contains(code)) {
                                         val target = activeCode(opt)
                                         activeSel = target
-                                        onSelectActive(target) { ok -> if (!ok) activeSel = before; busy = false }
+                                        onSelectActive(target) { ok ->
+                                            if (!ok) activeSel = before
+                                            busy = false
+                                            if (ok && code == "TEACHER" && com.muyeon.app.utils.PushPrimer.shouldAsk(context)) {
+                                                com.muyeon.app.utils.PushPrimer.markAsked(context)
+                                                askPush = true
+                                            }
+                                        }
                                         return@launch
                                     }
                                 }
@@ -253,6 +263,13 @@ fun RoleManageScreen(
                     onVerify(code) { submitted -> if (submitted) status = status + (code to "PENDING") }
                 },
             )
+        }
+
+        if (askPush) {
+            NotificationConsentSheet(onFinish = { g ->
+                askPush = false
+                com.muyeon.app.webview.WebCallbacks.notificationConsent(context, g)
+            })
         }
     }
 }

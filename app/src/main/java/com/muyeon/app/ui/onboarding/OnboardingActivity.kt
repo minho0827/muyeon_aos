@@ -231,8 +231,7 @@ class OnboardingActivity : ComponentActivity() {
                 }
                 composable("notification") {
                     NotificationConsentSheet(
-                        onAllow = { g -> notifyWeb("if(window.__onNotificationConsent){ window.__onNotificationConsent($g); }") },
-                        onLater = { notifyWeb("if(window.__onNotificationConsent){ window.__onNotificationConsent(false); }") },
+                        onFinish = { g -> notifyWeb("if(window.__onNotificationConsent){ window.__onNotificationConsent($g); }") },
                     )
                 }
             }
