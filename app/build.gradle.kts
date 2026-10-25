@@ -221,6 +221,9 @@ dependencies {
     // 위저드 payload(JSONObject) 단위 테스트 — 안드로이드 스텁 대신 실제 org.json 구현.
     testImplementation("org.json:json:20240303")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    // 실기기 UI 테스트(알림 허용 안내 등) — 시스템 허용 창까지 누른다.
+    androidTestImplementation("androidx.test:runner:1.5.0")
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.2.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
