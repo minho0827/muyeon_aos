@@ -46,6 +46,8 @@ object AssistantBadges {
                 when (e) {
                     is ChatEvent.NewMessage, is ChatEvent.RoomUpdated, is ChatEvent.ChatRoomAdded, is ChatEvent.ChatRoomRemoved,
                     is ChatEvent.MessagesRead, ChatEvent.ServerNotification, ChatEvent.QuoteBadge, ChatEvent.Reconnected -> schedule()
+                    // 서버가 보낸 숫자는 그대로 쓴다(재조회 없음).
+                    is ChatEvent.Badges -> { counts = e.counts; total = e.total }
                     else -> Unit
                 }
             }

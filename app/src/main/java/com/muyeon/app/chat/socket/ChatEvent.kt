@@ -80,4 +80,10 @@ sealed class ChatEvent {
      *  payload 는 쓰지 않는다.
      */
     data object QuoteBadge : ChatEvent()
+
+    /**
+     * ★ 2026-10-25 서버가 보낸 빨간 점 숫자('badges' {notifications, chat, quotes, total}) — 다시 묻지 않고 바로 쓴다.
+     *  종전엔 재조회가 서버 3초 캐시의 읽기 전 값을 받아 '읽고 돌아와도 빨간 점'이 남았다(iOS 와 같은 수정).
+     */
+    data class Badges(val counts: Map<String, Int>, val total: Int) : ChatEvent()
 }

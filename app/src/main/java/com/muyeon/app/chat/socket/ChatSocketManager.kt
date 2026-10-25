@@ -178,6 +178,13 @@ object ChatSocketManager {
         // 받은 견적 도착·읽음 — AI 도우미 뱃지용(iOS FloatingSocketManager 와 같음).
         s.on("quote-received") { ChatEventBus.emit(ChatEvent.QuoteBadge) }
         s.on("quote-unread-changed") { ChatEventBus.emit(ChatEvent.QuoteBadge) }
+        s.on("badges") { args ->
+            val json = asJson(args.firstOrNull()) ?: return@on
+            fun n(k: String) = json.optInt(k).coerceAtLeast(0)
+            ChatEventBus.emit(
+                ChatEvent.Badges(mapOf("notifications" to n("notifications"), "chat" to n("chat"), "quotes" to n("quotes")), n("total")),
+            )
+        }
 
         s.connect()
     }
