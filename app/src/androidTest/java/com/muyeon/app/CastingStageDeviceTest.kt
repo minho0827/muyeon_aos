@@ -78,7 +78,8 @@ class CastingStageDeviceTest {
             assertTrue("맨 위로 누르면 버튼이 사라진다(맨 위)", device.wait(Until.gone(By.desc("맨 위로")), timeout))
         }
         device.pressBack()
-        assertTrue("뒤로 누르면 닫혀야 한다", device.wait(Until.gone(By.text("캐스팅·무대")), timeout))
+        // 하단 탭 이름도 '캐스팅·무대'라 웹 화면에도 같은 글자가 있다 → 네이티브에만 있는 글자로 본다.
+        assertTrue("뒤로 누르면 닫혀야 한다", device.wait(Until.gone(By.text("지금 열린 캐스팅")), timeout))
     }
 
     @Test
