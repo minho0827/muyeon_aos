@@ -39,6 +39,7 @@ class SplashActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         showDeepLinkParamsIfPresent()
+        if (forwardLinkToRunningApp()) return
 
         navigator = SplashRouterImpl(this)
         authRepository = AuthRepositoryImpl(this)
@@ -81,6 +82,26 @@ class SplashActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         showDeepLinkParamsIfPresent()
+        forwardLinkToRunningApp()
+    }
+
+    /** 이번 인텐트에서 링크(알림톡·앱 링크)를 맡았는지. */
+    private var linkSaved = false
+
+    /**
+     * 앱이 켜진 채 링크가 오면 시작 흐름(권한·게이트·로그인)을 다시 돌지 않고 떠 있는 본문 화면에 넘긴다.
+     *  CLEAR_TOP|SINGLE_TOP — 본문 위의 네이티브 화면만 닫고 본문은 그대로(onNewIntent), 보던 웹 화면 위에 목적지를 쌓는다.
+     *  예전엔 늘 CLEAR_TASK 로 본문을 새로 만들어 보던 화면이 사라졌다.
+     */
+    private fun forwardLinkToRunningApp(): Boolean {
+        if (!linkSaved || !com.muyeon.app.webview.WebViewActivity.isAlive) return false
+        linkSaved = false
+        startActivity(
+            android.content.Intent(this, com.muyeon.app.webview.WebViewActivity::class.java)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP),
+        )
+        finish()
+        return true
     }
 
     private fun showDeepLinkParamsIfPresent() {
@@ -88,7 +109,7 @@ class SplashActivity : ComponentActivity() {
         android.util.Log.d("QR_DEBUG", "🔗 SplashActivity 딥링크 uri=$uri")
         if (uri == null) return
         // 알림톡 앱링크 — 웹뷰가 뜰 때 푸시 탭과 같은 경로로 연다(AppLinkManager).
-        if (com.muyeon.app.utils.AppLinkManager.save(uri)) return
+        if (com.muyeon.app.utils.AppLinkManager.save(uri)) { linkSaved = true; return }
         val qrPageValue = uri.getQueryParameter("qrPage")
         android.util.Log.d("QR_DEBUG", "🔗 qrPage 파라미터=$qrPageValue")
         if (qrPageValue == null) return
