@@ -116,10 +116,36 @@ class CastingStageDeviceTest {
         device.wait(Until.findObject(By.text("지금 열린 캐스팅")), timeout)
         val w = device.displayWidth
         device.swipe(w / 2, device.displayHeight * 3 / 4, w / 2, device.displayHeight / 3, 20)
-        val more = device.wait(Until.findObject(By.textContains("전체보기")), 5_000L)
+        // 섹션마다 '○○ 전체보기'가 있어 캐스팅 버튼을 정확한 글자로 찾는다.
+        val more = device.wait(Until.findObject(By.text("캐스팅 공고 전체보기")), 5_000L)
         assertNotNull(more)
         more.click()
         assertNotNull("캐스팅 전체 목록(네이티브)", device.wait(Until.findObject(By.text("캐스팅 공고")), timeout))
         snap("f_casting_list")
+    }
+
+    /** 소식 상세에서 뒤로(제스처·버튼 공통 pressBack) — 상세만 닫히고 캐스팅·무대는 남아야 한다(10-26 iOS 제보 같은 상황). */
+    @Test
+    fun g_backOnNewsDetailPopsOnlyDetail() {
+        open()
+        val icon = device.wait(Until.findObject(By.desc("stage.icon.DOMESTIC")), timeout) ?: return // 호가 없으면 건너뜀
+        icon.click()
+        val card = device.wait(Until.findObject(By.textContains("원문 보기")), timeout)
+        assertNotNull("국내소식 카드", card)
+        card.click()
+        assertNotNull("소식 상세", device.wait(Until.findObject(By.text("소식 요약")), timeout))
+        device.pressBack()
+        assertTrue("상세가 닫혀야 한다", device.wait(Until.gone(By.text("소식 요약")), timeout))
+        assertNotNull("캐스팅·무대는 남아 있어야 한다", device.wait(Until.findObject(By.text("캐스팅·무대")), timeout))
+        snap("g_back")
+    }
+
+    @Test
+    fun h_backOnListPopsOnlyList() {
+        open()
+        device.wait(Until.findObject(By.desc("캐스팅 공고 전체 보기")), timeout)?.click()
+        assertNotNull("전체 목록", device.wait(Until.findObject(By.text("캐스팅 공고")), timeout))
+        device.pressBack()
+        assertNotNull("캐스팅·무대로 돌아와야 한다", device.wait(Until.findObject(By.text("캐스팅·무대")), timeout))
     }
 }
