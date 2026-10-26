@@ -77,7 +77,7 @@ class CastingStageDeviceTest {
             top.click()
             assertTrue("맨 위로 누르면 버튼이 사라진다(맨 위)", device.wait(Until.gone(By.desc("맨 위로")), timeout))
         }
-        device.findObject(By.desc("뒤로")).click()
+        device.pressBack()
         assertTrue("뒤로 누르면 닫혀야 한다", device.wait(Until.gone(By.text("캐스팅·무대")), timeout))
     }
 
@@ -89,5 +89,37 @@ class CastingStageDeviceTest {
         assertNotNull("콩쿠르 탭이 선택돼야 한다", device.wait(Until.findObject(By.desc("stage.tab.CONTEST.selected")), timeout))
         snap("d_contest")
         device.findObject(By.desc("stage.tab.CASTING"))?.scroll(Direction.LEFT, 1f)
+    }
+
+    @Test
+    fun e_castingCardOpensNativeDetailAndBack() {
+        open()
+        assertNotNull(device.wait(Until.findObject(By.text("지금 열린 캐스팅")), timeout))
+        // 카드의 '○○ 마감' 글자를 누른다 — 운영 데이터라 제목은 고정할 수 없다. 카드가 화면 아래에 있어 조금 올린다.
+        val w = device.displayWidth
+        device.swipe(w / 2, device.displayHeight * 3 / 4, w / 2, device.displayHeight / 3, 20)
+        val card = device.wait(Until.findObject(By.textEndsWith("마감")), timeout)
+        assertNotNull("마감 표시가 있는 캐스팅 카드", card)
+        snap("e_before")
+        card.click()
+        device.waitForIdle()
+        snap("e_after")
+        assertNotNull("캐스팅 상세(네이티브) 아래 버튼", device.wait(Until.findObject(By.desc("stage.detail.cta")), timeout))
+        snap("e_casting_detail")
+        device.pressBack()
+        assertNotNull("뒤로 가면 캐스팅·무대", device.wait(Until.findObject(By.text("캐스팅·무대")), timeout))
+    }
+
+    @Test
+    fun f_moreOpensNativeCastingList() {
+        open()
+        device.wait(Until.findObject(By.text("지금 열린 캐스팅")), timeout)
+        val w = device.displayWidth
+        device.swipe(w / 2, device.displayHeight * 3 / 4, w / 2, device.displayHeight / 3, 20)
+        val more = device.wait(Until.findObject(By.textContains("전체보기")), 5_000L)
+        assertNotNull(more)
+        more.click()
+        assertNotNull("캐스팅 전체 목록(네이티브)", device.wait(Until.findObject(By.text("캐스팅 공고")), timeout))
+        snap("f_casting_list")
     }
 }

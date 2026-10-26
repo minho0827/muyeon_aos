@@ -78,7 +78,11 @@ import com.muyeon.app.result.launchScreen
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.utils.TokenManager
-import com.muyeon.app.webview.NativeWebRoute
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -86,7 +90,7 @@ import kotlinx.coroutines.launch
 /**
  * '캐스팅·무대' 네이티브 화면(10-26) — 웹 하단 탭 '캐스팅·무대'(openCastingStage). iOS CastingStageView 와 같은 구성.
  *  위에서 아래로: 상단바 → 자동 넘김 배너 → 아이콘 칸 11개 → 위에 붙는 글자 탭 → 섹션(가로 카드 + 전체보기) → 맨 위로.
- *  ⚠️ AOS 에는 네이티브 위에 웹을 띄우는 창이 없어 캐스팅 상세·전체보기는 웹으로 가며 이 화면을 닫는다(iOS 는 위에 띄움).
+ *  캐스팅·소식 상세, 전체보기 목록, 지난 호는 웹으로 넘기지 않고 화면 안 내비게이션(NavHost)으로 연다(10-26, CastingStageDetail.kt).
  */
 class CastingStageActivity : ResultActivity() {
     companion object {
@@ -97,14 +101,42 @@ class CastingStageActivity : ResultActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val api = remember { CastingStageApi(TokenManager.getAccessToken(this)) }
-            CastingStageScreen(
-                api = api,
-                onClose = { finish() },
-                onOpenWeb = { path -> NativeWebRoute.openWebAndFinish(this, path) },
-                onOpenUrl = { url ->
-                    runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
-                },
-            )
+            val nav = rememberNavController()
+            com.muyeon.app.analytics.TrackNavigation("CastingStage", nav)
+            // 소식 상세는 목록에서 받은 값을 그대로 넘긴다(소식 하나만 주는 API 가 없다).
+            val newsCache = remember { mutableMapOf<Int, Pair<StageNewsItem, StageCategory>>() }
+            val openUrl: (String) -> Unit = { url -> runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } }
+            fun openNews(item: StageNewsItem, cat: StageCategory) { newsCache[item.id] = item to cat; nav.navigate("news/${item.id}") }
+            fun back() { if (!nav.popBackStack()) finish() }
+            NavHost(nav, startDestination = "home") {
+                composable("home") {
+                    CastingStageScreen(
+                        api = api,
+                        onClose = { finish() },
+                        onOpenCasting = { nav.navigate("casting/$it") },
+                        onOpenNews = ::openNews,
+                        onCastingList = { nav.navigate("castingList") },
+                        onNewsList = { no, code -> nav.navigate("newsList/$no/$code") },
+                        onIssues = { nav.navigate("issues") },
+                    )
+                }
+                composable("casting/{id}", listOf(navArgument("id") { type = NavType.IntType })) { e ->
+                    StageCastingDetailScreen(api, e.arguments?.getInt("id") ?: 0, onBack = ::back, onOpenUrl = openUrl,
+                        onWriteResume = { com.muyeon.app.ui.resume.ResumeActivity.startEdit(this@CastingStageActivity, null, "dancer") })
+                }
+                composable("news/{id}", listOf(navArgument("id") { type = NavType.IntType })) { e ->
+                    val hit = newsCache[e.arguments?.getInt("id") ?: 0]
+                    if (hit != null) StageNewsDetailScreen(hit.first, hit.second, onBack = ::back, onOpenUrl = openUrl) else back()
+                }
+                composable("castingList") { StageCastingListScreen(api, onBack = ::back, onOpen = { nav.navigate("casting/$it") }) }
+                composable("newsList/{no}/{code}", listOf(navArgument("no") { type = NavType.IntType })) { e ->
+                    StageNewsListScreen(api, e.arguments?.getInt("no") ?: 0, e.arguments?.getString("code"), onBack = ::back, onOpen = ::openNews)
+                }
+                composable("issues") { StageIssuesScreen(api, onBack = ::back, onOpen = { nav.navigate("issue/$it") }) }
+                composable("issue/{no}", listOf(navArgument("no") { type = NavType.IntType })) { e ->
+                    StageNewsListScreen(api, e.arguments?.getInt("no") ?: 0, null, onBack = ::back, onOpen = ::openNews)
+                }
+            }
         }
     }
 }
@@ -125,8 +157,11 @@ private val GENRES = listOf("전체", "발레", "한국무용", "현대무용", 
 fun CastingStageScreen(
     api: CastingStageApi,
     onClose: () -> Unit,
-    onOpenWeb: (String) -> Unit,
-    onOpenUrl: (String) -> Unit,
+    onOpenCasting: (Int) -> Unit,
+    onOpenNews: (StageNewsItem, StageCategory) -> Unit,
+    onCastingList: () -> Unit,
+    onNewsList: (Int, String) -> Unit,
+    onIssues: () -> Unit,
 ) {
     var issue by remember { mutableStateOf<StageNewsIssue?>(null) }
     var castings by remember { mutableStateOf<List<StageCasting>>(emptyList()) }
@@ -150,6 +185,7 @@ fun CastingStageScreen(
         StageCategory.NEWS.mapNotNull { c -> issue?.sections?.get(c.code)?.takeIf { it.isNotEmpty() }?.let { c to it } }
     }
     val cats = listOf(StageCategory.CASTING) + newsSections.map { it.first }
+    fun catOf(n: StageNewsItem): StageCategory = newsSections.firstOrNull { (_, list) -> list.any { it.id == n.id } }?.first ?: StageCategory.NEWS.first()
 
     val listState = rememberLazyListState()
     val density = LocalDensity.current
@@ -197,7 +233,7 @@ fun CastingStageScreen(
             }
             Text("캐스팅·무대", style = Bold, fontSize = 20.sp, color = MuyeonColors.textHead)
             Spacer(Modifier.weight(1f))
-            Box(Modifier.size(44.dp).clickable { onOpenWeb("/casting/all") }.semantics { contentDescription = "캐스팅 공고 전체 보기" }, Alignment.Center) {
+            Box(Modifier.size(44.dp).clickable { onCastingList() }.semantics { contentDescription = "캐스팅 공고 전체 보기" }, Alignment.Center) {
                 Icon(Icons.Filled.Search, null, tint = MuyeonColors.textHead)
             }
         }
@@ -205,7 +241,7 @@ fun CastingStageScreen(
             LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 80.dp)) {
                 item(key = "banner") {
                     StageBanner(issue, castings, loading, onTapIssue = { jump(newsSections.firstOrNull()?.first?.code ?: "CASTING") },
-                        onTapCasting = { onOpenWeb("/casting/${it.id}") }, onTapNews = { onOpenUrl(it.sourceUrl) })
+                        onTapCasting = { onOpenCasting(it.id) }, onTapNews = { n -> onOpenNews(n, catOf(n)) })
                 }
                 if (multi) {
                     item(key = "icons") { IconGrid(cats, ::jump) }
@@ -232,19 +268,19 @@ fun CastingStageScreen(
                             }
                         } else {
                             LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                items(castings, key = { it.id }) { c -> CastingCard(c) { onOpenWeb("/casting/${c.id}") } }
+                                items(castings, key = { it.id }) { c -> CastingCard(c) { onOpenCasting(c.id) } }
                             }
                         }
-                        MoreButton("캐스팅 공고") { onOpenWeb("/casting/all") }
+                        MoreButton("캐스팅 공고") { onCastingList() }
                     }
                 }
                 newsSections.forEach { (cat, items) ->
                     item(key = "section.${cat.code}") {
                         SectionBox(cat.label) {
                             LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                items(items, key = { it.id }) { n -> NewsCard(n, cat) { onOpenUrl(n.sourceUrl) } }
+                                items(items, key = { it.id }) { n -> NewsCard(n, cat) { onOpenNews(n, cat) } }
                             }
-                            issue?.let { MoreButton(cat.label) { onOpenWeb("/casting/stage/${it.issueNo}") } }
+                            issue?.let { MoreButton(cat.label) { onNewsList(it.issueNo, cat.code) } }
                         }
                     }
                 }
@@ -261,7 +297,7 @@ fun CastingStageScreen(
                             }
                         }
                     }
-                    if (issue != null) MoreButton("지난 무대 소식") { onOpenWeb("/casting/stage") }
+                    if (issue != null) MoreButton("지난 무대 소식") { onIssues() }
                 }
             }
             if (showTop) {
