@@ -158,6 +158,24 @@
                 <data android:path="/myApplications" />
                 <data android:path="/receivedApplications" />
                 <data android:path="/lessonCalendar" />
+                <!-- 네이티브 화면 주소(웹 common/nativeLink.js 표와 같게) -->
+                <data android:path="/resume" />
+                <data android:path="/resumeEdit" />
+                <data android:path="/myPostings" />
+                <data android:path="/quoteRequest" />
+                <data android:path="/availableQuotes" />
+                <data android:path="/quoteSettings" />
+                <data android:path="/autoQuoteHistory" />
+                <data android:path="/lessonHub" />
+                <data android:pathPrefix="/reservations/" />
+                <data android:path="/lessonSlots" />
+                <data android:path="/my/academyTeachers" />
+                <data android:path="/my/academyInvites" />
+                <data android:pathPrefix="/membership/" />
+                <data android:path="/myMembership/performance" />
+                <data android:path="/notifications" />
+                <data android:path="/notificationSettings" />
+                <data android:path="/chat" />
             </intent-filter>
         </activity>
 

@@ -302,8 +302,10 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
             val baseUrl = com.muyeon.app.utils.Constants.getBaseUrl(this)
             // 알림톡 앱링크로 들어왔으면 푸시 탭 인텐트처럼 목적지를 옮겨 싣는다.
             //  푸시로 들어온 경우(notification_url 있음)는 그쪽이 우선.
+            var fromLink = false
             if (intent.getStringExtra("notification_url").isNullOrEmpty()) {
                 if (com.muyeon.app.utils.AppLinkManager.consumeInto(intent)) {
+                    fromLink = true
                     com.muyeon.app.analytics.Analytics.deeplinkOpen(intent.getStringExtra("type"), intent.getStringExtra("notification_url"))
                 }
             } else {
@@ -315,7 +317,7 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
                 Log.d("WebViewActivity", "Loading notification URL: $fullUrl")
                 webView.loadUrl(fullUrl)
                 // 목적지를 바로 연 페이지는 히스토리가 한 칸뿐 — 웹이 준비되면 밑에 홈을 깐다.
-                goInApp(fullUrl)
+                goInApp(fullUrl, viaLink = fromLink)
             } else {
                 android.util.Log.d("QR_DEBUG", "🌐 WebView 로드 URL=$baseUrl (홈 새로 로드)")
                 webView.loadUrl(baseUrl)
@@ -386,7 +388,7 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
             intent.removeExtra("notification_url")
             com.muyeon.app.analytics.Analytics.deeplinkOpen(intent.getStringExtra("type"), path)
             Log.d("WebViewActivity", "onNewIntent app link: $path")
-            goInApp(path)
+            goInApp(path, viaLink = true)
         }
         val notificationUrl = intent.getStringExtra("notification_url")
         if (!notificationUrl.isNullOrEmpty()) {
@@ -526,16 +528,19 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
 
     /**
      * 링크·푸시 목적지로 SPA 이동(웹 __nativeGo). 웹이 준비 전이면 대기열에 둔다.
+     *  viaLink(링크·알림톡)면 웹 __openLink 를 먼저 쓴다 — 네이티브 화면이 있는 주소면 그 화면을 연다
+     *  (표는 웹 common/nativeLink.js 한 곳, 유형·로그인 검사도 웹 버튼과 같다). 옛 웹이면 __nativeGo.
      *  __nativeGo 는 히스토리 첫 칸(idx 0)이면 그 자리를 /home 으로 바꾸고 목적지를 쌓는다 —
      *  그래서 링크로 들어온 화면 밑에 항상 홈이 깔린다(뒤로가기 키·< 버튼 모두 홈으로).
      */
-    private fun goInApp(url: String) {
+    private fun goInApp(url: String, viaLink: Boolean = false) {
         val base = com.muyeon.app.utils.Constants.getBaseUrl(this).trimEnd('/')
         val path = if (url.startsWith(base)) url.removePrefix(base) else url
         if (!path.startsWith("/") || path.startsWith("//") || path == "/" || path == "/home") return
         val safe = path.replace("\\", "\\\\").replace("'", "\\'")
         Log.d("WebViewActivity", "goInApp $path")
-        evalWhenReady("(function(){ if(window.__nativeGo){ window.__nativeGo('$safe'); return 1; } return 0; })()")
+        val fn = if (viaLink) "(window.__openLink||window.__nativeGo)" else "window.__nativeGo"
+        evalWhenReady("(function(){ if(window.__nativeGo){ $fn('$safe'); return 1; } return 0; })()")
     }
 
     /** 브릿지 `webReady` — 웹이 __muyeonResult 등 콜백을 전부 심었다. 밀린 것을 흘린다. */
