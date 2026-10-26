@@ -23,6 +23,7 @@ object AssistantExecutor {
         "openMembershipPerformance", "openMyJobPostings", "openMyQuotes", "openNotifications", "openNotificationSettings",
         "openPublicProfile", "openQuoteBrowse", "openQuoteWizard", "openResumeEdit", "openResumeList", "openReviewList",
         "openStudioMembers", "openStudioOps", "openStudioSales", "openStudioSchedule",
+        "openCastingStage", // 10-26 전체 메뉴 '캐스팅·무대'
     )
 
     sealed interface Outcome {
