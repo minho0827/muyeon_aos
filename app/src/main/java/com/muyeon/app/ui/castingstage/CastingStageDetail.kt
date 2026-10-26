@@ -90,7 +90,7 @@ private val Bold = TextStyle(fontFamily = customFontFamily, fontWeight = FontWei
 private val Semi = TextStyle(fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold)
 private val Medium = TextStyle(fontFamily = customFontFamily, fontWeight = FontWeight.Medium)
 private val Regular = TextStyle(fontFamily = customFontFamily, fontWeight = FontWeight.Normal)
-private val Purple = Color(0xFFF58232)
+private val Brand = Color(0xFFF58232) // 무용연 주황 $primary-500
 private val Blue = Color(0xFFE55E00)
 private val Ink100 = Color(0xFFF8F8F8)
 private val Ink200 = Color(0xFFEAEAEA)
@@ -140,7 +140,7 @@ private fun InfoRows(rows: List<Pair<String, String>>) {
 @Composable
 fun StageBottomButton(title: String, enabled: Boolean = true, busy: Boolean = false, onClick: () -> Unit) {
     Box(
-        Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(16.dp)).background(if (enabled) Purple else Ink200)
+        Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(16.dp)).background(if (enabled) Brand else Ink200)
             .clickable(enabled = enabled && !busy, onClick = onClick).semantics { contentDescription = "stage.detail.cta" },
         Alignment.Center,
     ) {
@@ -243,9 +243,9 @@ private fun DetailScaffold(
                                     val on = s.id == current
                                     Column(Modifier.fillMaxHeight().clickable { jump(s.id) }.semantics { contentDescription = "stage.detail.tab.${s.id}${if (on) ".selected" else ""}" }) {
                                         Box(Modifier.weight(1f), Alignment.Center) {
-                                            Text(s.title, style = if (on) Bold else Regular, fontSize = 16.sp, color = if (on) Purple else MuyeonColors.textSub)
+                                            Text(s.title, style = if (on) Bold else Regular, fontSize = 16.sp, color = if (on) Brand else MuyeonColors.textSub)
                                         }
-                                        Box(Modifier.fillMaxWidth().height(3.dp).background(if (on) Purple else Color.Transparent))
+                                        Box(Modifier.fillMaxWidth().height(3.dp).background(if (on) Brand else Color.Transparent))
                                     }
                                 }
                             }
@@ -322,7 +322,7 @@ fun StageCastingDetailScreen(api: CastingStageApi, id: Int, onBack: () -> Unit, 
         Column(Modifier.fillMaxSize().background(Color.White).statusBarsPadding()) {
             Box(Modifier.size(44.dp).clickable(onClick = onBack), Alignment.Center) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = MuyeonColors.textHead) }
             Box(Modifier.fillMaxSize(), Alignment.Center) {
-                if (failed != null) Text(failed!!, style = Regular, fontSize = 14.sp, color = MuyeonColors.textSub) else CircularProgressIndicator(color = Purple)
+                if (failed != null) Text(failed!!, style = Regular, fontSize = 14.sp, color = MuyeonColors.textSub) else CircularProgressIndicator(color = Brand)
             }
         }
         return
@@ -404,14 +404,14 @@ fun StageCastingDetailScreen(api: CastingStageApi, id: Int, onBack: () -> Unit, 
                     if (ActiveRole.saveOnServer(ctx, "DANCER")) { ActiveRole.store(ctx, "DANCER"); startApply() }
                     else toast = "유형을 바꾸지 못했어요. 잠시 후 다시 시도해 주세요."
                 }
-            }) { Text("전환하기", color = Purple) }
+            }) { Text("전환하기", color = Brand) }
         },
         dismissButton = { TextButton({ showSwitch = false }) { Text("취소", color = MuyeonColors.textSub) } },
     )
     if (showNoResume) AlertDialog(
         onDismissRequest = { showNoResume = false },
         title = { Text("저장된 이력서가 없어요. 작성할까요?", style = Bold) },
-        confirmButton = { TextButton({ showNoResume = false; onWriteResume() }) { Text("이력서 작성하기", color = Purple) } },
+        confirmButton = { TextButton({ showNoResume = false; onWriteResume() }) { Text("이력서 작성하기", color = Brand) } },
         dismissButton = { TextButton({ showNoResume = false }) { Text("취소", color = MuyeonColors.textSub) } },
     )
     if (showApply) AlertDialog(
@@ -423,11 +423,11 @@ fun StageCastingDetailScreen(api: CastingStageApi, id: Int, onBack: () -> Unit, 
                 resumes.forEach { r ->
                     val on = r.id == resumeId
                     Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).border(1.dp, if (on) Purple else Ink300, RoundedCornerShape(12.dp))
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).border(1.dp, if (on) Brand else Ink300, RoundedCornerShape(12.dp))
                             .clickable { resumeId = r.id }.padding(14.dp),
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Icon(if (on) Icons.Filled.RadioButtonChecked else Icons.Filled.RadioButtonUnchecked, null, tint = if (on) Purple else MuyeonColors.textSub)
+                        Icon(if (on) Icons.Filled.RadioButtonChecked else Icons.Filled.RadioButtonUnchecked, null, tint = if (on) Brand else MuyeonColors.textSub)
                         Text((r.title?.takeIf { it.isNotBlank() } ?: "이력서") + if (r.isDefault) " (기본)" else "", style = Medium, fontSize = 15.sp, color = MuyeonColors.textHead)
                     }
                 }
@@ -443,13 +443,13 @@ fun StageCastingDetailScreen(api: CastingStageApi, id: Int, onBack: () -> Unit, 
                     applying = false
                     showApply = false
                 }
-            }) { Text(if (applying) "지원하는 중…" else "지원하기", color = Purple) }
+            }) { Text(if (applying) "지원하는 중…" else "지원하기", color = Brand) }
         },
         dismissButton = { TextButton({ showApply = false }) { Text("취소", color = MuyeonColors.textSub) } },
     )
     toast?.let { msg ->
         AlertDialog(onDismissRequest = { toast = null }, text = { Text(msg, style = Regular) },
-            confirmButton = { TextButton({ toast = null }) { Text("확인", color = Purple) } })
+            confirmButton = { TextButton({ toast = null }) { Text("확인", color = Brand) } })
     }
 }
 
@@ -555,7 +555,7 @@ fun StageCastingListScreen(api: CastingStageApi, onBack: () -> Unit, onOpen: (In
             item {
                 Box(Modifier.fillMaxWidth().padding(32.dp), Alignment.Center) {
                     when {
-                        loading -> CircularProgressIndicator(color = Purple)
+                        loading -> CircularProgressIndicator(color = Brand)
                         items.isEmpty() -> Text("조건에 맞는 공고가 없어요.", style = Regular, fontSize = 14.sp, color = MuyeonColors.textSub)
                     }
                 }
@@ -577,7 +577,7 @@ fun StageNewsListScreen(api: CastingStageApi, issueNo: Int, code: String?, onBac
             val i = issue
             if (i == null) {
                 item { Box(Modifier.fillMaxWidth().padding(40.dp), Alignment.Center) {
-                    if (failed) Text("소식을 불러오지 못했어요.", style = Regular, fontSize = 14.sp, color = MuyeonColors.textSub) else CircularProgressIndicator(color = Purple)
+                    if (failed) Text("소식을 불러오지 못했어요.", style = Regular, fontSize = 14.sp, color = MuyeonColors.textSub) else CircularProgressIndicator(color = Brand)
                 } }
             } else {
                 if (code == null) item {
@@ -608,7 +608,7 @@ fun StageIssuesScreen(api: CastingStageApi, onBack: () -> Unit, onOpen: (Int) ->
         ListBar("지난 무대 소식", onBack)
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             val list = rows
-            if (list == null) item { Box(Modifier.fillMaxWidth().padding(40.dp), Alignment.Center) { CircularProgressIndicator(color = Purple) } }
+            if (list == null) item { Box(Modifier.fillMaxWidth().padding(40.dp), Alignment.Center) { CircularProgressIndicator(color = Brand) } }
             else if (list.isEmpty()) item { Text("아직 나온 무대 소식이 없어요.", style = Regular, fontSize = 14.sp, color = MuyeonColors.textSub, modifier = Modifier.padding(24.dp)) }
             else items(list, key = { it.issueNo }) { r ->
                 val w = StageDate.week(r.weekStart)
@@ -619,7 +619,7 @@ fun StageIssuesScreen(api: CastingStageApi, onBack: () -> Unit, onOpen: (Int) ->
                         Text(w?.label ?: "", style = Semi, fontSize = 11.sp, color = Color.White)
                     }
                     Column(Modifier.weight(1f).padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("무대 소식 #${r.issueNo.toString().padStart(3, '0')}", style = Bold, fontSize = 11.sp, color = Purple)
+                        Text("무대 소식 #${r.issueNo.toString().padStart(3, '0')}", style = Bold, fontSize = 11.sp, color = Brand)
                         Text(r.headline, style = Bold, fontSize = 16.sp, color = MuyeonColors.textHead, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text(w?.range ?: "", style = Regular, fontSize = 12.sp, color = MuyeonColors.textSub)
                     }
