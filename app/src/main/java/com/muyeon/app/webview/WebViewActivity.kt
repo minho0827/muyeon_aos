@@ -314,10 +314,17 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
             val notificationUrl = intent.getStringExtra("notification_url")
             if (!notificationUrl.isNullOrEmpty()) {
                 val fullUrl = if (notificationUrl.startsWith("http")) notificationUrl else baseUrl + notificationUrl
-                Log.d("WebViewActivity", "Loading notification URL: $fullUrl")
-                webView.loadUrl(fullUrl)
-                // 목적지를 바로 연 페이지는 히스토리가 한 칸뿐 — 웹이 준비되면 밑에 홈을 깐다.
-                goInApp(fullUrl, viaLink = fromLink)
+                // ★ 같은 사이트 목적지는 '/home' 을 열고 웹이 준비되면 목적지로 보낸다(goInApp) — 밑에 홈이 깔린다.
+                //  목적지를 바로 열면 그 웹 페이지가 한 번 돌고 홈 깔기로 한 번 더 돌았다(멤버십은 결제창이 겹침, 2026-10-26).
+                //  다른 사이트 주소면 예전처럼 바로 연다.
+                if (fullUrl.startsWith(baseUrl.trimEnd('/') + "/")) {
+                    Log.d("WebViewActivity", "Loading home then notification URL: $fullUrl")
+                    webView.loadUrl(baseUrl.trimEnd('/') + "/home")
+                    goInApp(fullUrl, viaLink = fromLink)
+                } else {
+                    Log.d("WebViewActivity", "Loading notification URL: $fullUrl")
+                    webView.loadUrl(fullUrl)
+                }
             } else {
                 android.util.Log.d("QR_DEBUG", "🌐 WebView 로드 URL=$baseUrl (홈 새로 로드)")
                 webView.loadUrl(baseUrl)
@@ -689,17 +696,19 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
     @Deprecated("")
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
-        // ★ 웹(SPA) 기록을 먼저 본다 — 웹 상단 < 버튼(DefaultLayout onBack)과 같은 규칙.
+        // 예전 그대로 canGoBack 이 먼저다. 막혔을 때만 웹(SPA) 기록을 본다.
         //  크롬 웹뷰는 사용자 조작 없이 쌓인 기록(링크·푸시로 들어와 __nativeGo 가 깐 홈)을 canGoBack 에서 건너뛴다
         //  (History Manipulation Intervention — 2026-10-26 실기기: 기록 2칸인데 canGoBack=false 라 종료 팝업).
-        //  history.back() 은 그 영향을 받지 않는다.
-        //  이전 칸 있음 → 뒤로 / 첫 칸(홈·외부 페이지) → 아래 기존 처리. 링크·푸시 화면은 goInApp 이 밑에 홈을 깔아 둔다.
+        //  history.back() 은 그 영향을 받지 않는다. 이전 칸 있음 → 뒤로 / 첫 칸 → 아래 기존 처리.
+        if (webView.canGoBack()) {
+            webView.goBack()
+            return
+        }
         val js = "(function(){try{var i=(history.state&&history.state.idx)||0;" +
             "if(window.__nativeGo&&i>0){history.back();return 1;}}catch(e){}return 0;})()"
         webView.evaluateJavascript(js) { handled ->
             if (handled == "1") return@evaluateJavascript
             when {
-                webView.canGoBack() -> webView.goBack()
                 // 더 돌아갈 화면이 없고 이 화면이 앱의 마지막 화면이면 바로 끄지 않고 한 번 묻는다.
                 //  다른 화면 위에 열린 경우(isTaskRoot=false)는 그 화면으로 돌아가는 게 맞아서 묻지 않는다.
                 isTaskRoot -> showExitDialog()
