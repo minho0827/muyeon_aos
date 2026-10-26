@@ -130,6 +130,35 @@
                     android:host="screen"
                     android:pathPrefix="/home" />
             </intent-filter>
+            <!-- 앱 링크 — https://muyeon.co.kr/… 를 앱이 연다(AppLinkManager).
+                 경로는 웹 apple-app-site-association 과 같은 허용 목록. 로그인·결제·본인 인증 복귀
+                 (/api /oauth /payment /subscription /lesson-proposals)는 넣지 않는다 — 웹에서 끝나야 한다. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="muyeon.co.kr" />
+                <data android:host="www.muyeon.co.kr" />
+                <data android:pathPrefix="/app/" />
+                <data android:path="/home" />
+                <data android:pathPrefix="/jobs/" />
+                <data android:pathPrefix="/casting/" />
+                <data android:pathPrefix="/subs/" />
+                <data android:pathPrefix="/teachers/" />
+                <data android:pathPrefix="/dancers/" />
+                <data android:pathPrefix="/academies/" />
+                <data android:pathPrefix="/lessons/" />
+                <data android:pathPrefix="/classes/" />
+                <data android:pathPrefix="/performance/" />
+                <data android:pathPrefix="/community/post/" />
+                <data android:pathPrefix="/chat/" />
+                <data android:path="/myQuotes" />
+                <data android:pathPrefix="/myQuotes/" />
+                <data android:path="/myApplications" />
+                <data android:path="/receivedApplications" />
+                <data android:path="/lessonCalendar" />
+            </intent-filter>
         </activity>
 
         <activity

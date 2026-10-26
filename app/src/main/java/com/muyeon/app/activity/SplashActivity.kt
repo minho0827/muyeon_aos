@@ -131,6 +131,10 @@ class SplashActivity : ComponentActivity() {
 
         // 공지 차례 — 이미 '안 보기' 한 건은 건너뛴다.
         LaunchedEffect(stage) {
+            // ★ 진입은 stage 가 "done" 으로 바뀌어 이 효과가 다시 돌 때 한 번만 한다.
+            //  예전엔 아래에서 "done" 으로 바꾼 같은 회차에도 진입해 웹뷰가 두 번 떴고(CLEAR_TASK),
+            //  두 번째 웹뷰가 링크 목적지(AppLinkManager — 한 번 꺼내면 비워짐) 없이 홈을 열었다.
+            if (stage == "done") { viewModel.checkTokenAndNavigate(); return@LaunchedEffect }
             if (stage == "notice") {
                 val n = notice
                 when {
@@ -144,7 +148,6 @@ class SplashActivity : ComponentActivity() {
                     else -> android.util.Log.d("AppGate", "공지 팝업 표시 id=${n.id} img=${n.imageUrlAbsolute ?: "없음"}")
                 }
             }
-            if (stage == "done") viewModel.checkTokenAndNavigate()
         }
 
         val u = update
