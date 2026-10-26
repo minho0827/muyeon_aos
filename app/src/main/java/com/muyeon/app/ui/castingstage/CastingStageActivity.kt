@@ -9,6 +9,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,9 +29,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
@@ -290,25 +289,28 @@ private fun SectionBox(title: String, content: @Composable () -> Unit) {
 
 @Composable
 private fun IconGrid(cats: List<StageCategory>, onJump: (String) -> Unit) {
-    LazyHorizontalGrid(
-        rows = GridCells.Fixed(2),
-        modifier = Modifier.fillMaxWidth().height(196.dp).padding(top = 20.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        items(cats, key = { it.code }) { c ->
-            Column(
-                Modifier.width(76.dp).clickable { onJump(c.code) }.semantics { contentDescription = "stage.icon.${c.code}" },
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Box(Modifier.size(60.dp).clip(RoundedCornerShape(18.dp)).background(c.bg), Alignment.Center) {
-                    Icon(c.icon, null, tint = c.fg, modifier = Modifier.size(28.dp))
-                }
-                Text(c.label, style = Medium, fontSize = 13.sp, color = MuyeonColors.textHead, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    // 가로 줄 먼저 채운다(윗줄 1~6, 아랫줄 7~11) — LazyHorizontalGrid 는 세로 먼저 채워 읽는 순서가 어색했다(10-26 iOS 확인).
+    val half = (cats.size + 1) / 2
+    Row(Modifier.fillMaxWidth().padding(top = 20.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            listOf(cats.take(half), cats.drop(half)).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { row.forEach { IconButton(it, onJump) } }
             }
         }
+    }
+}
+
+@Composable
+private fun IconButton(c: StageCategory, onJump: (String) -> Unit) {
+    Column(
+        Modifier.width(76.dp).clickable { onJump(c.code) }.semantics { contentDescription = "stage.icon.${c.code}" },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(Modifier.size(60.dp).clip(RoundedCornerShape(18.dp)).background(c.bg), Alignment.Center) {
+            Icon(c.icon, null, tint = c.fg, modifier = Modifier.size(28.dp))
+        }
+        Text(c.label, style = Medium, fontSize = 13.sp, color = MuyeonColors.textHead, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
