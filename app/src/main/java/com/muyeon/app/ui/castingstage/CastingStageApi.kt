@@ -67,21 +67,22 @@ data class StageCasting(
     val id: Int, val title: String, val team: String?, val genre: String?, val imageUrl: String?, val deadline: String?,
 )
 
-/** 칸 10개 + 캐스팅 — 코드·순서·색은 웹 constants/stageNews.js·backend·관리자 서버·iOS 와 같다. */
+/** 칸 10개 + 캐스팅 — 코드·순서·색은 웹 constants/stageNews.js·backend·관리자 서버·iOS 와 같다.
+ *  ★ 10-26 색은 무용연 주황 톤온톤(웹 \$primary-*) 하나로 — 보라는 경쟁사(발레매니아) 색이라 뺐다. */
 data class StageCategory(val code: String, val label: String, val icon: ImageVector, val bg: Color, val fg: Color) {
     companion object {
-        val CASTING = StageCategory("CASTING", "캐스팅", Icons.Filled.Star, Color(0xFFFFF1E6), Color(0xFFE55E00))
+        val CASTING = StageCategory("CASTING", "캐스팅", Icons.Filled.Star, Color(0xFFFFF3EA), Color(0xFFC95300))
         val NEWS = listOf(
-            StageCategory("DOMESTIC", "국내소식", Icons.Filled.Newspaper, Color(0xFFEEF6F0), Color(0xFF2F6B45)),
-            StageCategory("OVERSEAS", "해외소식", Icons.Filled.Public, Color(0xFFEFEAFD), Color(0xFF5B3FC4)),
-            StageCategory("PERFORMANCE", "공연·축제", Icons.Filled.TheaterComedy, Color(0xFFF3F0FC), Color(0xFF5B3FC4)),
-            StageCategory("CONTEST", "콩쿠르·대회", Icons.Filled.EmojiEvents, Color(0xFFFDF0F4), Color(0xFFA8335A)),
-            StageCategory("WORKSHOP", "워크숍·특강", Icons.Filled.Groups, Color(0xFFEAF7F6), Color(0xFF1F6F68)),
-            StageCategory("CERTIFICATE", "지도자·자격증", Icons.Filled.Verified, Color(0xFFF4F6E8), Color(0xFF5A6B14)),
-            StageCategory("SUPPORT", "장학·지원·공모", Icons.Filled.CardGiftcard, Color(0xFFFFF1EA), Color(0xFFB4502A)),
-            StageCategory("ADMISSION", "무용입시", Icons.Filled.EditNote, Color(0xFFFFF5E8), Color(0xFF8A5A14)),
-            StageCategory("SCHOOL", "학교·교육과정", Icons.Filled.School, Color(0xFFEEF5FD), Color(0xFF2D5A8A)),
-            StageCategory("ACADEMIC", "학술·세미나", Icons.Filled.MenuBook, Color(0xFFF2F2F4), Color(0xFF4A4A5A)),
+            StageCategory("DOMESTIC", "국내소식", Icons.Filled.Newspaper, Color(0xFFFFF3EA), Color(0xFFC95300)),
+            StageCategory("OVERSEAS", "해외소식", Icons.Filled.Public, Color(0xFFFFF3EA), Color(0xFFC95300)),
+            StageCategory("PERFORMANCE", "공연·축제", Icons.Filled.TheaterComedy, Color(0xFFFFF3EA), Color(0xFFC95300)),
+            StageCategory("CONTEST", "콩쿠르·대회", Icons.Filled.EmojiEvents, Color(0xFFFFF3EA), Color(0xFFC95300)),
+            StageCategory("WORKSHOP", "워크숍·특강", Icons.Filled.Groups, Color(0xFFFFF3EA), Color(0xFFC95300)),
+            StageCategory("CERTIFICATE", "지도자·자격증", Icons.Filled.Verified, Color(0xFFFFF3EA), Color(0xFFC95300)),
+            StageCategory("SUPPORT", "장학·지원·공모", Icons.Filled.CardGiftcard, Color(0xFFFFF3EA), Color(0xFFC95300)),
+            StageCategory("ADMISSION", "무용입시", Icons.Filled.EditNote, Color(0xFFFFF3EA), Color(0xFFC95300)),
+            StageCategory("SCHOOL", "학교·교육과정", Icons.Filled.School, Color(0xFFFFF3EA), Color(0xFFC95300)),
+            StageCategory("ACADEMIC", "학술·세미나", Icons.Filled.MenuBook, Color(0xFFFFF3EA), Color(0xFFC95300)),
         )
     }
 }

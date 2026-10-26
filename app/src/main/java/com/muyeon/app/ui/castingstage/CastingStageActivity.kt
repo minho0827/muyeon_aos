@@ -145,7 +145,7 @@ private val Bold = TextStyle(fontFamily = customFontFamily, fontWeight = FontWei
 private val Semi = TextStyle(fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold)
 private val Medium = TextStyle(fontFamily = customFontFamily, fontWeight = FontWeight.Medium)
 private val Regular = TextStyle(fontFamily = customFontFamily, fontWeight = FontWeight.Normal)
-private val Blue = Color(0xFF3D5AFE)
+private val Blue = Color(0xFFE55E00)
 private val Ink100 = Color(0xFFF8F8F8)
 private val Ink300 = Color(0xFFDADADA)
 private const val TAB_HEIGHT_DP = 46
@@ -379,13 +379,13 @@ private fun TabBar(cats: List<StageCategory>, current: String, onJump: (String) 
 private fun CastingCard(c: StageCasting, onClick: () -> Unit) {
     Column(Modifier.width(150.dp).clickable(onClick = onClick), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Box(
-            Modifier.width(150.dp).height(200.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFFF4F1F8))
+            Modifier.width(150.dp).height(200.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFFFFF3EA))
                 .border(0.5.dp, MuyeonColors.border, RoundedCornerShape(14.dp)),
             Alignment.Center,
         ) {
             val url = stageImageUrl(c.imageUrl)
             if (url != null) AsyncImage(url, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-            else Icon(Icons.Filled.Star, null, tint = Color(0xFF9D8FBB), modifier = Modifier.size(36.dp))
+            else Icon(Icons.Filled.Star, null, tint = Color(0xFFFFA262), modifier = Modifier.size(36.dp))
         }
         StageDate.deadline(c.deadline)?.let { Text(it, style = Bold, fontSize = 15.sp, color = Blue, modifier = Modifier.padding(top = 4.dp)) }
         Text(c.title, style = Semi, fontSize = 15.sp, color = MuyeonColors.textHead, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -492,16 +492,16 @@ private fun StageBanner(
 private fun IssueSlide(issue: StageNewsIssue, onClick: () -> Unit) {
     val w = StageDate.week(issue.weekStart)
     Row(
-        Modifier.fillMaxSize().clip(RoundedCornerShape(18.dp)).border(1.dp, Color(0xFFE4DEF2), RoundedCornerShape(18.dp))
+        Modifier.fillMaxSize().clip(RoundedCornerShape(18.dp)).border(1.dp, Color(0xFFFFE4D2), RoundedCornerShape(18.dp))
             .background(Color.White).clickable(onClick = onClick).semantics { contentDescription = "stage.banner.issue" },
     ) {
-        Column(Modifier.width(104.dp).fillMaxHeight().background(Color(0xFF4A2C6B)), Arrangement.Center, Alignment.CenterHorizontally) {
+        Column(Modifier.width(104.dp).fillMaxHeight().background(Color(0xFFF58232)), Arrangement.Center, Alignment.CenterHorizontally) {
             Text("${w?.year ?: ""} ${w?.monthEn ?: ""}", style = Semi, fontSize = 11.sp, color = Color.White.copy(alpha = 0.85f))
             Text("W${w?.week ?: 1}", fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold, fontSize = 40.sp, color = Color.White)
             Text(w?.label ?: "", style = Semi, fontSize = 12.sp, color = Color.White)
         }
         Column(Modifier.weight(1f).fillMaxHeight().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)) {
-            Text("무대 소식 #${issue.issueNo.toString().padStart(3, '0')}", style = Bold, fontSize = 12.sp, color = Color(0xFF6B4EE6), letterSpacing = 1.sp)
+            Text("무대 소식 #${issue.issueNo.toString().padStart(3, '0')}", style = Bold, fontSize = 12.sp, color = Color(0xFFF58232), letterSpacing = 1.sp)
             Text(issue.headline, style = Bold, fontSize = 18.sp, color = MuyeonColors.textHead, maxLines = 3, overflow = TextOverflow.Ellipsis)
             Text(w?.range ?: "", style = Regular, fontSize = 12.sp, color = MuyeonColors.textSub)
         }
@@ -510,7 +510,7 @@ private fun IssueSlide(issue: StageNewsIssue, onClick: () -> Unit) {
 
 @Composable
 private fun PhotoSlide(url: String?, kicker: String, title: String, sub: String?, onClick: () -> Unit) {
-    Box(Modifier.fillMaxSize().clip(RoundedCornerShape(18.dp)).background(Color(0xFF2A2340)).clickable(onClick = onClick)) {
+    Box(Modifier.fillMaxSize().clip(RoundedCornerShape(18.dp)).background(Color(0xFF3A2A20)).clickable(onClick = onClick)) {
         stageImageUrl(url)?.let { AsyncImage(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.7f))))
         Column(Modifier.align(Alignment.BottomStart).padding(start = 18.dp, end = 60.dp, bottom = 50.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {

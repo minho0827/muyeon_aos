@@ -90,8 +90,8 @@ private val Bold = TextStyle(fontFamily = customFontFamily, fontWeight = FontWei
 private val Semi = TextStyle(fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold)
 private val Medium = TextStyle(fontFamily = customFontFamily, fontWeight = FontWeight.Medium)
 private val Regular = TextStyle(fontFamily = customFontFamily, fontWeight = FontWeight.Normal)
-private val Purple = Color(0xFF6B4EE6)
-private val Blue = Color(0xFF3D5AFE)
+private val Purple = Color(0xFFF58232)
+private val Blue = Color(0xFFE55E00)
 private val Ink100 = Color(0xFFF8F8F8)
 private val Ink200 = Color(0xFFEAEAEA)
 private val Ink300 = Color(0xFFDADADA)
@@ -360,11 +360,11 @@ fun StageCastingDetailScreen(api: CastingStageApi, id: Int, onBack: () -> Unit, 
         sections = sections,
         header = {
             Column {
-                HeroGallery(detail.photos, Icons.Filled.Star, Color(0xFF9D8FBB), Color(0xFFF4F1F8))
+                HeroGallery(detail.photos, Icons.Filled.Star, Color(0xFFFFA262), Color(0xFFFFF3EA))
                 Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         if (closed) chipText("마감", MuyeonColors.textSub, Ink100)()
-                        else dl?.let { chipText(it, Blue, Color(0xFFEEF1FF))() }
+                        else dl?.let { chipText(it, Blue, Color(0xFFFFF3EA))() }
                         detail.genre?.let { chipText(it, MuyeonColors.textHead, Ink100)() }
                         if (detail.isExternal) chipText("웹 공고", MuyeonColors.textSub, Ink100)()
                     }
@@ -549,7 +549,7 @@ fun StageCastingListScreen(api: CastingStageApi, onBack: () -> Unit, onOpen: (In
         }
         LazyColumn(state = state, modifier = Modifier.fillMaxSize()) {
             items(items, key = { it.id }) { c ->
-                ListRow(c.imageUrl, Icons.Filled.Star, Color(0xFF9D8FBB), Color(0xFFF4F1F8), StageDate.deadline(c.deadline), c.title,
+                ListRow(c.imageUrl, Icons.Filled.Star, Color(0xFFFFA262), Color(0xFFFFF3EA), StageDate.deadline(c.deadline), c.title,
                     listOfNotNull(c.team, c.genre).joinToString(" · ")) { onOpen(c.id) }
             }
             item {
@@ -612,8 +612,8 @@ fun StageIssuesScreen(api: CastingStageApi, onBack: () -> Unit, onOpen: (Int) ->
             else if (list.isEmpty()) item { Text("아직 나온 무대 소식이 없어요.", style = Regular, fontSize = 14.sp, color = MuyeonColors.textSub, modifier = Modifier.padding(24.dp)) }
             else items(list, key = { it.issueNo }) { r ->
                 val w = StageDate.week(r.weekStart)
-                Row(Modifier.fillMaxWidth().height(118.dp).clip(RoundedCornerShape(16.dp)).border(1.dp, Color(0xFFE4DEF2), RoundedCornerShape(16.dp)).clickable { onOpen(r.issueNo) }) {
-                    Column(Modifier.width(92.dp).fillMaxHeight().background(Color(0xFF4A2C6B)), Arrangement.Center, Alignment.CenterHorizontally) {
+                Row(Modifier.fillMaxWidth().height(118.dp).clip(RoundedCornerShape(16.dp)).border(1.dp, Color(0xFFFFE4D2), RoundedCornerShape(16.dp)).clickable { onOpen(r.issueNo) }) {
+                    Column(Modifier.width(92.dp).fillMaxHeight().background(Color(0xFFF58232)), Arrangement.Center, Alignment.CenterHorizontally) {
                         Text("${w?.year ?: ""} ${w?.monthEn ?: ""}", style = Semi, fontSize = 10.sp, color = Color.White.copy(alpha = 0.85f))
                         Text("W${w?.week ?: 1}", fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold, fontSize = 30.sp, color = Color.White)
                         Text(w?.label ?: "", style = Semi, fontSize = 11.sp, color = Color.White)
