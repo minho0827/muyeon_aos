@@ -16,7 +16,7 @@ import com.muyeon.app.ui.castingstage.screens.*
 
 /** 캐스팅·무대 API — iOS Services/CastingStageService 와 같다. */
 
-class CastingStageApi(private val token: String?) {
+class CastingStageApi(internal val token: String?) {
     private val client = OkHttpClient()
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
 
@@ -129,6 +129,42 @@ class CastingStageApi(private val token: String?) {
         val a = org.json.JSONArray(get("/stage-news/issues"))
         (0 until a.length()).map { i -> a.getJSONObject(i).let { StageIssueSummary(it.optInt("issueNo"), it.optString("weekStart"), it.optString("headline"), it.optInt("itemCount")) } }
     }.getOrDefault(emptyList())
+
+    // ── 공연 공고 등록(공연팀) — POST /casting. 서버가 공연팀 인증·공고 한도·금칙어를 확인한다(iOS CastingStageService+Create).
+
+    /** 계정 활동명(닉네임 → 이름). 못 받으면 빈 글자. */
+    suspend fun activityName(): String = runCatching {
+        val o = JSONObject(get("/auth/me"))
+        o.str("nickname") ?: o.str("name") ?: ""
+    }.getOrDefault("")
+
+    /** 포스터 올리기 — 채용 공고와 같은 /uploads/image. */
+    suspend fun uploadPoster(bytes: ByteArray): Result<String> =
+        com.muyeon.app.ui.jobposting.JobPostingApi(token).uploadImage(bytes)
+
+    /**
+     * 등록하고 새 공고 id 를 돌려준다. 한도 초과(403 POSTING_MEMBERSHIP_REQUIRED)는 PostingLimitException,
+     * 그 밖의 거절은 서버 문구(StageMessageException).
+     */
+    suspend fun createCasting(payload: JSONObject): Int? = withContext(Dispatchers.IO) {
+        val req = Request.Builder().url("$apiBase/casting")
+            .post(payload.toString().toRequestBody("application/json".toMediaType()))
+            .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }.withActiveType()
+            .build()
+        client.newCall(req).execute().use { res ->
+            val text = res.body?.string().orEmpty()
+            val o = runCatching { JSONObject(text) }.getOrNull()
+            if (!res.isSuccessful) {
+                val msg = o?.optJSONArray("message")?.let { a -> (0 until a.length()).joinToString("\n") { a.optString(it) } }
+                    ?: o?.str("message")
+                if (o?.str("code") == com.muyeon.app.ui.jobposting.PostingLimitException.CODE) {
+                    throw com.muyeon.app.ui.jobposting.PostingLimitException.from(msg, o.optJSONObject("data"))
+                }
+                throw StageMessageException(msg?.takeIf { it.isNotBlank() } ?: "등록에 실패했어요. 잠시 후 다시 시도해 주세요.")
+            }
+            o?.optInt("id")?.takeIf { it > 0 }
+        }
+    }
 
     suspend fun castings(genre: String?): List<StageCasting> =
         parseCastings(JSONObject(get("/casting/page", mapOf("genre" to genre, "feeRange" to "ALL", "limit" to "12"))))

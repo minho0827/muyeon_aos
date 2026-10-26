@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import com.muyeon.app.result.ResultActivity
 import com.muyeon.app.result.launchScreen
@@ -42,6 +43,11 @@ class CastingStageActivity : ResultActivity() {
             val openUrl: (String) -> Unit = { url -> runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } }
             fun openNews(item: StageNewsItem, cat: StageCategory) { newsCache[item.id] = item to cat; nav.navigate("news/${item.id}") }
             fun back() { if (!nav.popBackStack()) finish() }
+            // 공연팀으로 활동 중일 때만 ＋(공연 공고 등록) — 웹 canAs(activeType, "casting.create") 와 같다.
+            val canCreate = remember { com.muyeon.app.webview.ActiveRole.current(this@CastingStageActivity) == "TEAM" }
+            val openCreate: (() -> Unit)? = if (canCreate) ({ nav.navigate("create") }) else null
+            // 공고를 새로 올리면 첫 화면·전체 목록을 다시 불러온다.
+            var reloadKey by remember { mutableIntStateOf(0) }
             NavHost(nav, startDestination = "home") {
                 composable("home") {
                     CastingStageScreen(
@@ -52,6 +58,8 @@ class CastingStageActivity : ResultActivity() {
                         onCastingList = { nav.navigate("castingList") },
                         onNewsList = { no, code -> nav.navigate("newsList/$no/$code") },
                         onIssues = { nav.navigate("issues") },
+                        onCreate = openCreate,
+                        reloadKey = reloadKey,
                     )
                 }
                 composable("casting/{id}", listOf(navArgument("id") { type = NavType.IntType })) { e ->
@@ -62,7 +70,24 @@ class CastingStageActivity : ResultActivity() {
                     val hit = newsCache[e.arguments?.getInt("id") ?: 0]
                     if (hit != null) StageNewsDetailScreen(hit.first, hit.second, onBack = ::back, onOpenUrl = openUrl) else back()
                 }
-                composable("castingList") { StageCastingListScreen(api, onBack = ::back, onOpen = { nav.navigate("casting/$it") }) }
+                composable("castingList") {
+                    StageCastingListScreen(api, onBack = ::back, onOpen = { nav.navigate("casting/$it") }, onCreate = openCreate, reloadKey = reloadKey)
+                }
+                // 공연 공고 등록(공연팀) — 등록하면 방금 올린 공고 상세로 바꿔 띄운다(웹은 캐스팅 화면으로 간다).
+                composable("create") {
+                    com.muyeon.app.ui.castingstage.create.CastingCreateScreen(
+                        api = api,
+                        onClose = ::back,
+                        onCreated = { id ->
+                            reloadKey++
+                            addResultKeys(com.muyeon.app.result.ResultKeys.JOB_POSTINGS)
+                            nav.popBackStack()
+                            if (id != null) nav.navigate("casting/$id")
+                        },
+                        onOpenMembership = { com.muyeon.app.ui.membership.MembershipActivity.start(this@CastingStageActivity) },
+                        onOpenMyPostings = { com.muyeon.app.ui.jobposting.JobPostingActivity.startList(this@CastingStageActivity) },
+                    )
+                }
                 composable("newsList/{no}/{code}", listOf(navArgument("no") { type = NavType.IntType })) { e ->
                     StageNewsListScreen(api, e.arguments?.getInt("no") ?: 0, e.arguments?.getString("code"), onBack = ::back, onOpen = ::openNews)
                 }

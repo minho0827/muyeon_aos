@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -67,6 +68,10 @@ fun CastingStageScreen(
     onCastingList: () -> Unit,
     onNewsList: (Int, String) -> Unit,
     onIssues: () -> Unit,
+    /** 공연팀으로 활동 중일 때만 넘긴다(웹 CastingStage 헤더 ＋와 같은 규칙). null 이면 숨김. */
+    onCreate: (() -> Unit)? = null,
+    /** 바뀌면 다시 불러온다 — 공고를 새로 올린 뒤. */
+    reloadKey: Int = 0,
 ) {
     var issue by remember { mutableStateOf<StageNewsIssue?>(null) }
     var castings by remember { mutableStateOf<List<StageCasting>>(emptyList()) }
@@ -75,7 +80,7 @@ fun CastingStageScreen(
     var failed by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(reloadKey) {
         val i = async { runCatching { api.latest() } }
         val c = async { runCatching { api.castings(null) } }
         val ri = i.await()
@@ -138,6 +143,11 @@ fun CastingStageScreen(
             }
             Text("캐스팅·무대", style = Bold, fontSize = 20.sp, color = MuyeonColors.textHead)
             Spacer(Modifier.weight(1f))
+            if (onCreate != null) {
+                Box(Modifier.size(44.dp).clickable(onClick = onCreate).semantics { contentDescription = "공연 공고 등록" }, Alignment.Center) {
+                    Icon(Icons.Filled.Add, null, tint = MuyeonColors.textHead)
+                }
+            }
             Box(Modifier.size(44.dp).clickable { onCastingList() }.semantics { contentDescription = "캐스팅 공고 전체 보기" }, Alignment.Center) {
                 Icon(Icons.Filled.Search, null, tint = MuyeonColors.textHead)
             }

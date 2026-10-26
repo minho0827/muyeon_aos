@@ -52,7 +52,7 @@ import com.muyeon.app.ui.castingstage.components.*
 /** 전체 목록 — 캐스팅 공고·소식 칸·지난 호(iOS StageCastingListView·StageNewsListView·StageIssuesView). */
 
 @Composable
-fun StageCastingListScreen(api: CastingStageApi, onBack: () -> Unit, onOpen: (Int) -> Unit) {
+fun StageCastingListScreen(api: CastingStageApi, onBack: () -> Unit, onOpen: (Int) -> Unit, onCreate: (() -> Unit)? = null, reloadKey: Int = 0) {
     val genres = listOf("전체", "발레", "한국무용", "현대무용", "실용무용", "뮤지컬", "행사")
     var genre by remember { mutableStateOf("전체") }
     val items = remember { mutableStateListOf<StageCasting>() }
@@ -69,12 +69,12 @@ fun StageCastingListScreen(api: CastingStageApi, onBack: () -> Unit, onOpen: (In
             .onFailure { done = true }
         loading = false
     }
-    LaunchedEffect(genre) { items.clear(); cursor = null; done = false; more() }
+    LaunchedEffect(genre, reloadKey) { items.clear(); cursor = null; done = false; more() }
     val nearEnd by remember { derivedStateOf { (state.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) >= items.size - 3 } }
     LaunchedEffect(nearEnd) { if (nearEnd && items.isNotEmpty()) more() }
 
     Column(Modifier.fillMaxSize().background(Color.White).statusBarsPadding().navigationBarsPadding()) {
-        StageListBar("캐스팅 공고", onBack)
+        StageListBar("캐스팅 공고", onBack, onCreate)
         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(genres) { g ->
                 val on = g == genre

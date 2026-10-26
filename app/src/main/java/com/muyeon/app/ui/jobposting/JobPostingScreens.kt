@@ -617,13 +617,31 @@ class JobPostingActivity : com.muyeon.app.result.ResultActivity() {
                     this@JobPostingActivity, "/receivedApplications?kind=$kind&postingId=$pid",
                 )
 
+            // 공연팀은 채용 공고와 공연(캐스팅) 공고를 둘 다 올린다(웹 job.create·casting.create) → 고르게 한다.
+            var teamChoice by remember { mutableStateOf(false) }
+            fun openCreate() {
+                if (com.muyeon.app.webview.ActiveRole.current(this@JobPostingActivity) == "TEAM") teamChoice = true
+                else nav.navigate("form/0")
+            }
+            if (teamChoice) {
+                com.muyeon.app.ui.common.MuyeonDialog(
+                    title = "등록할 공고를 선택해 주세요",
+                    actions = listOf(
+                        com.muyeon.app.ui.common.MuyeonDialogAction("공연 공고 등록", com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY) { teamChoice = false; nav.navigate("castingForm") },
+                        com.muyeon.app.ui.common.MuyeonDialogAction("채용 공고 등록", com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL) { teamChoice = false; nav.navigate("form/0") },
+                        com.muyeon.app.ui.common.MuyeonDialogAction("취소", com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL) { teamChoice = false },
+                    ),
+                    onDismiss = { teamChoice = false },
+                )
+            }
+
             NavHost(nav, startDestination = route) {
                 composable("list") {
                     MyPostingsScreen(
                         api = api,
                         onClose = { finish() },
                         onEdit = { kind, pid -> openEdit(kind, pid) },
-                        onCreate = { nav.navigate("form/0") },
+                        onCreate = { openCreate() },
                         onApplicants = { kind, pid -> openApplicants(kind, pid) },
                         // ★ 2026-10-04 공고 보기 = 네이티브 상세(종전엔 웹 상세로 나가며 이 화면을 닫았다).
                         onView = { p ->
@@ -644,6 +662,17 @@ class JobPostingActivity : com.muyeon.app.result.ResultActivity() {
                         onApplicants = { k, i -> openApplicants(k, i) },
                         onOpenMembership = { openMembership() },
                         onChanged = { changed() },
+                    )
+                }
+                // 공연 공고 등록(네이티브) — 캐스팅·무대와 같은 화면(ui/castingstage/create).
+                composable("castingForm") {
+                    val castingApi = remember { com.muyeon.app.ui.castingstage.data.CastingStageApi(api.token) }
+                    com.muyeon.app.ui.castingstage.create.CastingCreateScreen(
+                        api = castingApi,
+                        onClose = { back() },
+                        onCreated = { changed(); back() },
+                        onOpenMembership = { openMembership() },
+                        onOpenMyPostings = { back() },
                     )
                 }
                 composable("form") {
