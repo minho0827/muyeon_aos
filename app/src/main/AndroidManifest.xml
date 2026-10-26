@@ -176,6 +176,7 @@
                 <data android:path="/notifications" />
                 <data android:path="/notificationSettings" />
                 <data android:path="/chat" />
+                <data android:path="/my/memberType" />
             </intent-filter>
         </activity>
 
