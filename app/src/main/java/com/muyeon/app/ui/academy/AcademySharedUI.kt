@@ -28,12 +28,12 @@ fun AcademySectionHead(title: String, count: Int) {
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
             title,
-            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp,
             lineHeight = 19.sp, color = MuyeonColors.textHead,
         )
         Text(
             "$count",
-            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp,
             lineHeight = 19.sp, color = MuyeonColors.primary,
         )
     }
@@ -63,8 +63,9 @@ fun AcademyStatusChip(status: String?) {
 @Composable
 fun AcademyPersonCard(row: AcademyTeacher, actions: @Composable RowScope.() -> Unit) {
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-            .border(1.dp, MuyeonColors.border, RoundedCornerShape(14.dp)).padding(16.dp),
+        // 10-27 테두리 카드 → 회색 바탕 위 흰 카드(iOS 와 같다).
+        Modifier.fillMaxWidth().clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+            .background(MuyeonColors.surface).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -140,6 +141,8 @@ fun AcademyEmptyText(text: String) {
         text,
         fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
         lineHeight = 20.sp, color = MuyeonColors.textSub, textAlign = TextAlign.Center,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp),
+        // 10-27 섹션 안이라 흰 카드 안 가운데 글자로(회색 바탕 위).
+        modifier = Modifier.fillMaxWidth().clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+            .background(MuyeonColors.surface).padding(vertical = 28.dp),
     )
 }

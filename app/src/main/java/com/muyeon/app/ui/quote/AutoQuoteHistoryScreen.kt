@@ -363,8 +363,8 @@ fun AutoQuoteHistoryScreen(
     }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(title = "자동견적 발송 내역", onClose = onClose)
-        HorizontalDivider(color = MuyeonColors.border)
+        // 10-27 목록 화면 틀(ui/common/MuyeonListKit) — ✕ + 왼쪽 굵은 제목(iOS 와 같다).
+        com.muyeon.app.ui.common.MuyeonListHeader("자동견적 발송 내역", onClose = onClose)
 
         SummaryCard(
             summary = state.summary,
@@ -380,8 +380,9 @@ fun AutoQuoteHistoryScreen(
                 titles = listOf("보낸 견적", "못 보낸 요청 ${state.skippedCount}"),
                 onSelect = { tab = it },
             )
+        } else {
+            HorizontalDivider(color = MuyeonColors.border)
         }
-        HorizontalDivider(color = MuyeonColors.border)
 
         Box(Modifier.weight(1f).fillMaxWidth()) {
             PullToRefreshBox(
@@ -470,28 +471,12 @@ private fun SummaryCard(
 
 @Composable
 private fun MonthChips(months: List<AutoQuoteMonth>, selected: String, onSelect: (String) -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        months.forEach { m ->
-            val on = m.ym == selected
-            Text(
-                m.label,
-                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                lineHeight = 16.sp,
-                color = if (on) MuyeonColors.primary else MuyeonColors.textSub,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(if (on) MuyeonColors.primary.copy(alpha = 0.1f) else MuyeonColors.surface)
-                    .border(1.dp, if (on) MuyeonColors.primary else MuyeonColors.border, RoundedCornerShape(50))
-                    .clickable { onSelect(m.ym) }
-                    .padding(horizontal = 14.dp, vertical = 7.dp),
-            )
-        }
+    // 10-27 월 칩 → 공용 캡슐(작은 크기, 고름=검정). iOS 와 같다.
+    Box(Modifier.padding(vertical = 12.dp)) {
+        com.muyeon.app.ui.common.MuyeonPillTabs(
+            months.map { com.muyeon.app.ui.common.MuyeonPillTab(it.ym, it.label) }, selected, onSelect,
+            tagPrefix = "autoquote.month", showDivider = false, compact = true,
+        )
     }
 }
 

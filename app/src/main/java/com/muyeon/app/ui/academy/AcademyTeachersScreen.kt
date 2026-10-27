@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteDialog
-import com.muyeon.app.ui.quote.QuoteNavBar
 import kotlinx.coroutines.launch
 
 /**
@@ -77,8 +76,9 @@ fun AcademyTeachersScreen(api: AcademyTeacherApi, onClose: () -> Unit) {
 
     LaunchedEffect(Unit) { load() }
 
-    Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(title = "소속 강사 관리", onBack = onClose)
+    // 10-27 목록 화면 틀(ui/common/MuyeonListKit) — ‹ + 왼쪽 굵은 제목, 회색 바탕 위 흰 카드(iOS 와 같다).
+    Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
+        com.muyeon.app.ui.common.MuyeonListHeader("소속 강사 관리", onBack = onClose)
 
         if (loading) {
             Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
@@ -92,13 +92,13 @@ fun AcademyTeachersScreen(api: AcademyTeacherApi, onClose: () -> Unit) {
             ) {
                 Column(
                     Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp).padding(top = 12.dp),
+                        .padding(horizontal = 16.dp).padding(top = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(20.dp),
                 ) {
                     // 우리 학원 코드 — 강사에게 알려주면 강사가 이 코드로 신청한다.
                     Column(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-                            .background(MuyeonColors.primary.copy(alpha = 0.08f)).padding(16.dp),
+                        Modifier.fillMaxWidth().clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+                            .background(MuyeonColors.surface).padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         Text(
@@ -116,7 +116,7 @@ fun AcademyTeachersScreen(api: AcademyTeacherApi, onClose: () -> Unit) {
                             fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp,
                             lineHeight = 24.sp, color = MuyeonColors.primary, textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                                .background(MuyeonColors.surface).padding(vertical = 14.dp),
+                                .background(com.muyeon.app.ui.common.MuyeonList.ink100).padding(vertical = 14.dp),
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             AcademyActionButton("코드 복사", filled = true, enabled = code.isNotEmpty()) {

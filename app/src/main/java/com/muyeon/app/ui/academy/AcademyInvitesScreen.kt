@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteDialog
-import com.muyeon.app.ui.quote.QuoteNavBar
 import kotlinx.coroutines.launch
 
 /**
@@ -76,8 +75,9 @@ fun AcademyInvitesScreen(api: AcademyTeacherApi, onClose: () -> Unit) {
 
     LaunchedEffect(Unit) { load() }
 
-    Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(title = "학원 소속", onBack = onClose)
+    // 10-27 목록 화면 틀(ui/common/MuyeonListKit) — ‹ + 왼쪽 굵은 제목, 회색 바탕 위 흰 카드(iOS 와 같다).
+    Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
+        com.muyeon.app.ui.common.MuyeonListHeader("학원 소속", onBack = onClose)
 
         if (loading) {
             Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
@@ -91,12 +91,12 @@ fun AcademyInvitesScreen(api: AcademyTeacherApi, onClose: () -> Unit) {
             ) {
                 Column(
                     Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp).padding(top = 12.dp),
+                        .padding(horizontal = 16.dp).padding(top = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(20.dp),
                 ) {
                     Column(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-                            .background(MuyeonColors.primary.copy(alpha = 0.08f)).padding(16.dp),
+                        Modifier.fillMaxWidth().clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+                            .background(MuyeonColors.surface).padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         Text(

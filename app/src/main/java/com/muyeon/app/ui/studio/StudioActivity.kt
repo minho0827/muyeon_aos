@@ -136,47 +136,19 @@ private fun StudioHub(
     onSales: () -> Unit,
     onSchedule: () -> Unit,
 ) {
-    Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(title = "스튜디오 운영", onClose = onClose)
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                HubCard(Icons.Filled.Groups, "회원 관리", "회원·수강권", Modifier.weight(1f), onMembers)
-                HubCard(Icons.Filled.Paid, "매출 현황", "수강권·상품 매출", Modifier.weight(1f), onSales)
-                HubCard(Icons.Filled.CalendarMonth, "일정 관리", "수업·개인일정", Modifier.weight(1f), onSchedule)
-            }
+    // 10-27 목록 화면 틀(ui/common/MuyeonListKit) — ✕ + 왼쪽 굵은 제목, 회색 바탕 위 바로가기 카드 하나(티켓 앱 '고객센터' 모양).
+    Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
+        com.muyeon.app.ui.common.MuyeonListHeader("스튜디오 운영", onClose = onClose)
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            com.muyeon.app.ui.common.MuyeonSectionTitle("운영 도구")
+            com.muyeon.app.ui.common.MuyeonShortcutCard(
+                listOf(
+                    com.muyeon.app.ui.common.MuyeonShortcut(Icons.Filled.Groups, "회원 관리", onClick = onMembers),
+                    com.muyeon.app.ui.common.MuyeonShortcut(Icons.Filled.Paid, "매출 현황", onClick = onSales),
+                    com.muyeon.app.ui.common.MuyeonShortcut(Icons.Filled.CalendarMonth, "일정 관리", onClick = onSchedule),
+                ),
+            )
         }
     }
 }
 
-@Composable
-private fun HubCard(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    Column(
-        modifier.heightIn(min = 108.dp).clip(RoundedCornerShape(14.dp)).background(MuyeonColors.groupedBg)
-            .clickable(onClick = onClick).padding(vertical = 14.dp, horizontal = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Box(
-            Modifier.size(40.dp).clip(CircleShape).background(MuyeonColors.primary.copy(alpha = 0.10f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(icon, null, tint = MuyeonColors.primary, modifier = Modifier.size(22.dp))
-        }
-        Text(
-            title,
-            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
-            lineHeight = 17.sp, color = MuyeonColors.textHead, textAlign = TextAlign.Center,
-        )
-        Text(
-            subtitle,
-            fontFamily = customFontFamily, fontSize = 11.sp, lineHeight = 13.sp,
-            color = MuyeonColors.textSub, textAlign = TextAlign.Center,
-        )
-    }
-}

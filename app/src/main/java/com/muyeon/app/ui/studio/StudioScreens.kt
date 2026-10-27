@@ -123,37 +123,16 @@ fun StudioMembersScreen(api: StudioApi, onClose: () -> Unit, onOpenMember: (Int)
     LaunchedEffect(query, tab) { kotlinx.coroutines.delay(300); load() }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(
-            title = "회원 관리", onBack = onClose,
-            trailing = {
-                // iOS StudioMembersView 툴바의 설정 진입점.
-                Box(Modifier.size(44.dp).clickable { showSettings = true }, Alignment.Center) {
-                    Icon(
-                        Icons.Outlined.Settings, "스튜디오 설정",
-                        tint = MuyeonColors.textHead, modifier = Modifier.size(18.dp),
-                    )
-                }
-            },
-        )
-
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            listOf("all" to "전체 회원", "lead" to "상담 문의").forEach { (v, label) ->
-                val on = tab == v
-                Text(
-                    label,
-                    fontFamily = customFontFamily,
-                    fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
-                    fontSize = 13.sp, lineHeight = 16.sp, textAlign = TextAlign.Center,
-                    color = if (on) Color.White else MuyeonColors.textSub,
-                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(50))
-                        .background(if (on) MuyeonColors.primary else Color(0xFFF2F2F7))
-                        .clickable { tab = v }.padding(vertical = 8.dp),
-                )
-            }
+        // 10-27 목록 화면 틀(ui/common/MuyeonListKit) — ‹ + 왼쪽 굵은 제목 + 캡슐 탭(고름=검정).
+        com.muyeon.app.ui.common.MuyeonListHeader("회원 관리", onBack = onClose) {
+            // iOS StudioMembersView 툴바의 설정 진입점.
+            com.muyeon.app.ui.common.MuyeonHeaderIcon(Icons.Outlined.Settings, "스튜디오 설정") { showSettings = true }
         }
+        com.muyeon.app.ui.common.MuyeonPillTabs(
+            listOf("all" to "전체 회원", "lead" to "상담 문의").map { (v, label) -> com.muyeon.app.ui.common.MuyeonPillTab(v, label) },
+            tab, { tab = it }, tagPrefix = "studio.tab", showDivider = false, compact = true,
+        )
+        Spacer(Modifier.height(8.dp))
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },

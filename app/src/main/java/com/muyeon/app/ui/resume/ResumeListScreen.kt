@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -33,7 +34,6 @@ import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteDialog
-import com.muyeon.app.ui.quote.QuoteNavBar
 import kotlinx.coroutines.launch
 
 /**
@@ -70,8 +70,9 @@ fun ResumeListScreen(
 
     LaunchedEffect(mode) { load() }
 
-    Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(title = mode.listTitle, onBack = onClose)
+    // 10-27 목록 화면 틀(ui/common/MuyeonListKit) — ‹ + 왼쪽 굵은 제목, 회색 바탕 위 흰 카드(iOS 와 같다).
+    Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
+        com.muyeon.app.ui.common.MuyeonListHeader(mode.listTitle, onBack = onClose)
 
         if (loading) {
             Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
@@ -85,8 +86,8 @@ fun ResumeListScreen(
             ) {
                 Column(
                     Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp).padding(top = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                        .padding(horizontal = 16.dp).padding(top = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     if (mode.isDancer) VisibilityEntry(onVisibility)
                     else SeekProfileEntry(seekPublished) { onSeekProfile((items.firstOrNull { it.isDefault } ?: items.firstOrNull())?.id) }
@@ -99,11 +100,10 @@ fun ResumeListScreen(
                         )
                     }
                     if (items.isEmpty()) {
-                        Text(
-                            "아직 작성한 이력서가 없어요.\n아래 버튼으로 첫 이력서를 작성해보세요.",
-                            fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
-                            lineHeight = 20.sp, color = MuyeonColors.textSub, textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
+                        // 10-27 공용 빈 화면 — 쓰기 버튼은 아래 고정 버튼이 맡는다.
+                        com.muyeon.app.ui.common.MuyeonEmptyState(
+                            "아직 작성한 이력서가 없어요", "아래 버튼으로 첫 이력서를 작성해 보세요.",
+                            icon = androidx.compose.material.icons.Icons.Outlined.Description,
                         )
                     }
                 }
@@ -149,8 +149,8 @@ private fun SeekProfileEntry(published: Boolean, onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(MuyeonColors.primary.copy(alpha = 0.055f))
+            .clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+            .background(MuyeonColors.surface)
             .clickable(onClick = onClick)
             .padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -185,10 +185,10 @@ private fun VisibilityEntry(onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFF7F7F7))
+            .clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+            .background(MuyeonColors.surface)
             .clickable(onClick = onClick)
-            .padding(14.dp),
+            .padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -225,10 +225,10 @@ private fun ResumeRow(
     Row(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .border(1.dp, MuyeonColors.border, RoundedCornerShape(12.dp))
+            .clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+            .background(MuyeonColors.surface)
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -85,7 +85,7 @@ fun PersonalLessonManagementScreen(
     val scope = rememberCoroutineScope()
     val tab = tabs[pagerState.currentPage]
 
-    Column(Modifier.fillMaxSize().background(MuyeonColors.groupedBg)) {
+    Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
         QuoteNavBar(
             title = when {
                 roleLabel == "학원" -> "학원 수업 관리"

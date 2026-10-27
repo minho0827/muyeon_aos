@@ -129,23 +129,16 @@ fun StudentConsultScreen(
 
     val shown = if (filter == ConsultKind.ALL) items else items.filter { it.kind == filter }
 
-    Box(Modifier.fillMaxSize().background(MuyeonColors.groupedBg)) {
+    Box(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
         Column(Modifier.fillMaxSize()) {
-            // ⚠️ 가로 스크롤을 쓰지 않는다 — 칩은 넷뿐이라 한 줄에 들어간다.
-            Row(
-                Modifier.fillMaxWidth().background(MuyeonColors.surface)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                ConsultKind.entries.forEach { kind ->
+            // 10-27 공용 캡슐 탭(작은 크기, 고름=검정·개수) — 넷이 한 줄에 안 들어가면 밀어서 본다(iOS 와 같다).
+            com.muyeon.app.ui.common.MuyeonPillTabs(
+                ConsultKind.entries.map { kind ->
                     val count = if (kind == ConsultKind.ALL) items.size else items.count { it.kind == kind }
-                    ConsultChip(
-                        label = if (count == 0) kind.chipTitle else "${kind.chipTitle} $count",
-                        selected = filter == kind,
-                        modifier = Modifier.weight(1f),
-                    ) { filter = kind }
-                }
-            }
+                    com.muyeon.app.ui.common.MuyeonPillTab(kind, kind.chipTitle, count.takeIf { it > 0 })
+                },
+                filter, { filter = it }, tagPrefix = "consult.tab", compact = true,
+            )
 
             when {
                 loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
@@ -199,24 +192,6 @@ fun StudentConsultScreen(
             ok
         }
     }
-}
-
-@Composable
-private fun ConsultChip(
-    label: String,
-    selected: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    Text(
-        label,
-        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold,
-        fontSize = 13.sp, lineHeight = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-        color = if (selected) Color.White else MuyeonColors.textSub,
-        modifier = modifier.clip(RoundedCornerShape(50))
-            .background(if (selected) MuyeonColors.primary else Color(0xFFF2F2F7))
-            .clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 7.dp),
-    )
 }
 
 @Composable

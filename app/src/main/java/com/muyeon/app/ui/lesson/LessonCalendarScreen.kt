@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -475,18 +476,19 @@ private fun StatusChipsRow(current: StatusTab, hasUnseenPending: Boolean, onSele
     ) {
         StatusTab.entries.forEach { tab ->
             val selected = current == tab
+            // 10-27 공용 캡슐 모양(작은 크기, 고름=검정) — 파란 점 때문에 같은 치수로 직접 그린다(iOS 와 같다).
             Row(
-                Modifier.clip(RoundedCornerShape(50))
-                    .background(if (selected) MuyeonColors.primary else MuyeonColors.groupedBg)
+                Modifier.height(36.dp).clip(RoundedCornerShape(50))
+                    .background(if (selected) MuyeonColors.textHead else com.muyeon.app.ui.common.MuyeonList.ink100)
                     .clickable { onSelect(tab) }
-                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                    .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(5.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     tab.label,
-                    fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                    lineHeight = 16.sp, color = if (selected) Color.White else MuyeonColors.textHead,
+                    fontFamily = customFontFamily, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                    fontSize = 14.sp, lineHeight = 17.sp, color = if (selected) Color.White else MuyeonColors.textHead,
                 )
                 // 숫자 대신 파란 점 — 아직 상세를 안 열어본 조율 중 건이 있을 때만.
                 if (tab == StatusTab.PENDING && hasUnseenPending) {
@@ -561,12 +563,8 @@ private fun ListBody(
 
 @Composable
 private fun ListEmpty(t: String) {
-    Text(
-        t,
-        fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 18.sp, color = MuyeonColors.textSub,
-        textAlign = TextAlign.Center,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp),
-    )
+    // 10-27 공용 빈 화면(작은 회색 아이콘 + 제목).
+    com.muyeon.app.ui.common.MuyeonEmptyState(t.removeSuffix("."), icon = androidx.compose.material.icons.Icons.Default.DateRange)
 }
 
 /** "2026-08-12" → "2026년 8월 12일 (화)" — iOS `listDateTitle`. */

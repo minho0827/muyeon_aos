@@ -215,7 +215,7 @@ fun QuoteBrowseScreen(
         return
     }
 
-    Box(Modifier.fillMaxSize().background(MuyeonColors.groupedBg)) {
+    Box(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
         Column(Modifier.fillMaxSize()) {
             // 뒤로 = 화면 이탈 → 서버에 방문 종료 기록(다음 방문의 N 기준 시각). iOS onDisappear 대응.
             if (!embedded) {
@@ -606,7 +606,7 @@ private fun QuoteDeckScreen(state: QuoteBrowseState, initialIndex: Int, onClose:
     LaunchedEffect(pagerState.currentPage) { current?.let { state.markSeen(it.id) } }
     LaunchedEffect(state.toast) { if (state.toast != null) { delay(1800); state.toast = null } }
 
-    Box(Modifier.fillMaxSize().background(MuyeonColors.groupedBg)) {
+    Box(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxWidth().height(44.dp), contentAlignment = Alignment.Center) {
                 Text(

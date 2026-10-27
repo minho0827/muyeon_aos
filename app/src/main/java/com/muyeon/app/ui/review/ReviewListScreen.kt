@@ -30,7 +30,6 @@ import coil3.compose.AsyncImage
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteEmptyState
-import com.muyeon.app.ui.quote.QuoteNavBar
 import com.muyeon.app.ui.quote.QuoteUi
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -65,7 +64,8 @@ fun ReviewListScreen(
     LaunchedEffect(sort, lessonType, purpose, photoOnly) { load() }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(title = "후기", onBack = onClose)
+        // 10-27 공용 제목줄(ui/common/MuyeonListKit) — ‹ + 왼쪽 굵은 제목.
+        com.muyeon.app.ui.common.MuyeonListHeader("후기", onBack = onClose)
 
         when {
             loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
@@ -250,14 +250,15 @@ private fun FilterChip(text: String, selected: Boolean, onClick: () -> Unit) {
     Text(
         text,
         fontFamily = customFontFamily,
-        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-        fontSize = 13.sp, lineHeight = 16.sp,
-        color = if (selected) Color.White else MuyeonColors.textSub,
+        // 10-27 공용 캡슐 모양(작은 크기, 고름=검정) — iOS 후기 칩과 같다.
+        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+        fontSize = 14.sp, lineHeight = 17.sp,
+        color = if (selected) Color.White else MuyeonColors.textHead,
         modifier = Modifier
             .clip(RoundedCornerShape(50))
-            .background(if (selected) MuyeonColors.primary else Color(0xFFF2F2F7))
+            .background(if (selected) MuyeonColors.textHead else com.muyeon.app.ui.common.MuyeonList.ink100)
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 7.dp),
+            .padding(horizontal = 14.dp, vertical = 8.dp),
     )
 }
 
