@@ -9,6 +9,7 @@ import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -150,8 +151,9 @@ fun NotificationSettingsScreen(
         return
     }
 
-    Column(Modifier.fillMaxSize().background(MuyeonColors.groupedBg)) {
-        QuoteNavBar(title = "알림 설정", onBack = onClose)
+    // 10-27 목록 화면 틀(ui/common/MuyeonListKit) — ‹ + 왼쪽 굵은 제목, 회색 바탕 위 묶음 카드(iOS 와 같다).
+    Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
+        com.muyeon.app.ui.common.MuyeonListHeader("알림 설정", onBack = onClose)
 
         if (!state.loaded) {
             Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
@@ -160,102 +162,57 @@ fun NotificationSettingsScreen(
             return@Column
         }
 
-        LazyColumn(Modifier.fillMaxSize()) {
-            item(key = "permission") { PermissionBanner() }
+        Column(
+            Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(28.dp),
+        ) {
+            PermissionBanner()
 
-            item(key = "master") {
-                SettingsRow(
-                    title = "푸시 알림 받기",
-                    desc = "꺼도 알림함에는 그대로 쌓여요.",
-                    trailing = {
-                        Switch(
-                            checked = state.pushEnabled,
-                            onCheckedChange = { v -> scope.launch { state.setPushEnabled(api, v) } },
-                            colors = SwitchDefaults.colors(checkedTrackColor = MuyeonColors.primary),
-                        )
-                    },
-                )
+            com.muyeon.app.ui.common.MuyeonGroupSection("받는 방법") {
+                com.muyeon.app.ui.common.MuyeonGroupRow("푸시 알림 받기", subtitle = "꺼도 알림함에는 그대로 쌓여요.", showChevron = false) {
+                    Switch(
+                        checked = state.pushEnabled,
+                        onCheckedChange = { v -> scope.launch { state.setPushEnabled(api, v) } },
+                        colors = SwitchDefaults.colors(checkedTrackColor = MuyeonColors.primary),
+                    )
+                }
+                // 카카오톡 알림톡은 푸시와 별개 채널 — 푸시를 꺼도 비활성화하지 않는다
+                //  (푸시를 못 받는 사람의 대체 경로라서). 서버 notification_prefs.alimtalkEnabled.
+                com.muyeon.app.ui.common.MuyeonGroupRow(
+                    "카카오톡 알림 받기",
+                    subtitle = "견적 도착·채택, 새 견적 요청 같은 중요한 안내를 카카오톡으로도 보내드려요.",
+                    showChevron = false,
+                ) {
+                    Switch(
+                        checked = state.alimtalkEnabled,
+                        onCheckedChange = { v -> scope.launch { state.setAlimtalkEnabled(api, v) } },
+                        colors = SwitchDefaults.colors(checkedTrackColor = MuyeonColors.primary),
+                    )
+                }
             }
 
-            // 카카오톡 알림톡은 푸시와 별개 채널 — 푸시를 꺼도 비활성화하지 않는다
-            //  (푸시를 못 받는 사람의 대체 경로라서). 서버 notification_prefs.alimtalkEnabled.
-            item(key = "alimtalk-header") {
-                Text(
-                    "카카오톡",
-                    Modifier.padding(start = 20.dp, top = 20.dp, bottom = 6.dp),
-                    fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold,
-                    fontSize = 13.sp, color = MuyeonColors.textSub,
-                )
-            }
-            item(key = "alimtalk") {
-                SettingsRow(
-                    title = "카카오톡 알림 받기",
-                    desc = "견적 도착·채택, 새 견적 요청 같은 중요한 안내를 카카오톡으로도 보내드려요.",
-                    trailing = {
-                        Switch(
-                            checked = state.alimtalkEnabled,
-                            onCheckedChange = { v -> scope.launch { state.setAlimtalkEnabled(api, v) } },
-                            colors = SwitchDefaults.colors(checkedTrackColor = MuyeonColors.primary),
-                        )
-                    },
-                )
-            }
-
-            item(key = "header") {
-                Text(
-                    "종류별",
-                    Modifier.padding(start = 20.dp, top = 20.dp, bottom = 6.dp),
-                    fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold,
-                    fontSize = 13.sp, color = MuyeonColors.textSub,
-                )
-            }
-
-            items(state.categories, key = { "cat-" + it.key }) { c ->
-                val (summary, highlighted) = state.summary(c)
-                SettingsRow(
-                    title = c.label,
+            if (state.categories.isNotEmpty()) com.muyeon.app.ui.common.MuyeonGroupSection("종류별") {
+                state.categories.forEach { c ->
+                    val (summary, highlighted) = state.summary(c)
                     // 무엇이 들어 있는지 한 줄로 — 들어가 보지 않아도 알게.
-                    desc = c.desc,
-                    onClick = { detailKey = c.key },
-                    trailing = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                summary,
-                                fontFamily = customFontFamily, fontSize = 13.sp,
-                                color = if (highlighted) MuyeonColors.primary else MuyeonColors.secondary,
-                            )
-                            Icon(
-                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                contentDescription = null, tint = MuyeonColors.secondary,
-                            )
-                        }
-                    },
-                )
+                    com.muyeon.app.ui.common.MuyeonGroupRow(
+                        c.label, subtitle = c.desc, value = summary,
+                        valueColor = if (highlighted) MuyeonColors.primary else MuyeonColors.textSub,
+                        onClick = { detailKey = c.key },
+                    )
+                }
             }
 
             // 이 화면은 '어떤 알림을 푸시로 받을지'만 정한다. "대타만 받고 싶다"의 나머지 절반 —
             //  어떤 새 공고를 알림으로 받을지 — 은 관심 조건에 있다. 두 화면이 떨어져 있어
             //  한쪽만 끄고 "왜 계속 오지" 하던 자리라, 여기서 바로 건너갈 길을 둔다.
             if (onOpenAlerts != null) {
-                item(key = "alerts-header") {
-                    Text(
-                        "맞춤 알림",
-                        Modifier.padding(start = 20.dp, top = 20.dp, bottom = 6.dp),
-                        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold,
-                        fontSize = 13.sp, color = MuyeonColors.textSub,
-                    )
-                }
-                item(key = "alerts") {
-                    SettingsRow(
-                        title = "관심 조건 알림",
-                        desc = "받고 싶은 공고 종류(채용·대타·캐스팅)와 지역·장르·수업 대상을 정해요.",
+                com.muyeon.app.ui.common.MuyeonGroupSection("맞춤 알림") {
+                    com.muyeon.app.ui.common.MuyeonGroupRow(
+                        "관심 조건 알림",
+                        subtitle = "받고 싶은 공고 종류(채용·대타·캐스팅)와 지역·장르·수업 대상을 정해요.",
                         onClick = onOpenAlerts,
-                        trailing = {
-                            Icon(
-                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                contentDescription = null, tint = MuyeonColors.secondary,
-                            )
-                        },
                     )
                 }
             }
@@ -374,9 +331,8 @@ private fun PermissionBanner() {
 
     Row(
         Modifier.fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MuyeonColors.primary.copy(alpha = 0.10f))
+            .clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+            .background(MuyeonColors.surface)
             .clickable {
                 val i = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                     .putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName)

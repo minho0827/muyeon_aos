@@ -18,7 +18,6 @@ import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
@@ -40,9 +39,7 @@ import com.muyeon.app.result.ResultActivity
 import com.muyeon.app.result.ResultKeys
 import com.muyeon.app.result.findActivity
 import com.muyeon.app.result.launchScreen
-import com.muyeon.app.ui.quote.QuoteEmptyState
 import com.muyeon.app.ui.quote.QuoteHubActivity
-import com.muyeon.app.ui.quote.QuoteNavBar
 import com.muyeon.app.utils.TokenManager
 import com.muyeon.app.webview.NativeWebRoute
 import kotlinx.coroutines.launch
@@ -93,40 +90,19 @@ fun NotificationListScreen(
     LaunchedEffect(category) { reload() }
     LaunchedEffect(Unit) { loadChips() }
 
-    Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(
-            title = "알림",
-            onClose = onClose,
+    // 10-27 목록 화면 틀(ui/common/MuyeonListKit) — ✕ + 왼쪽 굵은 제목, 캡슐 탭, 회색 바탕 위 흰 카드.
+    Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
+        com.muyeon.app.ui.common.MuyeonListHeader("알림", onClose = onClose) {
             // 알림 설정으로 가는 톱니(iOS·PaceERA 와 같은 자리) — 알림이 시끄럽다고 느낀
             //  사람이 설정을 찾으려고 MY 까지 돌아가지 않게, 느낀 자리에서 바로 연다.
-            trailing = {
-                Icon(
-                    Icons.Outlined.Settings,
-                    contentDescription = "알림 설정",
-                    tint = MuyeonColors.textHead,
-                    modifier = Modifier.size(20.dp)
-                        .clickable { NotificationSettingsActivity.start(ctx) },
-                )
-            },
-        )
+            com.muyeon.app.ui.common.MuyeonHeaderIcon(Icons.Outlined.Settings, "알림 설정") { NotificationSettingsActivity.start(ctx) }
+        }
 
-        // 종류 칩(가로 스크롤) + 모두 읽음.
-        //  여백·치수는 PaceERA 알림 목록 칩 줄(h16 v10 · 간격 8)과 같다.
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        // 종류 캡슐 탭(고름=검정) + 오른쪽 '모두 읽음'.
+        com.muyeon.app.ui.common.MuyeonPillTabs(
+            listOf(com.muyeon.app.ui.common.MuyeonPillTab(NotiCategory.ALL, "전체")) + chips.map { com.muyeon.app.ui.common.MuyeonPillTab(it.key, it.label) },
+            category, { category = it }, tagPrefix = "noti.tab",
         ) {
-            Row(
-                Modifier.weight(1f).horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                CategoryChip("전체", category == NotiCategory.ALL) { category = NotiCategory.ALL }
-                chips.forEach { c ->
-                    CategoryChip(c.label, category == c.key) { category = c.key }
-                }
-            }
             // 문구는 늘 '모두 읽음'. 종류를 걸러 보고 있으면 **보고 있는 목록의 모두**를 읽는다
             //  (메일함 관례). 문구를 상황마다 바꾸면 버튼 폭이 흔들리고 읽기만 번거롭다.
             Text(
@@ -141,24 +117,23 @@ fun NotificationListScreen(
                         reload()
                         loadChips()
                     }
-                },
+                }.padding(horizontal = 14.dp, vertical = 12.dp),
             )
         }
-        HorizontalDivider(color = MuyeonColors.border)
 
         when {
             loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                 CircularProgressIndicator(color = MuyeonColors.primary)
             }
             items.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
-                QuoteEmptyState(
-                    Icons.Outlined.NotificationsNone,
+                com.muyeon.app.ui.common.MuyeonEmptyState(
                     when {
                         category != NotiCategory.ALL ->
                             "${chips.firstOrNull { it.key == category }?.label ?: "이 종류"} 알림이 없어요"
                         else -> "알림이 없어요"
                     },
-                    "새 소식이 오면 여기에 모아드려요.",
+                    "새 소식이 오면 여기에 표시돼요.",
+                    icon = Icons.Outlined.NotificationsNone,
                 )
             }
             else -> PullToRefreshBox(
@@ -166,7 +141,11 @@ fun NotificationListScreen(
                 onRefresh = { scope.launch { refreshing = true; reload(); refreshing = false } },
                 modifier = Modifier.weight(1f),
             ) {
-                LazyColumn(Modifier.fillMaxSize()) {
+                LazyColumn(
+                    Modifier.fillMaxSize(),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     itemsIndexed(items, key = { _, n -> n.id }) { idx, n ->
                         NotificationRow(n) {
                             scope.launch {
@@ -181,7 +160,6 @@ fun NotificationListScreen(
                                 onOpen(n)
                             }
                         }
-                        if (idx != items.lastIndex) HorizontalDivider(color = MuyeonColors.border)
 
                         // 마지막 항목 도달 → 다음 페이지(커서 = 마지막 id)
                         if (idx == items.lastIndex && !reachedEnd && !loadingMore) {
@@ -202,32 +180,6 @@ fun NotificationListScreen(
 }
 
 /**
- * 종류 칩 하나 — PaceERA `FilterChip` 치수(14/7 · 13sp) + iOS 무용연 칩 색.
- *
- *  ⚠️ 칩에 안읽음 수를 달지 않는다. 안읽음은 **행 배경**으로만 말한다 — 같은 사실을
- *     숫자·뱃지·행 색 세 군데로 말하면 화면이 시끄럽고 서로 어긋나 보인다.
- *  ※ 미선택 배경은 PaceERA(테두리)가 아니라 iOS 무용연과 같은 연회색으로 둔다 —
- *     두 무용연 앱을 나란히 놓았을 때 같아 보이는 쪽이 더 중요하다.
- */
-@Composable
-private fun CategoryChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    Box(
-        Modifier.clip(RoundedCornerShape(50))
-            .background(if (selected) MuyeonColors.primary else Color(0xFFF2F2F7))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 7.dp),
-    ) {
-        Text(
-            label,
-            fontFamily = customFontFamily,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-            fontSize = 13.sp, lineHeight = 16.sp,
-            color = if (selected) Color.White else MuyeonColors.textSub,
-        )
-    }
-}
-
-/**
  * 알림 한 줄.
  *
  *  안읽음은 **행 배경 한 가지**로만 말한다(점·뱃지·숫자를 같이 쓰지 않는다).
@@ -239,29 +191,32 @@ private fun CategoryChip(label: String, selected: Boolean, onClick: () -> Unit) 
 @Composable
 private fun NotificationRow(n: AppNotification, onClick: () -> Unit) {
     Row(
+        // 10-27 흰 카드 한 장씩 — 안 읽음은 카드 바탕을 연한 주황으로(행 배경 한 가지 규칙 그대로).
         Modifier.fillMaxWidth()
-            .background(if (n.isRead) MuyeonColors.surface else MuyeonColors.primary.copy(alpha = 0.06f))
+            .clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+            .background(MuyeonColors.surface)
+            .background(MuyeonColors.primary.copy(alpha = if (n.isRead) 0f else 0.07f))
             .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 14.dp),
+            .padding(horizontal = 18.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
                 n.title,
                 fontFamily = customFontFamily,
-                fontWeight = if (n.isRead) FontWeight.Medium else FontWeight.Bold,
-                fontSize = 14.sp, lineHeight = 18.sp, color = MuyeonColors.textHead,
+                fontWeight = if (n.isRead) FontWeight.Normal else FontWeight.SemiBold,
+                fontSize = 16.sp, lineHeight = 21.sp, color = MuyeonColors.textHead,
             )
             n.body?.takeIf { it.isNotEmpty() }?.let {
                 Text(
                     it,
-                    fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp,
+                    fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 19.sp,
                     color = MuyeonColors.textSub, maxLines = 2, overflow = TextOverflow.Ellipsis,
                 )
             }
             Text(
                 n.relativeTime,
-                fontFamily = customFontFamily, fontSize = 11.sp, lineHeight = 14.sp, color = MuyeonColors.secondary,
+                fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 15.sp, color = MuyeonColors.textSub,
             )
         }
     }

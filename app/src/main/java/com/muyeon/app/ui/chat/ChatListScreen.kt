@@ -34,7 +34,6 @@ import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteAvatar
-import com.muyeon.app.ui.quote.QuoteNavBar
 import com.muyeon.app.ui.quote.QuoteUi
 import kotlinx.coroutines.launch
 
@@ -58,27 +57,23 @@ fun ChatListScreen(
     val filtered = rooms.filter { state.filter.matches(it) }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(
-            title = "채팅", onClose = onClose,
-            trailing = {
-                // 차단 해제 진입점 — 설정(MY)이 웹이라 차단이 일어나는 이 화면에 둔다.
-                Box(Modifier.size(44.dp).clickable(onClick = onOpenBlocked), Alignment.Center) {
-                    Icon(
-                        Icons.Outlined.DoNotDisturbOn, "차단한 사용자",
-                        tint = MuyeonColors.textHead, modifier = Modifier.size(18.dp),
-                    )
-                }
-            },
-        )
+        // 10-27 목록 화면 틀(ui/common/MuyeonListKit) — ✕ + 왼쪽 굵은 제목 + 캡슐 탭(iOS 와 같다).
+        com.muyeon.app.ui.common.MuyeonListHeader("채팅", onClose = onClose) {
+            // 차단 해제 진입점 — 설정(MY)이 웹이라 차단이 일어나는 이 화면에 둔다.
+            com.muyeon.app.ui.common.MuyeonHeaderIcon(Icons.Outlined.DoNotDisturbOn, "차단한 사용자", onClick = onOpenBlocked)
+        }
         if (rooms.isNotEmpty()) {
-            ChatFilterSegmented(state.filter) { state.filter = it }
+            com.muyeon.app.ui.common.MuyeonPillTabs(
+                ChatRoomFilter.entries.map { com.muyeon.app.ui.common.MuyeonPillTab(it, it.title) },
+                state.filter, { state.filter = it }, tagPrefix = "chat.tab",
+            )
         }
 
         when {
             state.isLoading && rooms.isEmpty() -> ChatListSkeleton()
             state.loadFailed && rooms.isEmpty() -> LoadFailed { scope.launch { state.retry() } }
-            rooms.isEmpty() && !state.hasMore -> EmptyMessage(Icons.Outlined.ChatBubbleOutline, "진행 중인 채팅이 없어요.")
-            filtered.isEmpty() && !state.hasMore -> EmptyMessage(Icons.Outlined.FilterList, "조건에 맞는 채팅이 없어요.")
+            rooms.isEmpty() && !state.hasMore -> EmptyMessage(Icons.Outlined.ChatBubbleOutline, "진행 중인 채팅이 없어요", "견적·공고·레슨으로 대화를 시작하면 여기에 모여요.")
+            filtered.isEmpty() && !state.hasMore -> EmptyMessage(Icons.Outlined.FilterList, "이 탭에는 채팅이 없어요", "다른 탭을 눌러 보세요.")
             else -> PullToRefreshBox(
                 isRefreshing = state.refreshing,
                 onRefresh = { scope.launch { state.pullToRefresh() } },
@@ -112,40 +107,6 @@ fun ChatListScreen(
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-/** iOS Picker(.segmented) 대응 — 전체/내 견적요청/견적 응답/일반·문의. */
-@Composable
-private fun ChatFilterSegmented(current: ChatRoomFilter, onSelect: (ChatRoomFilter) -> Unit) {
-    Row(
-        Modifier
-            .padding(horizontal = 12.dp).padding(top = 8.dp, bottom = 4.dp)
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFFEFEFF0))
-            .padding(2.dp),
-    ) {
-        ChatRoomFilter.entries.forEach { f ->
-            val on = f == current
-            Box(
-                Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(7.dp))
-                    .background(if (on) MuyeonColors.surface else Color.Transparent)
-                    .clickable { onSelect(f) }
-                    .padding(vertical = 6.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    f.title,
-                    fontFamily = customFontFamily,
-                    fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
-                    fontSize = 12.sp, lineHeight = 14.sp, color = MuyeonColors.textHead,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis,
-                )
             }
         }
     }
@@ -282,35 +243,19 @@ private fun ChatListSkeleton() {
 
 @Composable
 private fun LoadFailed(onRetry: () -> Unit) {
-    Column(
-        Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Icon(Icons.Outlined.WifiOff, null, tint = MuyeonColors.secondary, modifier = Modifier.size(36.dp))
-        Text(
-            "채팅 목록을 불러오지 못했어요.",
-            fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 17.sp, color = MuyeonColors.secondary,
-        )
-        Text(
-            "다시 시도",
-            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
-            lineHeight = 17.sp, color = Color.White,
-            modifier = Modifier
-                .clip(RoundedCornerShape(50)).background(MuyeonColors.primary)
-                .clickable(onClick = onRetry).padding(horizontal = 20.dp, vertical = 10.dp),
+    // 10-27 공용 빈 화면 + 다시 시도 버튼(iOS 와 같다).
+    Box(Modifier.fillMaxSize(), Alignment.Center) {
+        com.muyeon.app.ui.common.MuyeonEmptyState(
+            "채팅 목록을 불러오지 못했어요.", "잠시 후 다시 시도해 주세요.",
+            icon = Icons.Outlined.WifiOff, actionTitle = "다시 시도", onAction = onRetry,
         )
     }
 }
 
+// 10-27 공용 빈 화면(작은 회색 아이콘 + 제목 + 설명) — iOS ChatRoomListSection.emptyState 와 같다.
 @Composable
-private fun EmptyMessage(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
-    Column(
-        Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Icon(icon, null, tint = MuyeonColors.secondary, modifier = Modifier.size(40.dp))
-        Text(text, fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 17.sp, color = MuyeonColors.secondary)
+private fun EmptyMessage(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, message: String) {
+    Box(Modifier.fillMaxSize(), Alignment.Center) {
+        com.muyeon.app.ui.common.MuyeonEmptyState(title, message, icon = icon)
     }
 }

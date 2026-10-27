@@ -29,6 +29,7 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -59,23 +60,15 @@ fun QuoteHubScreen(
 ) {
     var tab by remember { mutableIntStateOf(if (isPro) initialTab else 0) }
 
-    Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(
-            title = "레슨 요청 내역", onClose = onClose,
-            trailing = {
-                // 추천 제외 해제 진입점 — 채팅의 '차단한 사용자'와 같은 이유로, 제외가 일어나는
-                //  추천 카드와 같은 화면 계층에 둔다(설정(MY)은 웹이라 여기가 유일한 자리).
-                Box(Modifier.size(44.dp).clickable(onClick = onOpenRecommendBlocks), Alignment.Center) {
-                    Icon(
-                        Icons.Outlined.VisibilityOff, "추천 제외한 강사",
-                        tint = MuyeonColors.textHead, modifier = Modifier.size(18.dp),
-                    )
-                }
-            },
-        )
+    // 10-27 목록 화면 틀(ui/common/MuyeonListKit) — ✕ + 왼쪽 굵은 제목 + 캡슐 탭, 회색 바탕 위 흰 카드(iOS 와 같다).
+    Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
+        com.muyeon.app.ui.common.MuyeonListHeader("레슨 요청 내역", onClose = onClose) {
+            // 추천 제외 해제 진입점 — 채팅의 '차단한 사용자'와 같은 이유로, 제외가 일어나는
+            //  추천 카드와 같은 화면 계층에 둔다(설정(MY)은 웹이라 여기가 유일한 자리).
+            com.muyeon.app.ui.common.MuyeonHeaderIcon(Icons.Outlined.VisibilityOff, "추천 제외한 강사", onClick = onOpenRecommendBlocks)
+        }
         if (isPro) {
             QuoteTabBar(tab = tab, titles = listOf("받은 제안", "보낸 제안"), onSelect = { tab = it })
-            HorizontalDivider(color = MuyeonColors.border)
         }
         if (isPro && tab == 1) {
             SentQuotesList(api = api, onOpen = onOpenSent, reloadSignal = reloadSignal)
@@ -124,32 +117,12 @@ fun QuoteNavBar(
     }
 }
 
-/** pacera식 언더라인 탭바 — iOS QuoteTabBar 1:1(선택 탭 primary + 하단 2dp 인디케이터, 상단 10). */
+/** 10-27 밑줄 탭 → 공용 캡슐 탭(MuyeonPillTabs, 고름=검정 + 아래 구분선). iOS QuoteTabBar 와 같다. */
 @Composable
 fun QuoteTabBar(tab: Int, titles: List<String>, onSelect: (Int) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(top = 10.dp)) {
-        titles.forEachIndexed { idx, title ->
-            val on = tab == idx
-            val color by animateColorAsState(
-                if (on) MuyeonColors.primary else MuyeonColors.textSub, tween(200), label = "tabText",
-            )
-            Column(
-                Modifier.weight(1f).clickable { onSelect(idx) },
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    title,
-                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
-                    lineHeight = 18.sp, color = color,
-                )
-                Box(
-                    Modifier.fillMaxWidth().height(2.dp)
-                        .background(if (on) MuyeonColors.primary else androidx.compose.ui.graphics.Color.Transparent)
-                )
-            }
-        }
-    }
+    com.muyeon.app.ui.common.MuyeonPillTabs(
+        titles.mapIndexed { i, t -> com.muyeon.app.ui.common.MuyeonPillTab(i, t) }, tab, onSelect, tagPrefix = "quote.tab",
+    )
 }
 
 // MARK: - 받은 견적(고객 관점)
@@ -210,13 +183,18 @@ fun RequestedQuotesList(api: QuoteApi, onOpen: (Int) -> Unit, reloadSignal: Int 
             onRefresh = { scope.launch { refreshing = true; load(); refreshing = false } },
             modifier = Modifier.fillMaxSize(),
         ) {
-            LazyColumn(Modifier.fillMaxSize()) {
-                itemsIndexed(quotes, key = { _, q -> q.id }) { idx, q ->
-                    SwipeToDeleteRow(onDelete = { scope.launch { delete(q) } }) {
-                        MyQuoteRow(quote = q, onClick = { onOpen(q.id) })
+            // 10-27 회색 바탕 위 흰 카드 한 장씩(줄 사이 선 없음).
+            LazyColumn(
+                Modifier.fillMaxSize(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                itemsIndexed(quotes, key = { _, q -> q.id }) { _, q ->
+                    Box(Modifier.clip(com.muyeon.app.ui.common.MuyeonList.cardShape)) {
+                        SwipeToDeleteRow(onDelete = { scope.launch { delete(q) } }) {
+                            MyQuoteRow(quote = q, onClick = { onOpen(q.id) })
+                        }
                     }
-                    // iOS List(.plain) 기본 구분선 — 행 좌측 인셋(16 + 아바타 52 + 간격 12)에 맞춘다.
-                    if (idx != quotes.lastIndex) RowSeparator()
                 }
                 if (nextCursor != null) item {
                     TextButton(enabled = !pageLoading, onClick = { scope.launch { load(false) } }) {
@@ -232,14 +210,6 @@ fun RequestedQuotesList(api: QuoteApi, onOpen: (Int) -> Unit, reloadSignal: Int 
     }
 }
 
-/** iOS List(.plain) 행 구분선 — 좌측 인셋 = 좌우여백 16 + 아바타 52 + 간격 12. */
-@Composable
-private fun RowSeparator() {
-    HorizontalDivider(
-        Modifier.background(MuyeonColors.surface).padding(start = 80.dp),
-        color = MuyeonColors.border,
-    )
-}
 
 /** iOS `.swipeActions(edge:.trailing)` 대응 — 좌측 스와이프로만 삭제(allowsFullSwipe: false). */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -377,10 +347,15 @@ fun SentQuotesList(api: QuoteApi, onOpen: (SentQuoteItem) -> Unit, reloadSignal:
             onRefresh = { scope.launch { refreshing = true; load(); refreshing = false } },
             modifier = Modifier.fillMaxSize(),
         ) {
-            LazyColumn(Modifier.fillMaxSize()) {
-                itemsIndexed(items, key = { _, it -> it.id }) { idx, item ->
-                    SentQuoteRow(item = item, onClick = { onOpen(item) })
-                    if (idx != items.lastIndex) RowSeparator()
+            LazyColumn(
+                Modifier.fillMaxSize(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                itemsIndexed(items, key = { _, it -> it.id }) { _, item ->
+                    Box(Modifier.clip(com.muyeon.app.ui.common.MuyeonList.cardShape)) {
+                        SentQuoteRow(item = item, onClick = { onOpen(item) })
+                    }
                 }
                 if (nextCursor != null) item {
                     TextButton(enabled = !pageLoading, onClick = { scope.launch { load(false) } }) {

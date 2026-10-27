@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.WorkOutline
 import androidx.compose.material3.CircularProgressIndicator
@@ -138,27 +139,15 @@ fun MyPostingsScreen(
 
     val filtered = postings
 
-    Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(title = "내 공고", onBack = onClose)
-
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            JobPostingOptions.tabs.forEach { (key, label) ->
-                val on = tab == key
-                Text(
-                    "$label ${pages.counts[key] ?: 0}",
-                    fontFamily = customFontFamily,
-                    fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
-                    fontSize = 13.sp, lineHeight = 16.sp, textAlign = TextAlign.Center,
-                    color = if (on) Color.White else MuyeonColors.textSub,
-                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(50))
-                        .background(if (on) MuyeonColors.primary else Color(0xFFF2F2F7))
-                        .clickable { tab = key }.padding(vertical = 8.dp),
-                )
-            }
+    // 10-27 목록 화면 틀(ui/common/MuyeonListKit) — ‹ + 왼쪽 굵은 제목 + 캡슐 탭(개수), 회색 바탕 위 흰 카드(iOS 와 같다).
+    Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
+        com.muyeon.app.ui.common.MuyeonListHeader("내 공고 관리", onBack = onClose) {
+            com.muyeon.app.ui.common.MuyeonHeaderIcon(Icons.Filled.Add, "공고 등록", onClick = onCreate)
         }
+        com.muyeon.app.ui.common.MuyeonPillTabs(
+            JobPostingOptions.tabs.map { (key, label) -> com.muyeon.app.ui.common.MuyeonPillTab(key, label, pages.counts[key] ?: 0) },
+            tab, { tab = it }, tagPrefix = "postings.tab",
+        )
 
         when {
             loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
@@ -171,11 +160,15 @@ fun MyPostingsScreen(
             ) {
                 LazyColumn(
                     Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     if (filtered.isEmpty() && pages.error == null) item(key = "empty-postings") {
-                        QuoteEmptyState(Icons.Outlined.WorkOutline, "등록한 공고가 없어요", "공고를 올리면 지원자를 받을 수 있어요.")
+                        com.muyeon.app.ui.common.MuyeonEmptyState(
+                            if (tab == JobPostingOptions.tabs.first().first) "아직 등록한 공고가 없어요" else "이 상태의 공고가 없어요",
+                            "새 공고를 올리면 지원자를 여기서 관리할 수 있어요.",
+                            icon = Icons.Outlined.WorkOutline, actionTitle = "공고 등록하기", onAction = onCreate,
+                        )
                     }
                     items(filtered, key = { it.uid }) { p ->
                         PostingCard(
@@ -289,7 +282,7 @@ private fun ArchivedPostingRow(posting: MyPosting, onRestore: () -> Unit, onPurg
     ) {
         Row(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                .background(MuyeonColors.groupedBg).padding(12.dp),
+                .background(MuyeonColors.surface).padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -328,9 +321,10 @@ private fun PostingCard(
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-            .border(1.dp, MuyeonColors.border, RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick).padding(14.dp),
+        // 10-27 테두리 카드 → 회색 바탕 위 흰 카드.
+        Modifier.fillMaxWidth().clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+            .background(MuyeonColors.surface)
+            .clickable(onClick = onClick).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {

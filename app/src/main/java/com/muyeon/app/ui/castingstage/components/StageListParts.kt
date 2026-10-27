@@ -40,19 +40,12 @@ import com.muyeon.app.ui.castingstage.screens.*
 
 /** 목록 부품 — 상단바·한 줄(iOS StageListBar·StageListRow). */
 
+// 10-27 공용 제목줄(ui/common/MuyeonListKit)로 옮겼다 — 뒤로 단추 표시(stage.detail.back)는 시험이 찾으므로 그대로.
 @Composable
 internal fun StageListBar(title: String, onBack: () -> Unit, onCreate: (() -> Unit)? = null) {
-    Row(Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(44.dp).clickable(onClick = onBack).semantics { contentDescription = "stage.detail.back" }, Alignment.Center) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = MuyeonColors.textHead)
-        }
-        Text(title, style = Bold, fontSize = 20.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f))
+    com.muyeon.app.ui.common.MuyeonListHeader(title, onBack = onBack, backTag = "stage.detail.back") {
         // 공연 공고 등록(공연팀만). null 이면 숨김.
-        if (onCreate != null) {
-            Box(Modifier.size(44.dp).clickable(onClick = onCreate).semantics { contentDescription = "공연 공고 등록" }, Alignment.Center) {
-                Icon(Icons.Filled.Add, null, tint = MuyeonColors.textHead)
-            }
-        }
+        if (onCreate != null) com.muyeon.app.ui.common.MuyeonHeaderIcon(Icons.Filled.Add, "공연 공고 등록", onClick = onCreate)
     }
 }
 

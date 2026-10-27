@@ -75,14 +75,8 @@ fun StageCastingListScreen(api: CastingStageApi, onBack: () -> Unit, onOpen: (In
 
     Column(Modifier.fillMaxSize().background(Color.White).statusBarsPadding().navigationBarsPadding()) {
         StageListBar("캐스팅 공고", onBack, onCreate)
-        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(genres) { g ->
-                val on = g == genre
-                Box(Modifier.height(36.dp).clip(CircleShape).background(if (on) MuyeonColors.textHead else Ink100).clickable { genre = g }.padding(horizontal = 16.dp), Alignment.Center) {
-                    Text(g, style = Medium, fontSize = 14.sp, color = if (on) Color.White else MuyeonColors.textHead)
-                }
-            }
-        }
+        // 10-27 공용 캡슐 탭(ui/common/MuyeonListKit) — 고름=검정, 아래 구분선.
+        com.muyeon.app.ui.common.MuyeonPillTabs(genres.map { com.muyeon.app.ui.common.MuyeonPillTab(it, it) }, genre, { genre = it }, tagPrefix = "stage.genre")
         LazyColumn(state = state, modifier = Modifier.fillMaxSize()) {
             items(items, key = { it.id }) { c ->
                 StageListRow(c.imageUrl, Icons.Filled.Star, Color(0xFFFFA262), Color(0xFFFFF3EA), StageDate.deadline(c.deadline), c.title,

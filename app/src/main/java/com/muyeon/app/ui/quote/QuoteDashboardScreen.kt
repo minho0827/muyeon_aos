@@ -89,21 +89,9 @@ fun QuoteDashboardScreen(
     val isSectioned = functions.any { it.group != null }
     val tiles = remember(data, role) { dashTiles(role, data) }
 
-    Column(Modifier.fillMaxSize().background(MuyeonColors.groupedBg)) {
-        // topBar — 제목 17 bold 가운데, 좌측 X 16 semibold(44 터치)
-        Box(Modifier.fillMaxWidth().background(MuyeonColors.surface).padding(horizontal = 4.dp), contentAlignment = Alignment.Center) {
-            Text(
-                title,
-                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp,
-                lineHeight = 20.sp, color = MuyeonColors.textHead,
-            )
-            Box(
-                Modifier.align(Alignment.CenterStart).size(44.dp).clickable(onClick = onClose),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Filled.Close, "닫기", tint = MuyeonColors.textHead, modifier = Modifier.size(16.dp))
-            }
-        }
+    // 10-27 목록 화면 틀(ui/common/MuyeonListKit) — ✕ + 왼쪽 굵은 제목, 회색 바탕 위 흰 카드(iOS 와 같다).
+    Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
+        com.muyeon.app.ui.common.MuyeonListHeader(title, onClose = onClose)
 
         PullToRefreshBox(
             isRefreshing = refreshing,
@@ -277,62 +265,29 @@ private fun TodayCard(metrics: List<DashTile>, onTileAction: (String) -> Unit) {
     }
 }
 
+// 10-27 흰 카드 한 줄 안내로(iOS pendingBanner 와 같다).
 @Composable
 private fun PendingBanner(count: Int, onClick: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(MuyeonColors.surface)
-            .clickable(onClick = onClick)
-            .padding(14.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(Icons.Filled.Error, null, tint = MuyeonColors.orange, modifier = Modifier.size(17.dp))
-        Text(
-            "일정 확정이 필요한 레슨 ${count}건",
-            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
-            lineHeight = 17.sp, color = MuyeonColors.textHead,
-        )
-        Spacer(Modifier.weight(1f))
-        Icon(Icons.Filled.KeyboardArrowRight, null, tint = MuyeonColors.secondary, modifier = Modifier.size(12.dp))
-    }
+    com.muyeon.app.ui.common.MuyeonInfoRow("일정 확정이 필요해요", onClick, icon = Icons.Filled.Error, highlight = "레슨 ${count}건")
 }
 
+// 다가오는 일정 — 10-27 티켓 앱 '다가오는 예약' 카드 모양(제목 줄 + 아이콘 칸·굵은 제목·회색 부제·주황 날짜·›).
 @Composable
 private fun UpcomingSection(items: List<QuoteDashUpcoming>, onTap: (QuoteDashUpcoming) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            "다가오는 일정",
-            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
-            lineHeight = 18.sp, color = MuyeonColors.textSub,
-        )
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(MuyeonColors.surface)) {
-            items.forEachIndexed { idx, item ->
-                Row(
-                    Modifier.fillMaxWidth().clickable { onTap(item) }.padding(horizontal = 14.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            listOfNotNull(item.date, item.time).joinToString(" "),
-                            fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp,
-                            lineHeight = 14.sp, color = MuyeonColors.primary,
-                        )
-                        Text(
-                            listOfNotNull(item.title, item.counterpart).joinToString(" · "),
-                            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
-                            lineHeight = 17.sp, color = MuyeonColors.textHead,
-                        )
-                    }
-                    Icon(Icons.Filled.KeyboardArrowRight, null, tint = MuyeonColors.secondary, modifier = Modifier.size(12.dp))
-                }
-                if (idx != items.lastIndex) HorizontalDivider(Modifier.padding(start = 14.dp), color = MuyeonColors.border)
-            }
-        }
-    }
+    com.muyeon.app.ui.common.MuyeonHighlightCard(
+        "다가오는 일정",
+        items.map { item ->
+            com.muyeon.app.ui.common.MuyeonHighlightItem(
+                id = item.id.toString(),
+                title = item.title ?: "레슨",
+                subtitle = item.counterpart,
+                meta = listOfNotNull(item.date, item.time).joinToString(" "),
+                metaTint = MuyeonColors.primary,
+                onClick = { onTap(item) },
+            )
+        },
+        side = "${items.size}건",
+    )
 }
 
 /** 기능 리스트(그룹 미지정 시) — iOS legacyFunctionList. */
@@ -393,17 +348,20 @@ private fun GroupedFunctionSections(functions: List<QuoteDashFunction>, unreadQu
     Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
         groups.forEach { grp ->
             val cards = functions.filter { it.group == grp }
+            // 10-27 묶음 제목 + 흰 카드 하나에 3칸씩(티켓 앱 '고객센터' 바로가기 카드 모양, iOS 와 같다).
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    grp,
-                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp,
-                    lineHeight = 20.sp, color = MuyeonColors.textHead,
-                )
+                com.muyeon.app.ui.common.MuyeonSectionTitle(grp)
                 // LazyVerticalGrid 는 스크롤 Column 안에서 높이가 불확정이라 고정 행으로 배치.
-                cards.chunked(3).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        row.forEach { fn -> FunctionCard(fn, unreadQuotes, Modifier.weight(1f)) }
-                        repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                Column(
+                    Modifier.fillMaxWidth().clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+                        .background(MuyeonColors.surface).padding(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    cards.chunked(3).forEach { row ->
+                        Row {
+                            row.forEach { fn -> FunctionCard(fn, unreadQuotes, Modifier.weight(1f)) }
+                            repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                        }
                     }
                 }
             }
@@ -416,15 +374,14 @@ private fun GroupedFunctionSections(functions: List<QuoteDashFunction>, unreadQu
 private fun FunctionCard(fn: QuoteDashFunction, unreadQuotes: Int, modifier: Modifier = Modifier) {
     Column(
         modifier
-            .heightIn(min = 108.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(MuyeonColors.surface)
+            .heightIn(min = 100.dp)
+            .clip(RoundedCornerShape(12.dp))
             .clickable { fn.action() }
-            .padding(vertical = 14.dp, horizontal = 6.dp),
+            .padding(vertical = 10.dp, horizontal = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Icon(fn.icon, null, tint = MuyeonColors.primary, modifier = Modifier.height(30.dp).size(24.dp))
+        Icon(fn.icon, null, tint = MuyeonColors.textHead, modifier = Modifier.height(30.dp).size(24.dp))
         // 상태 뱃지 — 자동응답 켜짐/꺼짐을 카드에서 바로 확인.
         fn.badge?.let { badge ->
             Text(

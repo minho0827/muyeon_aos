@@ -164,19 +164,11 @@ fun CastingStageScreen(
                 }
                 item(key = "section.CASTING") {
                     StageSectionBox("지금 열린 캐스팅") {
-                        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(GENRES) { g ->
-                                val on = g == genre
-                                Box(
-                                    Modifier.height(36.dp).clip(CircleShape).background(if (on) MuyeonColors.textHead else Ink100)
-                                        .clickable {
-                                            genre = g
-                                            scope.launch { castings = runCatching { api.castings(g.takeIf { it != "전체" }) }.getOrDefault(emptyList()) }
-                                        }.padding(horizontal = 16.dp),
-                                    Alignment.Center,
-                                ) { Text(g, style = Medium, fontSize = 14.sp, color = if (on) Color.White else MuyeonColors.textHead) }
-                            }
-                        }
+                        // 10-27 공용 캡슐 탭(ui/common/MuyeonListKit) — 섹션 안이라 구분선 없음.
+                        com.muyeon.app.ui.common.MuyeonPillTabs(GENRES.map { com.muyeon.app.ui.common.MuyeonPillTab(it, it) }, genre, { g ->
+                            genre = g
+                            scope.launch { castings = runCatching { api.castings(g.takeIf { it != "전체" }) }.getOrDefault(emptyList()) }
+                        }, tagPrefix = "stage.genre", showDivider = false, compact = true)
                         if (castings.isEmpty()) {
                             Box(Modifier.fillMaxWidth().heightIn(min = 120.dp), Alignment.Center) {
                                 Text(if (loading) "불러오는 중…" else "지금 열린 캐스팅 공고가 없어요.", style = Regular, fontSize = 14.sp, color = MuyeonColors.textSub)
