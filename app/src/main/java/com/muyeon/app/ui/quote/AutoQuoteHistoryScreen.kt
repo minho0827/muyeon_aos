@@ -646,7 +646,7 @@ private fun DateHeader(text: String) {
         lineHeight = 16.sp, color = MuyeonColors.textSub,
         modifier = Modifier
             .fillMaxWidth()
-            .background(MuyeonColors.groupedBg)
+            .background(com.muyeon.app.ui.common.MuyeonList.pageBg)
             .padding(horizontal = 16.dp, vertical = 8.dp),
     )
 }

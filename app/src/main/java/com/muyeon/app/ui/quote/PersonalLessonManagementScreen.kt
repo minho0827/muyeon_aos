@@ -152,33 +152,9 @@ fun PersonalLessonManagementScreen(
  */
 @Composable
 private fun SubTabRow(selected: LessonStudioTab, academy: Boolean = false, onSelect: (LessonStudioTab) -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().background(MuyeonColors.surface)
-            .horizontalScroll(rememberScrollState()).height(48.dp).padding(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.Bottom,
-    ) {
-        LessonStudioTab.entries.forEach { entry ->
-            val on = selected == entry
-            Column(
-                Modifier.clickable { onSelect(entry) }.fillMaxHeight(),
-                verticalArrangement = Arrangement.Bottom,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Spacer(Modifier.weight(1f))
-                Text(
-                    entry.titleFor(academy),
-                    fontFamily = customFontFamily,
-                    fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
-                    fontSize = 16.sp, lineHeight = 20.sp,
-                    color = if (on) MuyeonColors.textHead else MuyeonColors.secondary,
-                )
-                Spacer(Modifier.weight(1f))
-                Box(
-                    Modifier.fillMaxWidth().height(2.dp)
-                        .background(if (on) MuyeonColors.primary else MuyeonColors.surface),
-                )
-            }
-        }
-    }
+    // 10-27 밑줄 탭 → 공용 캡슐 탭(고름=검정). 좌우로 밀어 넘기기는 HorizontalPager 가 그대로 한다(iOS 와 같다).
+    com.muyeon.app.ui.common.MuyeonPillTabs(
+        LessonStudioTab.entries.map { com.muyeon.app.ui.common.MuyeonPillTab(it, it.titleFor(academy)) },
+        selected, onSelect, tagPrefix = "lessonhub.tab", showDivider = false,
+    )
 }

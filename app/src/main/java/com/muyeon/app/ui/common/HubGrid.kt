@@ -44,7 +44,7 @@ fun HubGridScreen(
     onClose: () -> Unit,
     onSelect: (HubItem) -> Unit,
 ) {
-    Column(Modifier.fillMaxSize().background(MuyeonColors.groupedBg)) {
+    Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
         Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
             Box(Modifier.align(Alignment.CenterStart).size(24.dp).clickable { onClose() }, Alignment.Center) {
                 Icon(Icons.Default.Close, "닫기", Modifier.size(16.dp), tint = MuyeonColors.textHead)

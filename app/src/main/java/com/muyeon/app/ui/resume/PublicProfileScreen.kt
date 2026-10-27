@@ -243,7 +243,7 @@ fun PublicProfileScreen(
                             fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
                             lineHeight = 19.sp, color = MuyeonColors.textSub,
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                                .clip(RoundedCornerShape(12.dp)).background(MuyeonColors.groupedBg).padding(14.dp),
+                                .clip(RoundedCornerShape(12.dp)).background(com.muyeon.app.ui.common.MuyeonList.pageBg).padding(14.dp),
                         )
                     }
                 }

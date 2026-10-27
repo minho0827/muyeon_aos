@@ -120,7 +120,7 @@ fun ReviewDetailScreen(
                                 AsyncImage(
                                     QuoteUi.imageUrl(s), null, contentScale = ContentScale.Crop,
                                     modifier = Modifier.size(width = 240.dp, height = 300.dp)
-                                        .clip(RoundedCornerShape(12.dp)).background(MuyeonColors.groupedBg),
+                                        .clip(RoundedCornerShape(12.dp)).background(com.muyeon.app.ui.common.MuyeonList.pageBg),
                                 )
                             }
                         }
@@ -166,7 +166,7 @@ fun ReviewDetailScreen(
                                             fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 16.sp,
                                             color = MuyeonColors.textHead,
                                             modifier = Modifier.clip(RoundedCornerShape(50))
-                                                .background(MuyeonColors.groupedBg)
+                                                .background(com.muyeon.app.ui.common.MuyeonList.pageBg)
                                                 .padding(horizontal = 12.dp, vertical = 7.dp),
                                         )
                                     }
@@ -186,7 +186,7 @@ fun ReviewDetailScreen(
                         )
                         Column(
                             Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                                .background(MuyeonColors.groupedBg).padding(14.dp),
+                                .background(com.muyeon.app.ui.common.MuyeonList.pageBg).padding(14.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             // purposes 는 옵션 id("adult"…)라 장르 카테고리로 라벨을 되돌린다.
@@ -212,7 +212,7 @@ fun ReviewDetailScreen(
                         )
                         Row(
                             Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                                .background(MuyeonColors.groupedBg)
+                                .background(com.muyeon.app.ui.common.MuyeonList.pageBg)
                                 .clickable(enabled = r.teacher.id > 0) { onSelectTeacher(r.teacher.id) }
                                 .padding(14.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),

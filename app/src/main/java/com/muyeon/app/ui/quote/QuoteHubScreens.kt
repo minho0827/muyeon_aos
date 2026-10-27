@@ -87,34 +87,12 @@ fun QuoteNavBar(
     /** 우측 액션 슬롯(선택) — 없으면 종전과 동일. */
     trailing: (@Composable () -> Unit)? = null,
 ) {
-    Box(
-        Modifier.fillMaxWidth().height(44.dp).background(MuyeonColors.surface),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            title,
-            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp,
-            lineHeight = 20.sp, color = MuyeonColors.textHead,
-        )
-        val leading = onBack ?: onClose
-        if (leading != null) {
-            Box(
-                Modifier.align(Alignment.CenterStart).padding(start = 4.dp).size(44.dp).clickable(onClick = leading),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    // iOS 는 네비게이션 기본 back(chevron) / 모달은 xmark — Android 관례에 맞춰 ArrowBack.
-                    if (onBack != null) Icons.AutoMirrored.Filled.ArrowBack else Icons.Filled.Close,
-                    contentDescription = if (onBack != null) "뒤로" else "닫기",
-                    tint = MuyeonColors.textHead,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-        }
-        if (trailing != null) {
-            Box(Modifier.align(Alignment.CenterEnd).padding(end = 4.dp)) { trailing() }
-        }
-    }
+    // 10-27 공용 제목줄(ui/common/MuyeonListKit)로 — ‹/✕ + 왼쪽 굵은 제목. 이 부품을 쓰는 화면이 모두 함께 바뀐다(iOS 와 같다).
+    //  뒤로 단추 이름은 예전과 같게("뒤로"/"닫기") 둔다.
+    com.muyeon.app.ui.common.MuyeonListHeader(
+        title, onBack = onBack, onClose = if (onBack == null) onClose else null,
+        backTag = if (onBack != null) "뒤로" else "닫기",
+    ) { trailing?.invoke() }
 }
 
 /** 10-27 밑줄 탭 → 공용 캡슐 탭(MuyeonPillTabs, 고름=검정 + 아래 구분선). iOS QuoteTabBar 와 같다. */

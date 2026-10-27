@@ -232,7 +232,7 @@ private fun NotificationCategoryDetail(
 ) {
     val scope = rememberCoroutineScope()
 
-    Column(Modifier.fillMaxSize().background(MuyeonColors.groupedBg)) {
+    Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
         QuoteNavBar(title = c.label, onBack = onBack)
 
         SettingsRow(

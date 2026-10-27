@@ -451,7 +451,7 @@ fun SurveyProfileScreen(
         loading = false
     }
 
-    Column(Modifier.fillMaxSize().background(MuyeonColors.groupedBg)) {
+    Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
         QuoteNavBar(title = "레슨 전 설문 프로필", onBack = onClose)
 
         when {

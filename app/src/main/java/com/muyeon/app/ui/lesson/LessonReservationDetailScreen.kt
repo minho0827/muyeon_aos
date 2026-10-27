@@ -78,7 +78,7 @@ fun LessonReservationDetailScreen(
 
     LaunchedEffect(reservationId) { load() }
 
-    Column(Modifier.fillMaxSize().background(MuyeonColors.groupedBg)) {
+    Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
         QuoteNavBar(title = "방문 예정", onBack = onClose)
 
         val d = detail

@@ -167,7 +167,7 @@ fun LessonCalendarScreen(
                 "오늘",
                 fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
                 lineHeight = 17.sp, color = MuyeonColors.textHead,
-                modifier = Modifier.clip(RoundedCornerShape(50)).background(MuyeonColors.groupedBg)
+                modifier = Modifier.clip(RoundedCornerShape(50)).background(com.muyeon.app.ui.common.MuyeonList.pageBg)
                     .clickable { state.goToday() }.padding(horizontal = 16.dp, vertical = 8.dp),
             )
             Row(
@@ -609,7 +609,7 @@ private fun LoadingAgenda() {
     repeat(2) {
         Column(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp)
-                .clip(RoundedCornerShape(16.dp)).background(MuyeonColors.groupedBg).padding(16.dp),
+                .clip(RoundedCornerShape(16.dp)).background(com.muyeon.app.ui.common.MuyeonList.pageBg).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             SkeletonBar(96.dp, 13.dp)
@@ -818,7 +818,7 @@ private fun DayCell(d: LessonDay, selected: Boolean, modifier: Modifier = Modifi
 private fun BlockRow(b: StudioBlock, cal: UserCalendar) {
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-            .background(MuyeonColors.groupedBg).padding(12.dp),
+            .background(com.muyeon.app.ui.common.MuyeonList.pageBg).padding(12.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

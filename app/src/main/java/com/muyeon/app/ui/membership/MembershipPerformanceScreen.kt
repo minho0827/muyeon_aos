@@ -62,7 +62,7 @@ fun MembershipPerformanceScreen(
         loading = false
     }
 
-    Column(Modifier.fillMaxSize().background(MuyeonColors.groupedBg)) {
+    Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
         QuoteNavBar(title = if (isAcademy) "학원 성과" else "강사 성과", onBack = onClose)
 
         when {

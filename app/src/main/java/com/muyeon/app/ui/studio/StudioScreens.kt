@@ -426,7 +426,7 @@ fun StudioMemberDetailScreen(api: StudioApi, memberId: Int, onClose: () -> Unit)
 @Composable
 private fun MemberLeadToggle(isLead: Boolean, onChange: (Boolean) -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(9.dp)).background(MuyeonColors.groupedBg).padding(2.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(9.dp)).background(com.muyeon.app.ui.common.MuyeonList.pageBg).padding(2.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         listOf(false to "이용회원", true to "상담고객").forEach { (lead, label) ->

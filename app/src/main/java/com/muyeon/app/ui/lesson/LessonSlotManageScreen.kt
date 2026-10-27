@@ -157,7 +157,7 @@ fun LessonSlotManageScreen(
             if (readOnly) {
                 Column(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-                        .background(MuyeonColors.groupedBg).padding(14.dp),
+                        .background(com.muyeon.app.ui.common.MuyeonList.pageBg).padding(14.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Text(

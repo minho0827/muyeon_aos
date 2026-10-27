@@ -43,7 +43,7 @@ fun SentQuoteDetailScreen(
 
     val (badgeText, badgeColor) = sentQuoteBadge(item)
 
-    Column(Modifier.fillMaxSize().background(MuyeonColors.groupedBg)) {
+    Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
         QuoteNavBar(title = "보낸 제안", onBack = onBack)
         Column(
             Modifier.verticalScroll(rememberScrollState()).padding(vertical = 16.dp),

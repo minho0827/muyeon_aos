@@ -138,7 +138,7 @@ fun ReceivedQuoteDetailScreen(
     // 토스트 2초 후 자동 소멸(iOS onAppear asyncAfter 2)
     LaunchedEffect(toast) { if (toast != null) { delay(2000); toast = null } }
 
-    Box(Modifier.fillMaxSize().background(MuyeonColors.groupedBg)) {
+    Box(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
         Column(Modifier.fillMaxSize()) {
             QuoteNavBar(title = "받은 제안", onBack = onBack)
 

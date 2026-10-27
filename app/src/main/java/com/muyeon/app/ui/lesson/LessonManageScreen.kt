@@ -175,7 +175,7 @@ fun LessonManageScreen(
     // 최초 + 부모 신호(reloadSignal)마다. 개설·수정 화면에서 돌아오면 부모가 신호를 올린다.
     LaunchedEffect(reloadSignal) { load() }
 
-    Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
+    Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
         if (!embedded) QuoteNavBar(title = "내 레슨 관리", onBack = onClose)
 
         val list = rows
@@ -299,8 +299,9 @@ private fun LessonCard(
     onDelete: () -> Unit,
 ) {
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-            .border(1.dp, MuyeonColors.border, RoundedCornerShape(14.dp)).padding(14.dp),
+        // 10-27 테두리 카드 → 회색 바탕 위 흰 카드(iOS 와 같다).
+        Modifier.fillMaxWidth().clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+            .background(MuyeonColors.surface).padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
