@@ -143,6 +143,7 @@
                 <data android:pathPrefix="/app/" />
                 <data android:path="/home" />
                 <data android:pathPrefix="/jobs/" />
+                <data android:path="/casting" />
                 <data android:pathPrefix="/casting/" />
                 <data android:pathPrefix="/subs/" />
                 <data android:pathPrefix="/teachers/" />

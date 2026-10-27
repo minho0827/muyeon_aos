@@ -629,8 +629,9 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
                 // 이 앱이 지원하는 기능 표시(iOS __muyeonNativeCapabilities 와 같은 키). 웹은 표시가 없으면 구버전 앱으로 보고 웹 화면을 쓴다.
                 //  publicProfileJobs: 공개 프로필이 구인구직 문맥(src=jobs)을 멤버십 규칙 레이아웃으로 그린다(2026-10-19).
                 //  nativeCastingStage: 하단 탭 '캐스팅·무대'를 네이티브 화면으로 연다(2026-10-26).
+                //  castingStageLink: openCastingStage payload(castingId·screen·issueNo)로 그 화면부터 연다(2026-10-27). 없으면 웹은 안쪽 링크를 웹으로.
                 view?.evaluateJavascript(
-                    "window.__muyeonNativeCapabilities=Object.assign({},window.__muyeonNativeCapabilities||{},{publicProfileJobs:true,nativeCastingStage:true});",
+                    "window.__muyeonNativeCapabilities=Object.assign({},window.__muyeonNativeCapabilities||{},{publicProfileJobs:true,nativeCastingStage:true,castingStageLink:true});",
                     null,
                 )
                 // webReady 를 안 보내는 옛 웹 안전망. 준비 전이면 가드가 0 을 돌려 그대로 남는다.

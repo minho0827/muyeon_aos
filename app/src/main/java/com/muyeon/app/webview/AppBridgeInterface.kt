@@ -179,7 +179,14 @@ object NativeActionRouter {
             }
             "openQuoteBrowse" -> com.muyeon.app.ui.quote.QuoteBrowseActivity.start(activity)
             // 10-26 웹 하단 탭 '캐스팅·무대' → 네이티브 섹션 화면(웹은 nativeCastingStage 표시가 있을 때만 보낸다)
-            "openCastingStage" -> com.muyeon.app.ui.castingstage.CastingStageActivity.start(activity)
+            //  10-27 링크(/casting/12 등)는 payload(castingId·screen·issueNo·category)로 그 화면부터.
+            "openCastingStage" -> com.muyeon.app.ui.castingstage.CastingStageActivity.start(
+                activity,
+                com.muyeon.app.ui.castingstage.CastingStageActivity.linkRoute(
+                    d.optString("castingId").ifEmpty { null }, d.optString("screen").ifEmpty { null },
+                    d.optString("issueNo").ifEmpty { null }, d.optString("category").ifEmpty { null },
+                ),
+            )
             "openAutoQuoteTemplates" -> com.muyeon.app.ui.quote.QuoteAutoTemplatesActivity.start(activity)
             // 자동견적 발송 내역(강사·학원 전용 — Activity 가 무용수 차단). data.month = "YYYY-MM"(선택).
             "openAutoQuoteHistory" -> com.muyeon.app.ui.quote.AutoQuoteHistoryActivity.start(

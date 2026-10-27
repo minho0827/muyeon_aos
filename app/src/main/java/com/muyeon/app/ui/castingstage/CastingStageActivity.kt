@@ -29,7 +29,25 @@ import com.muyeon.app.ui.castingstage.screens.*
  */
 class CastingStageActivity : ResultActivity() {
     companion object {
-        fun start(context: Context) = context.launchScreen(Intent(context, CastingStageActivity::class.java))
+        private const val EXTRA_ROUTE = "route"
+
+        /** route — 링크로 열 때 첫 화면 위에 쌓을 화면(linkRoute). null 이면 첫 화면. */
+        fun start(context: Context, route: String? = null) =
+            context.launchScreen(Intent(context, CastingStageActivity::class.java).putExtra(EXTRA_ROUTE, route))
+
+        /**
+         * 웹 common/nativeLink.js 의 openCastingStage payload → NavHost 경로(10-27, iOS StageRoute.initialPath 와 같다).
+         *  castingId → 공고 상세 · screen=castingList·issues · issueNo(+category) → 그 호(그 칸) 소식. 이상한 값은 null(첫 화면).
+         */
+        fun linkRoute(castingId: String?, screen: String?, issueNo: String?, category: String?): String? {
+            castingId?.toIntOrNull()?.takeIf { it > 0 }?.let { return "casting/$it" }
+            when (screen) {
+                "castingList" -> return "castingList"
+                "issues" -> return "issues"
+            }
+            val no = issueNo?.toIntOrNull()?.takeIf { it > 0 } ?: return null
+            return if (category != null && StageCategory.NEWS.any { it.code == category }) "newsList/$no/$category" else "issue/$no"
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,6 +66,8 @@ class CastingStageActivity : ResultActivity() {
             val openCreate: (() -> Unit)? = if (canCreate) ({ nav.navigate("create") }) else null
             // 공고를 새로 올리면 첫 화면·전체 목록을 다시 불러온다.
             var reloadKey by remember { mutableIntStateOf(0) }
+            // 링크로 열었으면 첫 화면 위에 그 화면을 한 번 쌓는다 — 뒤로 가면 캐스팅·무대 첫 화면.
+            val linkRoute = remember { if (savedInstanceState == null) intent.getStringExtra(EXTRA_ROUTE) else null }
             NavHost(nav, startDestination = "home") {
                 composable("home") {
                     CastingStageScreen(
@@ -96,6 +116,7 @@ class CastingStageActivity : ResultActivity() {
                     StageNewsListScreen(api, e.arguments?.getInt("no") ?: 0, null, onBack = ::back, onOpen = ::openNews)
                 }
             }
+            androidx.compose.runtime.LaunchedEffect(Unit) { linkRoute?.let { nav.navigate(it) } }
         }
     }
 }
