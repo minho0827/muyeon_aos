@@ -460,6 +460,14 @@ fun ResumeEditScreen(
                             ReadOnlyRow("생년월일", basic.birth.orEmpty(), hint = "본인인증으로 등록된 생년월일이에요.")
                         }
                     }
+                    // ★ 2026-10-28 사진 없는 강사가 많아 권유 문구 — 목록에서 숨기지는 않는다(iOS 와 동일)
+                    if (!mode.isDancer && image.isNullOrBlank()) {
+                        Text(
+                            "사진을 넣으면 회원에게 더 눈에 띄어요. 얼굴이 잘 보이는 사진이 좋아요.",
+                            fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 11.sp,
+                            lineHeight = 13.sp, color = MuyeonColors.textSub,
+                        )
+                    }
                     LabeledInput("한줄 소개", oneLiner, "예) 성인발레 전문, 맞춤형 지도") { oneLiner = it }
                     if (mode.isDancer) {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
