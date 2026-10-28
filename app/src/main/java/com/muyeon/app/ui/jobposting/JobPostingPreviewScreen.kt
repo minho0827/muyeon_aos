@@ -144,6 +144,8 @@ internal fun JobPostingDetailContent(form: JobForm, showPlaceholders: Boolean) {
     }
     val description = form.description?.takeIf { it.isNotEmpty() }
     val images = form.images?.takeIf { it.isNotEmpty() }
+    // 이미지형 상세컷 — detailType == IMAGE 일 때만(iOS JobPostingDetailContent 와 동일).
+    val detailCuts = form.detailImages?.takeIf { form.detailType == "IMAGE" && it.isNotEmpty() }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         // 공고 상세(JobDetail)에 노출되는 항목과 1:1 — 빠짐 없이 전부 표시.
@@ -175,6 +177,11 @@ internal fun JobPostingDetailContent(form: JobForm, showPlaceholders: Boolean) {
             HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
             PostingHead("상세 설명")
             description?.let { PostingBody(it) } ?: PreviewPlaceholder("공고 상세 설명이 여기에 보여요")
+        }
+        detailCuts?.let {
+            HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MuyeonColors.border)
+            PostingHead("이미지 상세")
+            PostingImageStack(it)
         }
         // 실제 상세(웹)는 캐러셀, 앱은 세로 스택으로 전부 확인.
         if (showPlaceholders || images != null) {

@@ -165,6 +165,10 @@ data class JobForm(
     var careerText: String? = null,
     var description: String? = null,
     var status: String? = null,     // DRAFT(임시저장) | OPEN
+    // ★ 2026-10-28 상세 페이지 이미지(쇼핑몰식 상세컷) — TEXT | IMAGE. images(좌우 넘겨보기)와 별개.
+    //  멤버십 DETAIL_IMAGE 가 있어야 IMAGE 로 저장된다(서버 assertDetailImageAllowed, 이미 IMAGE 면 통과).
+    var detailType: String? = null,
+    var detailImages: List<String>? = null,
     // 원하는 강사 조건 — 웹 JobCreate·iOS JobPreferences 와 **키 이름까지 동일**해야 한다.
     //  한쪽만 바꾸면 저장은 되는데 다른 화면에서 안 보이는 형태로 조용히 어긋난다.
     var pref: JobPref = JobPref(),
@@ -190,6 +194,10 @@ data class JobForm(
         careerLevels?.let { put("careerLevels", JSONArray(it)) }
         putOpt("careerText", careerText); putOpt("description", description)
         putOpt("status", status)
+        putOpt("detailType", detailType)
+        // 수정은 빈 목록도 보내야 지운 이미지가 반영된다(iOS saveJob 과 동일).
+        if (isEdit) put("detailImages", JSONArray(detailImages ?: emptyList<String>()))
+        else detailImages?.takeIf { it.isNotEmpty() }?.let { put("detailImages", JSONArray(it)) }
         pref.toJson()?.let { put("preferences", it) }
     }
 
@@ -211,6 +219,7 @@ data class JobForm(
                 salary = o.stringOrNull("salary"), pay = o.stringOrNull("pay"),
                 careerLevels = o.stringList("careerLevels"), careerText = o.stringOrNull("careerText"),
                 description = o.stringOrNull("description"),
+                detailType = o.stringOrNull("detailType"), detailImages = o.stringList("detailImages"),
                 target = d.stringOrNull("target"), address = d.stringOrNull("address"),
                 subway = d.stringOrNull("subway"), employment = d.stringOrNull("employment"),
                 headcount = d.intOrNull("headcount"), deadline = d.stringOrNull("deadline"),

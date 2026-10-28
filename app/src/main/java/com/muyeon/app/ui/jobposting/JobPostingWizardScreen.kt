@@ -18,6 +18,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Lock
+import com.muyeon.app.ui.lesson.LessonWizardApi
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.Checkbox
@@ -91,6 +93,11 @@ fun JobPostingWizardScreen(
     var saving by remember { mutableStateOf(false) }
     var uploadingCover by remember { mutableStateOf(false) }
     var uploadingDetail by remember { mutableStateOf(false) }
+    // ★ 2026-10-28 상세 페이지 이미지(detailImages) — 레슨 위저드와 같은 이용권 판정(멤버십 DETAIL_IMAGE).
+    var uploadingDetailCut by remember { mutableStateOf(false) }
+    var hasDetailEnt by remember { mutableStateOf(false) }
+    // 불러온 공고가 이미 이미지형이면 이용권 없이도 계속 고칠 수 있다(서버와 같은 기준).
+    var existingDetailType by remember { mutableStateOf<String?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     // 공고 공개 한도 초과(403 POSTING_MEMBERSHIP_REQUIRED) — tier 유무로 안내를 나눈다.
     var postingLimit by remember { mutableStateOf<PostingLimitException?>(null) }
@@ -102,9 +109,10 @@ fun JobPostingWizardScreen(
     val scroll = rememberScrollState()
 
     LaunchedEffect(jobId) {
-        jobId?.let { api.loadJob(it).onSuccess { f -> form = f; baseline = f } }
+        jobId?.let { api.loadJob(it).onSuccess { f -> form = f; baseline = f; existingDetailType = f.detailType } }
         loading = false
     }
+    LaunchedEffect(Unit) { hasDetailEnt = LessonWizardApi(api.token).hasDetailImage() }
     // 단계 전환 시 최상단으로 — 안 하면 중간부터 보인다(iOS scrollTo(topAnchor)).
     LaunchedEffect(step) { scroll.scrollTo(0) }
 
@@ -154,6 +162,29 @@ fun JobPostingWizardScreen(
             }
             form = form.copy(images = list.ifEmpty { null })
             uploadingDetail = false
+        }
+    }
+
+    val detailCutAllowed = hasDetailEnt || existingDetailType == "IMAGE"
+    val detailCuts = form.detailImages ?: emptyList()
+    val detailCutPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(maxItems = IMAGES_MAX),
+    ) { uris ->
+        if (uris.isEmpty() || !detailCutAllowed) return@rememberLauncherForActivityResult
+        uploadingDetailCut = true
+        scope.launch {
+            val room = (IMAGES_MAX - (form.detailImages?.size ?: 0)).coerceAtLeast(0)
+            var list = form.detailImages ?: emptyList()
+            var failed = false
+            uris.take(room).forEach { u ->
+                val bytes = readBytes(u)
+                if (bytes == null) failed = true
+                else api.uploadImage(bytes).onSuccess { list = list + it }.onFailure { failed = true }
+            }
+            // 올리면 IMAGE, 하나도 없으면 그대로(레슨 위저드와 동일).
+            form = form.copy(detailImages = list.ifEmpty { null }, detailType = if (list.isEmpty()) form.detailType else "IMAGE")
+            if (failed) errorMessage = "상세 이미지 업로드에 실패했어요."
+            uploadingDetailCut = false
         }
     }
 
@@ -287,6 +318,27 @@ fun JobPostingWizardScreen(
                     SectionHead("상세 정보", "지원자에게 보여 줄 상세 내용을 입력해 주세요.")
                     JobMultiline("상세 설명", form.description.orEmpty(), "근무 내용, 지원 자격 등 자세히 적어주세요.") {
                         form = form.copy(description = it)
+                    }
+                    if (detailCutAllowed) {
+                        DetailImages(
+                            images = detailCuts, uploading = uploadingDetailCut,
+                            title = "상세 페이지 이미지", membershipBadge = true,
+                            hint = "이미지를 올리면 공고 상세에 글 대신 이미지가 세로로 보여요(최대 10장).",
+                            onAdd = {
+                                detailCutPicker.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                                )
+                            },
+                            onRemove = { idx ->
+                                val left = detailCuts.filterIndexed { i, _ -> i != idx }
+                                form = form.copy(
+                                    detailImages = left.ifEmpty { null },
+                                    detailType = if (left.isEmpty()) "TEXT" else form.detailType,
+                                )
+                            },
+                        )
+                    } else {
+                        DetailCutsLocked(onMembership = onOpenMembership)
                     }
                     JobField("학원명", form.academy.orEmpty(), "예) 미노발레아카데미") { form = form.copy(academy = it) }
                     JobField("상세 주소", form.address.orEmpty(), "예) 강남구 테헤란로 …") { form = form.copy(address = it) }
@@ -647,15 +699,20 @@ private fun DetailImages(
     uploading: Boolean,
     onAdd: () -> Unit,
     onRemove: (Int) -> Unit,
+    // 상세 페이지 이미지(detailImages) 칸도 같은 모양으로 쓴다.
+    title: String = "상세 이미지",
+    hint: String = "공고 상세에서 좌우로 넘겨보는 이미지예요.",
+    membershipBadge: Boolean = false,
 ) {
     val side = 96.dp
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "상세 이미지",
+                title,
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
                 lineHeight = 18.sp, color = MuyeonColors.textHead,
             )
+            if (membershipBadge) MembershipBadge()
             Text(
                 "${images.size}/$IMAGES_MAX",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp,
@@ -702,10 +759,57 @@ private fun DetailImages(
             }
         }
         Text(
-            "공고 상세에서 좌우로 넘겨보는 이미지예요.",
+            hint,
             fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp,
             lineHeight = 15.sp, color = MuyeonColors.chevron,
         )
+    }
+}
+
+@Composable
+private fun MembershipBadge() {
+    Text(
+        "멤버십",
+        fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 10.sp, lineHeight = 12.sp,
+        color = Color.White,
+        modifier = Modifier.clip(CircleShape).background(MuyeonColors.primary).padding(horizontal = 6.dp, vertical = 2.dp),
+    )
+}
+
+/** 상세 페이지 이미지 잠금 — 이용권이 없을 때. 웹 DetailImageField 잠금 카드와 같은 안내 + [멤버십 혜택 보기]. */
+@Composable
+private fun DetailCutsLocked(onMembership: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "상세 페이지 이미지",
+                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                lineHeight = 18.sp, color = MuyeonColors.textHead,
+            )
+            MembershipBadge()
+        }
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Color(0xFFF7F7F7)).padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Lock, null, tint = MuyeonColors.textSub, modifier = Modifier.size(14.dp))
+                Text(
+                    "멤버십이 있으면 공고 상세를 이미지로 꾸밀 수 있어요.",
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
+                    lineHeight = 17.sp, color = MuyeonColors.textSub,
+                )
+            }
+            Text(
+                "멤버십 혜택 보기",
+                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, lineHeight = 16.sp,
+                color = MuyeonColors.primary,
+                modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, MuyeonColors.primary, RoundedCornerShape(8.dp))
+                    .clickable(onClick = onMembership)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+            )
+        }
     }
 }
 
