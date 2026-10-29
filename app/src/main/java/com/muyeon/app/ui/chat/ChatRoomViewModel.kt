@@ -66,6 +66,16 @@ class ChatRoomViewModel(
     var lessonCycles by mutableStateOf<List<ChatLessonCycle>>(emptyList())
     var progress by mutableStateOf<ChatLessonProgress?>(null)              // 대표 진행(구백엔드 폴백 카드)
     var pendingProposal by mutableStateOf<ChatPendingProposal?>(null)      // 재입장으로 숨겨진 대기 중 약속 제안
+    var hasPendingProposal by mutableStateOf(false)                        // 방에 응답 대기 중인 약속 제안(서버 hasPendingProposal)
+
+    /**
+     * 응답 대기 중인 약속 제안이 있어 회원 '일정 잡기'를 숨겨야 하는지(서버가 방당 대기 제안 1건만 받는다).
+     *  구 서버는 hasPendingProposal 이 없으므로 재입장 고정 카드(pendingProposal)로 폴백.
+     */
+    val proposalWaiting: Boolean get() = hasPendingProposal || pendingProposal != null
+
+    /** 채택 확인창의 대상 사이클 — null 이면 대표 견적(quoteContext). 사이클이 여러 개인 방에서 엉뚱한 견적 채택 방지. */
+    var acceptTarget by mutableStateOf<ChatLessonCycle?>(null)
 
     /** 채택(매칭)된 견적 방인지 — 회원도 레슨 약속 제안을 보낼 수 있다(iOS isQuoteMatched). */
     val isQuoteMatched: Boolean get() = quoteContext?.matched == true
@@ -127,9 +137,18 @@ class ChatRoomViewModel(
      *  이미 채택됐거나 강사 측이면 요청하지 않고 실패로 돌려준다.
      */
     suspend fun acceptQuote(): Boolean {
-        val q = quoteContext ?: return false
-        if (q.isTeacher || q.matched) return false
-        return api.acceptQuote(q.quoteId, q.responseId).fold(
+        // 사이클에서 누른 채택이면 그 사이클의 견적(quoteId·responseId), 아니면 대표 견적.
+        val target = acceptTarget
+        acceptTarget = null
+        val ids: Pair<Int, Int> = if (target != null) {
+            if (target.isTeacher || target.matched || target.isProposal || target.quoteId <= 0 || target.responseId <= 0) return false
+            target.quoteId to target.responseId
+        } else {
+            val q = quoteContext ?: return false
+            if (q.isTeacher || q.matched) return false
+            q.quoteId to q.responseId
+        }
+        return api.acceptQuote(ids.first, ids.second).fold(
             onSuccess = {
                 loadDetail()
                 fetchLatest().onSuccess { res -> merge(res.messages); scheduleGapFillIfNeeded() }
@@ -270,6 +289,7 @@ class ChatRoomViewModel(
             lessonCycles = d.lessonCycles ?: emptyList()
             progress = d.progress
             pendingProposal = d.pendingProposal
+            hasPendingProposal = d.hasPendingProposal == true
         }
     }
 

@@ -105,6 +105,16 @@ fun LessonContextArea(
                             .padding(horizontal = 7.dp, vertical = 2.dp),
                     )
                 }
+                if (cycles.any { it.awaitsMyAccept }) {
+                    Text(
+                        "새 견적",
+                        fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 11.sp,
+                        lineHeight = 13.sp, color = Color.White,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50)).background(MuyeonColors.primary)
+                            .padding(horizontal = 7.dp, vertical = 2.dp),
+                    )
+                }
                 Spacer(Modifier.weight(1f))
                 Icon(
                     Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
@@ -119,6 +129,7 @@ fun LessonContextArea(
                 category = cycle.title ?: "레슨",
                 isExpired = false,
                 isProposal = cycle.isProposal,
+                waitingProposal = vm.proposalWaiting,
                 onTimeline = { onCycleTimeline(cycle) },
                 onPrimary = { onCyclePrimary(cycle) },
             )
@@ -130,6 +141,7 @@ fun LessonContextArea(
                 context = vm.quoteContext,
                 category = vm.contextCategory,
                 isExpired = vm.isQuoteExpired,
+                waitingProposal = vm.proposalWaiting,
                 onTimeline = onLegacyTimeline,
                 onPrimary = { onLegacyPrimary(progress) },
             )
@@ -154,7 +166,8 @@ fun LessonContextArea(
         }
 
         // 일반회원 핵심 CTA 는 진행 카드 내부 상태에 의존하지 않는다 — 채택 직후 바로 날짜·시간을 제안할 수 있어야 한다.
-        if (vm.memberNeedsSchedule && vm.pendingProposal == null) {
+        //  응답 대기 중인 약속 제안이 있으면 숨긴다(서버 hasPendingProposal — 방당 대기 제안 1건).
+        if (vm.memberNeedsSchedule && !vm.proposalWaiting) {
             MemberScheduleCTA(onMemberSchedule)
         }
 
@@ -273,16 +286,23 @@ fun LessonContextArea(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
+                val memberWaiting = !vm.isTeacherSide && vm.proposalWaiting
                 Icon(Icons.Filled.Verified, null, tint = MuyeonColors.primary, modifier = Modifier.size(15.dp))
                 Text(
-                    if (vm.isTeacherSide) "채택했어요. 일정을 확정해 주세요" else "채택됐어요. 원하는 일정을 제안해 주세요",
+                    when {
+                        vm.isTeacherSide -> "채택했어요. 일정을 확정해 주세요"
+                        memberWaiting -> WAITING_PROPOSAL_LINE
+                        else -> "채택됐어요. 원하는 일정을 제안해 주세요"
+                    },
                     fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
                     lineHeight = 16.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
                 )
-                CapsuleButton(
-                    if (vm.isTeacherSide) "일정 확정" else "일정 잡기",
-                    fontSize = 12, hPad = 10, vPad = 6, onClick = onMatchedAction,
-                )
+                if (!memberWaiting) {
+                    CapsuleButton(
+                        if (vm.isTeacherSide) "일정 확정" else "일정 잡기",
+                        fontSize = 12, hPad = 10, vPad = 6, onClick = onMatchedAction,
+                    )
+                }
             }
         }
     }
@@ -347,6 +367,7 @@ private fun scheduleBannerLabel(iso: String?): String? {
 fun LessonCyclesSheet(
     cycles: List<ChatLessonCycle>,
     opponentImage: String?,
+    waitingProposal: Boolean = false,
     onTimeline: (ChatLessonCycle) -> Unit,
     onPrimary: (ChatLessonCycle) -> Unit,
     onDismiss: () -> Unit,
@@ -382,6 +403,7 @@ fun LessonCyclesSheet(
                         personName = cycle.opponentName,
                         personImage = opponentImage,
                         personRole = cycle.opponentRoleLabel,
+                        waitingProposal = waitingProposal,
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
                             .border(1.dp, MuyeonColors.border, RoundedCornerShape(12.dp)),

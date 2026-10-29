@@ -65,11 +65,14 @@ fun LessonProgressCard(
     personName: String? = null,
     personImage: String? = null,
     personRole: String? = null, // "강사" | "수강생"
+    // 방에 응답 대기 중인 약속 제안이 있으면 회원 '일정 잡기'를 숨기고 안내 문구(서버가 방당 대기 제안 1건만 받는다)
+    waitingProposal: Boolean = false,
     modifier: Modifier = Modifier,
     onTimeline: () -> Unit,
     onPrimary: () -> Unit,
 ) {
     val isTeacher = context?.isTeacher ?: false
+    val memberWaiting = progress.step == "ACCEPTED" && !isTeacher && waitingProposal
 
     Column(
         modifier
@@ -131,13 +134,13 @@ fun LessonProgressCard(
 
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                progressStatusLine(progress, context, isTeacher),
+                if (memberWaiting) WAITING_PROPOSAL_LINE else progressStatusLine(progress, context, isTeacher),
                 fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 16.sp,
                 color = MuyeonColors.secondary, maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            primaryCta(progress.step, isTeacher)?.let { label ->
+            primaryCta(progress.step, isTeacher)?.takeIf { !memberWaiting }?.let { label ->
                 Text(
                     label,
                     fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 12.sp,
@@ -152,6 +155,9 @@ fun LessonProgressCard(
         }
     }
 }
+
+/** 대기 중 약속 제안이 있을 때 회원 진행 카드·배너 문구(iOS 와 같음). */
+internal const val WAITING_PROPOSAL_LINE = "일정 제안을 주고받는 중이에요"
 
 /** iOS LessonProgressCard.statusLine — 단계·역할별 한 줄 상태. */
 private fun progressStatusLine(progress: ChatLessonProgress, context: ChatQuoteContext?, isTeacher: Boolean): String =
@@ -224,6 +230,7 @@ data class LessonProposalCard(
     val memberId: Int? = null,      // 약속의 회원(수강생). 구 카드에는 없다.
     val totalPrice: Int? = null,
     val depositAmount: Int? = null,
+    val lessonDone: Boolean = false,  // 연결 일정이 완료됐는지(2026-10-29 서버부터) — true 면 [약속 취소] 숨김
 ) {
     companion object {
         fun parse(content: String): LessonProposalCard? = runCatching {
@@ -240,6 +247,7 @@ data class LessonProposalCard(
                 memberId = o.intOrNull("memberId"),
                 totalPrice = o.intOrNull("totalPrice"),
                 depositAmount = o.intOrNull("depositAmount"),
+                lessonDone = o.optBoolean("lessonDone", false),
             )
         }.getOrNull()
     }
@@ -422,7 +430,7 @@ fun LessonProposalBubble(
         val startMs = QuoteUi.parseDate(card.startAt)
         if (card.status == "ACCEPTED") {
             Text(
-                "레슨이 확정됐어요. 캘린더에서 확인할 수 있어요",
+                if (card.lessonDone) "레슨이 완료됐어요. 캘린더에서 확인할 수 있어요" else "레슨이 확정됐어요. 캘린더에서 확인할 수 있어요",
                 fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp, color = MuyeonColors.textSub,
                 modifier = Modifier.padding(top = 4.dp),
             )
@@ -445,7 +453,8 @@ fun LessonProposalBubble(
                 )
             }
         }
-        if (card.status == "ACCEPTED" && isMember && startMs != null && startMs > System.currentTimeMillis()) {
+        // 완료된 레슨(lessonDone)은 시작 전이라도 취소 불가(서버도 409).
+        if (card.status == "ACCEPTED" && !card.lessonDone && isMember && startMs != null && startMs > System.currentTimeMillis()) {
             ProposalButton(
                 if (busy) "확인 중…" else "약속 취소", filled = false, enabled = !busy,
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),

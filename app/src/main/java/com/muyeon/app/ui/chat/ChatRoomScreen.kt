@@ -320,9 +320,10 @@ fun ChatRoomScreen(
             vm = vm,
             onOpenCycles = { showCyclesSheet = true },
             onCycleTimeline = { timelineCycle = it },
-            onCyclePrimary = { handleProgressPrimary(it.progress, it.isTeacher) },
+            // 채택 전(RESPONDED) 사이클의 [채택하기]는 그 사이클의 견적을 채택한다(대표 견적 아님).
+            onCyclePrimary = { vm.acceptTarget = it; handleProgressPrimary(it.progress, it.isTeacher) },
             onLegacyTimeline = { showLegacyTimeline = true },
-            onLegacyPrimary = { handleProgressPrimary(it, vm.quoteContext?.isTeacher == true) },
+            onLegacyPrimary = { vm.acceptTarget = null; handleProgressPrimary(it, vm.quoteContext?.isTeacher == true) },
             onProposalChanged = { vm.reloadContext() },
             onOpenProposalPayment = { pid ->
                 (context as? Activity)?.let { NativeWebRoute.openWebAndFinish(it, "/lesson-proposals/$pid/payment") }
@@ -330,7 +331,7 @@ fun ChatRoomScreen(
             onMemberSchedule = { showProposal = true },
             onQuoteHeader = { onQuoteHeader() },
             onOpenLesson = { openLesson(it) },
-            onAcceptQuote = { showAcceptConfirm = true },
+            onAcceptQuote = { vm.acceptTarget = null; showAcceptConfirm = true },
             onMatchedAction = {
                 // iOS 와 같은 분기 — 이 배너는 progress 가 없을 때만 보이므로 실제로는 약속 제안 작성이 열린다.
                 val p = vm.progress
@@ -548,8 +549,9 @@ fun ChatRoomScreen(
         LessonCyclesSheet(
             cycles = vm.lessonCycles,
             opponentImage = vm.opponentImage,
+            waitingProposal = vm.proposalWaiting,
             onTimeline = { c -> showCyclesSheet = false; timelineCycle = c },
-            onPrimary = { c -> showCyclesSheet = false; handleProgressPrimary(c.progress, c.isTeacher) },
+            onPrimary = { c -> showCyclesSheet = false; vm.acceptTarget = c; handleProgressPrimary(c.progress, c.isTeacher) },
             onDismiss = { showCyclesSheet = false },
         )
     }
@@ -561,7 +563,7 @@ fun ChatRoomScreen(
             progress = legacyProgress,
             context = qc,
             category = vm.contextCategory,
-            onQuoteDetail = if (qc?.isTeacher == false) { { showLegacyTimeline = false; showAcceptConfirm = true } } else null,
+            onQuoteDetail = if (qc?.isTeacher == false) { { showLegacyTimeline = false; vm.acceptTarget = null; showAcceptConfirm = true } } else null,
             onSetSchedule = if (qc?.isTeacher == true) {
                 { showLegacyTimeline = false; openProgressSchedule(legacyProgress) }
             } else null,
@@ -583,7 +585,7 @@ fun ChatRoomScreen(
             category = cycle.title,
             isProposal = cycle.isProposal,
             onQuoteDetail = if (!cycle.isTeacher && !cycle.isProposal) {
-                { timelineCycle = null; showAcceptConfirm = true }
+                { timelineCycle = null; vm.acceptTarget = cycle; showAcceptConfirm = true }
             } else null,
             onSetSchedule = if (cycle.isTeacher && !cycle.isProposal) {
                 { timelineCycle = null; openProgressSchedule(cycle.progress) }

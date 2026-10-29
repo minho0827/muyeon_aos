@@ -272,6 +272,9 @@ data class ChatLessonCycle(
     /** 내 액션(강사로서 일정 확정)이 필요한 사이클인지 — 요약바 '할 일' 표시용. */
     val needsMyAction: Boolean get() = isTeacher && progress.step == "ACCEPTED"
 
+    /** 내가 채택할 수 있는 새 견적(채택 전 RESPONDED, 회원 방향) — 요약바 '새 견적' 표시용(2026-10-29 서버부터). */
+    val awaitsMyAccept: Boolean get() = !isTeacher && !isProposal && progress.step == "RESPONDED"
+
     val opponentName: String get() = (if (isTeacher) memberName else teacherName) ?: "상대"
     val opponentRoleLabel: String get() = if (isTeacher) "수강생" else "강사"
 
@@ -318,6 +321,7 @@ data class ChatRoomDetail(
     val lessonCycles: List<ChatLessonCycle>?,   // 있으면 이걸 우선 렌더(양방향)
     val lastSeq: Int?,                          // 방의 마지막 메시지 순번(구버전 서버는 null)
     val pendingProposal: ChatPendingProposal? = null,   // 재입장으로 카드가 숨겨진 대기 중 약속 제안(상단 고정용)
+    val hasPendingProposal: Boolean? = null,   // 방에 응답 대기 중인 약속 제안이 있는지(2026-10-29 서버부터)
 ) {
     companion object {
         fun from(o: JSONObject) = ChatRoomDetail(
@@ -333,6 +337,7 @@ data class ChatRoomDetail(
             lessonCycles = o.optJSONArray("lessonCycles")?.map { ChatLessonCycle.from(it) },
             lastSeq = o.intOrNull("lastSeq"),
             pendingProposal = o.optJSONObject("pendingProposal")?.let { ChatPendingProposal.from(it) },
+            hasPendingProposal = o.boolOrNull("hasPendingProposal"),
         )
     }
 }
