@@ -45,6 +45,7 @@ fun QuoteWizardScreen(
     token: String?,
     onClose: () -> Unit,
     onComplete: (Map<String, QuoteAnswer>) -> Unit,
+    isDirect: Boolean = false,   // 지정 견적 — '평균 4개 이상' 대신 전달 문구(iOS QuoteWizardView.isDirect)
 ) {
     var showTyping by remember { mutableStateOf(true) }
     var showRegionPicker by remember { mutableStateOf(false) }
@@ -80,7 +81,7 @@ fun QuoteWizardScreen(
                 .padding(top = 16.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            if (vm.currentIndex == 0) InfoCard()
+            if (vm.currentIndex == 0) InfoCard(isDirect)
 
             // 채팅 로그(이미 답변한 질문들)
             vm.answeredQuestions.forEach { q ->
@@ -149,13 +150,13 @@ private fun Header(title: String, progress: Float, stepText: String, onClose: ()
     }
 }
 
-/** 첫 질문 안내 카드 — "몇 가지 정보만 알려주시면 평균 4개 이상의 견적을 받을 수 있어요." */
+/** 첫 질문 안내 카드 — 여러 명: "…평균 4개 이상의 견적을…", 지정 견적: "…선택한 강사님께 바로 견적 요청이 전달돼요." */
 @Composable
-private fun InfoCard() {
+private fun InfoCard(isDirect: Boolean) {
     val text = buildAnnotatedString {
-        withStyle(SpanStyle(color = QuoteColors.c6D6E71)) { append("몇 가지 정보만 알려주시면 ") }
-        withStyle(SpanStyle(color = QuoteColors.f58232)) { append("평균 4개 이상") }
-        withStyle(SpanStyle(color = QuoteColors.c6D6E71)) { append("의 견적을 받을 수 있어요.") }
+        withStyle(SpanStyle(color = QuoteColors.c6D6E71)) { append("몇 가지 정보만 알려 주시면 ") }
+        withStyle(SpanStyle(color = QuoteColors.f58232)) { append(if (isDirect) "선택한 강사님께 바로" else "평균 4개 이상") }
+        withStyle(SpanStyle(color = QuoteColors.c6D6E71)) { append(if (isDirect) " 견적 요청이 전달돼요." else "의 견적을 받을 수 있어요.") }
     }
     Text(
         text = text,

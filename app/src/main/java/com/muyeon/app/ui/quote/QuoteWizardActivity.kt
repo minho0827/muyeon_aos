@@ -201,10 +201,12 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                         phase = "loading"
                         submit(answers, category.id, targetTeacherId) { r -> submitResult = r }
                     },
+                    isDirect = targetTeacherId.isNotEmpty(),
                 )
                 if (showExit) {
                     QuoteExitSheet(
                         lessons = exitLessons,
+                        isDirect = targetTeacherId.isNotEmpty(),
                         onStop = { finish() },
                         onContinue = { showExit = false },
                         // 둘러보기·콘텐츠 상세 네이티브(iOS presentLessonBrowse / presentLessonContentDetail).
@@ -271,6 +273,7 @@ private fun QuoteExitSheet(
     onContinue: () -> Unit,
     onSeeAll: () -> Unit = {},
     onSelectLesson: (Int) -> Unit = {},
+    isDirect: Boolean = false,   // 지정 견적(강사 한 명에게 바로) — 받는 견적 수 대신 전달 문구
 ) {
     val dimSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val sheetSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
@@ -300,7 +303,8 @@ private fun QuoteExitSheet(
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                "지금 한 번만 작성하면\n평균 4개 이상의 견적을 받을 수 있어요.",
+                if (isDirect) "지금 한 번만 작성하면\n선택한 강사님께 바로 견적 요청이 전달돼요."
+                else "지금 한 번만 작성하면\n평균 4개 이상의 견적을 받을 수 있어요.",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Normal, fontSize = 15.sp,
                 color = QuoteColors.c6D6E71, textAlign = TextAlign.Center,
             )
