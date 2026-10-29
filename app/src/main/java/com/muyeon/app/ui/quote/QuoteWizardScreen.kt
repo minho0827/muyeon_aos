@@ -158,17 +158,24 @@ private fun InfoCard(isDirect: Boolean) {
         withStyle(SpanStyle(color = QuoteColors.f58232)) { append(if (isDirect) "선택한 강사님께 바로" else "평균 4개 이상") }
         withStyle(SpanStyle(color = QuoteColors.c6D6E71)) { append(if (isDirect) " 견적 요청이 전달돼요." else "의 견적을 받을 수 있어요.") }
     }
-    Text(
-        text = text,
-        fontFamily = customFontFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 14.sp,
-        modifier = Modifier
+    Column(
+        Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(QuoteColors.cF4F4F4)
             .padding(16.dp),
-    )
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(text = text, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+        // 지정 견적은 안내 화면이 없어 꼭 알아야 할 안내만 붙인다(웹·iOS 와 같은 문구).
+        if (isDirect) {
+            Text(
+                "요청 내용은 이 강사님에게만 보여요. 원하지 않으면 언제든 취소할 수 있어요.",
+                fontFamily = customFontFamily, fontWeight = FontWeight.Normal, fontSize = 13.sp,
+                color = QuoteColors.c6D6E71,
+            )
+        }
+    }
 }
 
 @Composable
