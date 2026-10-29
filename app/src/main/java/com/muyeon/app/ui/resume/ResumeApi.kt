@@ -215,7 +215,14 @@ class ResumeApi(internal val token: String?) {
                     .build()
                 client.newCall(req).execute().use { res ->
                     val text = res.body?.string().orEmpty()
-                    if (!res.isSuccessful) throw IllegalStateException(serverMessage(text) ?: "요청에 실패했어요.")
+                    if (!res.isSuccessful) {
+                        // 이번 달 새 강사·무용수 채팅 한도(403) — 화면이 팝업으로 분기하게 형을 나눠 던진다.
+                        val obj = runCatching { JSONObject(text) }.getOrNull()
+                        if (obj?.optString("code") == RecruitChatLimitException.CODE) {
+                            throw RecruitChatLimitException.from(serverMessage(text), obj.optJSONObject("data"))
+                        }
+                        throw IllegalStateException(serverMessage(text) ?: "요청에 실패했어요.")
+                    }
                     text
                 }
             }

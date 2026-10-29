@@ -55,7 +55,9 @@ fun ApplicantResumeScreen(
     var decisionPrompt by remember { mutableStateOf<ApplicantDecisionPrompt?>(null) }
     var infoMessage by remember { mutableStateOf<String?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var chatLimit by remember { mutableStateOf<RecruitChatLimitException?>(null) }
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     LaunchedEffect(postingId, applicationId, kind) {
         api.applicant(postingId, applicationId, kind)
@@ -174,7 +176,10 @@ fun ApplicantResumeScreen(
                             if (rid > 0) onOpenChat(rid, a.applicantName ?: "지원자")
                             else errorMessage = "채팅방을 여는 데 실패했어요."
                         }
-                        .onFailure { errorMessage = it.message }
+                        .onFailure {
+                            // 이번 달 새 강사·무용수 채팅 한도 → 오류 대신 한도 팝업
+                            if (it is RecruitChatLimitException) chatLimit = it else errorMessage = it.message
+                        }
                     deciding = false
                 }
             },
@@ -205,6 +210,14 @@ fun ApplicantResumeScreen(
     }
     errorMessage?.let { msg ->
         QuoteDialog("오류", msg, "확인", onConfirm = { errorMessage = null }, onDismiss = { errorMessage = null })
+    }
+    // 레슨 한도 팝업(LessonWizardScreen)과 같은 멤버십 화면(MembershipActivity)으로 보낸다.
+    chatLimit?.let { e ->
+        RecruitChatLimitDialog(
+            e,
+            onUpgrade = { chatLimit = null; com.muyeon.app.ui.membership.MembershipActivity.start(context) },
+            onDismiss = { chatLimit = null },
+        )
     }
 }
 
