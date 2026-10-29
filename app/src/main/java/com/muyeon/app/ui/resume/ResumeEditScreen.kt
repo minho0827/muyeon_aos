@@ -141,7 +141,12 @@ fun ResumeEditScreen(
     //   입력 중이던 내용이 통째로 사라지고, 돌아와서 LaunchedEffect(resumeId) 가 서버 값으로 다시 덮었다.
     val form: ResumeEditForm = androidx.lifecycle.viewmodel.compose.viewModel(
         key = "resumeEdit:${resumeId ?: 0}:$isSeekProfile",
-    ) { ResumeEditForm(mode.defaultResumeTitle, loading = resumeId != null) }
+    ) {
+        ResumeEditForm(
+            if (isSeekProfile) (if (mode.isDancer) "무용수 구직 프로필" else "강사 구직 프로필") else mode.defaultResumeTitle,
+            loading = resumeId != null,
+        )
+    }
     var title by form::title
     var basic by form::basic
     var oneLiner by form::oneLiner
@@ -310,6 +315,11 @@ fun ResumeEditScreen(
 
     fun save() {
         if (saving || uploadingPhoto) return
+        // 이력서 이름 — 여러 개를 구분하는 이름이라 비워 두면 저장하지 않는다(iOS·웹과 같은 문구).
+        if (title.isBlank()) {
+            errorMessage = "이력서 이름을 입력해 주세요."
+            return
+        }
         // ★ 2026-10-29 구직 프로필 최소 입력 — 강사: 활동 지역·희망 근무 지역·학력, 무용수: 학력(한 줄 이상). 구직 프로필 화면에서만 막는다(iOS 와 동일).
         //  지원용 이력서는 저장을 막지 않고, 서버가 세 칸이 찰 때까지 공개만 미룬다.
         if (isSeekProfile) {

@@ -76,7 +76,7 @@ enum class ResumeMode(val raw: String) {
 
     val navTitle: String get() = if (this == DANCER) "무용수 이력서" else "이력서 작성"
     val listTitle: String get() = if (this == DANCER) "무용수 이력서 관리" else "이력서 관리"
-    val defaultResumeTitle: String get() = if (this == DANCER) "무용수 프로필" else "이력서"
+    val defaultResumeTitle: String get() = if (this == DANCER) "무용수 이력서" else "강사 이력서"
     val isDancer: Boolean get() = this == DANCER
     /** 서버 태그(resumes.service.normalizeRole) — 목록 필터/저장 공통. */
     val roleIntent: String get() = if (this == DANCER) "DANCER" else "TEACHER"
