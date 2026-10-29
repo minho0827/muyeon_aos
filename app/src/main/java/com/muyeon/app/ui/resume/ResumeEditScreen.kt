@@ -310,12 +310,12 @@ fun ResumeEditScreen(
 
     fun save() {
         if (saving || uploadingPhoto) return
-        // ★ 2026-10-29 강사 프로필 최소 입력 — 활동 지역·희망 근무 지역·학력(한 줄 이상). 구직 프로필 화면에서만 막는다(iOS 와 동일).
+        // ★ 2026-10-29 구직 프로필 최소 입력 — 강사: 활동 지역·희망 근무 지역·학력, 무용수: 학력(한 줄 이상). 구직 프로필 화면에서만 막는다(iOS 와 동일).
         //  지원용 이력서는 저장을 막지 않고, 서버가 세 칸이 찰 때까지 공개만 미룬다.
-        if (!mode.isDancer && isSeekProfile) {
+        if (isSeekProfile) {
             val missing = listOfNotNull(
-                "활동 지역".takeIf { activeRegions.none { it.first.isNotBlank() } },
-                "희망 근무 지역".takeIf { desired.region.isNullOrBlank() },
+                "활동 지역".takeIf { !mode.isDancer && activeRegions.none { it.first.isNotBlank() } },
+                "희망 근무 지역".takeIf { !mode.isDancer && desired.region.isNullOrBlank() },
                 "학력".takeIf { educations.none { it.school.isNotBlank() } },
             )
             if (missing.isNotEmpty()) {
