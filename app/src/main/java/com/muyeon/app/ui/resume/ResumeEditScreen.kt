@@ -310,6 +310,18 @@ fun ResumeEditScreen(
 
     fun save() {
         if (saving || uploadingPhoto) return
+        // ★ 2026-10-29 강사 프로필 최소 입력 — 활동 지역·희망 근무 지역·학력(한 줄 이상). 서버는 처음 공개할 때 같은 기준으로 막는다(iOS 와 동일).
+        if (!mode.isDancer) {
+            val missing = listOfNotNull(
+                "활동 지역".takeIf { activeRegions.none { it.first.isNotBlank() } },
+                "희망 근무 지역".takeIf { desired.region.isNullOrBlank() },
+                "학력".takeIf { educations.none { it.school.isNotBlank() } },
+            )
+            if (missing.isNotEmpty()) {
+                errorMessage = "${missing.joinToString(", ")}을 입력해 주세요."
+                return
+            }
+        }
         saving = true
         scope.launch {
             // ⚠️ 빈 값도 항상 전송 — 서버 spread 병합이라 키를 빼면 '지운' 항목이 안 지워진다.
