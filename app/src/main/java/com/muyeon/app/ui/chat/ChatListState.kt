@@ -187,7 +187,7 @@ class ChatListState(private val api: ChatApi) {
                 page
             }.onSuccess { page ->
                 val active = activeRoomId
-                rooms = page.items.distinctBy { it.roomId }
+                rooms = withoutLeaving(page.items.distinctBy { it.roomId })
                     .map { if (it.roomId == active && it.unreadCount != 0) it.copy(unreadCount = 0) else it }
                     .sortedWith(compareByDescending<ChatRoomSummary> { it.lastMessageAt ?: "" }.thenBy { it.roomId })
                 nextCursor = page.nextCursor
@@ -215,7 +215,7 @@ class ChatListState(private val api: ChatApi) {
                 page
             }.onSuccess { page ->
                 val active = activeRoomId
-                rooms = (rooms + page.items.map { if (it.roomId == active) it.copy(unreadCount = 0) else it })
+                rooms = (rooms + withoutLeaving(page.items).map { if (it.roomId == active) it.copy(unreadCount = 0) else it })
                     .distinctBy { it.roomId }.sortedWith(compareByDescending<ChatRoomSummary> { it.lastMessageAt ?: "" }.thenBy { it.roomId })
                 nextCursor = page.nextCursor
                 page.nextCursor?.let { seenCursors.add(it) }
@@ -238,10 +238,30 @@ class ChatListState(private val api: ChatApi) {
         load()
     }
 
-    /** 스와이프 나가기 — 낙관적 제거 후 서버 반영, 실패하면 재조회로 되돌린다. */
-    suspend fun leave(roomId: Int) {
+    /**
+     * 나가는 중인 방 — 이미 출발한 목록 요청(0.8초 묶음 재조회·더 보기)이 나가기보다 늦게 도착하면
+     *  방금 지운 방이 되살아났다(PACERA 364c634e). 나가기가 끝나고 잠시 동안 목록 결과에서 뺀다.
+     *  소켓으로 오는 새 방(상대가 다시 보낸 메시지로 되살아난 방)은 막지 않는다.
+     */
+    private val leavingRoomIds = mutableSetOf<Int>()
+
+    private fun withoutLeaving(items: List<ChatRoomSummary>) =
+        if (leavingRoomIds.isEmpty()) items else items.filterNot { it.roomId in leavingRoomIds }
+
+    /** 스와이프 나가기 — 낙관적 제거 후 서버 반영. 실패하면 재조회로 되돌리고 false(화면이 안내). */
+    suspend fun leave(roomId: Int): Boolean {
+        leavingRoomIds.add(roomId)
         rooms = rooms.filterNot { it.roomId == roomId }
-        api.leaveRoom(roomId).onFailure { load(silent = true) }
+        val ok = api.leaveRoom(roomId).isSuccess
+        if (!ok) {
+            leavingRoomIds.remove(roomId)
+            load(silent = true)
+            return false
+        }
+        // 나가기 전에 출발한 목록 응답이 늦게 와도 걸러지도록 잠시 더 둔다.
+        kotlinx.coroutines.delay(LEAVE_SETTLE_MS)
+        leavingRoomIds.remove(roomId)
+        return true
     }
 
     private fun upsert(room: ChatRoomSummary) {
@@ -252,5 +272,6 @@ class ChatListState(private val api: ChatApi) {
 
     private companion object {
         const val RELOAD_DEBOUNCE_MS = 800L
+        const val LEAVE_SETTLE_MS = 5_000L
     }
 }

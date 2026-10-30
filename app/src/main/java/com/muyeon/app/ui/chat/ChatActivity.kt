@@ -1,16 +1,22 @@
 package com.muyeon.app.ui.chat
 
+import androidx.lifecycle.viewmodel.compose.viewModel
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -77,15 +83,49 @@ class ChatActivity : ResultActivity() {
             title: String? = null,
             dispatchId: Int? = null,
             proposalId: Int? = null,
-        ) = context.launchScreen(roomIntent(context, roomId, title, dispatchId, proposalId))
+        ) = context.launchScreen(
+            // ★ 2026-10-30 채팅방은 한 번에 하나(카톡 방식, PACERA 048da603) — 채팅 → 레슨 상세 → '채팅으로 이동'처럼
+            //  같은 방을 또 열면 액티비티가 끝없이 쌓였다. 떠 있는 채팅 화면이 있으면 그 위 화면을 닫고(CLEAR_TOP)
+            //  그 화면이 onNewIntent 로 받아, 같은 방이면 그대로 두고 다른 방이면 보던 방을 닫고 연다.
+            roomIntent(context, roomId, title, dispatchId, proposalId)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+        )
+    }
+
+    // 직행 대상(방·설문 카드·약속 제안 카드) — onNewIntent 로 바뀔 수 있어 상태로 둔다.
+    private var deepRoomId by mutableIntStateOf(0)
+    private var deepDispatchId by mutableStateOf<Int?>(null)
+    private var deepProposalId by mutableStateOf<Int?>(null)
+    private var navController: NavHostController? = null
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val rid = intent.getIntExtra(EXTRA_ROOM_ID, 0)
+        if (rid <= 0) return
+        deepRoomId = rid
+        deepDispatchId = intent.getIntExtra(EXTRA_DISPATCH_ID, 0).takeIf { it > 0 }
+        deepProposalId = intent.getIntExtra(EXTRA_PROPOSAL_ID, 0).takeIf { it > 0 }
+        val nav = navController ?: return
+        // 보고 있는 방이면 그대로(위 화면은 CLEAR_TOP 이 이미 닫았다).
+        if (nav.currentBackStackEntry?.arguments?.getString("roomId")?.toIntOrNull() == rid) return
+        val title = intent.getStringExtra(EXTRA_TITLE).orEmpty()
+        // 설문·약속 카드 직행은 직행용 경로(room/{id})로 — 그쪽만 대상 카드로 스크롤한다.
+        val route = if (deepDispatchId != null || deepProposalId != null) "room/$rid" else "room/$rid?title=$title"
+        nav.navigate(route) {
+            // 보던 방은 닫는다 — 목록이 있으면 목록 위로, 방으로 시작했으면 그 방까지 지운다.
+            val hasList = runCatching { nav.getBackStackEntry("list") }.isSuccess
+            if (hasList) popUpTo("list") else popUpTo(nav.graph.id) { inclusive = true }
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val deepRoomId = intent.getIntExtra(EXTRA_ROOM_ID, 0)
+        deepRoomId = intent.getIntExtra(EXTRA_ROOM_ID, 0)
+        val startRoomId = deepRoomId
         val deepTitle = intent.getStringExtra(EXTRA_TITLE).orEmpty()
-        val deepDispatchId = intent.getIntExtra(EXTRA_DISPATCH_ID, 0).takeIf { it > 0 }
-        val deepProposalId = intent.getIntExtra(EXTRA_PROPOSAL_ID, 0).takeIf { it > 0 }
+        deepDispatchId = intent.getIntExtra(EXTRA_DISPATCH_ID, 0).takeIf { it > 0 }
+        deepProposalId = intent.getIntExtra(EXTRA_PROPOSAL_ID, 0).takeIf { it > 0 }
         val filter = ChatRoomFilter.from(intent.getStringExtra(EXTRA_FILTER)?.ifEmpty { null })
 
         // 소켓 연결 + 백그라운드 pause/resume 옵저버 등록(둘 다 idempotent).
@@ -94,6 +134,7 @@ class ChatActivity : ResultActivity() {
 
         setContent {
             val nav = rememberNavController()
+            navController = nav
             com.muyeon.app.analytics.TrackNavigation("Chat", nav)
             val token = remember { TokenManager.getAccessToken(this) }
             val api = remember { ChatApi(token) }
@@ -121,7 +162,7 @@ class ChatActivity : ResultActivity() {
                 onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
             }
 
-            val start = if (deepRoomId > 0) "room/$deepRoomId" else "list"
+            val start = if (startRoomId > 0) "room/$startRoomId" else "list"
 
             NavHost(nav, startDestination = start) {
                 composable("list") { entry ->
@@ -143,7 +184,10 @@ class ChatActivity : ResultActivity() {
                 composable("room/{roomId}") { entry ->
                     nav.ReturnResultKeys(entry, ResultKeys.CHAT_ROOMS)
                     val rid = entry.arguments?.getString("roomId")?.toIntOrNull() ?: 0
-                    val vm = remember(rid) { ChatRoomViewModel(rid, deepTitle, api, token) }
+                    // ★ 2026-10-30 remember{} 로 만들면 ViewModel.onCleared 가 영영 안 불려 방 입장(join-room)이 풀리지 않았다
+                    //  → 나간 방도 서버는 '보는 중'으로 알아 푸시·안읽음이 빠지고, 남은 VM 이 새 메시지를 읽음 처리했다.
+                    //  viewModel(key) 는 이 화면(NavBackStackEntry)에 붙어 방을 떠날 때 onCleared → leaveRoom 이 불린다.
+                    val vm: ChatRoomViewModel = viewModel(key = "room-$rid") { ChatRoomViewModel(rid, deepTitle, api, token) }
                     ActiveRoomEffect(listState, rid)
                     // 딥링크 대상 카드는 직행한 방에만 적용한다(목록에서 다시 연 방에는 적용하지 않음).
                     val isDeepRoom = rid == deepRoomId
@@ -158,7 +202,7 @@ class ChatActivity : ResultActivity() {
                     nav.ReturnResultKeys(entry, ResultKeys.CHAT_ROOMS)
                     val rid = entry.arguments?.getString("roomId")?.toIntOrNull() ?: 0
                     val t = entry.arguments?.getString("title").orEmpty()
-                    val vm = remember(rid) { ChatRoomViewModel(rid, t, api, token) }
+                    val vm: ChatRoomViewModel = viewModel(key = "room-$rid") { ChatRoomViewModel(rid, t, api, token) }
                     ActiveRoomEffect(listState, rid)
                     ChatRoomScreen(vm = vm, onBack = { if (!nav.popBackStack()) finish() })
                 }

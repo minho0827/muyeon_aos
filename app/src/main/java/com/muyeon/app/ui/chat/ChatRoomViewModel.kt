@@ -254,7 +254,12 @@ class ChatRoomViewModel(
     // 로드
     // ============================================================
 
+    // 화면 재구성·회전으로 LaunchedEffect 가 다시 돌아도 입장은 한 번만 — 두 번 세면 onCleared 의 한 번 퇴장으로 안 풀린다.
+    private var started = false
+
     fun start() {
+        if (started) return
+        started = true
         ChatSocketManager.joinRoom(roomId)
         input = ChatDrafts.get(roomId)
         viewModelScope.launch { loadDetail(); loadFirstPage(); loadQuickReplies() }
@@ -270,7 +275,7 @@ class ChatRoomViewModel(
     }
 
     override fun onCleared() {
-        ChatSocketManager.leaveRoom(roomId)
+        if (started) ChatSocketManager.leaveRoom(roomId)
         if (lastTypingSentAt != null) ChatSocketManager.sendTyping(roomId, false)
         super.onCleared()
     }

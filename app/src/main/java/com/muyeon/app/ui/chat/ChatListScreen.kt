@@ -53,6 +53,7 @@ fun ChatListScreen(
     onOpenBlocked: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
     val rooms = state.rooms
     val filtered = rooms.filter { state.filter.matches(it) }
 
@@ -86,7 +87,13 @@ fun ChatListScreen(
                     itemsIndexed(filtered, key = { _, r -> r.roomId }) { idx, room ->
                         // iOS allowsFullSwipe:false — 끝까지 밀어도 자동 실행 안 되고 버튼을 눌러야 나간다.
                         SwipeToLeaveRow(
-                            onLeave = { scope.launch { state.leave(room.roomId) } },
+                            onLeave = {
+                                scope.launch {
+                                    if (!state.leave(room.roomId)) {
+                                        android.widget.Toast.makeText(context, "채팅방을 나가지 못했어요. 잠시 후 다시 시도해 주세요.", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            },
                         ) {
                             ChatRoomRow(room) { onOpenRoom(room.roomId, room.displayTitle) }
                         }
