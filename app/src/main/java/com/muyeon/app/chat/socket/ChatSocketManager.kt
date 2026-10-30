@@ -175,6 +175,21 @@ object ChatSocketManager {
             ChatEventBus.emit(ChatEvent.ChatRoomRemoved(json.optInt("roomId")))
         }
         s.on("notification") { ChatEventBus.emit(ChatEvent.ServerNotification) }
+        // ★ 2026-10-30 강제 로그아웃 — 서버는 ack 를 받고 소켓을 끊는다(최대 2초). newSessionId 가 내 세션이면
+        //  방금 이 기기에서 로그인하며 보낸 신호라 무시한다(iOS FloatingSocketManager·PACERA 와 같은 규칙).
+        //  ⚠️ 서버는 로그인 응답 '전에' 보낸다 — 이 기기의 옛 소켓(만료 토큰)이 받으면 새 토큰이 아직 저장 전이다.
+        //   1.5초 기다려 저장된 토큰으로 다시 비교하고, 토큰이 없으면(이미 로그아웃) 할 일이 없다.
+        val appContext = context.applicationContext
+        s.on("force-logout") { args ->
+            (args.lastOrNull() as? io.socket.client.Ack)?.call(true)
+            val json = asJson(args.firstOrNull()) ?: JSONObject()
+            val newSid = json.optString("newSessionId").takeIf { it.isNotBlank() && it != "null" }
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                val current = TokenManager.getAccessToken(appContext)?.takeIf { it.isNotBlank() } ?: return@postDelayed
+                if (newSid != null && newSid == sessionIdOf(current)) return@postDelayed
+                ChatEventBus.emit(ChatEvent.ForceLogout(json.optString("code"), json.optString("message")))
+            }, 1500)
+        }
         // 받은 견적 도착·읽음 — AI 도우미 뱃지용(iOS FloatingSocketManager 와 같음).
         s.on("quote-received") { ChatEventBus.emit(ChatEvent.QuoteBadge) }
         s.on("quote-unread-changed") { ChatEventBus.emit(ChatEvent.QuoteBadge) }
@@ -197,6 +212,13 @@ object ChatSocketManager {
         val msg = runCatching { ChatMessage.from(msgJson) }.getOrNull() ?: return
         ChatEventBus.emit(build(roomId, msg))
     }
+
+    /** 토큰(JWT) 본문의 세션 id(sid) — 서명 검증 없이 읽는다(내 신호인지 가리는 용도). */
+    private fun sessionIdOf(jwt: String?): String? = runCatching {
+        val part = jwt?.split(".")?.getOrNull(1) ?: return null
+        val body = String(android.util.Base64.decode(part, android.util.Base64.URL_SAFE or android.util.Base64.NO_PADDING or android.util.Base64.NO_WRAP))
+        JSONObject(body).optString("sid").takeIf { it.isNotBlank() }
+    }.getOrNull()
 
     @Synchronized
     fun disconnect() {

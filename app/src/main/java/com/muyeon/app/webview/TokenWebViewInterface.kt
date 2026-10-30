@@ -46,6 +46,8 @@ class TokenWebViewInterface(private val context: Context, private val webView: W
         val response: WebViewResponse<out List<Any>>
 
         TokenManager.clearTokens(context)
+        // ★ 2026-10-30 로그아웃·강제 로그아웃 — 소켓도 끊는다. 남겨 두면 옛 토큰으로 옛 회원 방(user:id)에 붙어 있다.
+        com.muyeon.app.chat.socket.ChatSocketManager.disconnect()
 
         val accessToken = TokenManager.getAccessToken(context)
         val refreshToken = TokenManager.getRefreshToken(context)

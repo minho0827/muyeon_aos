@@ -285,6 +285,22 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
         )
         // 구글 결제가 서버에 반영됐다(앱 복귀 재전송·Play 콜백) — 웹도 멤버십을 다시 읽게 한다(iOS ResultBus .membership).
         //  보이는 동안만 듣는다. 멤버십 화면이 위에 있으면 그 화면이 닫힐 때 결과 키(MEMBERSHIP)로 알린다(중복 재조회 방지).
+        // ★ 2026-10-30 강제 로그아웃(다른 기기 로그인·계정 정지) — 네이티브 화면이 위에 떠 있어도 받아야 해서
+        //  repeatOnLifecycle 없이 본문이 살아 있는 동안 듣는다. 위 화면을 닫고(CLEAR_TOP) 웹에 알리면
+        //  웹(common/forceLogout)이 안내 팝업과 함께 로그인 화면으로 보내고 deleteToken 으로 토큰을 지운다.
+        lifecycleScope.launch {
+            com.muyeon.app.chat.socket.ChatEventBus.events.collect { e ->
+                if (e !is com.muyeon.app.chat.socket.ChatEvent.ForceLogout) return@collect
+                startActivity(
+                    Intent(this@WebViewActivity, WebViewActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                )
+                val detail = org.json.JSONObject().put("code", e.code).put("message", e.message).toString()
+                webView.post {
+                    webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('muyeonNativeForceLogout',{detail:$detail}));", null)
+                }
+            }
+        }
         lifecycleScope.launch {
             repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
                 com.muyeon.app.ui.membership.MembershipBilling.changes.collect {

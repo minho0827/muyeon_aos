@@ -76,6 +76,12 @@ sealed class ChatEvent {
     data object ServerNotification : ChatEvent()
 
     /**
+     * ★ 2026-10-30 강제 로그아웃(다른 기기 로그인 SESSION_REPLACED · 계정 정지 ACCOUNT_SUSPENDED).
+     *  본문 WebViewActivity 가 받아 위에 뜬 네이티브 화면을 닫고 웹에 알린다(웹이 안내 팝업 + 토큰 삭제).
+     */
+    data class ForceLogout(val code: String, val message: String) : ChatEvent()
+
+    /**
      * 받은 견적 도착·읽음(quote-received·quote-unread-changed) — AI 도우미 뱃지(받은 견적 숫자)가 다시 센다.
      *  payload 는 쓰지 않는다.
      */
