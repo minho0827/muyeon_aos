@@ -47,6 +47,13 @@ class AppBridgeInterface(
             onSilentAction(action, data)
             return
         }
+        // 하단 MY 탭 길게 누르기 → 내 유형 바텀시트(결과는 이 웹뷰의 __onActiveTypePicked).
+        when (action) {
+            "openActiveTypeSheet" -> {
+                ActiveTypeSheet.show(activity, webView, data.optString("types"), data.optString("current"))
+                return
+            }
+        }
         // 2) 네이티브 이식 완료 화면 — 직접 띄운다.
         if (openNative(action, data)) return
         // 3) 웹 경로 폴백 — 네이티브 화면 이식 전까지 동등 웹 화면으로 이동.
@@ -75,7 +82,13 @@ class AppBridgeInterface(
         when (action) {
             // 활성 회원유형은 로그만 찍고 버리면 안 된다 — 네이티브 화면이 "지금 학원인가 강사인가"를
             //  판단할 유일한 근거다(iOS RoleGate.store 대응).
-            "syncActiveType" -> ActiveRole.store(activity, data.optString("type"))
+            "syncActiveType" -> {
+                ActiveRole.store(activity, data.optString("type"))
+                // changed=1 = 이용자가 직접 바꿈 → 전환 안내(iOS RoleGate.showSwitchToast 와 같은 문구). 처음 맞추기는 조용히.
+                if (data.optString("changed") == "1") {
+                    android.widget.Toast.makeText(activity, "${ActiveRole.label(data.optString("type"))} 유형으로 전환됐어요", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
             // 플로팅(채팅 버튼·인증 책갈피) 표시 판정 — iOS WebViewModel.currentRoute / floatingHidden.
             "routeChanged" -> com.muyeon.app.ui.floating.FloatingState.updateRoute(data.optString("path"))
             "setFloatingHidden" ->
