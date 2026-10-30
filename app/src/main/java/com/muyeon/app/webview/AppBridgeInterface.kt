@@ -47,6 +47,13 @@ class AppBridgeInterface(
             onSilentAction(action, data)
             return
         }
+        // 홈 '지금 유형' 버튼 → 공통 팝업으로 유형 고르기(결과는 이 웹뷰의 __onActiveTypePicked).
+        when (action) {
+            "openActiveTypePicker" -> {
+                ActiveTypePicker.show(activity, webView, data.optString("types"), data.optString("current"))
+                return
+            }
+        }
         // 2) 네이티브 이식 완료 화면 — 직접 띄운다.
         if (openNative(action, data)) return
         // 3) 웹 경로 폴백 — 네이티브 화면 이식 전까지 동등 웹 화면으로 이동.
@@ -294,7 +301,9 @@ object NativeActionRouter {
             "openFieldVisibility" -> com.muyeon.app.ui.resume.ResumeActivity.startVisibility(activity, d.optString("mode"))
             "openPublicProfile", "openTeacherProfile" -> {
                 val uid = (d.optString("userId").ifEmpty { d.optString("teacherId") }).toIntOrNull() ?: return true
-                com.muyeon.app.ui.resume.ResumeActivity.startProfile(activity, uid, d.optString("src"))
+                com.muyeon.app.ui.resume.ResumeActivity.startProfile(
+                    activity, uid, d.optString("src"), recruit = d.optString("mode") == "recruit",
+                )
             }
             "openReviewList" -> {
                 val tid = d.optString("teacherId").toIntOrNull() ?: return true

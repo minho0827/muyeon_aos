@@ -26,6 +26,7 @@ import com.muyeon.app.ui.review.ReviewWriteScreen
 import com.muyeon.app.utils.TokenManager
 import com.muyeon.app.webview.NativeWebRoute
 import com.muyeon.app.webview.WebCallbacks
+import kotlinx.coroutines.launch
 
 /**
  * 이력서/공개프로필/리뷰 컨테이너 — 웹 브릿지 진입점.
@@ -45,6 +46,7 @@ class ResumeActivity : ResultActivity() {
         private const val EXTRA_RESUME_ID = "resumeId"
         private const val EXTRA_USER_ID = "userId"
         private const val EXTRA_SRC = "src"
+        private const val EXTRA_RECRUIT = "recruit"
         private const val EXTRA_JOB_ID = "postingId"
         private const val EXTRA_KIND = "applicationKind"
         private const val EXTRA_APPLICATION_ID = "applicationId"
@@ -72,11 +74,13 @@ class ResumeActivity : ResultActivity() {
         fun startVisibility(context: Context, mode: String?) =
             context.go(intent(context, "visibility").putExtra(EXTRA_MODE, mode ?: ""))
 
-        fun profileIntent(context: Context, userId: Int, src: String? = null): Intent =
+        fun profileIntent(context: Context, userId: Int, src: String? = null, recruit: Boolean = false): Intent =
             intent(context, "profile").putExtra(EXTRA_USER_ID, userId).putExtra(EXTRA_SRC, src ?: "")
+                .putExtra(EXTRA_RECRUIT, recruit)
 
-        fun startProfile(context: Context, userId: Int, src: String? = null) =
-            context.go(profileIntent(context, userId, src))
+        // recruit = 웹 mode "recruit"(학원·공연팀 시점) — 하단 CTA 가 무료 [채팅하기](iOS recruitMode).
+        fun startProfile(context: Context, userId: Int, src: String? = null, recruit: Boolean = false) =
+            context.go(profileIntent(context, userId, src, recruit))
 
         fun startReviewList(context: Context, teacherId: Int) =
             context.go(intent(context, "reviews").putExtra(EXTRA_USER_ID, teacherId))
@@ -122,6 +126,7 @@ class ResumeActivity : ResultActivity() {
         val resumeIdExtra = intent.getIntExtra(EXTRA_RESUME_ID, 0)
         val userId = intent.getIntExtra(EXTRA_USER_ID, 0)
         val src = intent.getStringExtra(EXTRA_SRC)?.ifEmpty { null }
+        val recruit = intent.getBooleanExtra(EXTRA_RECRUIT, false)
         val postingId = intent.getIntExtra(EXTRA_JOB_ID, 0)
         val applicationKind = ApplicantPostingKind.from(intent.getStringExtra(EXTRA_KIND))
         val applicationId = intent.getIntExtra(EXTRA_APPLICATION_ID, 0)
@@ -196,16 +201,37 @@ class ResumeActivity : ResultActivity() {
                     )
                 }
                 composable("profile") {
+                    val scope = androidx.compose.runtime.rememberCoroutineScope()
+                    var chatLimit by remember { androidx.compose.runtime.mutableStateOf<RecruitChatLimitException?>(null) }
                     PublicProfileScreen(
                         api = api, reviewApi = reviewApi, userId = userId, src = src,
+                        recruitMode = recruit,
                         // 채팅방에서 연 프로필은 열람 전용 — 하단 CTA 숨김(iOS src:"chat", hideCta:true)
                         hideCta = src == "chat",
                         onClose = { back() },
-                        onOpenChat = { roomId -> ChatActivity.startRoom(this@ResumeActivity, roomId) },
+                        onOpenChat = { arg ->
+                            if (recruit) {
+                                // 학원·공연팀 무료 [채팅하기] — arg 는 강사 userId. 다이렉트 방을 만들고 연다(iOS presentPublicProfile).
+                                scope.launch {
+                                    api.directRoom(arg)
+                                        .onSuccess { rid -> if (rid > 0) ChatActivity.startRoom(this@ResumeActivity, rid) }
+                                        .onFailure { if (it is RecruitChatLimitException) chatLimit = it }
+                                }
+                            } else {
+                                ChatActivity.startRoom(this@ResumeActivity, arg)
+                            }
+                        },
                         // 지정 견적요청 — 이 강사에게만(iOS presentQuoteWizardDirect targetTeacherId)
                         onRequestQuote = { QuoteWizardActivity.start(this@ResumeActivity, null, userId.toString()) },
                         onOpenReviews = { nav.navigate("reviews") },
                     )
+                    chatLimit?.let { e ->
+                        RecruitChatLimitDialog(
+                            e,
+                            onUpgrade = { chatLimit = null; com.muyeon.app.ui.membership.MembershipActivity.start(this@ResumeActivity) },
+                            onDismiss = { chatLimit = null },
+                        )
+                    }
                 }
                 composable("reviews") {
                     ReviewListScreen(
