@@ -108,7 +108,15 @@ private fun ChatVideoPlayerDialog(url: String, onClose: () -> Unit) {
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize().background(Color.Black)) {
             AndroidView(
-                factory = { ctx -> PlayerView(ctx).apply { this.player = player; useController = true } },
+                factory = { ctx ->
+                    PlayerView(ctx).apply {
+                        this.player = player
+                        useController = true
+                        // 재생 막대를 매 프레임 옮긴다(기본 0.2초 — 짧은 영상에서 끊겨 보였다, PACERA 3ad75a87).
+                        findViewById<androidx.media3.ui.PlayerControlView>(androidx.media3.ui.R.id.exo_controller)
+                            ?.setTimeBarMinUpdateInterval(16)
+                    }
+                },
                 modifier = Modifier.fillMaxSize(),
             )
             Box(

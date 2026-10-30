@@ -12,6 +12,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -339,7 +343,33 @@ fun ChatRoomScreen(
             },
         )
 
-        Box(Modifier.weight(1f).fillMaxWidth().background(Color(0xFFF7F7F8))) {
+        // 메시지 목록 빈 곳을 누르면 키보드를 내린다(iOS 와 같다, PACERA c5611acf).
+        //  스크롤(움직임)·말풍선 탭·꾹 누르기(자식이 소비)는 건드리지 않는다 — Final 단계에서 소비되지 않은 탭만 본다.
+        val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+        val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+        Box(
+            Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .background(Color(0xFFF7F7F8))
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        val final = PointerEventPass.Final
+                        val down = awaitFirstDown(requireUnconsumed = false, pass = final)
+                        while (true) {
+                            val change = awaitPointerEvent(final).changes.firstOrNull { it.id == down.id } ?: break
+                            if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) break
+                            if (!change.pressed) {
+                                if (!change.isConsumed) {
+                                    focusManager.clearFocus()
+                                    keyboard?.hide()
+                                }
+                                break
+                            }
+                        }
+                    }
+                },
+        ) {
             if (vm.isLoading && vm.messages.isEmpty()) {
                 CircularProgressIndicator(
                     color = MuyeonColors.primary,
