@@ -60,14 +60,12 @@ internal fun StageSectionBox(title: String, content: @Composable () -> Unit) {
 
 @Composable
 internal fun StageIconGrid(cats: List<StageCategory>, onJump: (String) -> Unit) {
-    // 가로 줄 먼저 채운다(윗줄 1~6, 아랫줄 7~11) — LazyHorizontalGrid 는 세로 먼저 채워 읽는 순서가 어색했다(10-26 iOS 확인).
-    val half = (cats.size + 1) / 2
-    Row(Modifier.fillMaxWidth().padding(top = 20.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            listOf(cats.take(half), cats.drop(half)).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { row.forEach { StageIconButton(it, onJump) } }
-            }
-        }
+    // ★ 2026-10-31 두 줄 격자 → 한 줄(칸이 5개로 줄어 한 줄에 들어간다, 넘치면 옆으로 밀어 본다). iOS 와 같다.
+    Row(
+        Modifier.fillMaxWidth().padding(top = 20.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        cats.forEach { StageIconButton(it, onJump) }
     }
 }
 
