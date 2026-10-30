@@ -287,9 +287,7 @@ fun ResumeEditScreen(
     }
 
     suspend fun upload(uri: android.net.Uri): String? {
-        val bytes = withContext(Dispatchers.IO) {
-            runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
-        } ?: return null
+        val bytes = com.muyeon.app.ui.common.UploadImagePreparer.prepare(context, uri) ?: return null
         return api.uploadImage(bytes).getOrNull()
     }
 

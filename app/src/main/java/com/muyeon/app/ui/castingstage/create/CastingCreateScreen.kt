@@ -152,9 +152,7 @@ fun CastingCreateScreen(
         if (uri == null) return@rememberLauncherForActivityResult
         uploading = true
         scope.launch {
-            val bytes = withContext(Dispatchers.IO) {
-                runCatching { ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
-            }
+            val bytes = com.muyeon.app.ui.common.UploadImagePreparer.prepare(ctx, uri)
             val url = bytes?.let { api.uploadPoster(it).getOrNull() }
             if (url != null) form = form.copy(imageUrl = url) else errorMessage = "이미지 업로드에 실패했어요."
             uploading = false

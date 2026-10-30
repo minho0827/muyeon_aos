@@ -132,9 +132,8 @@ fun JobPostingWizardScreen(
     }
     val images = form.images ?: emptyList()
 
-    suspend fun readBytes(uri: android.net.Uri): ByteArray? = withContext(Dispatchers.IO) {
-        runCatching { ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
-    }
+    suspend fun readBytes(uri: android.net.Uri): ByteArray? =
+        com.muyeon.app.ui.common.UploadImagePreparer.prepare(ctx, uri)
 
     val coverPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult

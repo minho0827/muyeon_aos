@@ -20,7 +20,10 @@ object ChatImageCompressor {
     private const val QUALITY = 60
 
     /** 압축한 JPEG 바이트. 디코딩할 수 없는 형식이면 null(호출부가 원본으로 대체한다). */
-    suspend fun compress(context: Context, uri: Uri): ByteArray? = withContext(Dispatchers.IO) {
+    suspend fun compress(context: Context, uri: Uri): ByteArray? = compress(context, uri, MAX_PIXEL, QUALITY)
+
+    /** 긴 변·품질을 정해 압축 — 채팅 밖 업로드(공고·이력서·후기 등)는 UploadImagePreparer 가 더 큰 값으로 부른다. */
+    suspend fun compress(context: Context, uri: Uri, maxPixel: Int, quality: Int): ByteArray? = withContext(Dispatchers.IO) {
         runCatching {
             val resolver = context.contentResolver
 
@@ -29,7 +32,7 @@ object ChatImageCompressor {
             resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
             if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@runCatching null
             var sample = 1
-            while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= MAX_PIXEL) sample *= 2
+            while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxPixel) sample *= 2
 
             val decoded = resolver.openInputStream(uri)?.use {
                 BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
@@ -47,7 +50,7 @@ object ChatImageCompressor {
 
             // 3) 긴 변 기준 축소 + 회전을 한 번에 적용.
             val longSide = maxOf(decoded.width, decoded.height)
-            val scale = if (longSide > MAX_PIXEL) MAX_PIXEL.toFloat() / longSide else 1f
+            val scale = if (longSide > maxPixel) maxPixel.toFloat() / longSide else 1f
             val output = if (scale < 1f || rotation != 0f) {
                 val m = Matrix().apply {
                     if (scale < 1f) postScale(scale, scale)
@@ -60,7 +63,7 @@ object ChatImageCompressor {
             }
 
             ByteArrayOutputStream().use { out ->
-                output.compress(Bitmap.CompressFormat.JPEG, QUALITY, out)
+                output.compress(Bitmap.CompressFormat.JPEG, quality, out)
                 output.recycle()
                 out.toByteArray()
             }

@@ -109,9 +109,7 @@ fun ReviewWriteScreen(
         scope.launch {
             uris.forEach { uri ->
                 if (images.size >= 20) return@forEach
-                val bytes = withContext(Dispatchers.IO) {
-                    runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
-                }
+                val bytes = com.muyeon.app.ui.common.UploadImagePreparer.prepare(context, uri)
                 bytes?.let { api.uploadImage(it).getOrNull()?.let { url -> images = images + url } }
             }
             uploading = false
