@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Apartment
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Person
@@ -47,7 +47,7 @@ import org.json.JSONArray
 
 /**
  * 2026-10-31 웹 하단 MY 탭 길게 누르기 → 내 유형 바텀시트(인스타그램 계정 전환 시트와 같은 구성, iOS 와 같은 모양).
- *  가진 유형 + 일반을 한 카드에 줄로 보이고 지금 유형에 체크, 맨 아래 '유형 추가'.
+ *  가진 유형 + 일반을 한 카드에 줄로 보이고 지금 유형에 체크, 맨 아래 '유형 편집'(회원유형 화면에서 추가·해제).
  *  고르기만 한다 — 전환(서버 저장·헤더 동기·전환 토스트)은 웹 AuthContext.setActiveType 이 한다.
  *  types = [{ type, label }] JSON 문자열, current = 지금 유형.
  *  결과: window.__onActiveTypePicked('TEACHER' | 'MANAGE'). 지금 유형·닫기는 알리지 않는다.
@@ -111,7 +111,7 @@ object ActiveTypeSheet {
                     if (i < rows.size - 1) HorizontalDivider(Modifier.padding(start = 74.dp), color = MuyeonColors.border)
                 }
                 HorizontalDivider(Modifier.padding(start = 74.dp), color = MuyeonColors.border)
-                TypeRow("유형 추가", Icons.Filled.Add, filled = false, checked = false) { onPick("MANAGE") }
+                TypeRow("유형 편집", Icons.Filled.Edit, filled = false, checked = false) { onPick("MANAGE") }
             }
         }
     }
