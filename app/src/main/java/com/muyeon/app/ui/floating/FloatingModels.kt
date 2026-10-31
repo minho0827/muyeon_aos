@@ -60,7 +60,7 @@ object FloatingState {
      */
     private val AUTH_ROUTES = setOf(
         "/", "/login", "/register", "/signupTerms", "/social-signup",
-        "/oauth/kakao", "/accountRecovery", "/notFound", "/maintenance",
+        "/oauth/kakao", "/naverAuth", "/accountRecovery", "/notFound", "/maintenance",
     )
 
     /** 플로팅 채팅버튼 노출 라우트(최상위 탭만) + 일반회원 탭. */
