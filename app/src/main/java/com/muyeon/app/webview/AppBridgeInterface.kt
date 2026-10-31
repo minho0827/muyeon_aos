@@ -50,7 +50,7 @@ class AppBridgeInterface(
         // 하단 MY 탭 길게 누르기 → 내 유형 바텀시트(결과는 이 웹뷰의 __onActiveTypePicked).
         when (action) {
             "openActiveTypeSheet" -> {
-                ActiveTypeSheet.show(activity, webView, data.optString("types"), data.optString("current"))
+                ActiveTypeSheet.show(activity, webView, data.optString("types"), data.optString("current"), data.optString("newTypes"))
                 return
             }
         }

@@ -53,7 +53,9 @@ import org.json.JSONArray
  *  결과: window.__onActiveTypePicked('TEACHER' | 'MANAGE'). 지금 유형·닫기는 알리지 않는다.
  */
 object ActiveTypeSheet {
-    fun show(activity: Activity, webView: WebView, typesJson: String, current: String) {
+    fun show(activity: Activity, webView: WebView, typesJson: String, current: String, newTypesCsv: String = "") {
+        // ★ 2026-10-31 새 소식이 있는 다른 유형(쉼표) — 그 줄에 빨간 점. 옛 웹은 보내지 않는다.
+        val newTypes = newTypesCsv.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toSet()
         val rows = runCatching {
             val arr = JSONArray(typesJson)
             (0 until arr.length()).map { arr.getJSONObject(it) }
@@ -80,7 +82,7 @@ object ActiveTypeSheet {
             }
         }
         host.setContent {
-            Sheet(rows, current, onPick = { t -> finish(if (t == current) null else t) }, onDismiss = { finish(null) })
+            Sheet(rows, current, newTypes, onPick = { t -> finish(if (t == current) null else t) }, onDismiss = { finish(null) })
         }
         root.addView(host, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
     }
@@ -95,7 +97,7 @@ object ActiveTypeSheet {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    private fun Sheet(rows: List<Pair<String, String>>, current: String, onPick: (String) -> Unit, onDismiss: () -> Unit) {
+    private fun Sheet(rows: List<Pair<String, String>>, current: String, newTypes: Set<String>, onPick: (String) -> Unit, onDismiss: () -> Unit) {
         val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state, containerColor = Color.White) {
             Column(
@@ -107,7 +109,8 @@ object ActiveTypeSheet {
                     .border(1.dp, MuyeonColors.border, RoundedCornerShape(16.dp)),
             ) {
                 rows.forEachIndexed { i, (type, label) ->
-                    TypeRow(label, iconOf(type), filled = type == current, checked = type == current) { onPick(type) }
+                    TypeRow(label, iconOf(type), filled = type == current, checked = type == current,
+                        dot = type != current && type in newTypes) { onPick(type) }
                     if (i < rows.size - 1) HorizontalDivider(Modifier.padding(start = 74.dp), color = MuyeonColors.border)
                 }
                 HorizontalDivider(Modifier.padding(start = 74.dp), color = MuyeonColors.border)
@@ -117,7 +120,7 @@ object ActiveTypeSheet {
     }
 
     @Composable
-    private fun TypeRow(label: String, icon: ImageVector, filled: Boolean, checked: Boolean, onClick: () -> Unit) {
+    private fun TypeRow(label: String, icon: ImageVector, filled: Boolean, checked: Boolean, dot: Boolean = false, onClick: () -> Unit) {
         Row(
             Modifier.fillMaxWidth().height(72.dp).clickable(onClick = onClick).padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -130,6 +133,7 @@ object ActiveTypeSheet {
                 Icon(icon, contentDescription = null, tint = if (filled) Color.White else MuyeonColors.textHead, modifier = Modifier.size(22.dp))
             }
             Text(label, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = MuyeonColors.textHead)
+            if (dot) Box(Modifier.size(8.dp).clip(CircleShape).background(Color(0xFFFF5B5F)))
             Spacer(Modifier.weight(1f))
             if (checked) Icon(Icons.Filled.CheckCircle, contentDescription = "지금 유형", tint = MuyeonColors.primary, modifier = Modifier.size(24.dp))
         }
