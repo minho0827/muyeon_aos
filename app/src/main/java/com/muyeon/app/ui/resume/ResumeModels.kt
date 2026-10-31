@@ -310,6 +310,7 @@ data class PublicProfile(
     val desiredRegion: String? = null,
     val desiredSalary: String? = null,
     val companyCareer: String? = null,
+    val videoUrl: String? = null,   // ★ 2026-10-31 영상 포트폴리오 링크(카드 '영상 보유'와 같은 값)
 ) {
     companion object {
         /**
@@ -374,6 +375,7 @@ data class PublicProfile(
             desiredRegion = o.stringOrNull("desiredRegion"),
             desiredSalary = o.stringOrNull("desiredSalary"),
             companyCareer = o.stringOrNull("companyCareer"),
+            videoUrl = o.stringOrNull("videoUrl"),
         )
     }
 }

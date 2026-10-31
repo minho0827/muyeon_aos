@@ -424,6 +424,7 @@ private fun ProfileSections(p: PublicProfile, reviews: ReviewList?, onOpenReview
                 }
             }
         }
+        VideoSection(p)
         ReviewsSection(reviews, onOpenReviews)
     }
 }
@@ -448,6 +449,7 @@ private fun ProfileBody(p: PublicProfile, reviews: ReviewList?, onOpenReviews: (
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
+            VideoSection(p)
             ReviewsSection(reviews, onOpenReviews)
         }
         else -> ProfileSections(p, reviews, onOpenReviews)
@@ -513,6 +515,7 @@ private fun BasicProfileSections(p: PublicProfile, reviews: ReviewList?, onOpenR
                 }
             }
         }
+        VideoSection(p)
         ReviewsSection(reviews, onOpenReviews)
     }
 }
@@ -584,6 +587,35 @@ private fun ContactSection(p: PublicProfile) {
                     lineHeight = 16.sp, color = MuyeonColors.primary,
                 )
             }
+        }
+    }
+}
+
+/**
+ * ★ 2026-10-31 영상 포트폴리오 — 카드의 '영상 보유'를 보고 들어와도 상세에 영상이 없었다(웹·iOS 와 같은 자리).
+ *  http(s) 링크만 연다(유튜브 앱·브라우저).
+ */
+@Composable
+private fun VideoSection(p: PublicProfile) {
+    val ctx = LocalContext.current
+    val url = p.videoUrl?.trim()?.takeIf { it.startsWith("http://", true) || it.startsWith("https://", true) } ?: return
+    ProfileSection("영상") {
+        Row(
+            Modifier.fillMaxWidth().clickable {
+                runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+            },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "영상 포트폴리오",
+                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
+                lineHeight = 18.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
+            )
+            Text(
+                "영상 열기 ›",
+                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                lineHeight = 16.sp, color = MuyeonColors.primary,
+            )
         }
     }
 }
