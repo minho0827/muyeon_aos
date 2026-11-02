@@ -20,6 +20,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -173,15 +177,19 @@ fun AiAutofillCard(
                 lineHeight = 20.sp, color = MuyeonColors.textHead,
             )
             // ★ 2026-11-02 사용자 요청 — 제목만, 설명 문구 없이
+            // ★ 2026-11-02 사용자 요청 — 회전 로딩 + 문구(웹·iOS 와 같은 문구)
             if (busy) {
-                Text(
-                    "AI가 사진을 읽고 있어요. 20~40초 정도 걸려요…",
-                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
-                    lineHeight = 18.sp, color = MuyeonColors.primary,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = MuyeonColors.primary)
+                    Text(
+                        if (isJob) "AI가 공고를 작성하고 있어요" else "AI가 이력서를 작성하고 있어요",
+                        fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
+                        lineHeight = 18.sp, color = MuyeonColors.primary,
+                    )
+                }
             }
             Text(
-                if (busy) "읽는 중…" else "이미지 첨부하기",
+                if (busy) "작성 중…" else "이미지 첨부하기",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp, lineHeight = 18.sp,
                 color = Color.White, textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 4.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp))
