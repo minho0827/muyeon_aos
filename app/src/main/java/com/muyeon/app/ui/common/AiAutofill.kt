@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.sp
 import com.muyeon.app.BuildConfig
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.quote.QuoteDialog
+import com.muyeon.app.utils.TokenManager
+import com.muyeon.app.webview.withActiveType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -58,54 +60,84 @@ class AiAutofillException(val code: String?, message: String) : IllegalStateExce
     val hidesCard: Boolean get() = code == "AI_TRIAL_USED" || code == "AI_DISABLED"
 }
 
-class AiAutofillApi(private val token: String?) {
+/**
+ * ★ 2026-11-02 인증 처리 — 다른 네이티브 API 와 같은 규약으로 맞춘다.
+ *  - 토큰은 컴포지션 때 잡아 둔 값이 아니라 **요청 직전마다** TokenManager(앱 공용 토큰 저장소)에서 새로 읽는다.
+ *  - X-Active-Type 헤더는 공용 확장 [withActiveType] 으로 붙인다(CLAUDE.md 규약).
+ *  - 앱엔 공용 OkHttpClient·Authenticator·토큰 재발급 API 가 없다(로그인/토큰 저장은 웹이 AndroidToken.saveToken 으로 한다).
+ *    그래서 401 이면: 그 사이 웹이 저장해 둔 새 토큰이 있으면(요청 때와 다르면) 그 토큰으로 **한 번만** 재시도하고,
+ *    없으면 "로그인이 만료됐어요. 다시 로그인해 주세요." 로 안내한다.
+ */
+class AiAutofillApi(context: android.content.Context) {
+    private val appContext = context.applicationContext
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
     // ★ 2026-11-02 AI 판독이 20~40초 걸려 기본 10초 타임아웃으론 끊긴다 — 넉넉히 90초.
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(90, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
-        .callTimeout(100, TimeUnit.SECONDS)
-        .build()
+    private val client = sharedClient
+
+    private fun currentToken(): String? = TokenManager.getAccessToken(appContext)?.takeIf { it.isNotEmpty() }
+
+    private fun Request.Builder.authed(token: String?): Request.Builder = apply {
+        if (!token.isNullOrEmpty()) header("Authorization", "Bearer $token")
+    }.withActiveType()
+
+    /** 요청 실행 — 401 이면 새 토큰이 저장돼 있을 때만 1회 재시도. 응답(상태코드, 본문) 반환. */
+    private fun execute(build: (Request.Builder) -> Request.Builder): Pair<Int, String> {
+        val first = currentToken()
+        val (code, text) = client.newCall(build(Request.Builder()).authed(first).build()).execute()
+            .use { it.code to it.body?.string().orEmpty() }
+        if (code != 401) return code to text
+        val fresh = currentToken()
+        if (fresh == null || fresh == first) return code to text
+        return client.newCall(build(Request.Builder()).authed(fresh).build()).execute()
+            .use { it.code to it.body?.string().orEmpty() }
+    }
 
     /** GET /ai-autofill/config → 이 종류 카드를 보일지(enabled && !used). 실패하면 false(숨김). */
     suspend fun available(kind: AiAutofillKind): Boolean = withContext(Dispatchers.IO) {
         runCatching {
-            val req = Request.Builder().url("$apiBase/ai-autofill/config").get()
-                .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
-                .build()
-            client.newCall(req).execute().use { res ->
-                if (!res.isSuccessful) return@use false
-                val c = JSONObject(res.body?.string().orEmpty()).optJSONObject(kind.path) ?: return@use false
-                c.optBoolean("enabled", false) && !c.optBoolean("used", false)
-            }
+            if (currentToken() == null) return@runCatching false
+            val (code, text) = execute { it.url("$apiBase/ai-autofill/config").get() }
+            if (code !in 200..299) return@runCatching false
+            val c = JSONObject(text).optJSONObject(kind.path) ?: return@runCatching false
+            c.optBoolean("enabled", false) && !c.optBoolean("used", false)
         }.getOrDefault(false)
     }
 
     /** POST /ai-autofill/{kind} { imageUrls } → draft. */
     suspend fun run(kind: AiAutofillKind, imageUrls: List<String>): Result<JSONObject> = withContext(Dispatchers.IO) {
         runCatching {
-            val body = JSONObject().put("imageUrls", JSONArray(imageUrls)).toString()
-                .toRequestBody("application/json".toMediaType())
-            val req = Request.Builder().url("$apiBase/ai-autofill/${kind.path}").post(body)
-                .addHeader("Content-Type", "application/json")
-                .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
-                .build()
-            client.newCall(req).execute().use { res ->
-                val text = res.body?.string().orEmpty()
-                val obj = runCatching { JSONObject(text) }.getOrNull()
-                if (!res.isSuccessful) {
-                    val msg = obj?.optJSONArray("message")
-                        ?.let { arr -> (0 until arr.length()).joinToString("\n") { arr.optString(it) } }
-                        ?.ifEmpty { null }
-                        ?: obj?.optString("message")?.ifEmpty { null }
-                    throw AiAutofillException(
-                        obj?.optString("code")?.ifEmpty { null },
-                        msg ?: "AI가 지금 응답하지 않아요. 잠시 후 다시 시도해 주세요.",
-                    )
-                }
-                obj?.optJSONObject("draft") ?: throw AiAutofillException(null, "AI가 내용을 읽지 못했어요. 다른 사진으로 시도해 주세요.")
+            if (currentToken() == null) throw AiAutofillException(AUTH_EXPIRED, AUTH_EXPIRED_MESSAGE)
+            val bodyJson = JSONObject().put("imageUrls", JSONArray(imageUrls)).toString()
+            val (code, text) = execute {
+                it.url("$apiBase/ai-autofill/${kind.path}")
+                    .post(bodyJson.toRequestBody("application/json".toMediaType()))
             }
+            if (code == 401) throw AiAutofillException(AUTH_EXPIRED, AUTH_EXPIRED_MESSAGE)
+            val obj = runCatching { JSONObject(text) }.getOrNull()
+            if (code !in 200..299) {
+                val msg = obj?.optJSONArray("message")
+                    ?.let { arr -> (0 until arr.length()).joinToString("\n") { arr.optString(it) } }
+                    ?.ifEmpty { null }
+                    ?: obj?.optString("message")?.ifEmpty { null }
+                throw AiAutofillException(
+                    obj?.optString("code")?.ifEmpty { null },
+                    msg ?: "AI가 지금 응답하지 않아요. 잠시 후 다시 시도해 주세요.",
+                )
+            }
+            obj?.optJSONObject("draft") ?: throw AiAutofillException(null, "AI가 내용을 읽지 못했어요. 다른 사진으로 시도해 주세요.")
+        }
+    }
+
+    companion object {
+        const val AUTH_EXPIRED = "AUTH_EXPIRED"
+        const val AUTH_EXPIRED_MESSAGE = "로그인이 만료됐어요. 다시 로그인해 주세요."
+        private val sharedClient: OkHttpClient by lazy {
+            OkHttpClient.Builder()
+                .connectTimeout(15, TimeUnit.SECONDS)
+                .readTimeout(90, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
+                .callTimeout(100, TimeUnit.SECONDS)
+                .build()
         }
     }
 }
@@ -118,18 +150,17 @@ class AiAutofillApi(private val token: String?) {
 @Composable
 fun AiAutofillCard(
     kind: AiAutofillKind,
-    token: String?,
     upload: suspend (ByteArray) -> Result<String>,
     onDraft: (JSONObject) -> Unit,
 ) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    val api = remember(token) { AiAutofillApi(token) }
+    val api = remember { AiAutofillApi(ctx) }
     var available by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(kind, token) { available = api.available(kind) }
+    LaunchedEffect(kind) { available = api.available(kind) }
 
     val isJob = kind == AiAutofillKind.JOB
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(maxItems = 3)) { uris ->

@@ -387,31 +387,47 @@ fun ResumeEditScreen(
 
     // ★ 2026-11-02 AI 이미지 자동입력 — 웹 ResumeEdit.applyAiAutofill 과 같은 규칙(빈 값 = 모름 → 기존 유지).
     //  이름·생년월일(본인확인)은 건드리지 않는다. 이 화면에 없는 칸(지도 분야 fields)은 건너뛴다.
+    //  ★ 비어 있는 칸만 채운다 — 사용자가 이미 적거나 고른 값(소개·장르·대상·경력 구간·희망 급여·자격증·무용단 경력)은 덮지 않는다.
     fun applyAiDraft(d: org.json.JSONObject) {
-        d.aiText("intro")?.let { intro = it }
-        d.aiList("genres").filter { it in ResumeOptions.genres }.takeIf { it.isNotEmpty() }?.let { genres = it }
+        if (intro.isBlank()) d.aiText("intro")?.let { intro = it }
+        if (genres.isEmpty()) {
+            d.aiList("genres").filter { it in ResumeOptions.genres }.takeIf { it.isNotEmpty() }?.let { genres = it }
+        }
         if (!mode.isDancer) {
-            d.aiText("career")?.takeIf { c -> ResumeOptions.careerLevels.any { it.first == c } }?.let { careerBucket = it }
-            d.aiText("desiredSalary")?.takeIf { c -> ResumeOptions.salaryRanges.any { it.first == c } }
-                ?.let { desired = desired.copy(salary = it) }
-            d.aiList("targets").filter { c -> ResumeOptions.classTargets.any { it.first == c } }
-                .takeIf { it.isNotEmpty() }?.let { targets = it }
-            // 자격증 — 이 화면은 한 줄에 하나(draft 는 쉼표 구분).
-            d.aiText("certificates")?.let { c ->
-                certificates = c.split(',', '\n').map { it.trim() }.filter { it.isNotEmpty() }.joinToString("\n")
+            if (careerBucket.isBlank()) {
+                d.aiText("career")?.takeIf { c -> ResumeOptions.careerLevels.any { it.first == c } }?.let { careerBucket = it }
             }
-            // 경력 행 — 비어 있으면 교체, 이미 적어 둔 행이 있으면 뒤에 붙인다(입력한 걸 지우지 않게).
+            if (desired.salary.isNullOrBlank()) {
+                d.aiText("desiredSalary")?.takeIf { c -> ResumeOptions.salaryRanges.any { it.first == c } }
+                    ?.let { desired = desired.copy(salary = it) }
+            }
+            if (targets.isEmpty()) {
+                d.aiList("targets").filter { c -> ResumeOptions.classTargets.any { it.first == c } }
+                    .takeIf { it.isNotEmpty() }?.let { targets = it }
+            }
+            // 자격증 — 이 화면은 한 줄에 하나(draft 는 쉼표 구분).
+            if (certificates.isBlank()) {
+                d.aiText("certificates")?.let { c ->
+                    certificates = c.split(',', '\n').map { it.trim() }.filter { it.isNotEmpty() }.joinToString("\n")
+                }
+            }
+            // 경력 행 — 이미 적어 둔 행(빈 행 제외) 뒤에 붙인다. 같은 기관+직책은 중복이라 건너뛴다.
             val aiCareers = (d.optJSONArray("careers")?.let { arr -> (0 until arr.length()).mapNotNull { arr.optJSONObject(it) } } ?: emptyList())
-                .map { CareerItem(it.optString("academy"), it.optString("position"), it.optString("classes"), it.optString("period")) }
+                .map { CareerItem(it.optString("academy").trim(), it.optString("position").trim(), it.optString("classes").trim(), it.optString("period").trim()) }
                 .filter { it.academy.isNotBlank() || it.position.isNotBlank() }
             if (aiCareers.isNotEmpty()) {
+                fun key(c: CareerItem) = c.academy.trim() to c.position.trim()
                 val kept = careers.filter { it.academy.isNotBlank() || it.position.isNotBlank() }
-                careers = kept + aiCareers
+                val seen = kept.map(::key).toMutableSet()
+                val added = aiCareers.filter { seen.add(key(it)) }
+                if (added.isNotEmpty()) careers = kept + added
             }
         } else {
             // 무용단 경력 칸은 무용수 이력서에만 있다.
-            d.aiText("companyCareer")?.let { c ->
-                companyCareer = c.split(',', '\n').map { it.trim() }.filter { it.isNotEmpty() }.joinToString("\n")
+            if (companyCareer.isBlank()) {
+                d.aiText("companyCareer")?.let { c ->
+                    companyCareer = c.split(',', '\n').map { it.trim() }.filter { it.isNotEmpty() }.joinToString("\n")
+                }
             }
         }
         // 학력 — 레거시 4칸(예술중·예술고·대학교·대학원)을 seededEducations 와 같은 모양의 행으로. 이미 있는 학교는 건너뛴다.
@@ -474,7 +490,6 @@ fun ResumeEditScreen(
                 if (resumeId == null || isSeekProfile) {
                     com.muyeon.app.ui.common.AiAutofillCard(
                         kind = com.muyeon.app.ui.common.AiAutofillKind.PROFILE,
-                        token = api.token,
                         upload = { api.uploadImage(it) },
                         onDraft = { applyAiDraft(it) },
                     )

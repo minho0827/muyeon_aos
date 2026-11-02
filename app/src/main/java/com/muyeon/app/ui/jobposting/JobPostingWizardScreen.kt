@@ -274,7 +274,6 @@ fun JobPostingWizardScreen(
                     if (jobId == null) {
                         com.muyeon.app.ui.common.AiAutofillCard(
                             kind = com.muyeon.app.ui.common.AiAutofillKind.JOB,
-                            token = api.token,
                             upload = { api.uploadImage(it) },
                             onDraft = { applyAiDraft(it) },
                         )
@@ -559,38 +558,74 @@ fun JobPostingWizardScreen(
 }
 
 /**
+ * ★ 2026-11-02 AI 지도 분야 코드 → 앱 칩 코드.
+ *  서버·웹의 새 코드(BASIC…OTHER)와 이 앱 칩(ResumeOptions.teachingFields, 옛 코드)이 다르다.
+ *  앱이 저장하는 값·칩 목록은 바꾸지 않고, 뜻이 분명히 같은 것만 가까운 칩으로 옮긴다(애매하면 버림).
+ *
+ *   AI 코드    (웹 라벨)    → 앱 칩 코드     (앱 라벨)
+ *   HOBBY      취미반       → BALLET_ADULT   성인취미발레   (앱의 유일한 취미반 칩)
+ *   MAJOR      전공반       → BALLET_MAJOR   전공반
+ *   EXAM       입시반       → BALLET_EXAM    입시발레
+ *   REPERTOIRE 작품지도     → CONCOURS       콩쿠르 작품지도
+ *   CONCOURS   콩쿠르지도   → CONCOURS       콩쿠르 작품지도
+ *   PILATES    필라테스     → PILATES        필라테스
+ *   STRETCH    스트레칭     → STRETCH        스트레칭
+ *   BASIC      기초반       → (없음 — 유아/초등/성인 중 어느 쪽인지 알 수 없음)
+ *   AUDITION   오디션준비   → (없음)
+ *   OTHER      기타         → (없음)
+ *  이미 앱 칩 코드로 온 값(BALLET_KIDS 등)은 그대로 받는다.
+ */
+private val AI_FIELD_TO_APP_CHIP = mapOf(
+    "HOBBY" to "BALLET_ADULT",
+    "MAJOR" to "BALLET_MAJOR",
+    "EXAM" to "BALLET_EXAM",
+    "REPERTOIRE" to "CONCOURS",
+    "CONCOURS" to "CONCOURS",
+    "PILATES" to "PILATES",
+    "STRETCH" to "STRETCH",
+)
+
+private fun mapAiTeachingFields(codes: List<String>): List<String> =
+    codes.map { it.uppercase() }
+        .mapNotNull { c -> AI_FIELD_TO_APP_CHIP[c] ?: c.takeIf { code -> ResumeOptions.teachingFields.any { it.first == code } } }
+        .distinct()
+
+/**
  * ★ 2026-11-02 AI draft → 위저드 폼. 웹 JobCreate.applyAiAutofill 과 같은 규칙(빈 값은 기존 유지).
+ *  ★ 비어 있는 칸만 채운다 — 사용자가 이미 적거나 고른 값은 덮지 않는다(위저드는 새 공고 전용이라 대개 비어 있다).
  *  선택지 칸은 이 화면 칩에 있는 값만 받는다 — 칩에 없는 값이 들어가면 화면엔 안 보이는데 저장만 된다.
  */
 private fun applyJobAiDraft(f: JobForm, d: org.json.JSONObject): JobForm {
     fun <T> pick(v: String?, opts: List<Pair<String, T>>) = v?.takeIf { c -> opts.any { it.first == c } }
+    fun String?.empty() = this.isNullOrBlank()
+    fun List<*>?.empty() = this.isNullOrEmpty()
     val genre = d.aiText("genre")?.takeIf { it in JobFormOptions.genres }
     val days = d.aiList("workDays").toSet().let { set -> JobFormOptions.weekDays.filter { it in set } }
     val careers = d.aiList("careerLevels").filter { c -> JobFormOptions.careerLevels.any { it.first == c } }
         .let { if ("ANY" in it) listOf("ANY") else it }
-    // 지도 가능 분야(우대) — 웹은 draft.fields 를 preferences.fields 로 쓴다. 앱 칩에 있는 코드만.
-    val prefFields = d.aiList("fields").filter { c -> ResumeOptions.teachingFields.any { it.first == c } }
+    // 지도 가능 분야(우대) — 웹은 draft.fields 를 preferences.fields 로 쓴다. 새 코드는 앱 칩 코드로 옮긴다.
+    val prefFields = mapAiTeachingFields(d.aiList("fields"))
     val headcount = d.aiText("headcount")?.let { Regex("\\d+").find(it)?.value?.toIntOrNull() }?.takeIf { it > 0 }
     val deadline = d.aiText("deadline")?.takeIf { it == "-" || Regex("^\\d{4}-\\d{2}-\\d{2}$").matches(it) }
     val note = d.aiText("preferred")
     return f.copy(
-        title = d.aiText("title") ?: f.title,
-        genre = genre ?: f.genre,
-        days = days.takeIf { it.isNotEmpty() }?.joinToString("·") ?: f.days,
-        time = d.aiText("workTime")?.let(::parseAiTimeRange) ?: f.time,
-        salary = pick(d.aiText("salary"), JobFormOptions.salaryRanges) ?: f.salary,
-        pay = d.aiText("pay") ?: f.pay,
-        careerLevels = careers.ifEmpty { null } ?: f.careerLevels,
-        employment = pick(d.aiText("employment"), JobFormOptions.employments) ?: f.employment,
-        target = pick(d.aiText("target"), ResumeOptions.classTargets) ?: f.target,
-        headcount = headcount ?: f.headcount,
-        deadline = deadline ?: f.deadline,
-        address = d.aiText("address") ?: f.address,
-        applyMethod = d.aiText("applyMethod")?.take(APPLY_METHOD_MAX) ?: f.applyMethod,
-        description = d.aiText("description") ?: f.description,
+        title = if (f.title.isBlank()) d.aiText("title") ?: f.title else f.title,
+        genre = if (f.genre.empty()) genre ?: f.genre else f.genre,
+        days = if (f.days.empty()) days.takeIf { it.isNotEmpty() }?.joinToString("·") ?: f.days else f.days,
+        time = if (f.time.empty()) d.aiText("workTime")?.let(::parseAiTimeRange) ?: f.time else f.time,
+        salary = if (f.salary.empty()) pick(d.aiText("salary"), JobFormOptions.salaryRanges) ?: f.salary else f.salary,
+        pay = if (f.pay.empty()) d.aiText("pay") ?: f.pay else f.pay,
+        careerLevels = if (f.careerLevels.empty()) careers.ifEmpty { null } ?: f.careerLevels else f.careerLevels,
+        employment = if (f.employment.empty()) pick(d.aiText("employment"), JobFormOptions.employments) ?: f.employment else f.employment,
+        target = if (f.target.empty()) pick(d.aiText("target"), ResumeOptions.classTargets) ?: f.target else f.target,
+        headcount = f.headcount ?: headcount,
+        deadline = if (f.deadline.empty()) deadline ?: f.deadline else f.deadline,
+        address = if (f.address.empty()) d.aiText("address") ?: f.address else f.address,
+        applyMethod = if (f.applyMethod.empty()) d.aiText("applyMethod")?.take(APPLY_METHOD_MAX) ?: f.applyMethod else f.applyMethod,
+        description = if (f.description.empty()) d.aiText("description") ?: f.description else f.description,
         pref = f.pref.copy(
-            fields = prefFields.ifEmpty { null } ?: f.pref.fields,
-            note = note ?: f.pref.note,
+            fields = if (f.pref.fields.empty()) prefFields.ifEmpty { null } ?: f.pref.fields else f.pref.fields,
+            note = if (f.pref.note.empty()) note ?: f.pref.note else f.pref.note,
         ),
     )
 }
