@@ -48,6 +48,8 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
+import com.muyeon.app.ui.common.aiList
+import com.muyeon.app.ui.common.aiText
 import com.muyeon.app.ui.quote.QuoteDialog
 import com.muyeon.app.ui.quote.QuoteUi
 import com.muyeon.app.ui.resume.ResumeOptions
@@ -220,6 +222,12 @@ fun JobPostingWizardScreen(
         }
     }
 
+    // ★ 2026-11-02 AI 이미지 자동입력 — 모든 단계의 칸을 한 번에 채운다(저장은 사용자가 [등록하기]로).
+    //  빈 값 = 모름 → 기존 값 유지. 학원명(academy)은 계정 이름으로 쓰므로 무시, 지역 선택도 건드리지 않는다.
+    fun applyAiDraft(d: org.json.JSONObject) {
+        form = applyJobAiDraft(form, d)
+    }
+
     // 뒤로가기 공통 — 2단계 이상은 이전 단계로, 1단계는 이탈 확인.
     fun requestBack() {
         if (step > 0) { step -= 1; return }
@@ -262,6 +270,15 @@ fun JobPostingWizardScreen(
         ) {
             when (step) {
                 0 -> {
+                    // ★ 2026-11-02 AI 자동입력 카드 — 새 공고일 때만(수정 화면엔 없음, 웹 JobCreate !isEdit 과 같다).
+                    if (jobId == null) {
+                        com.muyeon.app.ui.common.AiAutofillCard(
+                            kind = com.muyeon.app.ui.common.AiAutofillKind.JOB,
+                            token = api.token,
+                            upload = { api.uploadImage(it) },
+                            onDraft = { applyAiDraft(it) },
+                        )
+                    }
                     SectionHead("기본 정보", "공고의 기본 정보를 입력해 주세요.")
                     JobField("공고 제목", form.title, "예) 성인 발레 강사 모집", required = true) {
                         form = form.copy(title = it)
@@ -539,6 +556,67 @@ fun JobPostingWizardScreen(
     errorMessage?.let { msg ->
         QuoteDialog("오류", msg, "확인", onConfirm = { errorMessage = null }, onDismiss = { errorMessage = null })
     }
+}
+
+/**
+ * ★ 2026-11-02 AI draft → 위저드 폼. 웹 JobCreate.applyAiAutofill 과 같은 규칙(빈 값은 기존 유지).
+ *  선택지 칸은 이 화면 칩에 있는 값만 받는다 — 칩에 없는 값이 들어가면 화면엔 안 보이는데 저장만 된다.
+ */
+private fun applyJobAiDraft(f: JobForm, d: org.json.JSONObject): JobForm {
+    fun <T> pick(v: String?, opts: List<Pair<String, T>>) = v?.takeIf { c -> opts.any { it.first == c } }
+    val genre = d.aiText("genre")?.takeIf { it in JobFormOptions.genres }
+    val days = d.aiList("workDays").toSet().let { set -> JobFormOptions.weekDays.filter { it in set } }
+    val careers = d.aiList("careerLevels").filter { c -> JobFormOptions.careerLevels.any { it.first == c } }
+        .let { if ("ANY" in it) listOf("ANY") else it }
+    // 지도 가능 분야(우대) — 웹은 draft.fields 를 preferences.fields 로 쓴다. 앱 칩에 있는 코드만.
+    val prefFields = d.aiList("fields").filter { c -> ResumeOptions.teachingFields.any { it.first == c } }
+    val headcount = d.aiText("headcount")?.let { Regex("\\d+").find(it)?.value?.toIntOrNull() }?.takeIf { it > 0 }
+    val deadline = d.aiText("deadline")?.takeIf { it == "-" || Regex("^\\d{4}-\\d{2}-\\d{2}$").matches(it) }
+    val note = d.aiText("preferred")
+    return f.copy(
+        title = d.aiText("title") ?: f.title,
+        genre = genre ?: f.genre,
+        days = days.takeIf { it.isNotEmpty() }?.joinToString("·") ?: f.days,
+        time = d.aiText("workTime")?.let(::parseAiTimeRange) ?: f.time,
+        salary = pick(d.aiText("salary"), JobFormOptions.salaryRanges) ?: f.salary,
+        pay = d.aiText("pay") ?: f.pay,
+        careerLevels = careers.ifEmpty { null } ?: f.careerLevels,
+        employment = pick(d.aiText("employment"), JobFormOptions.employments) ?: f.employment,
+        target = pick(d.aiText("target"), ResumeOptions.classTargets) ?: f.target,
+        headcount = headcount ?: f.headcount,
+        deadline = deadline ?: f.deadline,
+        address = d.aiText("address") ?: f.address,
+        applyMethod = d.aiText("applyMethod")?.take(APPLY_METHOD_MAX) ?: f.applyMethod,
+        description = d.aiText("description") ?: f.description,
+        pref = f.pref.copy(
+            fields = prefFields.ifEmpty { null } ?: f.pref.fields,
+            note = note ?: f.pref.note,
+        ),
+    )
+}
+
+/**
+ * ★ 2026-11-02 근무 시간 원문 → 시간 선택 칸 형식 "HH:MM ~ HH:MM"(5분 단위).
+ *  "14:00~22:00", "14시~22시 30분", "오후 2시 ~ 10시", "14~22시" 를 읽는다. 못 읽으면 null(기존 값 유지) —
+ *  자유 문장을 그대로 넣으면 선택 칸엔 안 보이는데 저장만 된다.
+ */
+private fun parseAiTimeRange(raw: String): String? {
+    val sides = raw.split('~', '-', '–', '∼', '〜').map { it.trim() }.filter { it.isNotEmpty() }
+    if (sides.size != 2) return null
+    val re = Regex("(오전|오후)?\\s*(\\d{1,2})\\s*(?:[:시]\\s*(\\d{1,2})?)?")
+    var pm = false
+    val times = sides.map { side ->
+        val m = re.find(side) ?: return null
+        val ampm = m.groupValues[1]
+        if (ampm == "오후") pm = true else if (ampm == "오전") pm = false
+        var h = m.groupValues[2].toIntOrNull() ?: return null
+        val min = m.groupValues[3].toIntOrNull() ?: 0
+        // '오후 2시 ~ 10시' 처럼 뒤쪽 오전/오후가 생략되면 앞쪽을 따른다.
+        if (pm && h < 12) h += 12
+        if (h > 23 || min > 59) return null
+        "%02d:%02d".format(h, min - min % 5)
+    }
+    return "${times[0]} ~ ${times[1]}"
 }
 
 /** 지원 방법 최대 길이 — 서버 CreateJobDto.applyMethod @MaxLength(200). */

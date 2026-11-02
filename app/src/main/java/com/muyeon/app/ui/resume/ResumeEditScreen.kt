@@ -62,6 +62,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
+import com.muyeon.app.ui.common.aiList
+import com.muyeon.app.ui.common.aiText
 import com.muyeon.app.ui.quote.QuoteDialog
 import com.muyeon.app.ui.quote.QuoteNavBar
 import com.muyeon.app.ui.quote.QuoteUi
@@ -383,6 +385,44 @@ fun ResumeEditScreen(
         }
     }
 
+    // ★ 2026-11-02 AI 이미지 자동입력 — 웹 ResumeEdit.applyAiAutofill 과 같은 규칙(빈 값 = 모름 → 기존 유지).
+    //  이름·생년월일(본인확인)은 건드리지 않는다. 이 화면에 없는 칸(지도 분야 fields)은 건너뛴다.
+    fun applyAiDraft(d: org.json.JSONObject) {
+        d.aiText("intro")?.let { intro = it }
+        d.aiList("genres").filter { it in ResumeOptions.genres }.takeIf { it.isNotEmpty() }?.let { genres = it }
+        if (!mode.isDancer) {
+            d.aiText("career")?.takeIf { c -> ResumeOptions.careerLevels.any { it.first == c } }?.let { careerBucket = it }
+            d.aiText("desiredSalary")?.takeIf { c -> ResumeOptions.salaryRanges.any { it.first == c } }
+                ?.let { desired = desired.copy(salary = it) }
+            d.aiList("targets").filter { c -> ResumeOptions.classTargets.any { it.first == c } }
+                .takeIf { it.isNotEmpty() }?.let { targets = it }
+            // 자격증 — 이 화면은 한 줄에 하나(draft 는 쉼표 구분).
+            d.aiText("certificates")?.let { c ->
+                certificates = c.split(',', '\n').map { it.trim() }.filter { it.isNotEmpty() }.joinToString("\n")
+            }
+            // 경력 행 — 비어 있으면 교체, 이미 적어 둔 행이 있으면 뒤에 붙인다(입력한 걸 지우지 않게).
+            val aiCareers = (d.optJSONArray("careers")?.let { arr -> (0 until arr.length()).mapNotNull { arr.optJSONObject(it) } } ?: emptyList())
+                .map { CareerItem(it.optString("academy"), it.optString("position"), it.optString("classes"), it.optString("period")) }
+                .filter { it.academy.isNotBlank() || it.position.isNotBlank() }
+            if (aiCareers.isNotEmpty()) {
+                val kept = careers.filter { it.academy.isNotBlank() || it.position.isNotBlank() }
+                careers = kept + aiCareers
+            }
+        } else {
+            // 무용단 경력 칸은 무용수 이력서에만 있다.
+            d.aiText("companyCareer")?.let { c ->
+                companyCareer = c.split(',', '\n').map { it.trim() }.filter { it.isNotEmpty() }.joinToString("\n")
+            }
+        }
+        // 학력 — 레거시 4칸(예술중·예술고·대학교·대학원)을 seededEducations 와 같은 모양의 행으로. 이미 있는 학교는 건너뛴다.
+        val aiEdu = listOf("artMiddle" to "예술중", "artHigh" to "예술고", "university" to "대학교", "gradSchool" to "대학원")
+            .mapNotNull { (k, label) -> d.aiText(k)?.let { EduItem(school = it, major = label) } }
+        if (aiEdu.isNotEmpty()) {
+            val kept = educations.filter { it.school.isNotBlank() }
+            educations = kept + aiEdu.filter { e -> kept.none { it.school == e.school } }
+        }
+    }
+
     val mergedCareerMonths = ResumePeriod.mergedTotalMonths(careers.map { it.period })
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
@@ -430,6 +470,16 @@ fun ResumeEditScreen(
                     .padding(horizontal = 20.dp).padding(top = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
+                // ★ 2026-11-02 AI 자동입력 카드 — 새 이력서·내 구직 프로필에서만(목록에서 기존 이력서를 고쳐 쓸 땐 없음).
+                if (resumeId == null || isSeekProfile) {
+                    com.muyeon.app.ui.common.AiAutofillCard(
+                        kind = com.muyeon.app.ui.common.AiAutofillKind.PROFILE,
+                        token = api.token,
+                        upload = { api.uploadImage(it) },
+                        onDraft = { applyAiDraft(it) },
+                    )
+                }
+
                 // 이력서 이름 — 다중 이력서 구분용(목록·지원 첨부 표시명)
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     SectionTitle("이력서 이름")
