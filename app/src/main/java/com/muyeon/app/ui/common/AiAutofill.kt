@@ -168,16 +168,11 @@ fun AiAutofillCard(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                if (isJob) "✨ 기존 공고 이미지로 AI 자동 작성 (1회 무료)" else "✨ 기존 이력서 이미지로 AI 자동 작성 (1회 무료)",
+                if (isJob) "✨ AI 간편공고 등록" else "✨ AI 간편 이력서 등록",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
                 lineHeight = 20.sp, color = MuyeonColors.textHead,
             )
-            Text(
-                if (isJob) "다른 곳에 올렸던 채용공고 사진을 올리면 AI가 칸을 한 번에 채워 드려요."
-                else "갖고 있는 이력서·프로필 캡처를 올리면 AI가 경력·학력·소개를 채워 드려요.",
-                fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
-                lineHeight = 18.sp, color = MuyeonColors.textSub,
-            )
+            // ★ 2026-11-02 사용자 요청 — 제목만, 설명 문구 없이
             if (busy) {
                 Text(
                     "AI가 사진을 읽고 있어요. 20~40초 정도 걸려요…",
