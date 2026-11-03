@@ -19,6 +19,14 @@ import java.net.URLEncoder
  * 이력서/공개프로필/지원자 REST — iOS `ResumeService`(ResumeModels.swift) 1:1.
  *  엔드포인트·페이로드 키를 iOS 와 동일하게 유지(서버 무변경).
  */
+data class VisibilitySettings(
+    val flags: FieldVisibilityFlags,
+    val profileHidden: Boolean,
+    val sourceId: Int?,
+    val sourceRole: String?,
+    val sourceData: ResumeData?,
+)
+
 class ResumeApi(internal val token: String?) {
 
     private val client = OkHttpClient()
@@ -109,15 +117,18 @@ class ResumeApi(internal val token: String?) {
     // ── 공개범위 ──
 
     /** GET /resumes/visibility → { flags, profileHidden }. */
-    suspend fun getVisibility(): Result<Pair<FieldVisibilityFlags, Boolean>> =
+    suspend fun getVisibility(): Result<VisibilitySettings> =
         call("/resumes/visibility").map { text ->
             val o = JSONObject(text.ifBlank { "{}" })
-            FieldVisibilityFlags.from(o.optJSONObject("flags")) to o.optBoolean("profileHidden", false)
+            val source = o.optJSONObject("sourceResume")
+            VisibilitySettings(FieldVisibilityFlags.from(o.optJSONObject("flags")), o.optBoolean("profileHidden", false),
+                source?.optInt("id"), source?.optString("roleIntent"), source?.optJSONObject("data")?.let(ResumeData::from))
         }
 
-    suspend fun setVisibility(flags: FieldVisibilityFlags, profileHidden: Boolean? = null): Result<Unit> {
+    suspend fun setVisibility(flags: FieldVisibilityFlags, profileHidden: Boolean? = null, sourceResumeId: Int? = null): Result<Unit> {
         val body = flags.toJson()
         if (profileHidden != null) body.put("profileHidden", profileHidden)
+        if (sourceResumeId != null) body.put("sourceResumeId", sourceResumeId)
         return call("/resumes/visibility", "PATCH", body).map { }
     }
 

@@ -320,19 +320,7 @@ fun ResumeEditScreen(
             errorMessage = "이력서 이름을 입력해 주세요."
             return
         }
-        // ★ 2026-10-29 구직 프로필 최소 입력 — 강사: 활동 지역·희망 근무 지역·학력, 무용수: 학력(한 줄 이상). 구직 프로필 화면에서만 막는다(iOS 와 동일).
-        //  지원용 이력서는 저장을 막지 않고, 서버가 세 칸이 찰 때까지 공개만 미룬다.
-        if (isSeekProfile) {
-            val missing = listOfNotNull(
-                "활동 지역".takeIf { !mode.isDancer && activeRegions.none { it.first.isNotBlank() } },
-                "희망 근무 지역".takeIf { !mode.isDancer && desired.region.isNullOrBlank() },
-                "학력".takeIf { educations.none { it.school.isNotBlank() } },
-            )
-            if (missing.isNotEmpty()) {
-                errorMessage = "${missing.joinToString(", ")}을 입력해 주세요."
-                return
-            }
-        }
+        // 이력서는 입력 중에도 저장한다. 공개 요건은 서버가 검사해 공개만 보류한다.
         saving = true
         scope.launch {
             // ⚠️ 빈 값도 항상 전송 — 서버 spread 병합이라 키를 빼면 '지운' 항목이 안 지워진다.

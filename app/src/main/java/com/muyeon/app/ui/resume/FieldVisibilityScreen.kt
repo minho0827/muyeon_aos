@@ -51,6 +51,8 @@ fun FieldVisibilityScreen(
 ) {
     var flags by remember { mutableStateOf(FieldVisibilityFlags()) }
     var profileHidden by remember { mutableStateOf(false) }
+    var sourceId by remember { mutableStateOf<Int?>(null) }
+    var sourceRole by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
     var careers by remember { mutableStateOf<List<CareerItem>>(emptyList()) }
     var performances by remember { mutableStateOf<List<PerfItem>>(emptyList()) }
@@ -60,21 +62,16 @@ fun FieldVisibilityScreen(
     val scope = rememberCoroutineScope()
 
     fun persist() {
-        scope.launch { api.setVisibility(flags, profileHidden).onFailure { errorMessage = it.message } }
+        scope.launch { api.setVisibility(flags, profileHidden, sourceId).onFailure { errorMessage = it.message } }
     }
 
     LaunchedEffect(Unit) {
-        api.getVisibility().onSuccess { (f, hidden) -> flags = f; profileHidden = hidden }
-        // 기본 이력서의 경력/공연 — '상세 >' 선택 시트 데이터
-        api.list().getOrNull()?.let { list ->
-            val def = list.firstOrNull { it.isDefault } ?: list.firstOrNull()
-            def?.let { d ->
-                api.getOne(d.id).getOrNull()?.let { dto ->
-                    careers = dto.data.careers ?: emptyList()
-                    performances = dto.data.performances ?: emptyList()
-                }
-            }
-        }
+        api.getVisibility().onSuccess { settings ->
+            flags = settings.flags; profileHidden = settings.profileHidden
+            sourceId = settings.sourceId; sourceRole = settings.sourceRole
+            careers = settings.sourceData?.careers ?: emptyList()
+            performances = settings.sourceData?.performances ?: emptyList()
+        }.onFailure { errorMessage = it.message }
         // 최초 1회 안내 — 로컬(빠름) 우선, 미확인이면 계정 플래그 확인(재설치·기기변경 대응)
         if (!prefs.getBoolean(INTRO_LOCAL_KEY, false)) {
             if (api.uiFlagSeen(INTRO_FLAG_KEY)) prefs.edit().putBoolean(INTRO_LOCAL_KEY, true).apply()
@@ -95,6 +92,10 @@ fun FieldVisibilityScreen(
                 Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
             ) {
                 GuideBox(mode.isDancer)
+                sourceRole?.let { role ->
+                    Text("현재 공개 프로필의 원본은 ${if (role == "DANCER") "무용수" else "강사"} 기본 이력서예요. 아래 항목 선택은 이 원본에 적용돼요.",
+                        fontSize = 12.sp, color = MuyeonColors.textSub, modifier = Modifier.padding(top = 8.dp))
+                }
                 Text(
                     "공개 정보 설정",
                     fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,

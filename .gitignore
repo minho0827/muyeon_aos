@@ -150,3 +150,6 @@ keystore/
 # Play 서비스 계정 키(release-aos.sh) — 저장소에 넣지 않는다
 *-play.json
 __pycache__/
+
+# Kotlin incremental build cache
+/.kotlin/
