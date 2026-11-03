@@ -207,7 +207,7 @@ fun TransferCardRow(c: TransferCard, mine: Boolean, onClick: () -> Unit, onHeart
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box {
-            MarketThumb(c.image, Modifier.size(96.dp).clip(RoundedCornerShape(12.dp)))
+            MarketThumb(c.image, Modifier.size(96.dp).clip(RoundedCornerShape(12.dp)), placeholderRes = com.muyeon.app.R.drawable.transfer_noimage)
             if (c.status != "OPEN") {
                 Box(Modifier.align(Alignment.TopStart).padding(6.dp)) {
                     MarketBadge(

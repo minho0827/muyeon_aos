@@ -103,7 +103,7 @@ fun TransferDetailScreen(
         when {
             d != null -> {
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                    MarketGallery(d.images)
+                    MarketGallery(d.images, placeholderRes = com.muyeon.app.R.drawable.transfer_noimage)
                     TransferBody(d, onReport = {
                         if (!api.isLoggedIn) onMessage("로그인 후 이용할 수 있어요.") else reportOpen = true
                     })

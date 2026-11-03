@@ -157,11 +157,13 @@ fun MarketFilterPill(text: String, active: Boolean, onClick: () -> Unit) {
 
 /** 사진 갤러리 — 좌우 넘김 + "1 / N", 탭하면 전체 화면(ImageViewerActivity). 사진이 없으면 기본 이미지. */
 @Composable
-fun MarketGallery(images: List<String>, height: Dp = 280.dp) {
+fun MarketGallery(images: List<String>, height: Dp = 280.dp, placeholderRes: Int? = null) {
     val ctx = LocalContext.current
     Box(Modifier.fillMaxWidth().height(height).background(MuyeonList.ink100), Alignment.Center) {
         if (images.isEmpty()) {
-            Image(painterResource(R.drawable.icon_no_image), null, Modifier.size(96.dp), contentScale = ContentScale.Fit)
+            // ★ 2026-11-03 기능별 기본 썸네일(양도양수 = 건물 그림)을 주면 칸을 꽉 채운다
+            if (placeholderRes != null) Image(painterResource(placeholderRes), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            else Image(painterResource(R.drawable.icon_no_image), null, Modifier.size(96.dp), contentScale = ContentScale.Fit)
         } else {
             val pager = rememberPagerState { images.size }
             HorizontalPager(pager, Modifier.fillMaxSize()) { i ->
@@ -185,10 +187,11 @@ fun MarketGallery(images: List<String>, height: Dp = 280.dp) {
 
 /** 카드 썸네일 — 없으면 기본 이미지. */
 @Composable
-fun MarketThumb(path: String?, modifier: Modifier) {
+fun MarketThumb(path: String?, modifier: Modifier, placeholderRes: Int? = null) {
     Box(modifier.background(MuyeonList.ink100), Alignment.Center) {
         val url = MarketFormat.imageUrl(path)
-        if (url == null) Image(painterResource(R.drawable.icon_no_image), null, Modifier.size(40.dp), contentScale = ContentScale.Fit)
+        if (url == null && placeholderRes != null) Image(painterResource(placeholderRes), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        else if (url == null) Image(painterResource(R.drawable.icon_no_image), null, Modifier.size(40.dp), contentScale = ContentScale.Fit)
         else AsyncImage(url, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
     }
 }
