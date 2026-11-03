@@ -21,9 +21,15 @@ object AssistantApi {
     private val client = OkHttpClient.Builder().callTimeout(40, TimeUnit.SECONDS).build() // 채팅 답장·추천 문구는 AI 를 바로 불러 10초 넘게 걸릴 수 있다
     private val apiBase get() = BuildConfig.API_BASE_URL + "/api"
 
+    /** ★ 2026-11-04 로그인 없이 부를 수 있는 API(서버 @AssistantPublic) — 비회원 빠른 메뉴 목록·인기 검색어. */
+    private val PUBLIC_PATHS = setOf("/assistant/catalog", "/assistant/popular")
+
     private fun builder(context: Context, path: String): Request.Builder? {
         val token = TokenManager.getAccessToken(context)
-        if (token.isNullOrEmpty()) return null
+        if (token.isNullOrEmpty()) {
+            if (path !in PUBLIC_PATHS) return null
+            return Request.Builder().url(apiBase + path) // 비회원 — 서버가 로그인 없이 볼 수 있는 메뉴만 준다
+        }
         return Request.Builder().url(apiBase + path).addHeader("Authorization", "Bearer $token").withActiveType()
     }
 

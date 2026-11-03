@@ -243,9 +243,10 @@ private fun AssistantLayer(activity: Activity) {
     // 웹 라우트·웹 모달 상태는 웹뷰 화면에서만 의미가 있다(네이티브 화면은 웹 상태와 무관하게 보인다).
     val onWeb = activity is com.muyeon.app.webview.WebViewActivity
     val loggedIn = !TokenManager.getAccessToken(context).isNullOrEmpty()
+    // ★ 2026-11-04 비회원도 빠른 메뉴 버튼을 보인다(iOS 와 같게) — 목록은 서버가 로그인 없이 볼 수 있는 화면만 준다.
     // 예약금 결제 창 위에는 띄우지 않는다 — 결제 중 다른 화면으로 나가면 결제 창이 닫히지 않은 채 남는다(iOS 와 같다).
     val inPayment = activity is com.muyeon.app.ui.lesson.LessonPaymentActivity
-    val show = loggedIn && !inPayment && !AssistantOverlay.hiddenThisRun && !imeVisible && !open && AssistantOverlay.chatRooms == 0 &&
+    val show = !inPayment && !AssistantOverlay.hiddenThisRun && !imeVisible && !open && AssistantOverlay.chatRooms == 0 &&
         !(onWeb && (FloatingState.isAuthRoute || FloatingState.floatingHidden))
 
     Box(Modifier.fillMaxSize()) {
@@ -423,7 +424,7 @@ private fun AssistantSheet(startDraftId: String? = null, onDismiss: () -> Unit, 
             AssistantOverlay.popularCache[type] = list
             popular = list
         }
-        config = AssistantApi.config(context)
+        if (!TokenManager.getAccessToken(context).isNullOrEmpty()) config = AssistantApi.config(context) // 비회원은 AI 작성 기능이 없다(목록에도 안 나온다)
     }
 
     fun close() {
