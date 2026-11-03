@@ -49,7 +49,8 @@ fun TransferStepIntro(form: TransferForm, onPickDate: () -> Unit, onChange: (Tra
     FormField("입주 가능일") {
         Row(verticalAlignment = Alignment.CenterVertically) {
             FormDateRow(form.availableFrom, "날짜를 선택해 주세요", Modifier.weight(1f), onClick = onPickDate)
-            form.availableFrom?.let { ClearDateLink { onChange(form.copy(availableFrom = null)) } }
+            // [지우기] 자리는 늘 잡아 두고 날짜가 있을 때만 보인다 — 날짜를 고를 때 날짜 칸 폭이 줄지 않게.
+            ClearDateLink(visible = form.availableFrom != null) { onChange(form.copy(availableFrom = null)) }
         }
     }
     FormField("원생 수", hint = "(명)") { NumberField(form.studentCount, "예) 60", 6) { onChange(form.copy(studentCount = it)) } }
@@ -58,6 +59,9 @@ fun TransferStepIntro(form: TransferForm, onPickDate: () -> Unit, onChange: (Tra
 }
 
 @Composable
-private fun ClearDateLink(onClear: () -> Unit) {
-    Text("지우기", fontFamily = customFontFamily, fontSize = 13.sp, color = MuyeonColors.textSub, modifier = Modifier.clickable(onClick = onClear).padding(10.dp))
+private fun ClearDateLink(visible: Boolean, onClear: () -> Unit) {
+    Text(
+        "지우기", fontFamily = customFontFamily, fontSize = 13.sp, color = if (visible) MuyeonColors.textSub else Color.Transparent,
+        modifier = Modifier.clickable(enabled = visible, onClick = onClear).padding(10.dp),
+    )
 }

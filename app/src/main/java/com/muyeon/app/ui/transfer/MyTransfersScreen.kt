@@ -40,6 +40,7 @@ import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.*
 import com.muyeon.app.ui.common.market.*
 import com.muyeon.app.ui.transfer.components.MyTransferRow
+import com.muyeon.app.ui.transfer.components.MyTransferRowSkeleton
 import com.muyeon.app.ui.transfer.components.TransferDeleteDialog
 import com.muyeon.app.ui.transfer.components.TransferStatusDialog
 import kotlinx.coroutines.launch
@@ -71,17 +72,27 @@ fun MyTransfersScreen(
 
     Column(Modifier.fillMaxSize().background(MuyeonList.pageBg)) {
         MuyeonListHeader("내 양도 글", onBack = onBack) { MuyeonHeaderIcon(Icons.Filled.Add, "양도 글 등록", onClick = onCreate) }
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            when {
-                loading -> CircularProgressIndicator(color = MuyeonColors.primary, modifier = Modifier.align(Alignment.Center))
-                items.isEmpty() && error != null -> MuyeonEmptyState(error ?: "", icon = Icons.Outlined.Storefront, modifier = Modifier.align(Alignment.Center))
-                items.isEmpty() -> MuyeonEmptyState(
-                    "아직 올린 양도 글이 없어요.", icon = Icons.Outlined.Storefront,
-                    actionTitle = "양도 글 등록하기", onAction = onCreate, modifier = Modifier.align(Alignment.Center),
-                )
-                else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(items, key = { it.id }) { c ->
-                        MyTransferRow(c, onOpen = { onOpen(c.id) }, onEdit = { onEdit(c.id) }, onStatus = { statusTarget = c }, onDelete = { deleteTarget = c })
+        val phase = when {
+            loading -> ListPhase.Loading
+            items.isEmpty() && error != null -> ListPhase.Error
+            items.isEmpty() -> ListPhase.Empty
+            else -> ListPhase.Items
+        }
+        StableSwap(phase, Modifier.weight(1f).fillMaxWidth()) { p ->
+            Box(Modifier.fillMaxSize()) {
+                when (p) {
+                    ListPhase.Loading -> Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        repeat(5) { MyTransferRowSkeleton() }
+                    }
+                    ListPhase.Error -> MuyeonEmptyState(error ?: "", icon = Icons.Outlined.Storefront, modifier = Modifier.align(Alignment.Center))
+                    ListPhase.Empty -> MuyeonEmptyState(
+                        "아직 올린 양도 글이 없어요.", icon = Icons.Outlined.Storefront,
+                        actionTitle = "양도 글 등록하기", onAction = onCreate, modifier = Modifier.align(Alignment.Center),
+                    )
+                    ListPhase.Items -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(items, key = { it.id }) { c ->
+                            MyTransferRow(c, onOpen = { onOpen(c.id) }, onEdit = { onEdit(c.id) }, onStatus = { statusTarget = c }, onDelete = { deleteTarget = c })
+                        }
                     }
                 }
             }

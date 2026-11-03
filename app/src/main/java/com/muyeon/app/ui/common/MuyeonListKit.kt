@@ -138,6 +138,8 @@ fun <T> MuyeonPillTabs(
     showDivider: Boolean = true,
     /** 작은 크기(높이 36·글자 14) — 섹션 안에 끼는 줄(캐스팅·무대 장르 칩)용. iOS compact 와 같다. */
     compact: Boolean = false,
+    /** true 면 고른 탭도 글자 굵기를 바꾸지 않는다 — 고를 때 탭 폭이 변해 옆 탭이 밀리지 않게(양도양수·공간 대관). */
+    fixedWeight: Boolean = false,
     trailing: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val state = rememberLazyListState()
@@ -166,8 +168,9 @@ fun <T> MuyeonPillTabs(
                     ) {
                         val c = if (on) Color.White else MuyeonColors.textHead
                         val size = if (compact) 14 else 15
-                        Text(tab.title, style = pt(if (on) FontWeight.SemiBold else FontWeight.Medium, size), color = c, maxLines = 1)
-                        tab.count?.let { Text("$it", style = pt(if (on) FontWeight.SemiBold else FontWeight.Medium, size), color = c.copy(alpha = if (on) 0.85f else 0.6f)) }
+                        val w = if (on || fixedWeight) FontWeight.SemiBold else FontWeight.Medium
+                        Text(tab.title, style = pt(w, size), color = c, maxLines = 1)
+                        tab.count?.let { Text("$it", style = pt(w, size), color = c.copy(alpha = if (on) 0.85f else 0.6f)) }
                     }
                 }
             }

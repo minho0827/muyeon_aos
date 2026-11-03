@@ -47,7 +47,7 @@ fun TransferRegionChips(region: String?, filterActive: Boolean, onRegion: (Strin
     MuyeonPillTabs(
         TransferLabels.regions.map { (name, code) -> MuyeonPillTab(code ?: "", name) },
         region ?: "", { onRegion(it.ifEmpty { null }) },
-        tagPrefix = "transfer.region", compact = true,
+        tagPrefix = "transfer.region", compact = true, fixedWeight = true,
     ) {
         Box(
             Modifier.padding(end = 8.dp).size(40.dp).clip(RoundedCornerShape(12.dp)).clickable(onClick = onFilter),

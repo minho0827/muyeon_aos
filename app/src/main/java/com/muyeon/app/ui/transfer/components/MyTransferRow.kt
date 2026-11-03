@@ -61,3 +61,14 @@ private fun HiddenNotice() {
         modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
     )
 }
+
+/** 내 글 줄 자리(불러오는 중) — 카드 자리 + 버튼 줄 높이(40). */
+@Composable
+fun MyTransferRowSkeleton() {
+    Column(Modifier.fillMaxWidth().clip(MuyeonList.cardShape).background(Color.White)) {
+        TransferCardSkeleton()
+        Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            repeat(3) { Box(Modifier.weight(1f).height(40.dp).skeleton(10)) }
+        }
+    }
+}

@@ -41,10 +41,12 @@ import com.muyeon.app.ui.common.*
 import com.muyeon.app.ui.common.market.*
 import kotlinx.coroutines.launch
 
-/** 첫 로딩. */
+/** 첫 로딩 — 실제 카드와 같은 높이의 카드 자리 N장(작은 스피너가 커지며 바뀌지 않게). */
 @Composable
-fun BoxScope.TransferListLoading() {
-    CircularProgressIndicator(color = MuyeonColors.primary, modifier = Modifier.align(Alignment.Center))
+fun TransferListLoading(count: Int = 6) {
+    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        repeat(count) { TransferCardSkeleton() }
+    }
 }
 
 /** 첫 쪽을 못 읽음 — 서버 문구 + [다시 시도]. */
@@ -59,12 +61,13 @@ fun BoxScope.TransferListEmpty() {
     MuyeonEmptyState("아직 올라온 양도 글이 없어요.", icon = Icons.Outlined.Storefront, modifier = Modifier.align(Alignment.Center))
 }
 
-/** 카드 목록 + (다음 쪽 읽는 중이면) 아래 스피너. card 는 카드 한 장을 그리는 쪽이 고른다. */
+/** 카드 목록 + 다음 쪽이 있으면 아래 고정 높이 자리(읽는 중일 때만 스피너). card 는 카드 한 장을 그리는 쪽이 고른다. */
 @Composable
 fun <T> TransferListItems(
     listState: LazyListState,
     items: List<T>,
     key: (T) -> Any,
+    hasMore: Boolean,
     loadingMore: Boolean,
     card: @Composable (T) -> Unit,
 ) {
@@ -73,8 +76,6 @@ fun <T> TransferListItems(
         contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         items(items, key = key) { card(it) }
-        if (loadingMore) item(key = "more") {
-            Box(Modifier.fillMaxWidth().padding(12.dp), Alignment.Center) { CircularProgressIndicator(color = MuyeonColors.primary, modifier = Modifier.size(24.dp)) }
-        }
+        if (hasMore) item(key = "more") { ListMoreFooter(loadingMore) }
     }
 }

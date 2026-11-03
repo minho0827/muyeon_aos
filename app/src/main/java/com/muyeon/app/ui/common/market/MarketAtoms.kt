@@ -58,6 +58,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -105,17 +107,33 @@ fun MarketBadge(text: String, fg: Color = Color.White, bg: Color = MuyeonColors.
     )
 }
 
+/**
+ * 글자가 바뀌는 상태 배지(판매중↔예약중↔거래완료, 결제 대기↔예약 확정 …) — 폭을 고정해
+ *  상태가 바뀌어도 배지·옆 글자가 밀리지 않는다(글자는 가운데).
+ */
+@Composable
+fun MarketStatusBadge(text: String, width: Dp, fg: Color = Color.White, bg: Color = MuyeonColors.primary) {
+    Text(
+        text, style = ts(FontWeight.SemiBold, 12), color = fg, textAlign = TextAlign.Center, maxLines = 1,
+        modifier = Modifier.width(width).clip(RoundedCornerShape(6.dp)).background(bg).padding(vertical = 3.dp),
+    )
+}
+
 /** 목록 위 필터 알약 — 값이 걸려 있으면 검정 테두리·굵게. */
 @Composable
-fun MarketFilterPill(text: String, active: Boolean, onClick: () -> Unit) {
+fun MarketFilterPill(text: String, active: Boolean, width: Dp = 112.dp, onClick: () -> Unit) {
+    // 폭 고정 — "지역"→"서울", "정렬"→"가격 낮은순"처럼 값이 바뀌어도 옆 알약이 밀리지 않게.
     Row(
-        Modifier.height(34.dp).clip(CircleShape)
+        Modifier.width(width).height(34.dp).clip(CircleShape)
             .border(1.dp, if (active) MuyeonColors.textHead else MuyeonList.ink200, CircleShape)
             .background(Color.White).clickable(onClick = onClick).padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
     ) {
-        Text(text, style = ts(if (active) FontWeight.SemiBold else FontWeight.Medium, 14), color = MuyeonColors.textHead, maxLines = 1)
+        Text(
+            text, style = ts(if (active) FontWeight.SemiBold else FontWeight.Medium, 14), color = MuyeonColors.textHead, maxLines = 1,
+            overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
+        )
         Icon(Icons.Filled.KeyboardArrowDown, null, tint = MuyeonColors.textSub, modifier = Modifier.size(16.dp))
     }
 }

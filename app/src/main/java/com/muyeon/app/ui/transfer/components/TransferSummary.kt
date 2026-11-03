@@ -46,17 +46,17 @@ import kotlinx.coroutines.launch
 fun TransferSummary(c: TransferCard) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            MarketBadge(
-                TransferLabels.status(c.status),
+            MarketStatusBadge(
+                TransferLabels.status(c.status), TRANSFER_STATUS_BADGE_WIDTH,
                 bg = when (c.status) { "OPEN" -> MuyeonColors.primary; "HOLD" -> MuyeonColors.primaryDeep; else -> MuyeonColors.textSub },
             )
             TransferLabels.facility(c.facilityType)?.let { TransferGrayChip(it) }
             TransferLabels.operating(c.operatingStatus)?.let { TransferGrayChip(it) }
         }
-        Text(c.title, fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 30.sp, color = MuyeonColors.textHead)
+        Text(c.title, fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 30.sp, color = MuyeonColors.textHead, minLines = 2)
         Text(
             listOfNotNull(c.region, c.createdAt?.take(10)?.replace('-', '.'), "조회 ${c.viewCount}").joinToString(" · "),
-            fontFamily = customFontFamily, fontSize = 13.sp, color = MuyeonColors.textSub,
+            fontFamily = customFontFamily, fontSize = 13.sp, color = MuyeonColors.textSub, style = TabularNums, maxLines = 1, overflow = TextOverflow.Ellipsis,
         )
     }
 }

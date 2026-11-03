@@ -102,7 +102,7 @@ fun MarketGallery(images: List<String>, height: Dp = 280.dp, placeholderRes: Int
             }
             if (images.size > 1) {
                 Text(
-                    "${pager.currentPage + 1} / ${images.size}", style = ts(FontWeight.Medium, 12), color = Color.White,
+                    "${pager.currentPage + 1} / ${images.size}", style = ts(FontWeight.Medium, 12).merge(TabularNums), color = Color.White,
                     modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp).clip(CircleShape)
                         .background(Color.Black.copy(alpha = 0.45f)).padding(horizontal = 10.dp, vertical = 4.dp),
                 )

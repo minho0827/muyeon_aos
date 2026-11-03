@@ -105,18 +105,26 @@ fun TransferListScreen(
         }
         TransferRegionChips(state.region, state.filter.isActive, onRegion = { state.region = it }, onFilter = { showFilter = true })
 
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            when {
-                !state.loadedOnce && state.loading -> TransferListLoading()
-                state.items.isEmpty() && state.error != null -> TransferListError(state.error ?: "") { scope.launch { state.load(api, true) } }
-                state.items.isEmpty() && state.loadedOnce -> TransferListEmpty()
-                else -> TransferListItems(state.listState, state.items, { it.id }, loadingMore = state.loading && state.items.isNotEmpty()) { c ->
+        val phase = when {
+            !state.loadedOnce && state.loading -> ListPhase.Loading
+            state.items.isEmpty() && state.error != null -> ListPhase.Error
+            state.items.isEmpty() && state.loadedOnce -> ListPhase.Empty
+            else -> ListPhase.Items
+        }
+        StableSwap(phase, Modifier.weight(1f).fillMaxWidth()) { p ->
+          Box(Modifier.fillMaxSize()) {
+            when (p) {
+                ListPhase.Loading -> TransferListLoading()
+                ListPhase.Error -> TransferListError(state.error ?: "") { scope.launch { state.load(api, true) } }
+                ListPhase.Empty -> TransferListEmpty()
+                ListPhase.Items -> TransferListItems(state.listState, state.items, { it.id }, hasMore = state.hasMore, loadingMore = state.loading && state.items.isNotEmpty()) { c ->
                     // 카드 오른쪽 칸 — 내 글이면 하트만, 남의 글이면 하트 + 바로 채팅.
                     val mine = myUserId != null && c.authorId == myUserId
                     if (mine) TransferCardView(c, onClick = { onOpen(c.id) }) { TransferOwnCardActions(c.scrapped) { toggleScrap(c) } }
                     else TransferCardView(c, onClick = { onOpen(c.id) }) { TransferViewerCardActions(c.scrapped, { toggleScrap(c) }, { chat(c) }) }
                 }
             }
+          }
         }
     }
 

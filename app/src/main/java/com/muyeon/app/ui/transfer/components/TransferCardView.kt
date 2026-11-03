@@ -71,24 +71,46 @@ private fun TransferCardThumb(image: String?, badgeStatus: String?) {
 @Composable
 private fun TransferThumbBadge(status: String, modifier: Modifier) {
     Box(modifier.padding(6.dp)) {
-        MarketBadge(TransferLabels.status(status), bg = if (status == "HOLD") MuyeonColors.primary else MuyeonColors.textSub)
+        MarketStatusBadge(TransferLabels.status(status), TRANSFER_STATUS_BADGE_WIDTH, bg = if (status == "HOLD") MuyeonColors.primary else MuyeonColors.textSub)
     }
 }
 
+/** 상태 배지 폭(가장 긴 "거래완료" 기준) — 상태가 바뀌어도 배지 크기가 그대로. */
+val TRANSFER_STATUS_BADGE_WIDTH = 60.dp
+
+/**
+ * 글자 칸 — 줄 수를 미리 잡아 둔다(제목 2줄 · 요약 1줄 · 금액 2줄). 글이 짧거나 요약이 없어도 카드 높이가 같아
+ *  목록이 들쭉날쭉하지 않고, 스켈레톤(TransferCardSkeleton)과 높이가 꼭 같다.
+ */
 @Composable
 private fun TransferCardText(c: TransferCard, modifier: Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             c.title, fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 16.sp,
-            color = MuyeonColors.textHead, maxLines = 2, overflow = TextOverflow.Ellipsis,
+            color = MuyeonColors.textHead, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis,
         )
-        c.metaLine.takeIf { it.isNotEmpty() }?.let {
-            Text(it, fontFamily = customFontFamily, fontSize = 13.sp, color = MuyeonColors.textSub, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
+        Text(c.metaLine, fontFamily = customFontFamily, fontSize = 13.sp, color = MuyeonColors.textSub, minLines = 1, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(
-            c.priceLine, fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-            color = MuyeonColors.textHead, maxLines = 2, overflow = TextOverflow.Ellipsis,
+            c.priceLine, fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, style = TabularNums,
+            color = MuyeonColors.textHead, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+/** 카드 자리(불러오는 중) — TransferCardView 와 같은 여백·썸네일·줄 수. */
+@Composable
+fun TransferCardSkeleton() {
+    Row(
+        Modifier.fillMaxWidth().clip(MuyeonList.cardShape).background(Color.White).padding(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(Modifier.size(96.dp).skeleton(12))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            SkeletonLine(16, 0.9f, lines = 2)
+            SkeletonLine(13, 0.6f)
+            SkeletonLine(13, 0.8f, lines = 2)
+        }
+        Box(Modifier.width(36.dp))
     }
 }
 

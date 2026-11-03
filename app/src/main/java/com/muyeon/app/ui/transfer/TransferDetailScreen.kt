@@ -129,22 +129,30 @@ fun TransferDetailScreen(
     Column(Modifier.fillMaxSize().background(Color.White)) {
         TransferDetailTopBar(onBack)
         val d = detail
-        when {
-            d != null -> {
-                val view = d.toView()
-                Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                    MarketGallery(d.images, placeholderRes = R.drawable.transfer_noimage)
-                    TransferDetailBody(d.card, view, onReport = {
-                        if (!api.isLoggedIn) onMessage("로그인 후 이용할 수 있어요.") else reportOpen = true
-                    })
+        val phase = when { d != null -> DetailPhase.Content; loading -> DetailPhase.Loading; else -> DetailPhase.Error }
+        // 본문 자리는 늘 같은 크기(weight) — 자리(스켈레톤) → 내용은 겹쳐 바꾸기만.
+        StableSwap(phase, Modifier.weight(1f).fillMaxWidth()) { p ->
+            when (p) {
+                DetailPhase.Loading -> TransferDetailSkeleton()
+                DetailPhase.Error -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                    MuyeonEmptyState(error ?: "양도 글을 찾을 수 없어요.", actionTitle = "다시 시도", onAction = { loading = true; scope.launch { load() } })
                 }
-                if (d.isAuthor) TransferAuthorBottomBar(onEdit = { onEdit(d.card.id) }, onStatus = { statusOpen = true })
-                else TransferViewerBottomBar(d.card.scrapped, view.phone, chatBusy, onHeart = { toggleScrap(d) }, onChat = { chat(d) })
+                DetailPhase.Content -> detail?.let { dd ->
+                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                        MarketGallery(dd.images, placeholderRes = R.drawable.transfer_noimage)
+                        TransferDetailBody(dd.card, dd.toView(), onReport = {
+                            if (!api.isLoggedIn) onMessage("로그인 후 이용할 수 있어요.") else reportOpen = true
+                        })
+                    }
+                }
             }
-            loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) { CircularProgressIndicator(color = MuyeonColors.primary) }
-            else -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
-                MuyeonEmptyState(error ?: "양도 글을 찾을 수 없어요.", actionTitle = "다시 시도", onAction = { loading = true; scope.launch { load() } })
-            }
+        }
+        // 하단 바 자리 — 불러오는 중엔 같은 높이의 자리, 오류면 같은 높이의 빈칸.
+        when {
+            d != null && d.isAuthor -> TransferAuthorBottomBar(onEdit = { onEdit(d.card.id) }, onStatus = { statusOpen = true })
+            d != null -> TransferViewerBottomBar(d.card.scrapped, d.toView().phone, chatBusy, onHeart = { toggleScrap(d) }, onChat = { chat(d) })
+            loading -> MarketBottomBarSkeleton()
+            else -> BottomBarSpace()
         }
     }
 

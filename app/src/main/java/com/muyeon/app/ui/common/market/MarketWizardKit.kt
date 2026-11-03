@@ -1,6 +1,8 @@
 package com.muyeon.app.ui.common.market
 
 import android.content.Context
+import androidx.compose.ui.draw.alpha
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -92,8 +94,8 @@ import org.json.JSONArray
 fun WizardProgress(titles: List<String>, step: Int) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("${step + 1}", style = ts(FontWeight.Bold, 14), color = MuyeonColors.primary)
-            Text(" / ${titles.size}", style = ts(FontWeight.Medium, 14), color = MuyeonColors.chevron)
+            Text("${step + 1}", style = ts(FontWeight.Bold, 14).merge(TabularNums), color = MuyeonColors.primary)
+            Text(" / ${titles.size}", style = ts(FontWeight.Medium, 14).merge(TabularNums), color = MuyeonColors.chevron)
             Text("  ${titles.getOrElse(step) { "" }}", style = ts(FontWeight.SemiBold, 14), color = MuyeonColors.textHead)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -119,11 +121,14 @@ fun WizardTopBar(title: String, onClose: () -> Unit) {
     }
 }
 
-/** 위저드 머리 전체 — 제목줄 + 진행 + 구분선. */
+/**
+ * 위저드 머리 전체 — 제목줄 + 진행 + 구분선. showProgress=false(동의 단계 등)여도 진행 줄 자리는 그대로 두고
+ *  안 보이게만 한다 — 동의 단계 → 1단계로 넘어갈 때 머리 높이가 바뀌지 않게.
+ */
 @Composable
-fun WizardHeader(title: String, steps: List<String>, step: Int, onClose: () -> Unit) {
+fun WizardHeader(title: String, steps: List<String>, step: Int, onClose: () -> Unit, showProgress: Boolean = true) {
     WizardTopBar(title, onClose)
-    WizardProgress(steps, step)
+    Box(Modifier.alpha(if (showProgress) 1f else 0f)) { WizardProgress(steps, step) }
     Box(Modifier.fillMaxWidth().height(1.dp).background(MuyeonColors.border))
 }
 
@@ -134,7 +139,8 @@ fun WizardNavBar(showPrev: Boolean, nextLabel: String, nextEnabled: Boolean, bus
         Modifier.fillMaxWidth().background(Color.White).navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        if (showPrev) WizardPrevButton(onPrev)
+        // [이전] 자리는 첫 단계에도 비워 둔다 — 단계가 바뀔 때 [다음] 버튼 폭이 변하지 않게.
+        if (showPrev) WizardPrevButton(onPrev) else Spacer(Modifier.weight(1f).height(56.dp))
         Box(Modifier.weight(2f)) { StageBottomButton(nextLabel, enabled = nextEnabled, busy = busy, onClick = onNext) }
     }
 }
@@ -179,7 +185,9 @@ fun ColumnScope.WizardLoading() {
 fun AddressBlock(name: String, address: String, lat: Double?, lng: Double?, onSearch: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         AddressSearchButton(hasAddress = address.isNotBlank(), onSearch)
+        // 미리보기 자리는 주소를 고르기 전에도 같은 높이로 잡아 둔다(안 보이고 눌리지 않음) — 고른 뒤 아래 칸이 밀리지 않게.
         if (address.isNotBlank()) AddressPreview(name.ifBlank { address }, address, lat, lng)
+        else Box(Modifier.alpha(0f).blockTouches()) { AddressPreview(" ", " ", null, null) }
     }
 }
 
