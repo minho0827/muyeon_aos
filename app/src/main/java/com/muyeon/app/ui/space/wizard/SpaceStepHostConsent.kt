@@ -48,31 +48,8 @@ import kotlinx.coroutines.launch
  *  항목·제목은 서버(관리자 '약관·정책')가 준 것만 그린다 — 대관 권리 확인은 호스트 이용약관 본문에 있다.
  */
 @Composable
-fun ColumnScope.SpaceStepHostConsent(docs: List<SpaceConsentDoc>, submitting: Boolean, onAgree: () -> Unit) {
-    val ctx = LocalContext.current
-    var checkedDocs by remember(docs) { mutableStateOf<Set<String>>(emptySet()) }
-    val allChecked = docs.all { it.docKey in checkedDocs }
-
-    fun setAll(on: Boolean) {
-        checkedDocs = if (on) docs.map { it.docKey }.toSet() else emptySet()
-    }
-
-    Column(
-        Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(top = 18.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
-    ) {
-        SectionHead("공간을 등록하기 전에 확인해 주세요", "아래 내용에 모두 동의해야 공간을 등록할 수 있어요.")
-        ConsentCheckRow(allChecked, "전체 동의", bold = true) { setAll(!allChecked) }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(MuyeonColors.border))
-        docs.forEach { d ->
-            ConsentDocRow(
-                checked = d.docKey in checkedDocs, label = "[필수] ${d.title}",
-                onToggle = { checkedDocs = if (d.docKey in checkedDocs) checkedDocs - d.docKey else checkedDocs + d.docKey },
-                onView = { openPolicyPage(ctx, d.url) },
-            )
-        }
-    }
-    Box(Modifier.fillMaxWidth().background(Color.White).navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp)) {
-        StageBottomButton("동의하고 시작", enabled = allChecked, busy = submitting, onClick = onAgree)
-    }
-}
+fun ColumnScope.SpaceStepHostConsent(docs: List<SpaceConsentDoc>, submitting: Boolean, onAgree: () -> Unit) =
+    MarketConsentStep(
+        "공간을 등록하기 전에 확인해 주세요", "아래 내용에 모두 동의해야 공간을 등록할 수 있어요.",
+        docs.map { ConsentDocItem(it.docKey, it.title, it.url) }, submitting, onAgree,
+    )

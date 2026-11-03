@@ -21,6 +21,8 @@ object TransferLabels {
     val facility = listOf("ACADEMY" to "학원", "STUDIO" to "연습실", "HALL" to "공연장", "ETC" to "기타")
     val operating = listOf("OPERATING" to "운영중", "VACANT" to "공실")
     val status = listOf("OPEN" to "판매중", "HOLD" to "예약중", "CLOSED" to "거래완료")
+    /** 글쓴이와 매물의 관계(등록 칩) — 저장 값 OPERATOR·TENANT·DELEGATE. 상세 표시는 서버 ownerRelationLabel. */
+    val ownerRelation = listOf("OPERATOR" to "직접 운영 중", "TENANT" to "임차인", "DELEGATE" to "위임받음")
     val options = listOf(
         "AIRCON" to "에어컨", "HEATER" to "난방기", "DRESSING_ROOM" to "탈의실", "SHOWER" to "샤워실",
         "RESTROOM" to "내부 화장실", "MIRROR" to "전면거울", "BALLET_BAR" to "발레바", "SOUNDPROOF" to "방음",
@@ -119,6 +121,11 @@ data class TransferDetail(
     val contactPhone: String?,
     val phoneVisible: Boolean,
     val isAuthor: Boolean,
+    /** ★ 7087ee5 글쓴이와 매물 관계(OPERATOR·TENANT·DELEGATE) + 서버 표시 글자. 예전 글은 null. */
+    val ownerRelation: String? = null,
+    val ownerRelationLabel: String? = null,
+    /** 상세 맨 아래 안내(서버가 정함). 비면 화면이 예전 안내를 대신 쓴다. */
+    val notices: List<String> = emptyList(),
 ) {
     companion object {
         fun from(o: JSONObject) = TransferDetail(
@@ -131,6 +138,7 @@ data class TransferDetail(
             studentCount = o.jInt("studentCount"), monthlyRevenue = o.jInt("monthlyRevenue"),
             revenueVisible = o.jBool("revenueVisible"), contactName = o.jStr("contactName"),
             contactPhone = o.jStr("contactPhone"), phoneVisible = o.jBool("phoneVisible"), isAuthor = o.jBool("isAuthor"),
+            ownerRelation = o.jStr("ownerRelation"), ownerRelationLabel = o.jStr("ownerRelationLabel"), notices = o.jStrings("notices"),
         )
     }
 }
@@ -193,6 +201,8 @@ data class TransferForm(
     val contactName: String = "",
     val contactPhone: String = "",
     val phoneVisible: Boolean = false,
+    /** 매물과의 관계(필수 선택) — 예전 글은 null 로 열려 저장 전에 고르게 한다. */
+    val ownerRelation: String? = null,
 ) {
     fun toJson(): JSONObject {
         val o = JSONObject()
@@ -220,6 +230,7 @@ data class TransferForm(
         o.put("revenueVisible", revenueVisible)
         s("contactName", contactName); s("contactPhone", contactPhone)
         o.put("phoneVisible", phoneVisible)
+        ownerRelation?.let { o.put("ownerRelation", it) }
         return o
     }
 
@@ -240,6 +251,7 @@ data class TransferForm(
                 options = c.options.toSet(), description = d.description.orEmpty(), availableFrom = d.availableFrom,
                 studentCount = n(d.studentCount), monthlyRevenue = n(d.monthlyRevenue), revenueVisible = d.revenueVisible,
                 contactName = d.contactName.orEmpty(), contactPhone = d.contactPhone.orEmpty(), phoneVisible = d.phoneVisible,
+                ownerRelation = d.ownerRelation?.takeIf { r -> TransferLabels.ownerRelation.any { it.first == r } },
             )
         }
     }
@@ -286,6 +298,13 @@ class TransferApi(context: Context) {
         http.call("/studio-transfers/$id/scrap", if (on) "POST" else "DELETE").map { }
 
     /** 허위 매물 신고 — 기존 신고 API(targetType STUDIO_TRANSFER). */
+    /** 양도양수 이용약관 동의 여부 + 문서(제목·웹 경로는 서버). */
+    suspend fun consent(): Result<TransferConsent> = http.get("/studio-transfers/consent").mapCatching { TransferConsent.from(JSONObject(it)) }
+
+    /** 동의 저장 — source: POST(글쓰기) | CHAT(문의 채팅). */
+    suspend fun agreeConsent(source: String): Result<TransferConsent> =
+        http.call("/studio-transfers/consent", "POST", JSONObject().put("source", source)).mapCatching { TransferConsent.from(JSONObject(it.ifBlank { "{}" })) }
+
     suspend fun report(id: Int): Result<Unit> =
         http.call("/reports", "POST", JSONObject().put("targetType", "STUDIO_TRANSFER").put("targetId", id).put("reason", "FAKE")).map { }
 
@@ -298,3 +317,24 @@ class TransferApi(context: Context) {
 
     suspend fun uploadImage(bytes: ByteArray): Result<String> = http.uploadImage(bytes)
 }
+
+/** 동의 없이 글 등록·문의 채팅을 부르면 서버가 주는 오류 코드(403). */
+const val TRANSFER_CONSENT_REQUIRED = "TRANSFER_CONSENT_REQUIRED"
+
+/** GET/POST /studio-transfers/consent — docs 는 서버 문서(제목·웹 경로)만 쓴다. */
+data class TransferConsent(val agreed: Boolean, val docs: List<com.muyeon.app.ui.common.market.ConsentDocItem>) {
+    companion object {
+        fun from(o: JSONObject) = TransferConsent(
+            agreed = o.optBoolean("agreed"),
+            docs = (o.optJSONArray("docs") ?: JSONArray()).jObjects().map {
+                com.muyeon.app.ui.common.market.ConsentDocItem(
+                    it.optString("docKey"), it.optString("title").ifEmpty { it.optString("docKey") },
+                    it.optString("url").ifEmpty { "/policy?doc=${it.optString("docKey")}&embed=1" },
+                )
+            },
+        )
+    }
+}
+
+/** ApiMessageError 가 동의 필요(403 TRANSFER_CONSENT_REQUIRED)인지. */
+fun Throwable.isTransferConsentRequired(): Boolean = (this as? com.muyeon.app.ui.common.ApiMessageError)?.code == TRANSFER_CONSENT_REQUIRED

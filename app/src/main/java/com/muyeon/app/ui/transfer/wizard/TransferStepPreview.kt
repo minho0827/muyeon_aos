@@ -74,5 +74,6 @@ private fun previewRows(f: TransferForm): List<Pair<String, String>> = buildList
     f.availableFrom?.let { add("입주 가능일" to it) }
     if (f.monthlyRevenue.isNotBlank()) add("월매출" to "${f.monthlyRevenue}만원 · ${if (f.revenueVisible) "공개" else "비공개"}")
     if (f.contactName.isNotBlank()) add("담당자" to f.contactName)
+    TransferLabels.ownerRelation.firstOrNull { it.first == f.ownerRelation }?.let { add("매물과의 관계" to it.second) }
     if (f.contactPhone.isNotBlank()) add("전화번호" to "${f.contactPhone} · ${if (f.phoneVisible) "회원 공개" else "비공개"}")
 }

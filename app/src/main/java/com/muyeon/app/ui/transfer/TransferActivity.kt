@@ -63,6 +63,7 @@ class TransferActivity : ResultActivity() {
             com.muyeon.app.analytics.TrackNavigation("StudioTransfer", nav)
             val api = remember { TransferApi(this) }
             val listState = remember { TransferListState() }
+            val chatConsent = remember { TransferChatConsent(api) }
             val myId = remember { api.http.myUserId() }
             var message by remember { mutableStateOf<String?>(null) }
             var changedTick by remember { mutableIntStateOf(0) }
@@ -80,14 +81,14 @@ class TransferActivity : ResultActivity() {
                     TransferListScreen(
                         api = api, state = listState, canCreate = canPost(this@TransferActivity), myUserId = myId,
                         onBack = { back() }, onOpen = { nav.navigate("detail/$it") }, onCreate = { create() },
-                        onChatRoom = ::openChat, onMessage = { message = it },
+                        onChatRoom = ::openChat, onMessage = { message = it }, chatConsent = chatConsent,
                     )
                 }
                 composable("detail/{id}", arguments = listOf(navArgument("id") { type = NavType.IntType; defaultValue = if (route == "detail") startId else 0 })) { e ->
                     val id = e.arguments?.getInt("id") ?: 0
                     TransferDetailScreen(
                         api = api, id = id, onBack = { back() }, onEdit = { nav.navigate("editor/$it") },
-                        onChatRoom = ::openChat, onChanged = { changedTick++ }, onMessage = { message = it },
+                        onChatRoom = ::openChat, onChanged = { changedTick++ }, onMessage = { message = it }, chatConsent = chatConsent,
                         // 시작 화면(웹·로그인 후 다시 열기)으로 연 그 글에만 이어서 할 일을 넘긴다.
                         resumeAction = intent.getStringExtra(EXTRA_THEN)?.takeIf { it.isNotEmpty() && route == "detail" && id == startId },
                     )
@@ -114,6 +115,7 @@ class TransferActivity : ResultActivity() {
                 }
             }
 
+            TransferChatConsentSheet(chatConsent) { message = it }
             message?.let { msg -> com.muyeon.app.ui.common.market.MarketMessageDialog(msg) { message = null } }
         }
     }

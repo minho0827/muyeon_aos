@@ -40,17 +40,19 @@ import com.muyeon.app.ui.common.*
 import com.muyeon.app.ui.common.market.*
 import kotlinx.coroutines.launch
 
-/** 거래 고지 — "무용연은 거래를 중개하지 않아요…". */
+/** 서버 notices 가 없을 때(배포 전 서버) 쓰는 예전 안내. */
+const val TRANSFER_NOTICE_FALLBACK = "무용연은 거래를 중개하지 않아요. 계약 전 등기부등본·건물 상태를 꼭 확인하세요."
+
+/** 상세 맨 아래 안내 박스 — 서버 notices 를 줄마다 그대로(아이콘은 첫 줄 옆). */
 @Composable
-fun TransferNoticeSection() {
+fun TransferNoticeSection(lines: List<String>) {
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(MuyeonList.ink100).padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Icon(Icons.Filled.Info, null, tint = MuyeonColors.textSub, modifier = Modifier.padding(top = 2.dp).size(16.dp))
-        Text(
-            "무용연은 거래를 중개하지 않아요. 계약 전 등기부등본·건물 상태를 꼭 확인하세요.",
-            fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 20.sp, color = MuyeonColors.body,
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            lines.forEach { Text(it, fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 20.sp, color = MuyeonColors.body) }
+        }
     }
 }

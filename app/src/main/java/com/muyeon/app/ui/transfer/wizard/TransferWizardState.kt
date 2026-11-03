@@ -59,6 +59,7 @@ class TransferWizardState(val editId: Int?) {
     val isLast: Boolean get() = step == TRANSFER_STEPS.lastIndex
     val canNext: Boolean get() = when (step) {
         2 -> form.title.isNotBlank()
+        6 -> form.ownerRelation != null
         else -> !uploading
     }
     val nextLabel: String

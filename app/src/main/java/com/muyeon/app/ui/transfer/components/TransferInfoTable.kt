@@ -55,6 +55,7 @@ fun TransferInfoTable(rows: List<Pair<String, String>>) {
 fun transferInfoRows(d: TransferDetail): List<Pair<String, String>> {
     val c = d.card
     val rows = mutableListOf<Pair<String, String>>()
+    d.ownerRelationLabel?.let { rows += "글쓴이" to it }  // 서버 표시 글자(직접 운영 중·임차인·…), 예전 글은 줄 없음
     val loc = listOfNotNull(d.roadAddress, d.addressDetail).joinToString(" ").ifBlank { c.region }
     loc?.let { rows += "소재지" to it }
     c.areaPyeong?.let { rows += "총면적" to "${pyeongText(it)}평 (약 ${(it * 3.3058).roundToInt()}㎡)" }

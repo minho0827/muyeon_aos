@@ -58,6 +58,8 @@ private data class TransferDetailView(
     val contactName: String?,
     val phone: String?,
     val reportable: Boolean,
+    /** 맨 아래 안내 — 서버 notices, 없으면 예전 안내 한 줄. */
+    val notices: List<String>,
 )
 
 private fun TransferDetail.toView(): TransferDetailView {
@@ -74,6 +76,7 @@ private fun TransferDetail.toView(): TransferDetailView {
         contactName = contactName,
         phone = contactPhone?.takeIf { it.isNotBlank() },
         reportable = !isAuthor,
+        notices = notices.ifEmpty { listOf(TRANSFER_NOTICE_FALLBACK) },
     )
 }
 
@@ -90,6 +93,8 @@ fun TransferDetailScreen(
     onChatRoom: (Int, String) -> Unit,
     onChanged: () -> Unit,
     onMessage: (String) -> Unit,
+    /** 문의 채팅 전 이용약관 동의(액티비티가 하나를 만들어 넘기고 시트도 그린다). */
+    chatConsent: TransferChatConsent,
     /** ★ 로그인 후 이어서 할 일(chat·like) — 상세를 다 불러온 뒤 한 번만 한다(LoginResume). */
     resumeAction: String? = null,
 ) {
@@ -121,13 +126,19 @@ fun TransferDetailScreen(
 
     fun chat(d: TransferDetail) {
         if (!api.isLoggedIn) { onMessage(loginRequired("openStudioTransferDetail", "id" to id, "then" to "chat")); return }
-        chatBusy = true
-        scope.launch {
-            api.directRoom(d.card.authorId, d.card.id)
-                .onSuccess { onChatRoom(it, d.card.authorName) }
-                .onFailure { onMessage(it.message ?: "채팅방을 열지 못했어요.") }
-            chatBusy = false
+        // 이용약관 동의 확인 → 채팅방 열기(동의 필요 403 이면 같은 동의 시트 후 다시). 로그인 후 이어서(then=chat)도 이 길.
+        fun openRoom() {
+            chatBusy = true
+            scope.launch {
+                api.directRoom(d.card.authorId, d.card.id)
+                    .onSuccess { onChatRoom(it, d.card.authorName) }
+                    .onFailure { e ->
+                        if (e.isTransferConsentRequired()) chatConsent.onRequired { openRoom() } else onMessage(e.message ?: "채팅방을 열지 못했어요.")
+                    }
+                chatBusy = false
+            }
         }
+        scope.launch { chatConsent.ensure { openRoom() } }
     }
 
     // 로그인 후 다시 연 화면 — 상세를 받은 뒤(이벤트) 하려던 동작을 한 번만. 본인 글이면 하지 않는다.
@@ -205,7 +216,7 @@ private fun TransferDetailBody(card: TransferCard, view: TransferDetailView, onR
         view.description?.let { TransferDescription(it) }
         TransferLocationSection(view.locationName, view.locationAddress, view.lat, view.lng, view.approxNote)
         view.contactName?.let { TransferContactSection(it) }
-        TransferNoticeSection()
+        TransferNoticeSection(view.notices)
         if (view.reportable) TransferReportLink(onReport)
         Spacer(Modifier.height(8.dp))
     }

@@ -62,6 +62,8 @@ fun TransferListScreen(
     onCreate: () -> Unit,
     onChatRoom: (Int, String) -> Unit,
     onMessage: (String) -> Unit,
+    /** 문의 채팅 전 이용약관 동의(액티비티가 하나를 만들어 넘기고 시트도 그린다). */
+    chatConsent: TransferChatConsent,
 ) {
     val scope = rememberCoroutineScope()
     var showFilter by remember { mutableStateOf(false) }
@@ -94,10 +96,17 @@ fun TransferListScreen(
         if (!api.isLoggedIn) { onMessage(loginRequired("openStudioTransferDetail", "id" to c.id, "then" to "chat")); return }
         if (chatBusy) return
         chatBusy = true
-        scope.launch {
-            api.directRoom(c.authorId, c.id).onSuccess { onChatRoom(it, c.authorName) }.onFailure { onMessage(it.message ?: "채팅방을 열지 못했어요.") }
-            chatBusy = false
+        // 이용약관 동의 확인 → 채팅방 열기(동의 필요 403 이면 같은 동의 시트 후 다시).
+        fun openRoom() {
+            chatBusy = true
+            scope.launch {
+                api.directRoom(c.authorId, c.id).onSuccess { onChatRoom(it, c.authorName) }.onFailure { e ->
+                    if (e.isTransferConsentRequired()) chatConsent.onRequired { openRoom() } else onMessage(e.message ?: "채팅방을 열지 못했어요.")
+                }
+                chatBusy = false
+            }
         }
+        scope.launch { chatConsent.ensure { openRoom() } }
     }
 
     Column(Modifier.fillMaxSize().background(MuyeonList.pageBg)) {
