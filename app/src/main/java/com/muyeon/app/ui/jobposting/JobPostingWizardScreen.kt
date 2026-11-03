@@ -708,7 +708,7 @@ private fun StepIndicator(step: Int) {
 }
 
 @Composable
-private fun SectionHead(title: String, sub: String) {
+internal fun SectionHead(title: String, sub: String) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             title,
@@ -806,7 +806,7 @@ private fun CoverUpload(imageUrl: String?, uploading: Boolean, onPick: () -> Uni
  *  ⚠️ 가변폭 그리드는 이미지가 셀 폭을 밀어 서로 겹쳐 보인다 → 고정 정사각형 가로 스트립(iOS 와 동일).
  */
 @Composable
-private fun DetailImages(
+internal fun DetailImages(
     images: List<String>,
     uploading: Boolean,
     onAdd: () -> Unit,
