@@ -15,7 +15,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /** 서버가 돌려준 오류 문구(`message`) 그대로 — 화면은 이 문구를 그대로 보여 준다. */
-class ApiMessageError(message: String, val status: Int) : Exception(message)
+/** code = 서버 오류 코드(예: HOST_CONSENT_REQUIRED) — 코드로 분기하는 화면이 쓴다. */
+class ApiMessageError(message: String, val status: Int, val code: String? = null) : Exception(message)
 
 /**
  * 네이티브 화면 공용 REST 호출(2026-11-03 양도양수·공간 대관부터).
@@ -56,7 +57,7 @@ class NativeHttp(context: Context) {
                     .build()
                 client.newCall(req).execute().use { res ->
                     val text = res.body?.string().orEmpty()
-                    if (!res.isSuccessful) throw ApiMessageError(messageOf(text, res.code), res.code)
+                    if (!res.isSuccessful) throw ApiMessageError(messageOf(text, res.code), res.code, codeOf(text))
                     text
                 }
             }
@@ -68,6 +69,9 @@ class NativeHttp(context: Context) {
     companion object {
         private val client = OkHttpClient()
         private val JSON = "application/json; charset=utf-8".toMediaType()
+
+        fun codeOf(text: String): String? =
+            runCatching { JSONObject(text).optString("code") }.getOrNull()?.takeIf { it.isNotBlank() }
 
         fun messageOf(text: String, code: Int): String {
             val o = runCatching { JSONObject(text) }.getOrNull()

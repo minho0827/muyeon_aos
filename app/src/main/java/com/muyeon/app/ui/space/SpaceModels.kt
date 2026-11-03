@@ -321,9 +321,12 @@ data class SpaceReservationRequest(
     val hours: Double,
     val headcount: Int,
     val message: String?,
+    /** 예약 정보 호스트 제공 동의(필수, 2026-11-03 백엔드 BOOKING_CONSENT_REQUIRED). */
+    val agreeThirdParty: Boolean,
 ) {
     fun toJson(): JSONObject {
         val o = JSONObject().put("date", date).put("startTime", startTime).put("hours", hours).put("headcount", headcount)
+            .put("agreeThirdParty", agreeThirdParty)
         optionId?.let { o.put("optionId", it) }
         message?.trim()?.takeIf { it.isNotEmpty() }?.let { o.put("message", it) }
         return o
@@ -388,6 +391,32 @@ object SpaceReservationStatus {
     )
     fun label(status: String): String = labels[status] ?: status
 }
+
+/** 호스트 이용 동의 — GET/POST /spaces/host-consent. docs = 서버 약관(제목·웹 경로). */
+data class SpaceConsentDoc(val docKey: String, val title: String, val version: String?, val url: String)
+data class SpaceHostConsent(val agreed: Boolean, val docs: List<SpaceConsentDoc>) {
+    companion object {
+        fun from(o: JSONObject) = SpaceHostConsent(
+            agreed = o.optBoolean("agreed"),
+            docs = o.optJSONArray("docs")?.let { a ->
+                (0 until a.length()).mapNotNull { i ->
+                    a.optJSONObject(i)?.let {
+                        SpaceConsentDoc(
+                            it.optString("docKey"), it.optString("title"), it.optString("version").ifEmpty { null },
+                            it.optString("url").ifEmpty { "/policy?doc=${it.optString("docKey")}&embed=1" },
+                        )
+                    }
+                }
+            } ?: emptyList(),
+        )
+    }
+}
+
+/** 예약 제3자 제공 동의 약관 웹 경로. */
+const val SPACE_BOOKING_THIRD_PARTY_POLICY = "/policy?doc=spaceBookingThirdParty&embed=1"
+
+/** POST /spaces 가 호스트 동의 전이면 주는 오류 코드(403). */
+const val HOST_CONSENT_REQUIRED = "HOST_CONSENT_REQUIRED"
 
 class SpaceApi(context: android.content.Context) {
 
@@ -479,6 +508,14 @@ class SpaceApi(context: android.content.Context) {
             .mapCatching { JSONObject(it.ifBlank { "{}" }).optInt("id", id ?: 0) }
 
     suspend fun remove(id: Int): Result<Unit> = call("/spaces/$id", "DELETE").map { }
+
+    /** 호스트 이용 동의 여부 + 약관 목록. */
+    suspend fun hostConsent(): Result<SpaceHostConsent> =
+        call("/spaces/host-consent").mapCatching { SpaceHostConsent.from(JSONObject(it)) }
+
+    /** 호스트 이용 동의 저장(본문 없음) → agreed=true. */
+    suspend fun agreeHostConsent(): Result<SpaceHostConsent> =
+        call("/spaces/host-consent", "POST").mapCatching { SpaceHostConsent.from(JSONObject(it.ifBlank { "{}" })) }
 
     suspend fun uploadImage(bytes: ByteArray): Result<String> = http.uploadImage(bytes)
 

@@ -64,8 +64,18 @@ fun SpaceWizardScreen(
     var showExit by remember { mutableStateOf(false) }
     var showSearch by remember { mutableStateOf(false) }
     var categories by remember { mutableStateOf<List<SpaceCategory>>(emptyList()) }
+    // 호스트 이용 동의 — 새 공간만. null = 동의 단계 없음(이미 동의·수정·확인 실패), 값 = 동의 단계를 보인다.
+    var consentDocs by remember { mutableStateOf<List<SpaceConsentDoc>?>(null) }
+    var consentChecking by remember { mutableStateOf(editId == null) }
+    var consentSubmitting by remember { mutableStateOf(false) }
+
+    suspend fun loadConsent() {
+        api.hostConsent().onSuccess { c -> consentDocs = if (c.agreed) null else c.docs }
+        consentChecking = false
+    }
 
     LaunchedEffect(editId) {
+        if (editId == null) loadConsent()
         api.categories().onSuccess { categories = it }
         if (editId != null) {
             api.detail(editId).onSuccess { st.form = SpaceForm.from(it); st.baseline = st.form }.onFailure { st.error = it.message }
@@ -90,19 +100,44 @@ fun SpaceWizardScreen(
     fun close() { if (st.dirty) showExit = true else onClose() }
     BackHandler { if (st.step > 0) st.step -= 1 else close() }
 
+    fun agreeConsent() {
+        consentSubmitting = true
+        scope.launch {
+            api.agreeHostConsent().onSuccess { consentDocs = null }.onFailure { st.error = it.message ?: "동의를 저장하지 못했어요." }
+            consentSubmitting = false
+        }
+    }
+
     fun save() {
         if (st.form.name.isBlank()) { st.step = 2; st.error = "공간 이름을 입력해 주세요."; return }
         if (st.form.region.isBlank()) { st.step = 1; st.error = "지역을 선택해 주세요."; return }
         st.saving = true
         scope.launch {
-            api.save(editId, st.formForSave().toJson()).onSuccess { st.baseline = st.form; onSaved(it) }.onFailure { st.error = it.message ?: "저장에 실패했어요." }
+            api.save(editId, st.formForSave().toJson()).onSuccess { st.baseline = st.form; onSaved(it) }.onFailure { e ->
+                // 동의 전 등록(403 HOST_CONSENT_REQUIRED) — 동의 단계로 되돌린다(작성한 내용은 그대로).
+                if ((e as? ApiMessageError)?.code == HOST_CONSENT_REQUIRED) {
+                    api.hostConsent().onSuccess { c -> consentDocs = c.docs }.onFailure { consentDocs = emptyList() }
+                } else st.error = e.message ?: "저장에 실패했어요."
+            }
             st.saving = false
         }
     }
 
     Column(Modifier.fillMaxSize().background(Color.White)) {
+        // 단계 고르기 한 번 — 불러오는 중 / 호스트 이용 동의 / 등록 단계.
+        val docs = consentDocs
+        if (st.loading || consentChecking) {
+            WizardHeader(st.title, SPACE_STEPS, st.step, onClose = { close() })
+            WizardLoading()
+            return@Column
+        }
+        if (docs != null) {
+            WizardTopBar(st.title, onClose = { close() })
+            Box(Modifier.fillMaxWidth().height(1.dp).background(MuyeonColors.border))
+            SpaceStepHostConsent(docs, consentSubmitting, onAgree = { agreeConsent() })
+            return@Column
+        }
         WizardHeader(st.title, SPACE_STEPS, st.step, onClose = { close() })
-        if (st.loading) { WizardLoading(); return@Column }
 
         Column(
             Modifier.weight(1f).verticalScroll(scroll).padding(horizontal = 20.dp).padding(top = 18.dp, bottom = 24.dp),

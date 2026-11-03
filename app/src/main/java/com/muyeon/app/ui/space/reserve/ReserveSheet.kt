@@ -47,7 +47,7 @@ import kotlinx.coroutines.launch
 /**
  * 공간 '예약하기' 시트(2026-11-03 결제 예약) — iOS `SpaceReserveSheet` 와 같은 순서.
  *  세부공간 → 달력(오늘 이전·휴무 비활성) → GET availability → 시작 시간 칩(30분, 막힌 구간 비활성) →
- *  이용 시간(minHours 부터 0.5 단위) → 인원 −/＋ → 요청사항 → 금액 미리보기 → 환불 규정 동의 → [결제하기].
+ *  이용 시간(minHours 부터 0.5 단위) → 인원 −/＋ → 요청사항 → 금액 미리보기 → 환불 규정 동의 + 예약 정보 호스트 제공 동의 → [결제하기].
  *  [결제하기] = POST /spaces/:id/reservation(결제 대기 10분) → 결제 창(LessonPaymentActivity)에서 웹 /spacePay/{id}.
  *  결제 창이 결제 완료로 닫히면 onPaid(시트 닫고 내 예약), 아니면 잡아 둔 자리를 풀고 가능 시간을 다시 읽는다.
  *  각 칸은 reserve/ 의 조각, 이 시트는 상태·API 연결과 조립만 한다.
@@ -84,6 +84,7 @@ fun SpaceReserveSheet(
     var headcount by remember { mutableIntStateOf(max(1, space.baseHeadcount ?: 1)) }
     var message by remember { mutableStateOf("") }
     var agree by remember { mutableStateOf(false) }
+    var agreeThirdParty by remember { mutableStateOf(false) }
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var showDate by remember { mutableStateOf(false) }
@@ -125,7 +126,7 @@ fun SpaceReserveSheet(
     }
     val estimate = (unitPrice * hours + extraFee).roundToInt()
     val slotOk = a != null && a.open && startMin != null && a.fits(startMin!!, hours)
-    val canSubmit = !submitting && date != null && slotOk && agree
+    val canSubmit = !submitting && date != null && slotOk && agree && agreeThirdParty
     val slot = slotState(date, availLoading, availError, a)
     val extraNote = space.baseHeadcount?.takeIf { (space.extraPersonFee ?: 0) > 0 }
         ?.let { "기본 ${it}명, 초과 1인당 시간당 ${SpaceDesign.won(space.extraPersonFee ?: 0)}원" }
@@ -138,7 +139,7 @@ fun SpaceReserveSheet(
         if (!api.isLoggedIn) { error = "로그인 후 이용할 수 있어요."; return }
         submitting = true; error = null
         scope.launch {
-            api.reserve(space.id, SpaceReservationRequest(optionId, date!!, SpaceAvailability.hhmm(startMin!!), hours, headcount, message))
+            api.reserve(space.id, SpaceReservationRequest(optionId, date!!, SpaceAvailability.hhmm(startMin!!), hours, headcount, message, agreeThirdParty = true))
                 .onSuccess { (rid, _) ->
                     onReserved()
                     pendingId = rid
@@ -176,6 +177,7 @@ fun SpaceReserveSheet(
                 PriceSummary(estimate, priceCaption)
                 ReserveRefundTable(rules)
                 RefundAgreement(agree) { agree = !agree }
+                ThirdPartyConsent(agreeThirdParty) { agreeThirdParty = !agreeThirdParty }
                 error?.let { ReserveError(it) }
                 Spacer(Modifier.height(8.dp))
             }

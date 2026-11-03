@@ -67,12 +67,18 @@ fun RefundAgreement(agree: Boolean, onToggle: () -> Unit) {
         Modifier.fillMaxWidth().clickable(onClick = onToggle),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Box(
-            Modifier.size(22.dp).clip(RoundedCornerShape(6.dp))
-                .background(if (agree) SpaceDesign.primary else Color.White)
-                .border(1.dp, if (agree) SpaceDesign.primary else SpaceDesign.ink300, RoundedCornerShape(6.dp)),
-            Alignment.Center,
-        ) { if (agree) Icon(Icons.Filled.Check, null, tint = Color.White, modifier = Modifier.size(16.dp)) }
+        ReserveCheckBox(agree)
         Text("유의사항과 환불 규정을 확인했고 동의해요.", fontFamily = customFontFamily, fontSize = 14.sp, color = SpaceDesign.ink900)
     }
+}
+
+/** 예약 시트 체크 상자(22dp, r6). */
+@Composable
+internal fun ReserveCheckBox(checked: Boolean) {
+    Box(
+        Modifier.size(22.dp).clip(RoundedCornerShape(6.dp))
+            .background(if (checked) SpaceDesign.primary else Color.White)
+            .border(1.dp, if (checked) SpaceDesign.primary else SpaceDesign.ink300, RoundedCornerShape(6.dp)),
+        Alignment.Center,
+    ) { if (checked) Icon(Icons.Filled.Check, null, tint = Color.White, modifier = Modifier.size(16.dp)) }
 }
