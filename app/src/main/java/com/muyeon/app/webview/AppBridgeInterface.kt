@@ -264,6 +264,15 @@ object NativeActionRouter {
                     activity, sid, d.optString("date"), d.optString("fromReservation") == "1",
                 )
             }
+            // ★ 2026-11-03 무용센터 양도양수 — 네이티브(목록·상세·등록/수정·내 글). 웹은 nativeStudioTransfers 표시가 있을 때만 보낸다.
+            "openStudioTransfers" -> com.muyeon.app.ui.transfer.TransferActivity.startList(activity)
+            "openStudioTransferDetail" -> {
+                val tid = d.optString("id").toIntOrNull() ?: return true
+                com.muyeon.app.ui.transfer.TransferActivity.startDetail(activity, tid)
+            }
+            "openStudioTransferEditor" ->
+                com.muyeon.app.ui.transfer.TransferActivity.startEditor(activity, d.optString("id").toIntOrNull()?.takeIf { it > 0 })
+            "openMyStudioTransfers" -> com.muyeon.app.ui.transfer.TransferActivity.startMine(activity)
             "openAcademyProfile" -> {
                 val aid = d.optString("academyId").toIntOrNull() ?: return true
                 com.muyeon.app.ui.academy.AcademyProfileActivity.start(activity, aid)

@@ -306,6 +306,12 @@
             android:name=".ui.lesson.LessonBrowseActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
+        <!-- 무용센터 양도양수(2026-11-03) — 목록·상세·등록/수정·내 글 -->
+        <activity
+            android:name=".ui.transfer.TransferActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
         <activity
             android:name=".ui.space.SpaceActivity"
             android:exported="false"
