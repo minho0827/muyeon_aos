@@ -48,8 +48,9 @@ class TransferActivity : ResultActivity() {
         val route = intent.getStringExtra(EXTRA_ROUTE) ?: "list"
         val startId = intent.getIntExtra(EXTRA_ID, 0)
         val start = when (route) {
-            "detail" -> "detail/$startId"
-            "editor" -> "editor/$startId"
+            // ★ startDestination 은 경로 '패턴'이어야 한다 — 값을 넣으면 인자가 안 넘어간다(실기기 11-03). 값은 navArgument 기본값으로.
+            "detail" -> "detail/{id}"
+            "editor" -> "editor/{id}"
             "mine" -> "mine"
             else -> "list"
         }
@@ -79,14 +80,14 @@ class TransferActivity : ResultActivity() {
                         onChatRoom = ::openChat, onMessage = { message = it },
                     )
                 }
-                composable("detail/{id}", arguments = listOf(navArgument("id") { type = NavType.IntType })) { e ->
+                composable("detail/{id}", arguments = listOf(navArgument("id") { type = NavType.IntType; defaultValue = if (route == "detail") startId else 0 })) { e ->
                     val id = e.arguments?.getInt("id") ?: 0
                     TransferDetailScreen(
                         api = api, id = id, onBack = { back() }, onEdit = { nav.navigate("editor/$it") },
                         onChatRoom = ::openChat, onChanged = { changedTick++ }, onMessage = { message = it },
                     )
                 }
-                composable("editor/{id}", arguments = listOf(navArgument("id") { type = NavType.IntType })) { e ->
+                composable("editor/{id}", arguments = listOf(navArgument("id") { type = NavType.IntType; defaultValue = if (route == "editor") startId else 0 })) { e ->
                     val id = e.arguments?.getInt("id")?.takeIf { it > 0 }
                     TransferWizardScreen(
                         api = api, editId = id, onClose = { back() },

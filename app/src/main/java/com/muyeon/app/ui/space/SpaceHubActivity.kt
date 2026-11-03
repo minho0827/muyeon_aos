@@ -52,7 +52,9 @@ class SpaceHubActivity : ResultActivity() {
         val route = intent.getStringExtra(EXTRA_ROUTE) ?: "list"
         val startId = intent.getIntExtra(EXTRA_ID, 0)
         val start = when (route) {
-            "editor" -> "editor/$startId"
+            // ★ startDestination 은 경로 '패턴'이어야 한다 — "editor/14" 처럼 값을 넣으면 인자가 안 넘어가 새 등록으로 열렸다(실기기 11-03).
+            //   값은 navArgument 기본값(startId)으로 넘긴다.
+            "editor" -> "editor/{id}"
             "mine", "hosting", "bookings" -> route
             else -> "list"
         }
@@ -80,7 +82,7 @@ class SpaceHubActivity : ResultActivity() {
                         onOpen = { id, date -> openSpace(id, date) }, onCreate = { create() }, onMessage = { message = it },
                     )
                 }
-                composable("editor/{id}", arguments = listOf(navArgument("id") { type = NavType.IntType })) { e ->
+                composable("editor/{id}", arguments = listOf(navArgument("id") { type = NavType.IntType; defaultValue = if (route == "editor") startId else 0 })) { e ->
                     val id = e.arguments?.getInt("id")?.takeIf { it > 0 }
                     SpaceWizardScreen(
                         api = api, editId = id, onClose = { back() },
