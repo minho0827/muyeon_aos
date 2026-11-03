@@ -150,6 +150,15 @@
                 <data android:pathPrefix="/dancers/" />
                 <data android:pathPrefix="/academies/" />
                 <data android:pathPrefix="/lessons/" />
+                <!-- ★ 2026-11-03 공간 대관·무용센터 양도양수(웹 nativeLink 가 네이티브 화면으로 연다) -->
+                <data android:path="/spaces" />
+                <data android:pathPrefix="/spaces/" />
+                <data android:path="/mySpaces" />
+                <data android:path="/mySpaceReservations" />
+                <data android:path="/mySpaceBookings" />
+                <data android:path="/studio-transfers" />
+                <data android:pathPrefix="/studio-transfers/" />
+                <data android:path="/myStudioTransfers" />
                 <data android:pathPrefix="/classes/" />
                 <data android:pathPrefix="/performance/" />
                 <data android:pathPrefix="/community/post/" />

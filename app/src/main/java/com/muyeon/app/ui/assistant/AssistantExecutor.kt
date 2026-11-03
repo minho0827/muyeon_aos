@@ -24,6 +24,9 @@ object AssistantExecutor {
         "openPublicProfile", "openQuoteBrowse", "openQuoteWizard", "openResumeEdit", "openResumeList", "openReviewList",
         "openStudioMembers", "openStudioOps", "openStudioSales", "openStudioSchedule",
         "openCastingStage", // 10-26 전체 메뉴 '캐스팅·무대'
+        // 11-03 전체 메뉴 '공간·양도양수'
+        "openSpaces", "openSpaceEditor", "openMySpaces", "openMySpaceReservations", "openMySpaceBookings",
+        "openStudioTransfers", "openStudioTransferEditor", "openMyStudioTransfers",
     )
 
     sealed interface Outcome {
