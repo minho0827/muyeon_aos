@@ -30,12 +30,15 @@ class TransferActivity : ResultActivity() {
     companion object {
         private const val EXTRA_ROUTE = "route"
         private const val EXTRA_ID = "id"
+        /** ★ 로그인 후 이어서 할 일(chat·like) — LoginResume "then". */
+        private const val EXTRA_THEN = "then"
 
         private fun intent(context: Context, route: String, id: Int = 0) =
             Intent(context, TransferActivity::class.java).putExtra(EXTRA_ROUTE, route).putExtra(EXTRA_ID, id)
 
         fun startList(context: Context) = context.launchScreen(intent(context, "list"))
-        fun startDetail(context: Context, id: Int) = context.launchScreen(intent(context, "detail", id))
+        fun startDetail(context: Context, id: Int, then: String? = null) =
+            context.launchScreen(intent(context, "detail", id).putExtra(EXTRA_THEN, then.orEmpty()))
         fun startEditor(context: Context, id: Int?) = context.launchScreen(intent(context, "editor", id ?: 0))
         fun startMine(context: Context) = context.launchScreen(intent(context, "mine"))
 
@@ -67,7 +70,7 @@ class TransferActivity : ResultActivity() {
             fun back() { if (!nav.popBackStack()) finish() }
             fun openChat(roomId: Int, title: String) = ChatActivity.startRoom(this, roomId, title)
             fun create() {
-                if (!api.isLoggedIn) { message = "로그인 후 이용할 수 있어요."; return }
+                if (!api.isLoggedIn) { message = com.muyeon.app.ui.common.market.loginRequired("openStudioTransferEditor"); return }
                 if (!canPost(this)) { message = "양도 글은 학원·강사 유형에서 올릴 수 있어요. MY > 회원유형에서 전환해 주세요."; return }
                 nav.navigate("editor/0")
             }
@@ -85,6 +88,8 @@ class TransferActivity : ResultActivity() {
                     TransferDetailScreen(
                         api = api, id = id, onBack = { back() }, onEdit = { nav.navigate("editor/$it") },
                         onChatRoom = ::openChat, onChanged = { changedTick++ }, onMessage = { message = it },
+                        // 시작 화면(웹·로그인 후 다시 열기)으로 연 그 글에만 이어서 할 일을 넘긴다.
+                        resumeAction = intent.getStringExtra(EXTRA_THEN)?.takeIf { it.isNotEmpty() && route == "detail" && id == startId },
                     )
                 }
                 composable("editor/{id}", arguments = listOf(navArgument("id") { type = NavType.IntType; defaultValue = if (route == "editor") startId else 0 })) { e ->

@@ -106,8 +106,27 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
      * 결과 키 → 웹. 키마다 __muyeonResult(없으면 레거시 __onX) 한 번씩(WebCallbacks.resultJs).
      *  채팅·알림이 바뀌었으면 플로팅 배지도 곧바로 다시 읽는다(폴링 대신).
      */
+    /** 웹 브리지(액션 → 네이티브 화면). 로그인 후 이어서 열기에도 같은 처리를 쓴다. */
+    private val appBridge by lazy { AppBridgeInterface(this, webView, onWebReady = ::onWebReady) }
+
+    /**
+     * ★ 2026-11-03 로그인 후 이어서 할 일(LoginResume) — 네이티브 화면이 '로그인 필요'로 닫히며 실어 보낸 값.
+     *  웹이 로그인을 마치고 토큰을 저장하는 순간([onLoggedIn]) 한 번 다시 열고 비운다. 타이머 없음.
+     */
+    private var pendingAfterLogin: com.muyeon.app.ui.common.market.LoginResume? = null
+
+    /** AndroidToken.saveToken 성공(웹 로그인·가입 완료) 때 UI 스레드에서 불린다. */
+    fun onLoggedIn() {
+        val r = pendingAfterLogin ?: return
+        pendingAfterLogin = null
+        appBridge.openAction(r.action, r.paramsJson())
+    }
+
     private fun deliverResults(keys: Set<String>, payload: Bundle?) {
         if (keys.isEmpty()) return
+        if (ResultKeys.LOGIN_REQUIRED in keys) {
+            pendingAfterLogin = com.muyeon.app.ui.common.market.LoginResume.fromBundle(payload?.getBundle(ResultKeys.LOGIN_REQUIRED))
+        }
         // ★ 2026-11-03 네이티브 화면이 '로그인 필요'로 닫혔다 → 결과를 받은 지금 웹 로그인 화면으로(SPA 이동, 웹 준비 후).
         if (ResultKeys.LOGIN_REQUIRED in keys) {
             // consumeNativeRoute 와 같은 규칙 — __nativeGo 가 아직 없으면 0 → 웹 준비(webReady) 때 다시 흘린다.
@@ -151,6 +170,7 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
     override fun onCreate(savedInstanceState: Bundle?) {
         liveCount++
         super.onCreate(savedInstanceState)
+        pendingAfterLogin = com.muyeon.app.ui.common.market.LoginResume.fromBundle(savedInstanceState?.getBundle(STATE_AFTER_LOGIN))
         setContentView(R.layout.activity_webview)
 
         val factory = DeviceInfoViewModelFactory(this)
@@ -287,7 +307,7 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
         // 웹 → 네이티브 단방향 액션 채널(iOS callbackHandler 와 동일 계약).
         //  액션명·데이터 키는 iOS 와 100% 동일. 미이식 화면은 웹 경로 폴백(죽은 버튼 방지).
         webView.addJavascriptInterface(
-            AppBridgeInterface(this, webView, onWebReady = ::onWebReady), "AppBridge",
+            appBridge, "AppBridge",
         )
         // 구글 결제가 서버에 반영됐다(앱 복귀 재전송·Play 콜백) — 웹도 멤버십을 다시 읽게 한다(iOS ResultBus .membership).
         //  보이는 동안만 듣는다. 멤버십 화면이 위에 있으면 그 화면이 닫힐 때 결과 키(MEMBERSHIP)로 알린다(중복 재조회 방지).
@@ -548,6 +568,7 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
 
     companion object {
         private const val QUEUE_KEY = "__webCallbackQueue"
+        private const val STATE_AFTER_LOGIN = "muyeon.afterLogin"
 
         /** 떠 있는 본문 화면 수 — 앱이 켜진 채 링크가 오면 스플래시가 새로 만들지 않고 이 화면으로 넘긴다.
          *  개수로 센다: CLEAR_TASK 로 바뀔 때 새 화면 onCreate 가 옛 화면 onDestroy 보다 먼저 온다. */
@@ -579,6 +600,7 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        pendingAfterLogin?.let { outState.putBundle(STATE_AFTER_LOGIN, it.toBundle()) }
         super.onSaveInstanceState(outState)
         webView.saveState(outState)
     }
@@ -653,9 +675,10 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
                 //  nativeCastingStage: 하단 탭 '캐스팅·무대'를 네이티브 화면으로 연다(2026-10-26).
                 //  nativeStudioTransfers: 무용센터 양도양수 브리지(openStudioTransfers·Detail·Editor·My)를 네이티브로 연다(2026-11-03).
                 //  nativeSpaceBooking: 공간 대관 브리지(openSpaces·Editor·MySpaces·MySpaceReservations·MySpaceBookings)·결제 예약(2026-11-03).
+                //  표시를 넣은 뒤 'muyeonCapabilities' 이벤트 — 페이지 로드 뒤라 이미 그린 웹 화면(홈 섹션·MY 메뉴)이 다시 읽는다(2026-11-03).
                 //  castingStageLink: openCastingStage payload(castingId·screen·issueNo)로 그 화면부터 연다(2026-10-27). 없으면 웹은 안쪽 링크를 웹으로.
                 view?.evaluateJavascript(
-                    "window.__muyeonNativeCapabilities=Object.assign({},window.__muyeonNativeCapabilities||{},{publicProfileJobs:true,nativeCastingStage:true,castingStageLink:true,activeTypeSheet:true,nativeStudioTransfers:true,nativeSpaceBooking:true});",
+                    "window.__muyeonNativeCapabilities=Object.assign({},window.__muyeonNativeCapabilities||{},{publicProfileJobs:true,nativeCastingStage:true,castingStageLink:true,activeTypeSheet:true,nativeStudioTransfers:true,nativeSpaceBooking:true});try{window.dispatchEvent(new Event('muyeonCapabilities'))}catch(e){}",
                     null,
                 )
                 // webReady 를 안 보내는 옛 웹 안전망. 준비 전이면 가드가 0 을 돌려 그대로 남는다.

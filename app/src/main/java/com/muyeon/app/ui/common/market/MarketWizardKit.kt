@@ -1,6 +1,7 @@
 package com.muyeon.app.ui.common.market
 
 import android.content.Context
+import android.os.Bundle
 import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.ColumnScope
@@ -180,13 +181,18 @@ const val LOGIN_REQUIRED_MESSAGE = "로그인 후 이용할 수 있어요."
  */
 @Composable
 fun MarketMessageDialog(message: String, onDismiss: () -> Unit) {
-    if (message == LOGIN_REQUIRED_MESSAGE) {
+    if (message == LOGIN_REQUIRED_MESSAGE || LoginResume.isMessage(message)) {
         val activity = androidx.compose.ui.platform.LocalContext.current.findActivity()
+        val resume = LoginResume.parse(message)
         MuyeonDialog(
-            title = "로그인이 필요해요", message = message,
+            title = "로그인이 필요해요", message = LOGIN_REQUIRED_MESSAGE,
             actions = listOf(
                 MuyeonDialogAction("취소", MuyeonDialogKind.CANCEL),
-                MuyeonDialogAction("로그인") { activity?.finishWithResult(com.muyeon.app.result.ResultKeys.LOGIN_REQUIRED) },
+                MuyeonDialogAction("로그인") {
+                    val key = com.muyeon.app.result.ResultKeys.LOGIN_REQUIRED
+                    // 로그인 후 이어서 할 일(있으면)을 결과에 실어 보낸다 — 웹뷰가 로그인 완료 때 다시 연다.
+                    activity?.finishWithResult(key, payload = resume?.let { r -> Bundle().apply { putBundle(key, r.toBundle()) } })
+                },
             ),
             onDismiss = onDismiss,
         )

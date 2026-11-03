@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.transfer
 
+import com.muyeon.app.ui.common.market.loginRequired
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -78,7 +79,7 @@ fun TransferListScreen(
     LaunchedEffect(nearEnd) { if (nearEnd && state.loadedOnce) state.load(api, reset = false) }
 
     fun toggleScrap(c: TransferCard) {
-        if (!api.isLoggedIn) { onMessage("로그인 후 이용할 수 있어요."); return }
+        if (!api.isLoggedIn) { onMessage(loginRequired("openStudioTransferDetail", "id" to c.id, "then" to "like")); return }
         val next = !c.scrapped
         state.patch(c.id) { it.copy(scrapped = next) }
         scope.launch {
@@ -90,7 +91,7 @@ fun TransferListScreen(
     }
 
     fun chat(c: TransferCard) {
-        if (!api.isLoggedIn) { onMessage("로그인 후 이용할 수 있어요."); return }
+        if (!api.isLoggedIn) { onMessage(loginRequired("openStudioTransferDetail", "id" to c.id, "then" to "chat")); return }
         if (chatBusy) return
         chatBusy = true
         scope.launch {

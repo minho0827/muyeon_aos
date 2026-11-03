@@ -69,7 +69,7 @@ class SpaceHubActivity : ResultActivity() {
             fun back() { if (!nav.popBackStack()) finish() }
             fun openSpace(id: Int, date: String? = null) = SpaceActivity.start(this, id, date, false)
             fun create() {
-                if (!api.isLoggedIn) { message = "로그인 후 이용할 수 있어요."; return }
+                if (!api.isLoggedIn) { message = com.muyeon.app.ui.common.market.loginRequired("openSpaceEditor"); return }
                 if (!canHost(this)) { message = "공간은 학원·강사 유형에서 등록할 수 있어요. MY > 회원유형에서 전환해 주세요."; return }
                 nav.navigate("editor/0")
             }

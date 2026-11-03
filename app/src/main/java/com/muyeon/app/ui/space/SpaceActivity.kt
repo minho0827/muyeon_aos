@@ -24,6 +24,8 @@ class SpaceActivity : ResultActivity() {
         private const val EXTRA_SPACE_ID = "spaceId"
         private const val EXTRA_DATE = "date"
         private const val EXTRA_FROM_RESERVATION = "fromReservation"
+        /** ★ 로그인 후 이어서 할 일(reserve·chat·like) — LoginResume "then". */
+        private const val EXTRA_THEN = "then"
 
         fun intent(context: Context, spaceId: Int, date: String?, fromReservation: Boolean): Intent =
             Intent(context, SpaceActivity::class.java)
@@ -31,8 +33,8 @@ class SpaceActivity : ResultActivity() {
                 .putExtra(EXTRA_DATE, date ?: "")
                 .putExtra(EXTRA_FROM_RESERVATION, fromReservation)
 
-        fun start(context: Context, spaceId: Int, date: String?, fromReservation: Boolean) =
-            context.launchScreen(intent(context, spaceId, date, fromReservation))
+        fun start(context: Context, spaceId: Int, date: String?, fromReservation: Boolean, then: String? = null) =
+            context.launchScreen(intent(context, spaceId, date, fromReservation).putExtra(EXTRA_THEN, then.orEmpty()))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,6 +52,7 @@ class SpaceActivity : ResultActivity() {
                 initialDate = date,
                 // 예약내역에서 들어오면 예약 버튼을 숨긴다(iOS hideReserve).
                 hideReserve = fromReservation,
+                resumeAction = intent.getStringExtra(EXTRA_THEN)?.takeIf { it.isNotEmpty() },
                 onClose = { finish() },
                 onChat = { roomId -> ChatActivity.startRoom(this, roomId) },
                 onReserved = { addResultKeys(ResultKeys.RESERVATIONS) },

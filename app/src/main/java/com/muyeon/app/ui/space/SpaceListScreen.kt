@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.space
 
+import com.muyeon.app.ui.common.market.loginRequired
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -82,7 +83,7 @@ fun SpaceListScreen(
     OnChildResult { keys -> if ("SPACE" in keys) scope.launch { scrapped = api.scrappedSpaceIds() } }
 
     fun toggleScrap(s: SpaceListItem) {
-        if (!api.isLoggedIn) { onMessage("로그인 후 이용할 수 있어요."); return }
+        if (!api.isLoggedIn) { onMessage(loginRequired("openSpaceDetail", "spaceId" to s.id, "then" to "like")); return }
         val next = s.id !in scrapped
         scrapped = if (next) scrapped + s.id else scrapped - s.id
         scope.launch {

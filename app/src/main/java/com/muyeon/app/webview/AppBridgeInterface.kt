@@ -41,6 +41,9 @@ class AppBridgeInterface(
 
     // MARK: - 라우팅
 
+    /** ★ 2026-11-03 로그인 후 이어서 열기(WebViewActivity.onLoggedIn) — 웹 브리지와 같은 액션 처리. */
+    fun openAction(action: String, data: JSONObject) = route(action, data)
+
     private fun route(action: String, data: JSONObject) {
         // 1) 상태 통지류 — UI 없음. 토스트/이동 금지(무시가 정상 동작).
         if (action in SILENT_ACTIONS) {
@@ -262,6 +265,7 @@ object NativeActionRouter {
                 val sid = d.optString("spaceId").toIntOrNull() ?: return true
                 com.muyeon.app.ui.space.SpaceActivity.start(
                     activity, sid, d.optString("date"), d.optString("fromReservation") == "1",
+                    then = d.optString("then").takeIf { it.isNotEmpty() },
                 )
             }
             // ★ 2026-11-03 공간 대관 — 목록·등록/수정·내 공간·호스트 예약 관리·내 예약(상세는 위 openSpaceDetail).
@@ -276,7 +280,7 @@ object NativeActionRouter {
             "openStudioTransfers" -> com.muyeon.app.ui.transfer.TransferActivity.startList(activity)
             "openStudioTransferDetail" -> {
                 val tid = d.optString("id").toIntOrNull() ?: return true
-                com.muyeon.app.ui.transfer.TransferActivity.startDetail(activity, tid)
+                com.muyeon.app.ui.transfer.TransferActivity.startDetail(activity, tid, then = d.optString("then").takeIf { it.isNotEmpty() })
             }
             "openStudioTransferEditor" ->
                 com.muyeon.app.ui.transfer.TransferActivity.startEditor(activity, d.optString("id").toIntOrNull()?.takeIf { it > 0 })

@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.transfer
 
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.muyeon.app.ui.common.market.loginRequired
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -88,6 +90,8 @@ fun TransferDetailScreen(
     onChatRoom: (Int, String) -> Unit,
     onChanged: () -> Unit,
     onMessage: (String) -> Unit,
+    /** ★ 로그인 후 이어서 할 일(chat·like) — 상세를 다 불러온 뒤 한 번만 한다(LoginResume). */
+    resumeAction: String? = null,
 ) {
     var detail by remember { mutableStateOf<TransferDetail?>(null) }
     var loading by remember { mutableStateOf(true) }
@@ -104,7 +108,7 @@ fun TransferDetailScreen(
     LaunchedEffect(id) { load() }
 
     fun toggleScrap(d: TransferDetail) {
-        if (!api.isLoggedIn) { onMessage("로그인 후 이용할 수 있어요."); return }
+        if (!api.isLoggedIn) { onMessage(loginRequired("openStudioTransferDetail", "id" to id, "then" to "like")); return }
         val next = !d.card.scrapped
         detail = d.copy(card = d.card.copy(scrapped = next))
         scope.launch {
@@ -116,13 +120,25 @@ fun TransferDetailScreen(
     }
 
     fun chat(d: TransferDetail) {
-        if (!api.isLoggedIn) { onMessage("로그인 후 이용할 수 있어요."); return }
+        if (!api.isLoggedIn) { onMessage(loginRequired("openStudioTransferDetail", "id" to id, "then" to "chat")); return }
         chatBusy = true
         scope.launch {
             api.directRoom(d.card.authorId, d.card.id)
                 .onSuccess { onChatRoom(it, d.card.authorName) }
                 .onFailure { onMessage(it.message ?: "채팅방을 열지 못했어요.") }
             chatBusy = false
+        }
+    }
+
+    // 로그인 후 다시 연 화면 — 상세를 받은 뒤(이벤트) 하려던 동작을 한 번만. 본인 글이면 하지 않는다.
+    var resumed by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(detail, resumeAction) {
+        val d = detail ?: return@LaunchedEffect
+        if (resumed || resumeAction.isNullOrEmpty() || !api.isLoggedIn) return@LaunchedEffect
+        resumed = true
+        when (resumeAction) {
+            "chat" -> if (!d.isAuthor) chat(d)
+            "like" -> if (!d.card.scrapped) toggleScrap(d)
         }
     }
 
@@ -141,7 +157,7 @@ fun TransferDetailScreen(
                     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                         MarketGallery(dd.images, placeholderRes = R.drawable.transfer_noimage)
                         TransferDetailBody(dd.card, dd.toView(), onReport = {
-                            if (!api.isLoggedIn) onMessage("로그인 후 이용할 수 있어요.") else reportOpen = true
+                            if (!api.isLoggedIn) onMessage(loginRequired("openStudioTransferDetail", "id" to id)) else reportOpen = true
                         })
                     }
                 }

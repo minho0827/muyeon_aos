@@ -89,6 +89,8 @@ class TokenWebViewInterface(private val context: Context, private val webView: W
                 ActiveRole.syncFromServer(context)
                 // 로그인 직후 — 로그아웃 상태에서 결제했거나 못 보낸 구글 구매를 서버에 보낸다.
                 webView.post { com.muyeon.app.ui.membership.MembershipBilling.flushUnfinished() }
+                // ★ 2026-11-03 로그인 완료 이벤트 — 네이티브 화면에서 [로그인]으로 왔으면 그 화면·동작을 이어서 연다.
+                webView.post { (context as? WebViewActivity)?.onLoggedIn() }
                 WebViewResponse.success(emptyList())
             } else {
                 WebViewResponse.serverError(emptyList<Any>())

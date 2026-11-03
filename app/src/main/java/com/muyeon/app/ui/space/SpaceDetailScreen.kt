@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.space
 
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.muyeon.app.ui.common.market.loginRequired
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -79,6 +81,8 @@ fun SpaceDetailScreen(
     initialDate: String = "",
     /** 예약내역에서 진입(웹 fromReservation) — 예약 버튼을 숨긴다. */
     hideReserve: Boolean = false,
+    /** ★ 로그인 후 이어서 할 일(reserve·chat·like) — 상세를 다 불러온 뒤 한 번만 한다(LoginResume). */
+    resumeAction: String? = null,
     onClose: () -> Unit,
     onChat: (Int) -> Unit,
     /** 예약 요청 접수 — 부모가 결과 키 RESERVATIONS 를 싣는다(웹 예약내역 재조회). */
@@ -123,7 +127,7 @@ fun SpaceDetailScreen(
     }
 
     fun toggleScrap() {
-        if (!api.isLoggedIn) { message = "로그인 후 이용할 수 있어요."; return }
+        if (!api.isLoggedIn) { message = loginRequired("openSpaceDetail", "spaceId" to spaceId, "then" to "like"); return }
         val next = !scrapped
         scrapped = next
         scope.launch {
@@ -136,13 +140,26 @@ fun SpaceDetailScreen(
 
     fun chat(space: SpaceDetail) {
         when {
-            !api.isLoggedIn -> message = "로그인 후 이용할 수 있어요."
+            !api.isLoggedIn -> message = loginRequired("openSpaceDetail", "spaceId" to spaceId, "then" to "chat")
             (space.ownerId ?: 0) <= 0 -> message = "공간 소유자 정보가 없어 채팅을 열 수 없어요."
             else -> scope.launch {
                 api.createDirectRoom(space.ownerId!!, space.id)
                     .onSuccess { if (it > 0) onChat(it) else message = "채팅방을 열지 못했어요. 잠시 후 다시 시도해 주세요." }
                     .onFailure { message = it.message ?: "채팅방을 열지 못했어요. 잠시 후 다시 시도해 주세요." }
             }
+        }
+    }
+
+    // 로그인 후 다시 연 화면 — 상세를 받은 뒤(이벤트) 하려던 동작을 한 번만 이어서 한다. 본인 공간·예약 숨김이면 하지 않는다.
+    var resumed by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(detail, resumeAction) {
+        val space = detail ?: return@LaunchedEffect
+        if (resumed || resumeAction.isNullOrEmpty() || !api.isLoggedIn) return@LaunchedEffect
+        resumed = true
+        when (resumeAction) {
+            "reserve" -> if (!space.isOwner && !hideReserve) showReserve = true
+            "chat" -> if (!space.isOwner) chat(space)
+            "like" -> if (!scrapped) toggleScrap()
         }
     }
 
@@ -171,7 +188,7 @@ fun SpaceDetailScreen(
                 space.isOwner -> SpaceOwnerActions(onEdit = { onEdit(space.id) }, onManage = onManage)
                 hideReserve -> SpaceChatOnlyBar(space.toView().phone) { chat(space) }
                 else -> SpaceBookingBar(space.toView().phone, onChat = { chat(space) }) {
-                    if (!api.isLoggedIn) message = "로그인 후 이용할 수 있어요." else showReserve = true
+                    if (!api.isLoggedIn) message = loginRequired("openSpaceDetail", "spaceId" to spaceId, "then" to "reserve") else showReserve = true
                 }
             }
         }
