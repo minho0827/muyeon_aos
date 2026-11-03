@@ -39,6 +39,12 @@ object ResultKeys {
     const val STUDIO_MEMBERS = "STUDIO_MEMBERS"
     const val REVIEWS = "REVIEWS"
     const val MEMBERSHIP = "MEMBERSHIP"
+    /**
+     * ★ 2026-11-03 비로그인 안내에서 [로그인]을 눌렀다 — 재조회 키가 아니라 '이동 요청'.
+     *  네이티브 부모는 받으면 자기도 이 키를 들고 닫히고(버블링), 웹뷰(WebViewActivity)가 받으면 /login 으로 이동한다.
+     *  결과 콜백으로만 이어진다(타이머·지연 이동 금지).
+     */
+    const val LOGIN_REQUIRED = "LOGIN_REQUIRED"
 
     /** 결과 인텐트·savedStateHandle 에 키 목록(ArrayList<String>)을 싣는 이름. */
     const val EXTRA_KEYS = "resultKeys"
@@ -56,7 +62,7 @@ object ResultKeys {
     val ALL: Set<String> = setOf(
         QUOTES, QUOTE_PREFS, AUTO_QUOTE, CHAT_ROOMS, CHAT_ROOM, LESSONS, LESSON_SCHEDULE,
         RESERVATIONS, RESUME, PROFILE, JOB_POSTINGS, ACADEMY, SPACE, NOTIFICATIONS,
-        NOTIFICATION_PREFS, STUDIO_MEMBERS, REVIEWS, MEMBERSHIP,
+        NOTIFICATION_PREFS, STUDIO_MEMBERS, REVIEWS, MEMBERSHIP, LOGIN_REQUIRED,
     )
 }
 

@@ -45,6 +45,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import com.muyeon.app.result.findActivity
+import com.muyeon.app.result.finishWithResult
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -168,10 +170,29 @@ fun WizardExitDialog(onLeave: () -> Unit, onDismiss: () -> Unit) {
     )
 }
 
-/** 한 줄 안내 팝업([확인]). */
+/** 비로그인 안내 문구 — 이 문구면 팝업이 [취소]/[로그인]으로 바뀐다(로그인 화면으로 이동). */
+const val LOGIN_REQUIRED_MESSAGE = "로그인 후 이용할 수 있어요."
+
+/**
+ * 한 줄 안내 팝업([확인]). 비로그인 안내([LOGIN_REQUIRED_MESSAGE])면 [취소]/[로그인] —
+ *  ★ 2026-11-03 [로그인]은 화면을 결과(LOGIN_REQUIRED)와 함께 닫는다 → 부모가 결과 콜백으로 받아
+ *   차례로 닫히고, 웹뷰가 받으면 로그인 화면으로 이동한다(타이머·지연 이동 없음).
+ */
 @Composable
 fun MarketMessageDialog(message: String, onDismiss: () -> Unit) {
-    MuyeonDialog(title = message, actions = listOf(MuyeonDialogAction("확인")), onDismiss = onDismiss)
+    if (message == LOGIN_REQUIRED_MESSAGE) {
+        val activity = androidx.compose.ui.platform.LocalContext.current.findActivity()
+        MuyeonDialog(
+            title = "로그인이 필요해요", message = message,
+            actions = listOf(
+                MuyeonDialogAction("취소", MuyeonDialogKind.CANCEL),
+                MuyeonDialogAction("로그인") { activity?.finishWithResult(com.muyeon.app.result.ResultKeys.LOGIN_REQUIRED) },
+            ),
+            onDismiss = onDismiss,
+        )
+    } else {
+        MuyeonDialog(title = message, actions = listOf(MuyeonDialogAction("확인")), onDismiss = onDismiss)
+    }
 }
 
 /** 위저드 로딩(수정 글 불러오는 중). */

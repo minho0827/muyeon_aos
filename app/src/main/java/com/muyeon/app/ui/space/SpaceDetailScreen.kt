@@ -188,9 +188,7 @@ fun SpaceDetailScreen(
             )
         }
     }
-    message?.let { msg ->
-        QuoteDialog(msg, "", "확인", onConfirm = { message = null }, onDismiss = { message = null })
-    }
+    message?.let { msg -> com.muyeon.app.ui.common.market.MarketMessageDialog(msg) { message = null } }
 }
 
 /** 본문 — 섹션 조립만(보일지는 [toView] 가 정했다). */

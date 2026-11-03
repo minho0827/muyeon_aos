@@ -111,9 +111,7 @@ class SpaceHubActivity : ResultActivity() {
                 }
             }
 
-            message?.let { msg ->
-                MuyeonDialog(title = msg, actions = listOf(MuyeonDialogAction("확인")), onDismiss = { message = null })
-            }
+            message?.let { msg -> com.muyeon.app.ui.common.market.MarketMessageDialog(msg) { message = null } }
         }
     }
 }

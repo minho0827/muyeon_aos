@@ -108,7 +108,13 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
      */
     private fun deliverResults(keys: Set<String>, payload: Bundle?) {
         if (keys.isEmpty()) return
-        keys.forEach { key -> evalWhenReady(readyGuarded(WebCallbacks.resultJs(key, payload.payloadJsonFor(key)))) }
+        // ★ 2026-11-03 네이티브 화면이 '로그인 필요'로 닫혔다 → 결과를 받은 지금 웹 로그인 화면으로(SPA 이동, 웹 준비 후).
+        if (ResultKeys.LOGIN_REQUIRED in keys) {
+            // consumeNativeRoute 와 같은 규칙 — __nativeGo 가 아직 없으면 0 → 웹 준비(webReady) 때 다시 흘린다.
+            evalWhenReady("(function(){ if(window.__nativeGo){ window.__nativeGo('/login'); return 1; } return 0; })()")
+        }
+        keys.filter { it != ResultKeys.LOGIN_REQUIRED }
+            .forEach { key -> evalWhenReady(readyGuarded(WebCallbacks.resultJs(key, payload.payloadJsonFor(key)))) }
         if (ResultKeys.CHAT_ROOMS in keys || ResultKeys.CHAT_ROOM in keys || ResultKeys.NOTIFICATIONS in keys) {
             com.muyeon.app.ui.floating.FloatingState.requestRefresh()
         }

@@ -42,6 +42,8 @@ abstract class ResultActivity : ComponentActivity(), ResultHost {
             val keys = r.data.resultKeys()
             if (keys.isEmpty()) return@registerForActivityResult
             absorbChildResult(keys, r.data.resultPayload())
+            // 자식이 '로그인 필요'로 닫혔으면 나도 그 결과를 들고 닫힌다 — 웹뷰까지 콜백으로 올라가 로그인 화면으로 간다.
+            if (ResultKeys.LOGIN_REQUIRED in keys) { finish(); return@registerForActivityResult }
             _childResults.tryEmit(keys)
         }
 
