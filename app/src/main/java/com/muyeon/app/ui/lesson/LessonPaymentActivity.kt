@@ -58,6 +58,8 @@ class LessonPaymentActivity : ComponentActivity() {
 
     companion object {
         private const val EXTRA_RESERVATION_ID = "reservationId"
+        private const val EXTRA_PATH = "path"
+        private const val EXTRA_TITLE = "title"
         const val EXTRA_PAID = "paid"
 
         /** iOS 와 같은 표시 — 카드 앱 인증 후 돌아올 스킴 + 웹에서 창을 닫을 수 있는 앱. */
@@ -66,6 +68,20 @@ class LessonPaymentActivity : ComponentActivity() {
 
         fun intent(context: Context, reservationId: Int): Intent =
             Intent(context, LessonPaymentActivity::class.java).putExtra(EXTRA_RESERVATION_ID, reservationId)
+
+        /** 다른 결제 웹 경로(예: 공간 대관 `/spacePay/{id}`)를 같은 결제 창으로 연다 — 신호·닫기 규칙은 같다. */
+        fun pathIntent(context: Context, path: String, title: String): Intent =
+            Intent(context, LessonPaymentActivity::class.java).putExtra(EXTRA_PATH, path).putExtra(EXTRA_TITLE, title)
+    }
+
+    /** 결제 웹 경로 + 제목줄 문구. */
+    data class PaymentPage(val path: String, val title: String)
+
+    /** 웹 경로로 여는 결제 창 계약(2026-11-03 공간 대관) — 결과는 결제됨 여부. */
+    class PathContract : ActivityResultContract<PaymentPage, Boolean>() {
+        override fun createIntent(context: Context, input: PaymentPage): Intent = pathIntent(context, input.path, input.title)
+        override fun parseResult(resultCode: Int, intent: Intent?): Boolean =
+            intent?.getBooleanExtra(EXTRA_PAID, false) == true
     }
 
     /** 예약 화면이 결과(결제됨 여부)를 받는 계약. */
@@ -100,7 +116,9 @@ class LessonPaymentActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val reservationId = intent.getIntExtra(EXTRA_RESERVATION_ID, 0)
-        val url = "${BuildConfig.API_BASE_URL}/reservations/$reservationId?pay=1"
+        val path = intent.getStringExtra(EXTRA_PATH)?.takeIf { it.startsWith("/") }
+        val title = intent.getStringExtra(EXTRA_TITLE)?.takeIf { it.isNotBlank() } ?: "예약금 결제"
+        val url = if (path != null) "${BuildConfig.API_BASE_URL}$path" else "${BuildConfig.API_BASE_URL}/reservations/$reservationId?pay=1"
 
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
@@ -150,7 +168,7 @@ class LessonPaymentActivity : ComponentActivity() {
                         modifier = Modifier.align(Alignment.CenterStart).clickable { finishWithResult() }.padding(horizontal = 16.dp, vertical = 10.dp),
                     )
                     Text(
-                        "예약금 결제", fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 16.sp,
+                        title, fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 16.sp,
                         color = MuyeonColors.textHead, modifier = Modifier.align(Alignment.Center),
                     )
                 }
