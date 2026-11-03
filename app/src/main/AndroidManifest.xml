@@ -171,6 +171,8 @@
                 <!-- 네이티브 화면 주소(웹 common/nativeLink.js 표와 같게) -->
                 <data android:path="/resume" />
                 <data android:path="/resumeEdit" />
+                <data android:path="/profileResume" />
+                <data android:path="/fieldVisibility" />
                 <data android:path="/myPostings" />
                 <data android:path="/quoteRequest" />
                 <data android:path="/availableQuotes" />
