@@ -104,7 +104,10 @@ class SpaceHubActivity : ResultActivity() {
                     )
                 }
                 composable("hosting") {
-                    SpaceHostReservationsScreen(api = api, onBack = { back() }, onChanged = { changed() }, onMessage = { message = it })
+                    SpaceHostReservationsScreen(
+                        api = api, onBack = { back() }, onChanged = { changed() }, onMessage = { message = it },
+                        onChat = { roomId, title -> com.muyeon.app.ui.chat.ChatActivity.startRoom(this@SpaceHubActivity, roomId, title) },
+                    )
                 }
                 composable("bookings") {
                     SpaceMyBookingsScreen(api = api, onBack = { back() }, onOpenSpace = { openSpace(it) }, onChanged = { changed() }, onMessage = { message = it })

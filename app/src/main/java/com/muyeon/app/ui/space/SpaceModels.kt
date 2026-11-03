@@ -456,8 +456,30 @@ data class SpaceReservationRow(
     val canceledAt: String?,
     val bookerName: String?,
     val message: String?,
+    // ★ 호스트 예약 상세용(GET /spaces/reservations/hosting) — optionLabel 은 백엔드 a8363f3 부터.
+    val optionLabel: String? = null,
+    val cancelReason: String? = null,
+    val userId: Int? = null,
+    val createdAt: String? = null,
 ) {
     val statusLabel: String get() = SpaceReservationStatus.label(status)
+
+    /** 끝 시각 "16:00" — 시작 + 이용 시간(자정 넘으면 24:00 이상 그대로). */
+    val endTime: String?
+        get() {
+            val st = startTime?.split(":")?.takeIf { it.size == 2 } ?: return null
+            val h = hours ?: return null
+            val m = (st[0].toIntOrNull() ?: return null) * 60 + (st[1].toIntOrNull() ?: 0) + (h * 60).toInt()
+            return String.format(java.util.Locale.KOREA, "%02d:%02d", m / 60, m % 60)
+        }
+
+    /** "2026-11-20 14:00 ~ 16:00, 2시간" */
+    val rangeText: String
+        get() {
+            val h = hours?.let { v -> if (v % 1.0 == 0.0) "${v.toInt()}시간" else "${v.toInt()}시간 30분" }
+            val time = listOfNotNull(startTime, endTime).joinToString(" ~ ")
+            return listOf(listOf(date, time).filter { it.isNotEmpty() }.joinToString(" "), h).filterNotNull().joinToString(", ")
+        }
 
     /** "2026-11-20 14:00 · 2시간" */
     val whenText: String
@@ -483,6 +505,7 @@ data class SpaceReservationRow(
                 headcount = intOrNull("headcount"), amount = intOrNull("amount"), status = o.optString("status"),
                 refundAmount = intOrNull("refundAmount"), paidAt = str("paidAt"), canceledAt = str("canceledAt"),
                 bookerName = str("bookerName"), message = str("message"),
+                optionLabel = str("optionLabel"), cancelReason = str("cancelReason"), userId = intOrNull("userId"), createdAt = str("createdAt"),
             )
         }
     }
@@ -660,4 +683,15 @@ internal val FALLBACK_BOOKING_CONSENTS = listOf(
 internal fun hourLabel(value: Double): String {
     val whole = value.toInt()
     return if (value % 1.0 != 0.0) (if (whole > 0) "${whole}시간 30분" else "30분") else "${whole}시간"
+}
+
+/** 서버 시각(ISO, UTC) → 한국 시간 "2026.11.20 14:03". 못 읽으면 원문. */
+internal fun kstDateTime(iso: String?): String? {
+    if (iso.isNullOrBlank()) return null
+    return runCatching {
+        val inFmt = java.text.SimpleDateFormat(if (iso.contains('.')) "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" else "yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
+            .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+        val d = inFmt.parse(iso) ?: return@runCatching iso
+        java.text.SimpleDateFormat("yyyy.MM.dd HH:mm", java.util.Locale.KOREA).apply { timeZone = java.util.TimeZone.getTimeZone("Asia/Seoul") }.format(d)
+    }.getOrDefault(iso)
 }

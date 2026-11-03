@@ -40,13 +40,13 @@ import com.muyeon.app.ui.common.market.*
 import com.muyeon.app.ui.space.SpaceReservationRow
 import kotlinx.coroutines.launch
 
-/** 호스트 예약 한 줄(예약자 이름). */
+/** 호스트 예약 한 줄(예약자 이름). 줄을 누르면 예약 상세 시트. */
 @Composable
-fun HostReservationRow(r: SpaceReservationRow) = ReservationCardFrame(r, bookerName = r.bookerName, onClick = {})
+fun HostReservationRow(r: SpaceReservationRow, onClick: () -> Unit) = ReservationCardFrame(r, bookerName = r.bookerName, onClick = onClick)
 
 /** 결제 완료 예약 — [취소(전액 환불)]. */
 @Composable
-fun HostPaidReservationRow(r: SpaceReservationRow, onCancel: () -> Unit) =
-    ReservationCardFrame(r, bookerName = r.bookerName, onClick = {}) {
+fun HostPaidReservationRow(r: SpaceReservationRow, onClick: () -> Unit, onCancel: () -> Unit) =
+    ReservationCardFrame(r, bookerName = r.bookerName, onClick = onClick) {
         ReservationActions { MarketRowButton("취소(전액 환불)", Modifier.weight(1f), danger = true, onClick = onCancel) }
     }

@@ -39,6 +39,9 @@ import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.*
 import com.muyeon.app.ui.common.market.*
 import com.muyeon.app.ui.space.booking.HostCancelDialog
+import com.muyeon.app.ui.space.booking.HostBookingDetailSheet
+import com.muyeon.app.ui.space.booking.HostBookingChatActions
+import com.muyeon.app.ui.space.booking.HostBookingChatCancelActions
 import com.muyeon.app.ui.space.booking.ReservationListSkeleton
 import com.muyeon.app.ui.space.booking.HostPaidReservationRow
 import com.muyeon.app.ui.space.booking.HostReservationRow
@@ -51,6 +54,8 @@ fun SpaceHostReservationsScreen(
     onBack: () -> Unit,
     onChanged: () -> Unit,
     onMessage: (String) -> Unit,
+    /** 예약자와 채팅방 열기(roomId, 제목). */
+    onChat: (Int, String?) -> Unit = { _, _ -> },
 ) {
     val scope = rememberCoroutineScope()
     var rows by remember { mutableStateOf<List<SpaceReservationRow>>(emptyList()) }
@@ -58,6 +63,20 @@ fun SpaceHostReservationsScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var tick by remember { mutableIntStateOf(0) }
     var cancelTarget by remember { mutableStateOf<SpaceReservationRow?>(null) }
+    var open by remember { mutableStateOf<SpaceReservationRow?>(null) }
+    var chatBusy by remember { mutableStateOf(false) }
+
+    /** 예약자에게 채팅 — 공간 채팅과 같은 1:1 방(예약자·공간). */
+    fun chat(r: SpaceReservationRow) {
+        val uid = r.userId ?: run { onMessage("예약자 정보를 찾지 못했어요."); return }
+        chatBusy = true
+        scope.launch {
+            api.createDirectRoom(uid, r.spaceId)
+                .onSuccess { if (it > 0) onChat(it, r.bookerName) else onMessage("채팅방을 열지 못했어요. 잠시 후 다시 시도해 주세요.") }
+                .onFailure { onMessage(it.message ?: "채팅방을 열지 못했어요. 잠시 후 다시 시도해 주세요.") }
+            chatBusy = false
+        }
+    }
 
     LaunchedEffect(tick) {
         if (!api.isLoggedIn) { error = "로그인 후 이용할 수 있어요."; loading = false; return@LaunchedEffect }
@@ -75,10 +94,19 @@ fun SpaceHostReservationsScreen(
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(rows, key = { it.id }) { r ->
                         // 결제 완료만 [취소(전액 환불)] 줄이 붙는다.
-                        if (r.status == "PAID") HostPaidReservationRow(r) { cancelTarget = r } else HostReservationRow(r)
+                        if (r.status == "PAID") HostPaidReservationRow(r, onClick = { open = r }) { cancelTarget = r } else HostReservationRow(r) { open = r }
                     }
                 }
             }
+        }
+    }
+
+    open?.let { r ->
+        // 하단 버튼은 한 번 고른다 — 결제 완료·시작 전이면 [취소(전액 환불)]까지.
+        val cancellable = r.status == "PAID" && !r.isPast(nowKstYmdHm())
+        HostBookingDetailSheet(r, onDismiss = { open = null }) {
+            if (cancellable) HostBookingChatCancelActions(chatBusy, onChat = { chat(r) }, onCancel = { cancelTarget = r })
+            else HostBookingChatActions(chatBusy) { chat(r) }
         }
     }
 
@@ -87,7 +115,7 @@ fun SpaceHostReservationsScreen(
             r,
             onConfirm = {
                 scope.launch {
-                    api.hostCancel(r.id).onSuccess { onMessage("예약을 취소하고 전액 환불했어요."); onChanged(); tick++ }
+                    api.hostCancel(r.id).onSuccess { open = null; onMessage("예약을 취소하고 전액 환불했어요."); onChanged(); tick++ }
                         .onFailure { onMessage(it.message ?: "취소하지 못했어요.") }
                 }
             },
@@ -95,3 +123,6 @@ fun SpaceHostReservationsScreen(
         )
     }
 }
+
+private fun nowKstYmdHm(): String =
+    java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.KOREA).apply { timeZone = java.util.TimeZone.getTimeZone("Asia/Seoul") }.format(java.util.Date())
