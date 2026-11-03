@@ -52,7 +52,6 @@ fun FieldVisibilityScreen(
     var flags by remember { mutableStateOf(FieldVisibilityFlags()) }
     var profileHidden by remember { mutableStateOf(false) }
     var sourceId by remember { mutableStateOf<Int?>(null) }
-    var sourceRole by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
     var careers by remember { mutableStateOf<List<CareerItem>>(emptyList()) }
     var performances by remember { mutableStateOf<List<PerfItem>>(emptyList()) }
@@ -68,7 +67,7 @@ fun FieldVisibilityScreen(
     LaunchedEffect(Unit) {
         api.getVisibility().onSuccess { settings ->
             flags = settings.flags; profileHidden = settings.profileHidden
-            sourceId = settings.sourceId; sourceRole = settings.sourceRole
+            sourceId = settings.sourceId
             careers = settings.sourceData?.careers ?: emptyList()
             performances = settings.sourceData?.performances ?: emptyList()
         }.onFailure { errorMessage = it.message }
@@ -92,10 +91,6 @@ fun FieldVisibilityScreen(
                 Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
             ) {
                 GuideBox(mode.isDancer)
-                sourceRole?.let { role ->
-                    Text("현재 공개 프로필의 원본은 ${if (role == "DANCER") "무용수" else "강사"} 기본 이력서예요. 아래 항목 선택은 이 원본에 적용돼요.",
-                        fontSize = 12.sp, color = MuyeonColors.textSub, modifier = Modifier.padding(top = 8.dp))
-                }
                 Text(
                     "공개 정보 설정",
                     fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
@@ -295,14 +290,9 @@ private fun GuideBox(isDancer: Boolean) {
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
-            if (isDancer) "무용수 프로필은 기본 이력서를 따라가요" else "강사프로필은 기본 이력서를 따라가요",
+            if (isDancer) "기본 이력서에서 공연팀·기획자에게 공개할 항목을 선택해 주세요." else "기본 이력서에서 레슨 고객에게 공개할 항목을 선택해 주세요.",
             fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
             lineHeight = 17.sp, color = MuyeonColors.textHead,
-        )
-        Text(
-            "여기서 켠 항목만 일반회원에게 보여요. 변경하면 바로 저장돼요.",
-            fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp,
-            lineHeight = 16.sp, color = MuyeonColors.textSub,
         )
     }
 }
