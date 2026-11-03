@@ -27,7 +27,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -134,8 +137,17 @@ fun PublicProfileScreen(
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
                 // 히어로 — 대표 사진
                 Box(Modifier.fillMaxWidth().height(280.dp).background(Color(0xFFF2F2F7))) {
+                    // 인스타 스타일 — 사진은 자르지 않고 전체(Fit), 남는 여백은 같은 사진을 흐리게 확대해
+                    // 비슷한 색감으로 채운다(얼굴 잘림 방지). blur 는 API 31+ 에서만 적용, 그 이하는 어둡게만.
                     QuoteUi.imageUrl(p.image)?.let {
-                        AsyncImage(it, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                        Box(Modifier.matchParentSize().background(Color.Black).clipToBounds()) {
+                            AsyncImage(
+                                it, null, contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize().scale(1.2f).blur(24.dp),
+                            )
+                            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.15f)))
+                            AsyncImage(it, null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
+                        }
                     }
                     // 뒤로 / 더보기
                     Row(
