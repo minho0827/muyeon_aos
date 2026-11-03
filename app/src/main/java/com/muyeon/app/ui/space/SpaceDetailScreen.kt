@@ -70,11 +70,19 @@ fun SpaceDetailScreen(
     onReserved: () -> Unit = {},
     /** 찜 변경 — 부모가 결과 키 SPACE 를 싣는다(웹 찜 목록 재조회). */
     onScrapChanged: () -> Unit = {},
+    /** 본인 공간 — [수정] / [예약 관리]. */
+    onEdit: (Int) -> Unit = {},
+    onManage: () -> Unit = {},
+    /** 호스트의 다른 공간 카드. */
+    onOpenSpace: (Int) -> Unit = {},
+    /** 결제 완료 — 부모가 내 예약을 연다. */
+    onPaid: () -> Unit = {},
 ) {
     var detail by remember { mutableStateOf<SpaceDetail?>(null) }
     var loading by remember { mutableStateOf(true) }
     var scrapped by remember { mutableStateOf(false) }
     var showReserve by remember { mutableStateOf(false) }
+    var selectedOption by remember { mutableStateOf<Int?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -87,6 +95,10 @@ fun SpaceDetailScreen(
     }
 
     fun openMap(space: SpaceDetail) {
+        if (space.lat != null && space.lng != null) {
+            com.muyeon.app.ui.common.openDirections(ctx, "naver", space.name, space.lat, space.lng)
+            return
+        }
         val query = Uri.encode(space.addressText ?: space.name)
         runCatching {
             ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=$query")))
@@ -95,6 +107,18 @@ fun SpaceDetailScreen(
                 ctx.startActivity(
                     Intent(Intent.ACTION_VIEW, Uri.parse("https://map.naver.com/v5/search/$query")),
                 )
+            }
+        }
+    }
+
+    fun chat(space: SpaceDetail) {
+        when {
+            !api.isLoggedIn -> message = "로그인 후 이용할 수 있어요."
+            (space.ownerId ?: 0) <= 0 -> message = "공간 소유자 정보가 없어 채팅을 열 수 없어요."
+            else -> scope.launch {
+                api.createDirectRoom(space.ownerId!!, space.id)
+                    .onSuccess { if (it > 0) onChat(it) else message = "채팅방을 열지 못했어요. 잠시 후 다시 시도해 주세요." }
+                    .onFailure { message = it.message ?: "채팅방을 열지 못했어요. 잠시 후 다시 시도해 주세요." }
             }
         }
     }
@@ -153,10 +177,15 @@ fun SpaceDetailScreen(
                     SpaceFeeCard(space)
                     SpaceMapBanner { openMap(space) }
                     Column(Modifier.padding(top = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        if (space.hourlyOptions.isNotEmpty()) {
+                            SpaceOptionSection(space, selectedOption ?: space.hourlyOptions.first().id) { selectedOption = it }
+                        }
                         SpaceIntroSection(space)
                         SpaceFacilitySection(space)
                         SpaceCautionSection(space)
+                        SpaceRefundSection(space)
                         SpaceLocationSection(space) { openMap(space) }
+                        if (space.otherSpaces.isNotEmpty()) SpaceOtherSpacesSection(space, onOpenSpace)
                     }
                     SpaceAgreementNote(Modifier.padding(top = 20.dp))
                     Spacer(Modifier.height(24.dp))
@@ -174,48 +203,19 @@ fun SpaceDetailScreen(
             }
 
             detail?.let { space ->
-                // 하단 고정 버튼 (시안 '결제 진행하기' 자리)
-                Column(Modifier.fillMaxWidth().background(Color.White)) {
-                    Box(Modifier.fillMaxWidth().height(1.dp).background(SpaceDesign.ink200))
-                    Row(
-                        Modifier.padding(horizontal = SpaceDesign.gutter)
-                            .padding(top = 12.dp, bottom = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                // 하단 고정 바 — 본인 공간이면 [수정]·[예약 관리], 아니면 전화(있을 때)·채팅·[예약하기].
+                if (space.isOwner) {
+                    com.muyeon.app.ui.common.MarketOwnerBar("수정", { onEdit(space.id) }, "예약 관리", onManage)
+                } else {
+                    com.muyeon.app.ui.common.MarketBottomBar(
+                        liked = null, onLike = {}, phone = space.phone,
+                        primary = if (hideReserve) "채팅하기" else "예약하기",
+                        secondary = if (hideReserve) null else "채팅",
+                        onSecondary = { chat(space) },
                     ) {
-                        Text(
-                            "채팅",
-                            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp,
-                            lineHeight = 20.sp, color = SpaceDesign.ink900, textAlign = TextAlign.Center,
-                            modifier = Modifier.width(100.dp).height(52.dp)
-                                .clip(RoundedCornerShape(8.dp)).background(Color.White)
-                                .border(1.dp, SpaceDesign.ink300, RoundedCornerShape(8.dp))
-                                .clickable {
-                                    when {
-                                        !api.isLoggedIn -> message = "로그인 후 이용할 수 있어요."
-                                        (space.ownerId ?: 0) <= 0 ->
-                                            message = "공간 소유자 정보가 없어 채팅을 열 수 없어요."
-                                        else -> scope.launch {
-                                            api.createDirectRoom(space.ownerId!!, space.id)
-                                                .onSuccess { onChat(it) }
-                                                .onFailure {
-                                                    message = "채팅방을 열지 못했어요. 잠시 후 다시 시도해 주세요."
-                                                }
-                                        }
-                                    }
-                                }
-                                .wrapContentHeight(Alignment.CenterVertically),
-                        )
-                        if (!hideReserve) {
-                            Text(
-                                "바로 예약하기",
-                                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp,
-                                lineHeight = 20.sp, color = Color.White, textAlign = TextAlign.Center,
-                                modifier = Modifier.weight(1f).height(52.dp)
-                                    .clip(RoundedCornerShape(8.dp)).background(SpaceDesign.primary)
-                                    .clickable { showReserve = true }
-                                    .wrapContentHeight(Alignment.CenterVertically),
-                            )
-                        }
+                        if (hideReserve) chat(space)
+                        else if (!api.isLoggedIn) message = "로그인 후 이용할 수 있어요."
+                        else showReserve = true
                     }
                 }
             }
@@ -226,8 +226,10 @@ fun SpaceDetailScreen(
         detail?.let { space ->
             SpaceReserveSheet(
                 api = api, space = space, initialDate = initialDate,
+                initialOptionId = selectedOption,
                 onFinish = { result -> showReserve = false; message = result },
                 onReserved = onReserved,
+                onPaid = { showReserve = false; onPaid() },
             )
         }
     }
@@ -331,7 +333,7 @@ private fun SpaceAgreementNote(modifier: Modifier = Modifier) {
                 lineHeight = 16.sp, color = SpaceDesign.ink700,
             )
             Text(
-                "'바로 예약하기'를 선택해 주세요.",
+                "'예약하기'를 선택해 주세요.",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
                 lineHeight = 16.sp, color = SpaceDesign.ink700,
             )

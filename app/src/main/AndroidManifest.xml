@@ -306,6 +306,12 @@
             android:name=".ui.lesson.LessonBrowseActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
+        <!-- 공간 대관(2026-11-03) — 목록·등록/수정·내 공간·예약 관리·내 예약 -->
+        <activity
+            android:name=".ui.space.SpaceHubActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
         <!-- 무용센터 양도양수(2026-11-03) — 목록·상세·등록/수정·내 글 -->
         <activity
             android:name=".ui.transfer.TransferActivity"

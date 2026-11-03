@@ -264,6 +264,14 @@ object NativeActionRouter {
                     activity, sid, d.optString("date"), d.optString("fromReservation") == "1",
                 )
             }
+            // ★ 2026-11-03 공간 대관 — 목록·등록/수정·내 공간·호스트 예약 관리·내 예약(상세는 위 openSpaceDetail).
+            //  웹은 nativeSpaceBooking 표시가 있을 때만 보낸다.
+            "openSpaces" -> com.muyeon.app.ui.space.SpaceHubActivity.startList(activity)
+            "openSpaceEditor" ->
+                com.muyeon.app.ui.space.SpaceHubActivity.startEditor(activity, d.optString("id").toIntOrNull()?.takeIf { it > 0 })
+            "openMySpaces" -> com.muyeon.app.ui.space.SpaceHubActivity.startMine(activity)
+            "openMySpaceReservations" -> com.muyeon.app.ui.space.SpaceHubActivity.startHosting(activity)
+            "openMySpaceBookings" -> com.muyeon.app.ui.space.SpaceHubActivity.startBookings(activity)
             // ★ 2026-11-03 무용센터 양도양수 — 네이티브(목록·상세·등록/수정·내 글). 웹은 nativeStudioTransfers 표시가 있을 때만 보낸다.
             "openStudioTransfers" -> com.muyeon.app.ui.transfer.TransferActivity.startList(activity)
             "openStudioTransferDetail" -> {

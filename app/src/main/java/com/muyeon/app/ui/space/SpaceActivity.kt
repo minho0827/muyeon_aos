@@ -9,7 +9,6 @@ import com.muyeon.app.result.ResultActivity
 import com.muyeon.app.result.ResultKeys
 import com.muyeon.app.result.launchScreen
 import com.muyeon.app.ui.chat.ChatActivity
-import com.muyeon.app.utils.TokenManager
 
 /**
  * 공간 상세 진입점 — 웹 `openSpaceDetail`(spaceId, date, fromReservation).
@@ -44,7 +43,7 @@ class SpaceActivity : ResultActivity() {
         val fromReservation = intent.getBooleanExtra(EXTRA_FROM_RESERVATION, false)
 
         setContent {
-            val api = remember { SpaceApi(TokenManager.getAccessToken(this)) }
+            val api = remember { SpaceApi(this) }
             SpaceDetailScreen(
                 api = api,
                 spaceId = spaceId,
@@ -55,6 +54,11 @@ class SpaceActivity : ResultActivity() {
                 onChat = { roomId -> ChatActivity.startRoom(this, roomId) },
                 onReserved = { addResultKeys(ResultKeys.RESERVATIONS) },
                 onScrapChanged = { addResultKeys(ResultKeys.SPACE) },
+                onEdit = { SpaceHubActivity.startEditor(this, it) },
+                onManage = { SpaceHubActivity.startHosting(this) },
+                onOpenSpace = { start(this, it, null, false) },
+                // 결제 완료 → 내 예약(새로 읽은 목록)으로. 웹 부모도 예약 목록을 다시 읽게 RESERVATIONS 를 싣는다.
+                onPaid = { addResultKeys(ResultKeys.RESERVATIONS); SpaceHubActivity.startBookings(this) },
             )
         }
     }

@@ -3,6 +3,7 @@ package com.muyeon.app.ui.space
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -364,18 +365,64 @@ private fun cautionText(space: SpaceDetail): String {
 @Composable
 internal fun SpaceLocationSection(space: SpaceDetail, onOpenMap: () -> Unit) = WhiteSection("위치") {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        ReadField("주소", space.addressText ?: "-")
-        if (space.addressText != null) {
-            Text(
-                "지도 앱으로 열기",
-                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
-                lineHeight = 18.sp, color = SpaceDesign.ink900, textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .border(1.dp, SpaceDesign.ink200, RoundedCornerShape(8.dp))
-                    .clickable(onClick = onOpenMap)
-                    .wrapContentHeight(Alignment.CenterVertically),
-            )
+        if (space.lat != null && space.lng != null) {
+            // 좌표가 있으면 지도 카드(레슨 장소 카드 재사용) — 탭하면 길찾기 앱 선택.
+            com.muyeon.app.ui.common.MarketMapCard(space.name, space.addressText, space.lat, space.lng)
+        } else {
+            ReadField("주소", space.addressText ?: "-")
+            if (space.addressText != null) {
+                Text(
+                    "지도 앱으로 열기",
+                    fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
+                    lineHeight = 18.sp, color = SpaceDesign.ink900, textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(1.dp, SpaceDesign.ink200, RoundedCornerShape(8.dp))
+                        .clickable(onClick = onOpenMap)
+                        .wrapContentHeight(Alignment.CenterVertically),
+                )
+            }
+        }
+    }
+}
+
+/** 세부공간(가격옵션) 라디오 — 고른 세부공간으로 예약 시트를 연다. */
+@Composable
+internal fun SpaceOptionSection(space: SpaceDetail, selected: Int?, onSelect: (Int) -> Unit) = WhiteSection("세부공간") {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        space.hourlyOptions.forEach { o ->
+            RadioRow("${o.label ?: "세부공간"} · ${o.priceText}", selected == o.id) { onSelect(o.id) }
+        }
+    }
+}
+
+/** 환불 규정 — 공간이 규정을 비워 두면(요금 카드에 표가 없을 때) 서버 기본 규정을 보여 준다. */
+@Composable
+internal fun SpaceRefundSection(space: SpaceDetail) {
+    if ((space.refundPolicy ?: emptyList()).any { !it.label.isNullOrEmpty() }) return
+    WhiteSection("환불 규정") {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            DEFAULT_REFUND.forEach { DetailRow(SpaceFeeRow(null, it.label ?: "-", it.value ?: "-"), color = SpaceDesign.ink700) }
+        }
+    }
+}
+
+/** 호스트의 다른 공간 — 가로로 넘기는 카드. */
+@Composable
+internal fun SpaceOtherSpacesSection(space: SpaceDetail, onOpen: (Int) -> Unit) = WhiteSection(
+    space.hostName?.let { "${it}의 다른 공간" } ?: "호스트의 다른 공간",
+) {
+    Row(
+        Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        space.otherSpaces.forEach { o ->
+            Column(Modifier.width(150.dp).clickable { onOpen(o.id) }, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                com.muyeon.app.ui.common.MarketThumb(o.image, Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(10.dp)))
+                Text(o.name, fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = SpaceDesign.ink900,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                o.priceLine?.let { Text(it, fontFamily = customFontFamily, fontSize = 12.sp, color = SpaceDesign.ink600, maxLines = 1) }
+            }
         }
     }
 }

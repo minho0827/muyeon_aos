@@ -646,9 +646,10 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
                 //  publicProfileJobs: 공개 프로필이 구인구직 문맥(src=jobs)을 멤버십 규칙 레이아웃으로 그린다(2026-10-19).
                 //  nativeCastingStage: 하단 탭 '캐스팅·무대'를 네이티브 화면으로 연다(2026-10-26).
                 //  nativeStudioTransfers: 무용센터 양도양수 브리지(openStudioTransfers·Detail·Editor·My)를 네이티브로 연다(2026-11-03).
+                //  nativeSpaceBooking: 공간 대관 브리지(openSpaces·Editor·MySpaces·MySpaceReservations·MySpaceBookings)·결제 예약(2026-11-03).
                 //  castingStageLink: openCastingStage payload(castingId·screen·issueNo)로 그 화면부터 연다(2026-10-27). 없으면 웹은 안쪽 링크를 웹으로.
                 view?.evaluateJavascript(
-                    "window.__muyeonNativeCapabilities=Object.assign({},window.__muyeonNativeCapabilities||{},{publicProfileJobs:true,nativeCastingStage:true,castingStageLink:true,activeTypeSheet:true,nativeStudioTransfers:true});",
+                    "window.__muyeonNativeCapabilities=Object.assign({},window.__muyeonNativeCapabilities||{},{publicProfileJobs:true,nativeCastingStage:true,castingStageLink:true,activeTypeSheet:true,nativeStudioTransfers:true,nativeSpaceBooking:true});",
                     null,
                 )
                 // webReady 를 안 보내는 옛 웹 안전망. 준비 전이면 가드가 0 을 돌려 그대로 남는다.
