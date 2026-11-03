@@ -94,7 +94,7 @@ fun FieldVisibilityScreen(
             Column(
                 Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
             ) {
-                GuideBox()
+                GuideBox(mode.isDancer)
                 Text(
                     "공개 정보 설정",
                     fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
@@ -283,7 +283,7 @@ private fun VisibilityRow(
 }
 
 @Composable
-private fun GuideBox() {
+private fun GuideBox(isDancer: Boolean) {
     Column(
         Modifier
             .padding(top = 12.dp)
@@ -294,7 +294,7 @@ private fun GuideBox() {
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
-            "공개 프로필은 기본 이력서를 따라가요",
+            if (isDancer) "무용수 프로필은 기본 이력서를 따라가요" else "강사프로필은 기본 이력서를 따라가요",
             fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
             lineHeight = 17.sp, color = MuyeonColors.textHead,
         )

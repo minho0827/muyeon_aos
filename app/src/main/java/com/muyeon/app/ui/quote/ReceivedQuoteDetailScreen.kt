@@ -502,7 +502,7 @@ private fun ResponseCard(
         // 카드 액션 — 강사 프로필 / 채팅 / 채택
         Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (pro?.id != null) {
-                CardButton("강사 프로필", filled = false, modifier = Modifier.weight(1f), onClick = onProfile)
+                CardButton("강사프로필", filled = false, modifier = Modifier.weight(1f), onClick = onProfile)
             }
             if (!isClosed) {
                 CardButton(
@@ -655,7 +655,7 @@ private fun RecommendCard(
             }
         }
         Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            RecommendButton("강사 프로필", filled = false, modifier = Modifier.weight(1f), onClick = onProfile)
+            RecommendButton("강사프로필", filled = false, modifier = Modifier.weight(1f), onClick = onProfile)
             RecommendButton(
                 if (requested) "요청 완료" else "이 강사에게 요청하기",
                 filled = true, check = requested, enabled = !requested && !disabled,

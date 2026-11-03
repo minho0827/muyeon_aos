@@ -268,7 +268,7 @@ private fun PerformanceContent(
             CardTitle(
                 if (isAcademy) "상담문의까지 오는 과정" else "레슨 견적요청까지 오는 과정",
                 if (isAcademy) "학원 목록에 뜨고 → 카드를 누르고 → 학원 프로필을 보고 → 상담문의·예약까지 간 횟수예요."
-                else "강사 목록에 뜨고 → 카드를 누르고 → 강사 프로필을 보고 → 레슨 견적요청·채팅까지 간 횟수예요.",
+                else "강사 목록에 뜨고 → 카드를 누르고 → 강사프로필을 보고 → 레슨 견적요청·채팅까지 간 횟수예요.",
             )
             MembershipFunnelChart(
                 steps = discovery.map { FunnelStep(it.first, it.second.toDouble()) },

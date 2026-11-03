@@ -66,6 +66,9 @@ class ResumeApi(internal val token: String?) {
 
     suspend fun remove(id: Int): Result<Unit> = call("/resumes/$id", "DELETE").map { }
 
+    /** 복사하기 — 서버가 '제목 사본' 으로 새 이력서를 만든다(기본 아님). */
+    suspend fun duplicate(id: Int): Result<Unit> = call("/resumes/$id/duplicate", "POST").map { }
+
     // ── 구직 프로필(열람 알림) — iOS ResumeService.get/setProfileViewAlert ──
 
     /**

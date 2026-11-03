@@ -145,7 +145,7 @@ fun ResumeEditScreen(
         key = "resumeEdit:${resumeId ?: 0}:$isSeekProfile",
     ) {
         ResumeEditForm(
-            if (isSeekProfile) (if (mode.isDancer) "무용수 구직 프로필" else "강사 구직 프로필") else mode.defaultResumeTitle,
+            if (isSeekProfile) (if (mode.isDancer) "무용수 프로필" else "강사프로필") else mode.defaultResumeTitle,
             loading = resumeId != null,
         )
     }
@@ -443,7 +443,7 @@ fun ResumeEditScreen(
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         QuoteNavBar(
-            title = if (isSeekProfile) (if (seekPublished) "구직 프로필 수정" else "구직 프로필 등록") else mode.navTitle,
+            title = if (isSeekProfile) (if (seekPublished) "강사프로필 수정" else "강사프로필 등록") else mode.navTitle,
             onBack = onClose,
             trailing = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -927,7 +927,7 @@ private fun SeekProfileSettings(isDancer: Boolean, viewAlert: Boolean, onViewAle
                 )
                 Text(
                     if (isDancer) "공연팀·기획자에게 공개할 프로필 항목을 설정하세요."
-                    else "원장님에게 공개할 프로필 항목을 설정하세요.",
+                    else "공개할 프로필 항목을 설정하세요.",
                     fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp,
                     lineHeight = 14.sp, color = MuyeonColors.textSub,
                 )

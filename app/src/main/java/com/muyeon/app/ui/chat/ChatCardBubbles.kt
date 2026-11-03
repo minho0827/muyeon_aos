@@ -138,7 +138,7 @@ fun QuoteCardBubble(json: String, showProviderProfile: Boolean, onOpenProvider: 
         }
         if (teacherId != null && showProviderProfile) {
             Text(
-                if (isAcademy) "학원 정보 보기" else "강사 프로필 보기",
+                if (isAcademy) "학원 정보 보기" else "강사프로필 보기",
                 fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
                 lineHeight = 18.sp, color = Color.White,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
