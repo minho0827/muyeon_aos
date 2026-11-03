@@ -59,6 +59,7 @@ class TransferActivity : ResultActivity() {
             com.muyeon.app.analytics.TrackNavigation("StudioTransfer", nav)
             val api = remember { TransferApi(this) }
             val listState = remember { TransferListState() }
+            val myId = remember { api.http.myUserId() }
             var message by remember { mutableStateOf<String?>(null) }
             var changedTick by remember { mutableIntStateOf(0) }
 
@@ -73,7 +74,7 @@ class TransferActivity : ResultActivity() {
             NavHost(nav, startDestination = start) {
                 composable("list") {
                     TransferListScreen(
-                        api = api, state = listState, canCreate = canPost(this@TransferActivity), myUserId = api.http.myUserId(),
+                        api = api, state = listState, canCreate = canPost(this@TransferActivity), myUserId = myId,
                         onBack = { back() }, onOpen = { nav.navigate("detail/$it") }, onCreate = { create() },
                         onChatRoom = ::openChat, onMessage = { message = it },
                     )
