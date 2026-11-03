@@ -48,7 +48,11 @@ fun HeadcountStepper(headcount: Int, maxHc: Int, capacityText: String?, extraNot
     FieldGroup("인원") {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             StepButton(Icons.Filled.Remove, headcount > 1) { onChange(headcount - 1) }
-            Text("${headcount}명", fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, color = SpaceDesign.ink900)
+            // 폭 고정 + 고정폭 숫자 — 1명→10명이 되어도 ＋ 버튼·안내가 밀리지 않게.
+            Text(
+                "${headcount}명", fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, color = SpaceDesign.ink900,
+                style = TabularNums, textAlign = TextAlign.Center, maxLines = 1, modifier = Modifier.width(56.dp),
+            )
             StepButton(Icons.Filled.Add, headcount < maxHc) { onChange(headcount + 1) }
             capacityText?.let { Caption(it) }
         }

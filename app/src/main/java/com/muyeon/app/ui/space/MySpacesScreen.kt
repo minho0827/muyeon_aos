@@ -41,6 +41,7 @@ import com.muyeon.app.ui.common.*
 import com.muyeon.app.ui.common.market.*
 import com.muyeon.app.ui.space.booking.DeleteSpaceDialog
 import com.muyeon.app.ui.space.booking.MySpaceRow
+import com.muyeon.app.ui.space.booking.MySpaceListSkeleton
 import kotlinx.coroutines.launch
 
 /** 호스트 — 내 공간 목록([수정][삭제]) + 제목줄 [예약 관리]·＋. */
@@ -78,7 +79,7 @@ fun SpaceMineScreen(
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {
-                loading -> CircularProgressIndicator(color = MuyeonColors.primary, modifier = Modifier.align(Alignment.Center))
+                loading -> MySpaceListSkeleton()  // 실제 카드 높이의 자리
                 items.isEmpty() && error != null -> MuyeonEmptyState(error ?: "", icon = Icons.Outlined.MeetingRoom, modifier = Modifier.align(Alignment.Center))
                 items.isEmpty() -> MuyeonEmptyState(
                     "아직 등록한 공간이 없어요.", icon = Icons.Outlined.MeetingRoom,

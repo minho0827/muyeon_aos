@@ -153,23 +153,29 @@ fun SpaceDetailScreen(
         Column(Modifier.fillMaxSize()) {
             SpaceDetailTopBar(scrapped, onClose = onClose, onScrap = { toggleScrap() })
             val space = detail
-            when {
-                space != null -> {
-                    val view = space.toView()
-                    SpaceDetailBody(
-                        space, view, selectedOption,
-                        onSelectOption = { selectedOption = it }, onOpenMap = { openMap(space) }, onOpenSpace = onOpenSpace,
-                    )
-                    when {
-                        space.isOwner -> SpaceOwnerActions(onEdit = { onEdit(space.id) }, onManage = onManage)
-                        hideReserve -> SpaceChatOnlyBar(view.phone) { chat(space) }
-                        else -> SpaceBookingBar(view.phone, onChat = { chat(space) }) {
-                            if (!api.isLoggedIn) message = "로그인 후 이용할 수 있어요." else showReserve = true
-                        }
+            val phase = when { space != null -> DetailPhase.Content; loading -> DetailPhase.Loading; else -> DetailPhase.Error }
+            // 본문 자리는 늘 같은 크기(weight) — 자리(스켈레톤) → 내용은 겹쳐 바꾸기만.
+            StableSwap(phase, Modifier.weight(1f).fillMaxWidth()) { p ->
+                when (p) {
+                    DetailPhase.Loading -> SpaceDetailSkeleton()
+                    DetailPhase.Error -> SpaceNotFound()
+                    DetailPhase.Content -> detail?.let { sp ->
+                        SpaceDetailBody(
+                            sp, sp.toView(), selectedOption,
+                            onSelectOption = { selectedOption = it }, onOpenMap = { openMap(sp) }, onOpenSpace = onOpenSpace,
+                        )
                     }
                 }
-                loading -> SpaceDetailLoading()
-                else -> SpaceNotFound()
+            }
+            // 하단 바 자리 — 불러오는 중엔 같은 높이의 자리, 못 찾으면 같은 높이의 빈칸.
+            when {
+                space == null && loading -> MarketBottomBarSkeleton()
+                space == null -> BottomBarSpace()
+                space.isOwner -> SpaceOwnerActions(onEdit = { onEdit(space.id) }, onManage = onManage)
+                hideReserve -> SpaceChatOnlyBar(space.toView().phone) { chat(space) }
+                else -> SpaceBookingBar(space.toView().phone, onChat = { chat(space) }) {
+                    if (!api.isLoggedIn) message = "로그인 후 이용할 수 있어요." else showReserve = true
+                }
             }
         }
     }
@@ -192,7 +198,7 @@ fun SpaceDetailScreen(
 
 /** 본문 — 섹션 조립만(보일지는 [toView] 가 정했다). */
 @Composable
-private fun ColumnScope.SpaceDetailBody(
+private fun SpaceDetailBody(
     space: SpaceDetail,
     view: SpaceDetailView,
     selectedOption: Int?,
@@ -200,7 +206,7 @@ private fun ColumnScope.SpaceDetailBody(
     onOpenMap: () -> Unit,
     onOpenSpace: (Int) -> Unit,
 ) {
-    Column(Modifier.weight(1f).background(SpaceDesign.ink100).verticalScroll(rememberScrollState())) {
+    Column(Modifier.fillMaxSize().background(SpaceDesign.ink100).verticalScroll(rememberScrollState())) {
         view.images?.let { SpaceGallery(it) }
         SpaceTicketCard(space)
         SpaceSectionHeadline("이 공간의 요금 안내")

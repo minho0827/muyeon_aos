@@ -51,10 +51,11 @@ fun PriceSummary(estimate: Int, caption: String) {
             Text("예상 금액", fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = SpaceDesign.ink900)
             Text(
                 SpaceDesign.won(estimate), fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp,
-                color = SpaceDesign.primaryText, textAlign = TextAlign.End, modifier = Modifier.weight(1f),
+                color = SpaceDesign.primaryText, textAlign = TextAlign.End, modifier = Modifier.weight(1f), style = TabularNums, maxLines = 1,
             )
             Text("원", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = SpaceDesign.primaryText)
         }
-        Caption(caption)
+        // 3줄 자리 고정 — 시간·초과 인원 요금이 바뀌어 문장이 길어져도 상자 높이가 그대로.
+        Caption(caption, lines = 3)
     }
 }

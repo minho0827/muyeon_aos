@@ -100,11 +100,11 @@ fun SpaceMyBookingsScreen(
         MuyeonListHeader("내 공간 예약", onBack = onBack)
         MuyeonPillTabs(
             listOf(MuyeonPillTab("upcoming", "예정"), MuyeonPillTab("past", "지난"), MuyeonPillTab("canceled", "취소")),
-            tab, { tab = it }, tagPrefix = "space.bookings.tab",
+            tab, { tab = it }, tagPrefix = "space.bookings.tab", fixedWeight = true,
         )
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {
-                loading -> CircularProgressIndicator(color = MuyeonColors.primary, modifier = Modifier.align(Alignment.Center))
+                loading -> ReservationListSkeleton()  // 실제 카드 높이의 자리(스피너가 커지며 바뀌지 않게)
                 shown.isEmpty() -> MuyeonEmptyState(error ?: "예약 내역이 없어요.", icon = Icons.Outlined.EventNote, modifier = Modifier.align(Alignment.Center))
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(shown, key = { it.id }) { r ->

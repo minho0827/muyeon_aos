@@ -52,9 +52,10 @@ fun SpaceCard(s: SpaceListItem, onClick: () -> Unit, topEnd: @Composable BoxScop
             topEnd()
         }
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            // 줄 자리를 늘 잡아 둔다(요약·가격이 없어도 카드 높이 같음 — 스켈레톤과도 같은 높이).
             Text(s.name, fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = MuyeonColors.textHead, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            s.metaLine.takeIf { it.isNotEmpty() }?.let { Text(it, fontFamily = customFontFamily, fontSize = 13.sp, color = MuyeonColors.textSub, maxLines = 1) }
-            s.priceLine?.let { Text(it, fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MuyeonColors.textHead) }
+            Text(s.metaLine, fontFamily = customFontFamily, fontSize = 13.sp, color = MuyeonColors.textSub, minLines = 1, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(s.priceLine.orEmpty(), fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MuyeonColors.textHead, style = TabularNums, minLines = 1, maxLines = 1)
         }
     }
 }
@@ -64,5 +65,18 @@ fun SpaceCard(s: SpaceListItem, onClick: () -> Unit, topEnd: @Composable BoxScop
 fun BoxScope.SpaceCardHeart(liked: Boolean, onHeart: () -> Unit) {
     Box(Modifier.align(Alignment.TopEnd).padding(6.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.85f))) {
         MarketHeart(liked, 20.dp, onHeart)
+    }
+}
+
+/** 카드 자리(불러오는 중) — 사진 180 + 글 3줄, SpaceCard 와 같은 높이. */
+@Composable
+fun SpaceCardSkeleton() {
+    Column(Modifier.fillMaxWidth().clip(MuyeonList.cardShape).background(Color.White)) {
+        Box(Modifier.fillMaxWidth().height(180.dp).background(SkeletonColor))
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            SkeletonLine(16, 0.6f)
+            SkeletonLine(13, 0.45f)
+            SkeletonLine(15, 0.35f)
+        }
     }
 }

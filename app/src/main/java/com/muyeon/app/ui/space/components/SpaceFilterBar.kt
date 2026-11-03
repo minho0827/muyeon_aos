@@ -48,7 +48,7 @@ val SPACE_SORTS = listOf("recent" to "추천순", "priceAsc" to "가격 낮은�
 fun SpaceCategoryChips(categories: List<SpaceCategory>, selected: Int, onSelect: (Int) -> Unit) {
     MuyeonPillTabs(
         listOf(MuyeonPillTab(0, "전체")) + categories.map { MuyeonPillTab(it.id, it.name) },
-        selected, onSelect, tagPrefix = "space.category", compact = true, showDivider = false,
+        selected, onSelect, tagPrefix = "space.category", compact = true, showDivider = false, fixedWeight = true,
     )
 }
 

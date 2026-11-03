@@ -73,7 +73,7 @@ internal fun SpaceGallery(images: List<String>) {
         Text(
             "${(pager.currentPage + 1).coerceAtMost(images.size)} / ${images.size}",
             fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp,
-            lineHeight = 15.sp, color = Color.White,
+            lineHeight = 15.sp, color = Color.White, style = TabularNums,
             modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)
                 .clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.45f))
                 .padding(horizontal = 10.dp, vertical = 4.dp),

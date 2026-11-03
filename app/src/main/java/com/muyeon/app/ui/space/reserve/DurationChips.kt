@@ -41,12 +41,16 @@ import com.muyeon.app.ui.space.SpaceAvailability
 import com.muyeon.app.ui.space.hourLabel
 import kotlinx.coroutines.launch
 
-/** 이용 시간 — minHours 부터 0.5시간 단위, 막힌 구간과 겹치면 흐리게. 시작 시간 전이면 안내. */
+/**
+ * 이용 시간 — minHours 부터 0.5시간 단위, 막힌 구간·영업 종료를 넘으면 흐리게. 시작 시간 전이면 안내.
+ *  ★ 칩 개수는 시작 시간과 무관하게 영업시간 전체 기준으로 늘 같다(시작을 고를 때 칩이 줄며 아래가 올라오지 않게).
+ *  안내 줄도 자리는 늘 잡아 두고 글자만 숨긴다.
+ */
 @Composable
-fun DurationChips(a: SpaceAvailability, minHours: Double, start: Int?, hours: Double, onPick: (Double) -> Unit) {
+fun DurationChips(a: SpaceAvailability, minHours: Double, start: Int?, hours: Double, mode: ChipMode = ChipMode.Live, onPick: (Double) -> Unit) {
     FieldGroup("이용 시간") {
-        val choices = generateSequence(minHours) { it + 0.5 }.takeWhile { it <= 24.0 && (start ?: a.start) + it * 60 <= a.end }.toList()
-        ChipFlow(choices.map { h -> Triple(hourLabel(h), hours == h, start == null || a.fits(start, h)) }) { i -> onPick(choices[i]) }
-        if (start == null) Caption("시작 시간을 먼저 골라 주세요.")
+        val choices = generateSequence(minHours) { it + 0.5 }.takeWhile { it <= 24.0 && a.start + it * 60 <= a.end }.toList()
+        ChipFlow(choices.map { h -> Triple(hourLabel(h), hours == h, start == null || a.fits(start, h)) }, mode) { i -> onPick(choices[i]) }
+        Caption("시작 시간을 먼저 골라 주세요.", visible = start == null && mode == ChipMode.Live)
     }
 }

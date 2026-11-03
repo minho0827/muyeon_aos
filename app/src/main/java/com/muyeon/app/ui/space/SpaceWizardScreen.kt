@@ -127,13 +127,13 @@ fun SpaceWizardScreen(
         // 단계 고르기 한 번 — 불러오는 중 / 호스트 이용 동의 / 등록 단계.
         val docs = consentDocs
         if (st.loading || consentChecking) {
-            WizardHeader(st.title, SPACE_STEPS, st.step, onClose = { close() })
+            // 새 공간은 동의 확인 중 — 진행 줄은 자리만(동의 단계가 뜰 수도 있어서).
+            WizardHeader(st.title, SPACE_STEPS, st.step, onClose = { close() }, showProgress = editId != null)
             WizardLoading()
             return@Column
         }
         if (docs != null) {
-            WizardTopBar(st.title, onClose = { close() })
-            Box(Modifier.fillMaxWidth().height(1.dp).background(MuyeonColors.border))
+            WizardHeader(st.title, SPACE_STEPS, 0, onClose = { close() }, showProgress = false)
             SpaceStepHostConsent(docs, consentSubmitting, onAgree = { agreeConsent() })
             return@Column
         }

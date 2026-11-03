@@ -39,6 +39,7 @@ import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.*
 import com.muyeon.app.ui.common.market.*
 import com.muyeon.app.ui.space.booking.HostCancelDialog
+import com.muyeon.app.ui.space.booking.ReservationListSkeleton
 import com.muyeon.app.ui.space.booking.HostPaidReservationRow
 import com.muyeon.app.ui.space.booking.HostReservationRow
 import kotlinx.coroutines.launch
@@ -69,7 +70,7 @@ fun SpaceHostReservationsScreen(
         MuyeonListHeader("공간 예약 관리", onBack = onBack)
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {
-                loading -> CircularProgressIndicator(color = MuyeonColors.primary, modifier = Modifier.align(Alignment.Center))
+                loading -> ReservationListSkeleton()  // 실제 카드 높이의 자리
                 rows.isEmpty() -> MuyeonEmptyState(error ?: "들어온 예약이 없어요.", icon = Icons.Outlined.EventNote, modifier = Modifier.align(Alignment.Center))
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(rows, key = { it.id }) { r ->

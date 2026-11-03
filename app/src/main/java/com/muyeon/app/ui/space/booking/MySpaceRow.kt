@@ -52,3 +52,18 @@ fun MySpaceRow(s: SpaceListItem, onOpen: () -> Unit, onEdit: () -> Unit, onDelet
         }
     }
 }
+
+/** 내 공간 목록 자리 — 카드 자리 + 버튼 줄(40), MySpaceRow 와 같은 높이. */
+@Composable
+fun MySpaceListSkeleton(count: Int = 3) {
+    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        repeat(count) {
+            Column(Modifier.fillMaxWidth().clip(MuyeonList.cardShape).background(Color.White)) {
+                com.muyeon.app.ui.space.components.SpaceCardSkeleton()
+                Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    repeat(2) { Box(Modifier.weight(1f).height(40.dp).skeleton(10)) }
+                }
+            }
+        }
+    }
+}

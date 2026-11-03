@@ -149,29 +149,25 @@ fun SpaceReserveSheet(
         }
     }
 
+    val expected = remember(space.id) { expectedAvailability(space.businessHours, space.hourlyMinHours) }
+
     ModalBottomSheet(onDismissRequest = { onFinish(null) }, sheetState = sheetState, containerColor = Color.White) {
-        Column(Modifier.fillMaxWidth()) {
+        // 시트 높이 고정(화면의 92%) + 안쪽 스크롤 — 가능 시간이 오거나 고른 값이 바뀌어도 시트가 커졌다 작아지지 않는다.
+        Column(Modifier.fillMaxWidth().fillMaxHeight(0.92f)) {
             ReserveSheetTitle { onFinish(null) }
             Column(
-                Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())
+                Modifier.weight(1f).verticalScroll(rememberScrollState())
                     .padding(horizontal = SpaceDesign.gutter).padding(top = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
                 options.takeIf { it.isNotEmpty() }?.let { ReserveOptionPicker(it, optionId) { id -> optionId = id } }
                 ReserveDateField(date) { showDate = true }
-                when (slot) {
-                    SlotState.Loading -> ReserveSlotLoading()
-                    is SlotState.Failed -> ReserveSlotFailed(slot.message)
-                    SlotState.Closed -> ReserveSlotClosed()
-                    is SlotState.Open -> {
-                        StartTimeChips(slot.a, minHours, startMin) { t ->
-                            startMin = t
-                            if (!slot.a.fits(t, hours)) hours = minHours
-                        }
-                        DurationChips(slot.a, minHours, startMin, hours) { hours = it }
-                    }
-                    null -> Unit
-                }
+                // 날짜 전·읽는 중·쉬는 날·오류도 같은 높이(예상 영업시간 칩 배치로 자리 잡기).
+                ReserveSlotArea(
+                    expected, slot, startMin, hours,
+                    onPickStart = { av, t -> startMin = t; if (!av.fits(t, hours)) hours = minHours },
+                    onPickHours = { hours = it },
+                )
                 HeadcountStepper(headcount, space.capacityMax ?: 100, space.capacityMax?.let { "최대 ${it}명" }, extraNote) { headcount = it }
                 ReserveMessageField(message) { message = it }
                 PriceSummary(estimate, priceCaption)

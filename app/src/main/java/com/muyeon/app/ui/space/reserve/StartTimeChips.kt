@@ -42,10 +42,10 @@ import kotlinx.coroutines.launch
 
 /** 시작 시간 칩(30분 간격) — 최소 이용 시간을 못 채우는(막힌 구간과 겹치는) 칩은 흐리게. */
 @Composable
-fun StartTimeChips(a: SpaceAvailability, minHours: Double, selected: Int?, onPick: (Int) -> Unit) {
+fun StartTimeChips(a: SpaceAvailability, minHours: Double, selected: Int?, mode: ChipMode = ChipMode.Live, onPick: (Int) -> Unit) {
     FieldGroup("시작 시간") {
         val starts = (a.start..(a.end - (minHours * 60).toInt()) step 30).toList()
         if (starts.isEmpty()) Notice("예약할 수 있는 시간이 없어요.")
-        ChipFlow(starts.map { t -> Triple(SpaceAvailability.hhmm(t), selected == t, a.fits(t, minHours)) }) { i -> onPick(starts[i]) }
+        ChipFlow(starts.map { t -> Triple(SpaceAvailability.hhmm(t), selected == t, a.fits(t, minHours)) }, mode) { i -> onPick(starts[i]) }
     }
 }

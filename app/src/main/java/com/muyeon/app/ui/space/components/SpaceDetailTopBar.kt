@@ -72,14 +72,28 @@ fun SpaceDetailTopBar(scrapped: Boolean, onClose: () -> Unit, onScrap: () -> Uni
 
 /** 공간을 못 찾음. */
 @Composable
-fun ColumnScope.SpaceNotFound() {
-    Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
+fun SpaceNotFound() {
+    Box(Modifier.fillMaxSize(), Alignment.Center) {
         Text("공간을 찾을 수 없어요.", fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp, color = SpaceDesign.ink500)
     }
 }
 
-/** 불러오는 중. */
+/** 상세 자리(불러오는 중) — 회색 바탕 · 갤러리(240) · 티켓 카드 · 섹션 제목 · 요금 카드 자리. 실제 화면과 같은 여백. */
 @Composable
-fun ColumnScope.SpaceDetailLoading() {
-    Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) { CircularProgressIndicator(color = SpaceDesign.primary) }
+fun SpaceDetailSkeleton() {
+    Column(Modifier.fillMaxSize().background(SpaceDesign.ink100)) {
+        Box(Modifier.fillMaxWidth().height(240.dp).background(SkeletonColor))
+        Column(
+            Modifier.padding(horizontal = SpaceDesign.gutter).padding(top = 32.dp).fillMaxWidth()
+                .clip(RoundedCornerShape(SpaceDesign.cardRadius)).background(Color.White).padding(SpaceDesign.cardPadding),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            SkeletonLine(18, 0.6f, lineHeight = 22)
+            SkeletonLine(18, 0.4f, lineHeight = 22)
+            Box(Modifier.padding(top = 16.dp).fillMaxWidth().height(100.dp).skeleton(8))
+            Box(Modifier.padding(top = 16.dp)) { SkeletonLine(24, 0.5f, lineHeight = 29) }
+        }
+        Box(Modifier.fillMaxWidth().padding(horizontal = 21.dp).padding(top = 32.dp, bottom = 15.dp)) { SkeletonLine(18, 0.45f, lineHeight = 22) }
+        Box(Modifier.padding(horizontal = SpaceDesign.gutter).fillMaxWidth().height(200.dp).skeleton(12))
+    }
 }

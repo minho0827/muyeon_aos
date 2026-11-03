@@ -52,8 +52,12 @@ internal fun FieldGroup(label: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-internal fun Caption(text: String) {
-    Text(text, fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp, color = SpaceDesign.ink600)
+internal fun Caption(text: String, visible: Boolean = true, lines: Int? = null) {
+    Text(
+        text, fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp, style = TabularNums,
+        color = if (visible) SpaceDesign.ink600 else Color.Transparent,
+        minLines = lines ?: 1, maxLines = lines ?: Int.MAX_VALUE, overflow = TextOverflow.Ellipsis,
+    )
 }
 
 @Composable
@@ -79,18 +83,32 @@ internal fun BoxField(text: String, placeholder: Boolean, onClick: () -> Unit) {
     }
 }
 
-/** 시간 칩 — (글자, 고름, 고를 수 있음). 못 고르는 칩은 흐리게. */
+/** 칩 그리기 방식 — 실제 / 회색 자리(불러오는 중) / 투명 자리(높이만 잡기, 누를 수 없음). */
+enum class ChipMode { Live, Skeleton, Reserve }
+
+/**
+ * 시간 칩 — (글자, 고름, 고를 수 있음). 못 고르는 칩은 흐리게.
+ *  ★ 고른 칩도 글자 굵기를 바꾸지 않는다(SemiBold 고정) — 굵기가 바뀌면 칩 폭이 변해 줄바꿈이 달라지고 아래가 밀린다.
+ *  숫자는 고정폭(tnum).
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun ChipFlow(chips: List<Triple<String, Boolean, Boolean>>, onTap: (Int) -> Unit) {
+internal fun ChipFlow(chips: List<Triple<String, Boolean, Boolean>>, mode: ChipMode = ChipMode.Live, onTap: (Int) -> Unit) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         chips.forEachIndexed { i, (label, on, enabled) ->
+            val live = mode == ChipMode.Live
             Text(
-                label, fontFamily = customFontFamily, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium, fontSize = 14.sp,
-                color = if (on) Color.White else SpaceDesign.ink900,
-                modifier = Modifier.alpha(if (enabled) 1f else 0.35f).clip(RoundedCornerShape(50))
-                    .background(if (on) SpaceDesign.primary else SpaceDesign.ink100)
-                    .clickable(enabled = enabled) { onTap(i) }.padding(horizontal = 14.dp, vertical = 8.dp),
+                label, fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, style = TabularNums, maxLines = 1,
+                color = when { !live -> Color.Transparent; on -> Color.White; else -> SpaceDesign.ink900 },
+                modifier = Modifier.alpha(if (!live || enabled) 1f else 0.35f).clip(RoundedCornerShape(50))
+                    .background(
+                        when (mode) {
+                            ChipMode.Live -> if (on) SpaceDesign.primary else SpaceDesign.ink100
+                            ChipMode.Skeleton -> SkeletonColor
+                            ChipMode.Reserve -> Color.Transparent
+                        },
+                    )
+                    .clickable(enabled = live && enabled) { onTap(i) }.padding(horizontal = 14.dp, vertical = 8.dp),
             )
         }
     }

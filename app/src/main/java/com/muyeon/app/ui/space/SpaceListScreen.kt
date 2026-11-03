@@ -100,15 +100,24 @@ fun SpaceListScreen(
         SpaceCategoryChips(categories, categoryId) { categoryId = it }
         SpaceFilterBar(sido, date, headcount, sort) { sheet = it }
 
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            when {
-                loading && items.isEmpty() -> CircularProgressIndicator(color = MuyeonColors.primary, modifier = Modifier.align(Alignment.Center))
-                items.isEmpty() -> MuyeonEmptyState(
-                    error ?: "조건에 맞는 공간이 없어요.", icon = Icons.Outlined.MeetingRoom, modifier = Modifier.align(Alignment.Center),
-                )
-                else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(items, key = { it.id }) { s ->
-                        SpaceCard(s, onClick = { onOpen(s.id, date) }) { SpaceCardHeart(s.id in scrapped) { toggleScrap(s) } }
+        val phase = when {
+            loading && items.isEmpty() -> ListPhase.Loading
+            items.isEmpty() -> ListPhase.Empty
+            else -> ListPhase.Items
+        }
+        StableSwap(phase, Modifier.weight(1f).fillMaxWidth()) { p ->
+            Box(Modifier.fillMaxSize()) {
+                when (p) {
+                    ListPhase.Loading -> Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        repeat(3) { SpaceCardSkeleton() }
+                    }
+                    ListPhase.Empty, ListPhase.Error -> MuyeonEmptyState(
+                        error ?: "조건에 맞는 공간이 없어요.", icon = Icons.Outlined.MeetingRoom, modifier = Modifier.align(Alignment.Center),
+                    )
+                    ListPhase.Items -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(items, key = { it.id }) { s ->
+                            SpaceCard(s, onClick = { onOpen(s.id, date) }) { SpaceCardHeart(s.id in scrapped) { toggleScrap(s) } }
+                        }
                     }
                 }
             }
