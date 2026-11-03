@@ -362,7 +362,10 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
                 if (fullUrl.startsWith(baseUrl.trimEnd('/') + "/")) {
                     Log.d("WebViewActivity", "Loading home then notification URL: $fullUrl")
                     webView.loadUrl(baseUrl.trimEnd('/') + "/home")
-                    goInApp(fullUrl, viaLink = fromLink)
+                    // ★ 2026-11-03 공간 대관·양도양수 푸시는 링크처럼 연다(웹 __openLink → 앱 공간 예약·내 양도 글 화면). 다른 푸시는 그대로.
+                    val p = fullUrl.removePrefix(baseUrl.trimEnd('/'))
+                    val marketPush = listOf("/spaces", "/mySpace", "/studio-transfers", "/myStudioTransfers").any { p.startsWith(it) }
+                    goInApp(fullUrl, viaLink = fromLink || marketPush)
                 } else {
                     Log.d("WebViewActivity", "Loading notification URL: $fullUrl")
                     webView.loadUrl(fullUrl)
