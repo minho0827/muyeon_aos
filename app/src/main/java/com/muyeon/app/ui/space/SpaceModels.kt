@@ -489,3 +489,16 @@ class SpaceApi(context: android.content.Context) {
             JSONObject().put("targetUserId", ownerId).put("spaceId", spaceId),
         ).map { JSONObject(it.ifBlank { "{}" }).optInt("roomId") }
 }
+
+/** 환불 규정이 비었을 때 서버 기본값과 같은 안내(이용 2일 전 100% / 전날 50% / 당일 불가). */
+internal val DEFAULT_REFUND = listOf(
+    SpaceRefundRule("이용 2일 전", "총 금액의 100% 환불"),
+    SpaceRefundRule("이용 전날", "총 금액의 50% 환불"),
+    SpaceRefundRule("이용 당일", "환불 불가"),
+)
+
+/** 2.5 → "2시간 30분". */
+internal fun hourLabel(value: Double): String {
+    val whole = value.toInt()
+    return if (value % 1.0 != 0.0) (if (whole > 0) "${whole}시간 30분" else "30분") else "${whole}시간"
+}

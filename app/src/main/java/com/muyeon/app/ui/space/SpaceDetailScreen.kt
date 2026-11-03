@@ -5,57 +5,75 @@ import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import com.muyeon.app.theme.customFontFamily
-import com.muyeon.app.ui.common.ImageViewerActivity
+import com.muyeon.app.ui.common.*
+import com.muyeon.app.ui.common.market.*
 import com.muyeon.app.ui.quote.QuoteDialog
-import com.muyeon.app.ui.quote.QuoteUi
+import com.muyeon.app.ui.space.components.*
+import com.muyeon.app.ui.space.reserve.SpaceReserveSheet
 import kotlinx.coroutines.launch
-import org.json.JSONArray
+
+/**
+ * 상세가 그릴 섹션 — 없는 섹션은 null. 이 매핑 한 곳에서만 "보일지"를 정한다.
+ */
+private data class SpaceDetailView(
+    val images: List<String>?,
+    val hourlyOptions: List<SpacePriceOption>?,
+    /** 요금 카드 안 환불 표(라벨 있는 줄). null 이면 기본 환불 규정 섹션을 따로 보인다. */
+    val refundRules: List<SpaceRefundRule>?,
+    /** 좌표가 있으면 지도 카드, 없으면 주소 칸. */
+    val mapLat: Double?,
+    val mapLng: Double?,
+    val otherSpaces: List<SpaceListItem>?,
+    val phone: String?,
+)
+
+private fun SpaceDetail.toView() = SpaceDetailView(
+    images = images?.takeIf { it.isNotEmpty() },
+    hourlyOptions = hourlyOptions.takeIf { it.isNotEmpty() },
+    refundRules = (refundPolicy ?: emptyList()).filter { !it.label.isNullOrEmpty() }.takeIf { it.isNotEmpty() },
+    mapLat = lat?.takeIf { lng != null },
+    mapLng = lng?.takeIf { lat != null },
+    otherSpaces = otherSpaces.takeIf { it.isNotEmpty() },
+    phone = phone?.takeIf { it.isNotBlank() },
+)
 
 /**
  * 공간 상세 — iOS `SpaceDetailView.swift`(+Summary/+Sections) 1:1.
  *  Figma "MO 01_예약_숙박" 시안 구조를 그대로 두고 슬롯만 공간 데이터로 바꾼 화면.
- *
- *   시안 → 화면 매핑
- *     MO_header/top             → 헤더(뒤로/제목/찜)
- *     info_reservation 티켓카드  → 공간 요약(이름·유형 / 영업시간·수용인원 패널 / 대관료)
- *     benefit_member_… 카드      → 요금 안내 카드(시간요금·최저요금·패키지 + 환불규정 내부 박스)
- *     banner_h51_member         → 지도 배너
- *     예약자/투숙객 정보 폼      → 공간소개·시설안내 읽기 필드
- *     "알려드립니다" 박스        → 예약 시 유의사항
- *     동의 안내 + 하단 CTA       → 유의사항 동의 문구 + 채팅 / 바로 예약하기
+ *  섹션은 components/, 예약 시트는 reserve/. 이 화면은 불러오기·찜·채팅 연결과 조립만 한다.
+ *  하단 바는 [SpaceOwnerActions](본인 공간) / [SpaceChatOnlyBar](예약 내역에서 진입) / [SpaceBookingBar] 중 하나.
  */
 @Composable
 fun SpaceDetailScreen(
@@ -96,17 +114,25 @@ fun SpaceDetailScreen(
 
     fun openMap(space: SpaceDetail) {
         if (space.lat != null && space.lng != null) {
-            com.muyeon.app.ui.common.market.openDirections(ctx, "naver", space.name, space.lat, space.lng)
+            openDirections(ctx, "naver", space.name, space.lat, space.lng)
             return
         }
         val query = Uri.encode(space.addressText ?: space.name)
         runCatching {
             ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=$query")))
         }.onFailure {
-            runCatching {
-                ctx.startActivity(
-                    Intent(Intent.ACTION_VIEW, Uri.parse("https://map.naver.com/v5/search/$query")),
-                )
+            runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://map.naver.com/v5/search/$query"))) }
+        }
+    }
+
+    fun toggleScrap() {
+        if (!api.isLoggedIn) { message = "로그인 후 이용할 수 있어요."; return }
+        val next = !scrapped
+        scrapped = next
+        scope.launch {
+            api.setScrap(spaceId, next).onSuccess { onScrapChanged() }.onFailure {
+                scrapped = !next
+                message = "찜 처리에 실패했어요. 잠시 후 다시 시도해 주세요."
             }
         }
     }
@@ -125,94 +151,25 @@ fun SpaceDetailScreen(
 
     Box(Modifier.fillMaxSize().background(Color.White)) {
         Column(Modifier.fillMaxSize()) {
-            // 헤더 (MO_header/top — h56, 타이틀 Bold 18, ic_x24_back)
-            Row(
-                Modifier.fillMaxWidth().height(SpaceDesign.headerHeight).background(Color.White),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    Modifier.width(44.dp).fillMaxHeight().padding(start = 12.dp)
-                        .clickable(onClick = onClose),
-                    contentAlignment = Alignment.Center,
-                ) { SpaceBackArrow() }
-                Text(
-                    "공간 상세",
-                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp,
-                    lineHeight = 26.sp, color = SpaceDesign.ink900, maxLines = 1,
-                    modifier = Modifier.padding(start = 8.dp).weight(1f),
-                )
-                Box(
-                    Modifier.width(48.dp).fillMaxHeight().clickable {
-                        if (!api.isLoggedIn) {
-                            message = "로그인 후 이용할 수 있어요."
-                        } else {
-                            val next = !scrapped
-                            scrapped = next
-                            scope.launch {
-                                api.setScrap(spaceId, next).onSuccess { onScrapChanged() }.onFailure {
-                                    scrapped = !next
-                                    message = "찜 처리에 실패했어요. 잠시 후 다시 시도해 주세요."
-                                }
-                            }
-                        }
-                    },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        if (scrapped) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, "찜",
-                        tint = if (scrapped) SpaceDesign.primary else SpaceDesign.ink900,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-            }
-
+            SpaceDetailTopBar(scrapped, onClose = onClose, onScrap = { toggleScrap() })
             val space = detail
             when {
-                space != null -> Column(
-                    Modifier.weight(1f).background(SpaceDesign.ink100).verticalScroll(rememberScrollState()),
-                ) {
-                    SpaceGallery(space)
-                    SpaceTicketCard(space)
-                    SpaceSectionHeadline("이 공간의 요금 안내")
-                    SpaceFeeCard(space)
-                    SpaceMapBanner { openMap(space) }
-                    Column(Modifier.padding(top = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        if (space.hourlyOptions.isNotEmpty()) {
-                            SpaceOptionSection(space, selectedOption ?: space.hourlyOptions.first().id) { selectedOption = it }
-                        }
-                        SpaceIntroSection(space)
-                        SpaceFacilitySection(space)
-                        SpaceCautionSection(space)
-                        SpaceRefundSection(space)
-                        SpaceLocationSection(space) { openMap(space) }
-                        if (space.otherSpaces.isNotEmpty()) SpaceOtherSpacesSection(space, onOpenSpace)
-                    }
-                    SpaceAgreementNote(Modifier.padding(top = 20.dp))
-                    Spacer(Modifier.height(24.dp))
-                }
-                loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
-                    CircularProgressIndicator(color = SpaceDesign.primary)
-                }
-                else -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
-                    Text(
-                        "공간을 찾을 수 없어요.",
-                        fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp,
-                        color = SpaceDesign.ink500,
+                space != null -> {
+                    val view = space.toView()
+                    SpaceDetailBody(
+                        space, view, selectedOption,
+                        onSelectOption = { selectedOption = it }, onOpenMap = { openMap(space) }, onOpenSpace = onOpenSpace,
                     )
-                }
-            }
-
-            detail?.let { space ->
-                // 하단 고정 바 — 본인 공간이면 [수정]·[예약 관리], 아니면 전화(있을 때)·채팅·[예약하기].
-                // 하단 바 — 본인 공간 / 예약 내역에서 진입 / 일반 중 하나를 한 번 고른다.
-                val phone = space.phone?.takeIf { it.isNotBlank() }
-                when {
-                    space.isOwner -> com.muyeon.app.ui.space.components.SpaceOwnerActions(onEdit = { onEdit(space.id) }, onManage = onManage)
-                    hideReserve -> com.muyeon.app.ui.space.components.SpaceChatOnlyBar(phone) { chat(space) }
-                    else -> com.muyeon.app.ui.space.components.SpaceBookingBar(phone, onChat = { chat(space) }) {
-                        if (!api.isLoggedIn) message = "로그인 후 이용할 수 있어요." else showReserve = true
+                    when {
+                        space.isOwner -> SpaceOwnerActions(onEdit = { onEdit(space.id) }, onManage = onManage)
+                        hideReserve -> SpaceChatOnlyBar(view.phone) { chat(space) }
+                        else -> SpaceBookingBar(view.phone, onChat = { chat(space) }) {
+                            if (!api.isLoggedIn) message = "로그인 후 이용할 수 있어요." else showReserve = true
+                        }
                     }
                 }
+                loading -> SpaceDetailLoading()
+                else -> SpaceNotFound()
             }
         }
     }
@@ -233,108 +190,33 @@ fun SpaceDetailScreen(
     }
 }
 
-/** 대표 이미지 캐러셀 — 탭 시 풀스크린 뷰어(ImageViewerActivity) 재사용. */
+/** 본문 — 섹션 조립만(보일지는 [toView] 가 정했다). */
 @Composable
-private fun SpaceGallery(space: SpaceDetail) {
-    val images = space.images ?: emptyList()
-    if (images.isEmpty()) return
-    val ctx = LocalContext.current
-    val pager = rememberPagerState { images.size }
-
-    Box(Modifier.fillMaxWidth().height(240.dp).background(Color(0xFFE5E5EA))) {
-        HorizontalPager(pager, Modifier.fillMaxSize()) { i ->
-            AsyncImage(
-                QuoteUi.imageUrl(images[i]), null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize().clickable {
-                    ImageViewerActivity.start(ctx, JSONArray(images).toString(), pager.currentPage, false)
-                },
-            )
+private fun ColumnScope.SpaceDetailBody(
+    space: SpaceDetail,
+    view: SpaceDetailView,
+    selectedOption: Int?,
+    onSelectOption: (Int) -> Unit,
+    onOpenMap: () -> Unit,
+    onOpenSpace: (Int) -> Unit,
+) {
+    Column(Modifier.weight(1f).background(SpaceDesign.ink100).verticalScroll(rememberScrollState())) {
+        view.images?.let { SpaceGallery(it) }
+        SpaceTicketCard(space)
+        SpaceSectionHeadline("이 공간의 요금 안내")
+        SpaceFeeCard(space, view.refundRules)
+        SpaceMapBanner(onOpenMap)
+        Column(Modifier.padding(top = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            view.hourlyOptions?.let { SpacePriceOptions(it, selectedOption ?: it.first().id, onSelectOption) }
+            SpaceIntroSection(space)
+            SpaceFacilitySection(space)
+            SpaceCautionSection(space)
+            if (view.refundRules == null) SpaceDefaultRefundSection()
+            if (view.mapLat != null && view.mapLng != null) SpaceMapLocationSection(space.name, space.addressText, view.mapLat, view.mapLng)
+            else SpaceAddressLocationSection(space.addressText, onOpenMap)
+            view.otherSpaces?.let { HostOtherSpacesRow(space.hostName, it, onOpenSpace) }
         }
-        Text(
-            "${(pager.currentPage + 1).coerceAtMost(images.size)} / ${images.size}",
-            fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp,
-            lineHeight = 15.sp, color = Color.White,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)
-                .clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.45f))
-                .padding(horizontal = 10.dp, vertical = 4.dp),
-        )
+        SpaceAgreementNote(Modifier.padding(top = 20.dp))
+        Spacer(Modifier.height(24.dp))
     }
 }
-
-/** 섹션 제목 ("…님을 위한 혜택" 자리). */
-@Composable
-internal fun SpaceSectionHeadline(text: String) {
-    Text(
-        text,
-        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 18.sp,
-        lineHeight = 22.sp, color = SpaceDesign.ink900,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 21.dp)
-            .padding(top = 32.dp, bottom = 15.dp),
-    )
-}
-
-/** banner_h51_member → 지도 배너. */
-@Composable
-private fun SpaceMapBanner(onClick: () -> Unit) {
-    // 시안은 51pt 박스 안 40pt 막대(y=11) 구조지만, 일러스트가 위아래로 삐져나오는 용도라
-    //  아이콘 1개만 쓰는 여기서는 막대(40dp)를 그대로 컨테이너로 쓴다
-    //  → 아이콘·텍스트·꺾쇠가 모두 막대 기준 세로 중앙에 정렬된다.
-    Row(
-        Modifier.padding(horizontal = SpaceDesign.gutter).padding(top = 16.dp)
-            .fillMaxWidth().height(40.dp)
-            .clip(RoundedCornerShape(8.dp)).background(SpaceDesign.bannerBg)
-            .clickable(onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.padding(start = 8.dp).width(61.dp), contentAlignment = Alignment.Center) {
-            Icon(Icons.Filled.Map, null, tint = Color.White, modifier = Modifier.size(22.dp))
-        }
-        Text(
-            buildAnnotatedString {
-                withStyle(SpanStyle(color = Color.White)) { append("지도 앱에서 ") }
-                withStyle(SpanStyle(color = SpaceDesign.bannerAccent)) { append("위치·길찾기") }
-                withStyle(SpanStyle(color = Color.White)) { append(" 확인") }
-            },
-            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
-            lineHeight = 17.sp,
-            modifier = Modifier.padding(start = 14.dp).weight(1f),
-        )
-        Box(Modifier.padding(end = 15.dp)) { SpaceChevronRight() }
-    }
-}
-
-/** 시안의 동의 안내 박스 자리. */
-@Composable
-private fun SpaceAgreementNote(modifier: Modifier = Modifier) {
-    Row(
-        modifier.padding(horizontal = SpaceDesign.gutter).fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp)).background(SpaceDesign.ink100).padding(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Icon(
-            Icons.Filled.Info, null, tint = SpaceDesign.ink600,
-            modifier = Modifier.padding(top = 1.dp).size(14.dp),
-        )
-        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(
-                buildAnnotatedString {
-                    withStyle(SpanStyle(textDecoration = TextDecoration.Underline)) {
-                        append("유의사항 및 환불 규정")
-                    }
-                    append("에 동의하신다면")
-                },
-                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                lineHeight = 16.sp, color = SpaceDesign.ink700,
-            )
-            Text(
-                "'예약하기'를 선택해 주세요.",
-                fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
-                lineHeight = 16.sp, color = SpaceDesign.ink700,
-            )
-        }
-    }
-}
-
-/** 그리드 열 수 — 시설 아이콘 4열(시안). */
-internal val FACILITY_COLUMNS = GridCells.Fixed(4)

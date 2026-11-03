@@ -1,0 +1,85 @@
+package com.muyeon.app.ui.space.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.muyeon.app.theme.customFontFamily
+import com.muyeon.app.ui.common.*
+import com.muyeon.app.ui.common.market.*
+import com.muyeon.app.ui.space.SpaceBackArrow
+import com.muyeon.app.ui.space.SpaceDesign
+import kotlinx.coroutines.launch
+
+/** 헤더(MO_header/top — h56, 타이틀 Bold 18, ic_x24_back) — ← · "공간 상세" · 찜. */
+@Composable
+fun SpaceDetailTopBar(scrapped: Boolean, onClose: () -> Unit, onScrap: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().height(SpaceDesign.headerHeight).background(Color.White),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.width(44.dp).fillMaxHeight().padding(start = 12.dp).clickable(onClick = onClose),
+            contentAlignment = Alignment.Center,
+        ) { SpaceBackArrow() }
+        Text(
+            "공간 상세",
+            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp,
+            lineHeight = 26.sp, color = SpaceDesign.ink900, maxLines = 1,
+            modifier = Modifier.padding(start = 8.dp).weight(1f),
+        )
+        Box(Modifier.width(48.dp).fillMaxHeight().clickable(onClick = onScrap), contentAlignment = Alignment.Center) {
+            Icon(
+                if (scrapped) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, "찜",
+                tint = if (scrapped) SpaceDesign.primary else SpaceDesign.ink900,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+/** 공간을 못 찾음. */
+@Composable
+fun ColumnScope.SpaceNotFound() {
+    Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
+        Text("공간을 찾을 수 없어요.", fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp, color = SpaceDesign.ink500)
+    }
+}
+
+/** 불러오는 중. */
+@Composable
+fun ColumnScope.SpaceDetailLoading() {
+    Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) { CircularProgressIndicator(color = SpaceDesign.primary) }
+}
