@@ -114,7 +114,7 @@ data class SpaceDetail(
 ) {
     /** 그날 문을 여는지 — 운영 요일·휴무 날짜(서버 availability 와 같은 기준). */
     fun isOpenOn(ymd: String): Boolean =
-        (openDays.isEmpty() || openDays.contains(com.muyeon.app.ui.common.MarketDates.dayOfWeek(ymd))) && !closedDates.contains(ymd)
+        (openDays.isEmpty() || openDays.contains(com.muyeon.app.ui.common.market.MarketDates.dayOfWeek(ymd))) && !closedDates.contains(ymd)
 
     val hourlyOptions: List<SpacePriceOption> get() = (priceOptions ?: emptyList()).filter { it.isHourly }
     val packageOptions: List<SpacePriceOption> get() = (priceOptions ?: emptyList()).filter { !it.isHourly }

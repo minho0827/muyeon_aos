@@ -96,7 +96,7 @@ fun SpaceDetailScreen(
 
     fun openMap(space: SpaceDetail) {
         if (space.lat != null && space.lng != null) {
-            com.muyeon.app.ui.common.openDirections(ctx, "naver", space.name, space.lat, space.lng)
+            com.muyeon.app.ui.common.market.openDirections(ctx, "naver", space.name, space.lat, space.lng)
             return
         }
         val query = Uri.encode(space.addressText ?: space.name)
@@ -204,18 +204,13 @@ fun SpaceDetailScreen(
 
             detail?.let { space ->
                 // 하단 고정 바 — 본인 공간이면 [수정]·[예약 관리], 아니면 전화(있을 때)·채팅·[예약하기].
-                if (space.isOwner) {
-                    com.muyeon.app.ui.common.MarketOwnerBar("수정", { onEdit(space.id) }, "예약 관리", onManage)
-                } else {
-                    com.muyeon.app.ui.common.MarketBottomBar(
-                        liked = null, onLike = {}, phone = space.phone,
-                        primary = if (hideReserve) "채팅하기" else "예약하기",
-                        secondary = if (hideReserve) null else "채팅",
-                        onSecondary = { chat(space) },
-                    ) {
-                        if (hideReserve) chat(space)
-                        else if (!api.isLoggedIn) message = "로그인 후 이용할 수 있어요."
-                        else showReserve = true
+                // 하단 바 — 본인 공간 / 예약 내역에서 진입 / 일반 중 하나를 한 번 고른다.
+                val phone = space.phone?.takeIf { it.isNotBlank() }
+                when {
+                    space.isOwner -> com.muyeon.app.ui.space.components.SpaceOwnerActions(onEdit = { onEdit(space.id) }, onManage = onManage)
+                    hideReserve -> com.muyeon.app.ui.space.components.SpaceChatOnlyBar(phone) { chat(space) }
+                    else -> com.muyeon.app.ui.space.components.SpaceBookingBar(phone, onChat = { chat(space) }) {
+                        if (!api.isLoggedIn) message = "로그인 후 이용할 수 있어요." else showReserve = true
                     }
                 }
             }

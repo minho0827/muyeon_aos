@@ -367,7 +367,7 @@ internal fun SpaceLocationSection(space: SpaceDetail, onOpenMap: () -> Unit) = W
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         if (space.lat != null && space.lng != null) {
             // 좌표가 있으면 지도 카드(레슨 장소 카드 재사용) — 탭하면 길찾기 앱 선택.
-            com.muyeon.app.ui.common.MarketMapCard(space.name, space.addressText, space.lat, space.lng)
+            com.muyeon.app.ui.common.market.MarketMapCard(space.name, space.addressText, space.lat, space.lng)
         } else {
             ReadField("주소", space.addressText ?: "-")
             if (space.addressText != null) {
@@ -418,7 +418,7 @@ internal fun SpaceOtherSpacesSection(space: SpaceDetail, onOpen: (Int) -> Unit) 
     ) {
         space.otherSpaces.forEach { o ->
             Column(Modifier.width(150.dp).clickable { onOpen(o.id) }, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                com.muyeon.app.ui.common.MarketThumb(o.image, Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(10.dp)))
+                com.muyeon.app.ui.common.market.MarketThumb(o.image, Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(10.dp)))
                 Text(o.name, fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = SpaceDesign.ink900,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 o.priceLine?.let { Text(it, fontFamily = customFontFamily, fontSize = 12.sp, color = SpaceDesign.ink600, maxLines = 1) }

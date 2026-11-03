@@ -27,9 +27,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.castingstage.components.StageBottomButton
-import com.muyeon.app.ui.common.MarketBadge
-import com.muyeon.app.ui.common.MarketInfoTable
-import com.muyeon.app.ui.common.MarketThumb
+import com.muyeon.app.ui.common.market.MarketBadge
+import com.muyeon.app.ui.common.market.MarketInfoTable
+import com.muyeon.app.ui.common.market.MarketThumb
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.common.MuyeonDialog
 import com.muyeon.app.ui.common.MuyeonDialogAction
@@ -41,7 +41,7 @@ import com.muyeon.app.ui.common.MuyeonListHeader
 import com.muyeon.app.ui.common.MuyeonPillTab
 import com.muyeon.app.ui.common.MuyeonPillTabs
 import com.muyeon.app.ui.lesson.LessonPaymentActivity
-import com.muyeon.app.ui.transfer.RowButton
+import com.muyeon.app.ui.common.market.MarketRowButton as RowButton
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
