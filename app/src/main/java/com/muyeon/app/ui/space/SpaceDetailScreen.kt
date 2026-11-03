@@ -50,8 +50,6 @@ import kotlinx.coroutines.launch
 private data class SpaceDetailView(
     val images: List<String>?,
     val hourlyOptions: List<SpacePriceOption>?,
-    /** 요금 카드 안 환불 표(라벨 있는 줄). null 이면 기본 환불 규정 섹션을 따로 보인다. */
-    val refundRules: List<SpaceRefundRule>?,
     /** 좌표가 있으면 지도 카드, 없으면 주소 칸. */
     val mapLat: Double?,
     val mapLng: Double?,
@@ -62,7 +60,6 @@ private data class SpaceDetailView(
 private fun SpaceDetail.toView() = SpaceDetailView(
     images = images?.takeIf { it.isNotEmpty() },
     hourlyOptions = hourlyOptions.takeIf { it.isNotEmpty() },
-    refundRules = (refundPolicy ?: emptyList()).filter { !it.label.isNullOrEmpty() }.takeIf { it.isNotEmpty() },
     mapLat = lat?.takeIf { lng != null },
     mapLng = lng?.takeIf { lat != null },
     otherSpaces = otherSpaces.takeIf { it.isNotEmpty() },
@@ -210,14 +207,13 @@ private fun SpaceDetailBody(
         view.images?.let { SpaceGallery(it) }
         SpaceTicketCard(space)
         SpaceSectionHeadline("이 공간의 요금 안내")
-        SpaceFeeCard(space, view.refundRules)
+        SpaceFeeCard(space, space.refund)
         SpaceMapBanner(onOpenMap)
         Column(Modifier.padding(top = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             view.hourlyOptions?.let { SpacePriceOptions(it, selectedOption ?: it.first().id, onSelectOption) }
             SpaceIntroSection(space)
             SpaceFacilitySection(space)
             SpaceCautionSection(space)
-            if (view.refundRules == null) SpaceDefaultRefundSection()
             if (view.mapLat != null && view.mapLng != null) SpaceMapLocationSection(space.name, space.addressText, view.mapLat, view.mapLng)
             else SpaceAddressLocationSection(space.addressText, onOpenMap)
             view.otherSpaces?.let { HostOtherSpacesRow(space.hostName, it, onOpenSpace) }

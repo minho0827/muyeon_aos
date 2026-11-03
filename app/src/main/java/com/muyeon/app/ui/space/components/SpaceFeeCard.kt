@@ -57,7 +57,7 @@ import org.json.JSONArray
 // MARK: benefit 카드 → 요금 안내
 
 @Composable
-internal fun SpaceFeeCard(space: SpaceDetail, refundRules: List<SpaceRefundRule>?) {
+internal fun SpaceFeeCard(space: SpaceDetail, refund: SpaceRefundView) {
     Column(
         Modifier.padding(horizontal = SpaceDesign.gutter).fillMaxWidth()
             .clip(RoundedCornerShape(12.dp)).background(Color.White)
@@ -94,7 +94,7 @@ internal fun SpaceFeeCard(space: SpaceDetail, refundRules: List<SpaceRefundRule>
         }
 
         space.packageOptions.takeIf { it.isNotEmpty() }?.let { PackageFeeBlock(it) }
-        refundRules?.let { RefundBox(it) }
+        RefundBox(refund)
     }
 }
 

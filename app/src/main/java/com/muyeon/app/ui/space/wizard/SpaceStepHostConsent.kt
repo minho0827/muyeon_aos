@@ -42,23 +42,19 @@ import com.muyeon.app.ui.jobposting.SectionHead
 import com.muyeon.app.ui.space.SpaceConsentDoc
 import kotlinx.coroutines.launch
 
-/** 서버 약관 외에 앱이 받는 필수 확인(서버 문서 아님). */
-const val SPACE_HOST_RIGHTS_CONFIRM = "[필수] 실제로 존재하고 제가 대관할 권리(소유·임대차 등)가 있는 공간만 등록할게요"
-
 /**
  * 호스트 이용 동의 단계(첫 공간 등록 전, 동의 안 했을 때만 위저드가 부른다).
- *  "전체 동의" · 서버 약관 줄마다 "[필수] {제목}" + 보기 › · 대관 권리 확인 줄 → [동의하고 시작](모두 체크 시).
+ *  "전체 동의" · 서버 약관 줄마다 "[필수] {제목}" + 보기 › → [동의하고 시작](모두 체크 시).
+ *  항목·제목은 서버(관리자 '약관·정책')가 준 것만 그린다 — 대관 권리 확인은 호스트 이용약관 본문에 있다.
  */
 @Composable
 fun ColumnScope.SpaceStepHostConsent(docs: List<SpaceConsentDoc>, submitting: Boolean, onAgree: () -> Unit) {
     val ctx = LocalContext.current
     var checkedDocs by remember(docs) { mutableStateOf<Set<String>>(emptySet()) }
-    var rights by remember { mutableStateOf(false) }
-    val allChecked = rights && docs.all { it.docKey in checkedDocs }
+    val allChecked = docs.all { it.docKey in checkedDocs }
 
     fun setAll(on: Boolean) {
         checkedDocs = if (on) docs.map { it.docKey }.toSet() else emptySet()
-        rights = on
     }
 
     Column(
@@ -75,7 +71,6 @@ fun ColumnScope.SpaceStepHostConsent(docs: List<SpaceConsentDoc>, submitting: Bo
                 onView = { openPolicyPage(ctx, d.url) },
             )
         }
-        ConsentCheckRow(rights, SPACE_HOST_RIGHTS_CONFIRM) { rights = !rights }
     }
     Box(Modifier.fillMaxWidth().background(Color.White).navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp)) {
         StageBottomButton("동의하고 시작", enabled = allChecked, busy = submitting, onClick = onAgree)

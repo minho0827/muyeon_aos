@@ -54,9 +54,13 @@ import com.muyeon.app.ui.space.*
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 
-/** "포인트 더 받는 방법" 내부 박스 자리 → 환불 규정. */
+/**
+ * 환불 규정 박스(요금 카드 안) — 서버 refund 그대로: 위 "환불 단계: {presetLabel}", 줄마다 "when · refund",
+ *  아래 freeCancelNote, "무용연 취소·환불 정책 보기 ›"(policyUrl). 앱은 글자를 만들지 않는다.
+ */
 @Composable
-internal fun RefundBox(rules: List<SpaceRefundRule>) {
+internal fun RefundBox(refund: SpaceRefundView) {
+    val ctx = LocalContext.current
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
             .background(SpaceDesign.primaryTint)
@@ -70,24 +74,35 @@ internal fun RefundBox(rules: List<SpaceRefundRule>) {
                 fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 16.sp,
                 lineHeight = 19.sp, color = SpaceDesign.ink800, modifier = Modifier.weight(1f),
             )
-            Text(
-                "취소 시점 기준",
-                fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp,
-                lineHeight = 15.sp, color = SpaceDesign.ink900,
-            )
+            refund.presetLabel?.let { RefundPresetLabel(it) }
         }
-        rules.forEach {
-            DetailRow(SpaceFeeRow(null, it.label ?: "-", it.value ?: "-"), color = SpaceDesign.ink700)
-        }
+        refund.rows.forEach { DetailRow(SpaceFeeRow(null, it.whenText, it.refundText), color = SpaceDesign.ink700) }
+        refund.freeCancelNote?.let { RefundNote(it) }
+        RefundPolicyLink { openPolicyPage(ctx, refund.policyUrl) }
     }
 }
 
-/** 기본 환불 규정 섹션 — 공간이 규정을 비워 둬 요금 카드에 표가 없을 때만 부른다(서버 기본 규정). */
 @Composable
-internal fun SpaceDefaultRefundSection() {
-    WhiteSection("환불 규정") {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            DEFAULT_REFUND.forEach { DetailRow(SpaceFeeRow(null, it.label ?: "-", it.value ?: "-"), color = SpaceDesign.ink700) }
-        }
-    }
+private fun RefundPresetLabel(label: String) {
+    Text(
+        "환불 단계: $label",
+        fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp,
+        lineHeight = 15.sp, color = SpaceDesign.ink900,
+    )
+}
+
+/** 결제 직후 무료 취소 안내(서버 문구). */
+@Composable
+internal fun RefundNote(text: String) {
+    Text(text, fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp, color = SpaceDesign.ink600)
+}
+
+/** "무용연 취소·환불 정책 보기 ›". */
+@Composable
+internal fun RefundPolicyLink(onClick: () -> Unit) {
+    Text(
+        "무용연 취소·환불 정책 보기 ›",
+        fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, color = SpaceDesign.primaryText,
+        modifier = Modifier.clickable(onClick = onClick).padding(vertical = 2.dp),
+    )
 }

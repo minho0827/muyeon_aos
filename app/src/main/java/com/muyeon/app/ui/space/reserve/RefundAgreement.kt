@@ -39,36 +39,25 @@ import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.*
 import com.muyeon.app.ui.common.market.*
 import com.muyeon.app.ui.space.SpaceDesign
-import com.muyeon.app.ui.space.SpaceRefundRule
+import com.muyeon.app.ui.space.SpaceRefundView
 import kotlinx.coroutines.launch
 
-/** 환불 규정 표. */
+/** 환불 규정 표 — 서버 refund.rows("when · refund") + 결제 직후 무료 취소 안내(freeCancelNote). */
 @Composable
-fun ReserveRefundTable(rules: List<SpaceRefundRule>) {
+fun ReserveRefundTable(refund: SpaceRefundView) {
     FieldGroup("환불 규정") {
         Column(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).border(1.dp, SpaceDesign.ink200, RoundedCornerShape(12.dp)).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            rules.forEach { r ->
+            refund.rows.forEach { r ->
                 Row {
-                    Text(r.label ?: "-", fontFamily = customFontFamily, fontSize = 14.sp, color = SpaceDesign.ink600, modifier = Modifier.weight(1f))
-                    Text(r.value ?: "-", fontFamily = customFontFamily, fontSize = 14.sp, color = SpaceDesign.ink900)
+                    Text(r.whenText, fontFamily = customFontFamily, fontSize = 14.sp, color = SpaceDesign.ink600, modifier = Modifier.weight(1f))
+                    Text(r.refundText, fontFamily = customFontFamily, fontSize = 14.sp, color = SpaceDesign.ink900)
                 }
             }
+            refund.freeCancelNote?.let { Caption(it) }
         }
-    }
-}
-
-/** 동의 체크 — "유의사항과 환불 규정을 확인했고 동의해요." */
-@Composable
-fun RefundAgreement(agree: Boolean, onToggle: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().clickable(onClick = onToggle),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        ReserveCheckBox(agree)
-        Text("유의사항과 환불 규정을 확인했고 동의해요.", fontFamily = customFontFamily, fontSize = 14.sp, color = SpaceDesign.ink900)
     }
 }
 

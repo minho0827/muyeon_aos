@@ -39,12 +39,12 @@ import com.muyeon.app.ui.common.*
 import com.muyeon.app.ui.common.market.*
 import com.muyeon.app.ui.jobposting.SectionHead
 import com.muyeon.app.ui.space.SpaceFacility
-import com.muyeon.app.ui.space.SpaceRefundRule
+import com.muyeon.app.ui.space.SpaceRefundPresets
 import kotlinx.coroutines.launch
 
-/** ⑥ 시설·주의사항·환불 규정(기본값 미리 채움). */
+/** ⑥ 시설·주의사항·환불 규정(유연·보통·엄격 단계 또는 직접 설정, 기본 보통). presets null = 불러오는 중. */
 @Composable
-fun SpaceStepRules(form: SpaceForm, onChange: (SpaceForm) -> Unit) {
+fun SpaceStepRules(form: SpaceForm, presets: SpaceRefundPresets?, onChange: (SpaceForm) -> Unit) {
     SectionHead("시설·주의사항·환불 규정", "예약 전에 꼭 알아야 할 내용을 적어 주세요.")
     FormField("시설") {
         FormChipWrap(SpaceFacility.ALL.map { it.key to it.label }, { it in form.facilities }) { v ->
@@ -53,18 +53,5 @@ fun SpaceStepRules(form: SpaceForm, onChange: (SpaceForm) -> Unit) {
     }
     FormField("시설 상세", hint = "(한 줄에 하나)") { FormTextField(form.facilityList, { onChange(form.copy(facilityList = it)) }, "예) 전면 거울 8m", 2000, minLines = 3) }
     FormField("예약 시 주의사항", hint = "(한 줄에 하나)") { FormTextField(form.cautions, { onChange(form.copy(cautions = it)) }, "예) 실내화를 꼭 챙겨 주세요", 2000, minLines = 3) }
-    FormField("환불 규정") {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            form.refund.forEachIndexed { i, r ->
-                fun set(x: SpaceRefundRule) = onChange(form.copy(refund = form.refund.mapIndexed { j, y -> if (j == i) x else y }))
-                PairEditRow(
-                    left = { FormTextField(r.label.orEmpty(), { v -> set(r.copy(label = v)) }, "예) 이용 2일 전", 30) },
-                    right = { FormTextField(r.value.orEmpty(), { v -> set(r.copy(value = v)) }, "예) 총 금액의 100% 환불", 60) },
-                    leftWeight = 1f, rightWeight = 1.3f,
-                    onRemove = { onChange(form.copy(refund = form.refund.filterIndexed { j, _ -> j != i })) },
-                )
-            }
-            if (form.refund.size < 15) AddRowLink("규정 줄 추가") { onChange(form.copy(refund = form.refund + SpaceRefundRule("", ""))) }
-        }
-    }
+    FormField("환불 규정") { SpaceRefundPicker(form, presets, onChange) }
 }

@@ -52,6 +52,13 @@ internal val MIN_HOURS = listOf("1" to "1시간", "2" to "2시간", "3" to "3시
 /** 세부공간 한 줄(이름·시간당 원). */
 data class SpaceOptionInput(val label: String = "", val price: String = "")
 
+/** 환불 직접 설정 한 줄 입력. */
+data class RefundInput(val days: String = "", val percent: String = "")
+
+/** 서버 환불 단계 키(이 밖의 값 = 직접 설정). */
+internal val REFUND_PRESET_KEYS = setOf("FLEXIBLE", "STANDARD", "STRICT")
+const val MAX_CUSTOM_REFUND_ROWS = 5
+
 data class SpaceForm(
     val images: List<String> = emptyList(),
     val roadAddress: String = "",
@@ -76,10 +83,25 @@ data class SpaceForm(
     val facilities: Set<String> = emptySet(),
     val facilityList: String = "",
     val cautions: String = "",
-    val refund: List<SpaceRefundRule> = DEFAULT_REFUND,
+    /** 환불 단계 — 'FLEXIBLE'|'STANDARD'|'STRICT', null = 직접 설정(customRefund). 기본 보통. */
+    val refundPreset: String? = "STANDARD",
+    /** 직접 설정 줄 — [N]일 전까지 [P]% (입력 그대로 문자열, 최대 5줄). */
+    val customRefund: List<RefundInput> = DEFAULT_REFUND_RULES.map { RefundInput(it.daysBefore.toString(), it.percent.toString()) },
     val intro: String = "",
     val phone: String = "",
 ) {
+    /** 직접 설정 줄 → 숫자 규칙(빈 줄 빼고, 같은 일수는 앞 줄, 큰 일수 순). */
+    fun customRules(): List<SpaceRefund> = customRefund.mapNotNull { r ->
+        val d = r.days.toIntOrNull() ?: return@mapNotNull null
+        val p = r.percent.toIntOrNull() ?: return@mapNotNull null
+        SpaceRefund(d.coerceIn(0, 365), p.coerceIn(0, 100))
+    }.distinctBy { it.daysBefore }.sortedByDescending { it.daysBefore }
+
+    /** 환불 단계가 정해졌는지 — 단계를 골랐거나, 직접 설정에 올바른 줄이 하나 이상(퍼센트 0~100). */
+    val refundValid: Boolean
+        get() = refundPreset != null ||
+            (customRules().isNotEmpty() && customRefund.all { r -> (r.days.isEmpty() && r.percent.isEmpty()) || ((r.percent.toIntOrNull() ?: 101) <= 100 && r.days.toIntOrNull() != null) })
+
     fun toJson(): JSONObject {
         val o = JSONObject()
         fun lines(t: String) = JSONArray(t.lines().map { it.trim() }.filter { it.isNotEmpty() })
@@ -104,8 +126,9 @@ data class SpaceForm(
         o.put("facilities", JSONObject().apply { SpaceFacility.ALL.forEach { put(it.key, it.key in facilities) } })
         o.put("facilityList", lines(facilityList))
         o.put("cautions", lines(cautions))
-        o.put("refundPolicy", JSONArray(refund.filter { !it.label.isNullOrBlank() && !it.value.isNullOrBlank() }
-            .map { JSONObject().put("label", it.label!!.trim()).put("value", it.value!!.trim()) }))
+        // 환불 — 단계면 refundPreset(서버가 그 규칙으로 저장), 직접이면 숫자 규칙. 예전 글자 형식은 보내지 않는다.
+        if (refundPreset != null) o.put("refundPreset", refundPreset)
+        else o.put("refundPolicy", JSONArray(customRules().map { it.toJson() }))
         o.put("phone", phone.trim().ifEmpty { JSONObject.NULL })
         o.put("priceOptions", JSONArray(options.mapNotNull { op ->
             val p = num(op.price) ?: return@mapNotNull null
@@ -131,7 +154,9 @@ data class SpaceForm(
                 facilities = d.facilities?.filterValues { it }?.keys ?: emptySet(),
                 facilityList = (d.facilityList ?: emptyList()).joinToString("\n"),
                 cautions = (d.cautions ?: emptyList()).joinToString("\n"),
-                refund = d.refundPolicy?.takeIf { it.isNotEmpty() } ?: DEFAULT_REFUND,
+                // 수정 — 상세의 refund.preset 으로 선택 복원(CUSTOM 이면 숫자 규칙을 직접 설정 줄로).
+                refundPreset = d.refund.preset.takeIf { it in REFUND_PRESET_KEYS },
+                customRefund = d.refundPolicy.ifEmpty { DEFAULT_REFUND_RULES }.map { RefundInput(it.daysBefore.toString(), it.percent.toString()) },
                 intro = d.intro.orEmpty(), phone = d.phone.orEmpty(),
             )
         }

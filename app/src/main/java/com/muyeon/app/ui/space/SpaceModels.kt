@@ -60,11 +60,109 @@ data class SpacePriceOption(
     }
 }
 
-/** 환불규정 1행 — { label: "이용 8일 전", value: "총 금액의 100% 환불" } */
-data class SpaceRefundRule(val label: String?, val value: String?) {
+/**
+ * 환불 규칙 1줄(2026-11-03 무용연 정책, 백엔드 613f4b6) — "이용일 daysBefore 일 전 이상에 취소하면 percent% 환불".
+ *  저장·전송은 이 숫자 형식만 쓴다(예전 {label,value} 글자 형식은 보내지 않는다).
+ */
+data class SpaceRefund(val daysBefore: Int, val percent: Int) {
+    fun toJson(): JSONObject = JSONObject().put("daysBefore", daysBefore).put("percent", percent)
+
     companion object {
-        fun from(o: JSONObject) =
-            SpaceRefundRule(o.optString("label").ifEmpty { null }, o.optString("value").ifEmpty { null })
+        /**
+         * 서버 값 → 규칙(큰 daysBefore 순). 배포 전 서버가 주는 예전 글자 형식도 읽는다
+         *  (서버 normalizeRefund 와 같은 해석). 못 읽으면 빈 목록.
+         */
+        fun listFrom(arr: JSONArray?): List<SpaceRefund> {
+            if (arr == null) return emptyList()
+            val out = (0 until arr.length()).mapNotNull { i ->
+                val o = arr.optJSONObject(i) ?: return@mapNotNull null
+                if (o.has("daysBefore") && o.has("percent")) {
+                    SpaceRefund(o.optInt("daysBefore").coerceIn(0, 365), o.optInt("percent").coerceIn(0, 100))
+                } else {
+                    val label = o.optString("label"); val value = o.optString("value")
+                    val n = when {
+                        label.contains("당일") -> 0
+                        label.contains("전날") -> 1
+                        else -> Regex("(\\d+)\\s*일").find(label)?.groupValues?.get(1)?.toIntOrNull()
+                    }
+                    val pct = if (Regex("불가|없음").containsMatchIn(value)) 0 else Regex("(\\d+)\\s*%").find(value)?.groupValues?.get(1)?.toIntOrNull()
+                    if (n != null && pct != null) SpaceRefund(n.coerceIn(0, 365), pct.coerceIn(0, 100)) else null
+                }
+            }
+            return out.distinctBy { it.daysBefore }.sortedByDescending { it.daysBefore }
+        }
+    }
+}
+
+/** 환불 표 1줄 — 서버가 만든 글자 그대로("이용 3일 전까지" · "전액 환불"). */
+data class SpaceRefundRow(val whenText: String, val refundText: String, val daysBefore: Int?, val percent: Int?)
+
+/**
+ * 공간 상세의 환불 표시 — GET /spaces/:id 의 refund{ preset, presetLabel, rows, freeCancelNote, policyUrl }.
+ *  앱은 글자를 만들지 않고 받은 대로 그린다. 배포 전 서버(refund 없음)만 숫자 규칙으로 간단 표시한다.
+ */
+data class SpaceRefundView(
+    val preset: String,
+    val presetLabel: String?,
+    val rows: List<SpaceRefundRow>,
+    val freeCancelNote: String?,
+    val policyUrl: String,
+) {
+    companion object {
+        fun from(o: JSONObject) = SpaceRefundView(
+            preset = o.optString("preset").ifEmpty { "CUSTOM" },
+            presetLabel = o.optString("presetLabel").ifEmpty { null },
+            rows = refundRows(o.optJSONArray("rows")),
+            freeCancelNote = o.optString("freeCancelNote").ifEmpty { null },
+            policyUrl = o.optString("policyUrl").ifEmpty { SPACE_REFUND_POLICY },
+        )
+
+        /** 배포 전 서버 대체 — 숫자 규칙을 간단한 줄로(서버 refundRuleLabels 와 같은 모양). */
+        fun fallback(rules: List<SpaceRefund>) = SpaceRefundView(
+            preset = "CUSTOM", presetLabel = null, rows = simpleRows(rules.ifEmpty { DEFAULT_REFUND_RULES }),
+            freeCancelNote = null, policyUrl = SPACE_REFUND_POLICY,
+        )
+
+        fun refundRows(arr: JSONArray?): List<SpaceRefundRow> = arr?.let { a ->
+            (0 until a.length()).mapNotNull { i ->
+                a.optJSONObject(i)?.let {
+                    SpaceRefundRow(
+                        it.optString("when"), it.optString("refund"),
+                        if (it.has("daysBefore")) it.optInt("daysBefore") else null,
+                        if (it.has("percent")) it.optInt("percent") else null,
+                    )
+                }
+            }
+        } ?: emptyList()
+
+        private fun simpleRows(rules: List<SpaceRefund>): List<SpaceRefundRow> = rules.mapIndexed { i, r ->
+            val upper = if (i == 0) null else rules[i - 1].daysBefore - 1
+            val whenText = when {
+                upper == null -> if (r.daysBefore == 0) "이용 당일까지" else "이용 ${r.daysBefore}일 전까지"
+                r.daysBefore == upper -> if (r.daysBefore == 0) "이용 당일" else "이용 ${r.daysBefore}일 전"
+                else -> if (r.daysBefore == 0) "이용 ${upper}일 전~당일" else "이용 ${r.daysBefore}~${upper}일 전"
+            }
+            val refundText = when { r.percent >= 100 -> "전액 환불"; r.percent <= 0 -> "환불 없음"; else -> "결제 금액의 ${r.percent}% 환불" }
+            SpaceRefundRow(whenText, refundText, r.daysBefore, r.percent)
+        }
+    }
+}
+
+/** 등록 화면 환불 단계 — GET /spaces/refund-presets 의 presets[]. */
+data class SpaceRefundPreset(val key: String, val label: String, val rules: List<SpaceRefund>, val rows: List<SpaceRefundRow>)
+data class SpaceRefundPresets(val defaultPreset: String, val presets: List<SpaceRefundPreset>, val policyUrl: String) {
+    companion object {
+        fun from(o: JSONObject) = SpaceRefundPresets(
+            defaultPreset = o.optString("defaultPreset").ifEmpty { "STANDARD" },
+            presets = o.optJSONArray("presets")?.let { a ->
+                (0 until a.length()).mapNotNull { i ->
+                    a.optJSONObject(i)?.let {
+                        SpaceRefundPreset(it.optString("key"), it.optString("label"), SpaceRefund.listFrom(it.optJSONArray("rules")), SpaceRefundView.refundRows(it.optJSONArray("rows")))
+                    }
+                }
+            } ?: emptyList(),
+            policyUrl = o.optString("policyUrl").ifEmpty { SPACE_REFUND_POLICY },
+        )
     }
 }
 
@@ -90,7 +188,8 @@ data class SpaceDetail(
     val facilities: Map<String, Boolean>?,
     val facilityList: List<String>?,
     val cautions: List<String>?,
-    val refundPolicy: List<SpaceRefundRule>?,
+    /** 숫자 규칙(서버가 늘 정리해서 준다). */
+    val refundPolicy: List<SpaceRefund>,
     val hourlyEnabled: Boolean?,
     val hourlyMinHours: Int?,
     val packageEnabled: Boolean?,
@@ -111,6 +210,10 @@ data class SpaceDetail(
     val closedDates: List<String> = emptyList(),
     val bookingLeadMinutes: Int? = null,
     val status: String? = null,
+    /** 환불 표시(서버 refund). 배포 전 서버면 숫자 규칙으로 만든 대체. */
+    val refund: SpaceRefundView = SpaceRefundView.fallback(emptyList()),
+    /** 예약 동의 항목(서버 bookingConsents, 순서 그대로). 배포 전 서버면 기존 두 줄 대체. */
+    val bookingConsents: List<SpaceConsentDoc> = FALLBACK_BOOKING_CONSENTS,
 ) {
     /** 그날 문을 여는지 — 운영 요일·휴무 날짜(서버 availability 와 같은 기준). */
     fun isOpenOn(ymd: String): Boolean =
@@ -185,9 +288,7 @@ data class SpaceDetail(
                 },
                 facilityList = strings("facilityList"),
                 cautions = strings("cautions"),
-                refundPolicy = o.optJSONArray("refundPolicy")?.let { arr ->
-                    (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let(SpaceRefundRule::from) }
-                },
+                refundPolicy = SpaceRefund.listFrom(o.optJSONArray("refundPolicy")),
                 hourlyEnabled = boolOrNull("hourlyEnabled"),
                 hourlyMinHours = intOrNull("hourlyMinHours"),
                 packageEnabled = boolOrNull("packageEnabled"),
@@ -211,6 +312,10 @@ data class SpaceDetail(
                 closedDates = strings("closedDates") ?: emptyList(),
                 bookingLeadMinutes = intOrNull("bookingLeadMinutes"),
                 status = o.optString("status").ifEmpty { null },
+                refund = o.optJSONObject("refund")?.let(SpaceRefundView::from)
+                    ?: SpaceRefundView.fallback(SpaceRefund.listFrom(o.optJSONArray("refundPolicy"))),
+                bookingConsents = o.optJSONArray("bookingConsents")?.let(SpaceConsentDoc::listFrom)?.takeIf { it.isNotEmpty() }
+                    ?: FALLBACK_BOOKING_CONSENTS,
             )
         }
     }
@@ -392,25 +497,33 @@ object SpaceReservationStatus {
     fun label(status: String): String = labels[status] ?: status
 }
 
+/** 동의 문서 — 제목·본문은 관리자 '약관·정책'이 정한다(앱은 받은 대로 "[필수] {title}" + 보기 ›). */
+data class SpaceConsentDoc(val docKey: String, val title: String, val version: String?, val url: String, val required: Boolean = true) {
+    companion object {
+        fun listFrom(a: JSONArray): List<SpaceConsentDoc> = (0 until a.length()).mapNotNull { i ->
+            a.optJSONObject(i)?.let {
+                SpaceConsentDoc(
+                    it.optString("docKey"), it.optString("title").ifEmpty { it.optString("docKey") }, it.optString("version").ifEmpty { null },
+                    it.optString("url").ifEmpty { "/policy?doc=${it.optString("docKey")}&embed=1" },
+                    if (it.has("required")) it.optBoolean("required") else true,
+                )
+            }
+        }
+    }
+}
+
 /** 호스트 이용 동의 — GET/POST /spaces/host-consent. docs = 서버 약관(제목·웹 경로). */
-data class SpaceConsentDoc(val docKey: String, val title: String, val version: String?, val url: String)
 data class SpaceHostConsent(val agreed: Boolean, val docs: List<SpaceConsentDoc>) {
     companion object {
         fun from(o: JSONObject) = SpaceHostConsent(
             agreed = o.optBoolean("agreed"),
-            docs = o.optJSONArray("docs")?.let { a ->
-                (0 until a.length()).mapNotNull { i ->
-                    a.optJSONObject(i)?.let {
-                        SpaceConsentDoc(
-                            it.optString("docKey"), it.optString("title"), it.optString("version").ifEmpty { null },
-                            it.optString("url").ifEmpty { "/policy?doc=${it.optString("docKey")}&embed=1" },
-                        )
-                    }
-                }
-            } ?: emptyList(),
+            docs = o.optJSONArray("docs")?.let(SpaceConsentDoc::listFrom) ?: emptyList(),
         )
     }
 }
+
+/** 무용연 취소·환불 정책 웹 경로(서버가 policyUrl 을 안 줄 때만). */
+const val SPACE_REFUND_POLICY = "/policy?doc=spaceRefundPolicy&embed=1"
 
 /** 예약 제3자 제공 동의 약관 웹 경로. */
 const val SPACE_BOOKING_THIRD_PARTY_POLICY = "/policy?doc=spaceBookingThirdParty&embed=1"
@@ -509,6 +622,10 @@ class SpaceApi(context: android.content.Context) {
 
     suspend fun remove(id: Int): Result<Unit> = call("/spaces/$id", "DELETE").map { }
 
+    /** 등록 화면 환불 단계(유연·보통·엄격 + 표시 줄). */
+    suspend fun refundPresets(): Result<SpaceRefundPresets> =
+        call("/spaces/refund-presets").mapCatching { SpaceRefundPresets.from(JSONObject(it)) }
+
     /** 호스트 이용 동의 여부 + 약관 목록. */
     suspend fun hostConsent(): Result<SpaceHostConsent> =
         call("/spaces/host-consent").mapCatching { SpaceHostConsent.from(JSONObject(it)) }
@@ -527,11 +644,16 @@ class SpaceApi(context: android.content.Context) {
         ).map { JSONObject(it.ifBlank { "{}" }).optInt("roomId") }
 }
 
-/** 환불 규정이 비었을 때 서버 기본값과 같은 안내(이용 2일 전 100% / 전날 50% / 당일 불가). */
-internal val DEFAULT_REFUND = listOf(
-    SpaceRefundRule("이용 2일 전", "총 금액의 100% 환불"),
-    SpaceRefundRule("이용 전날", "총 금액의 50% 환불"),
-    SpaceRefundRule("이용 당일", "환불 불가"),
+/** 기본 환불 규칙 = 서버 기본 단계 '보통'의 숫자(3일 전 100% · 1일 전 50% · 당일 0%). 서버 값이 없을 때만 쓴다. */
+internal val DEFAULT_REFUND_RULES = listOf(SpaceRefund(3, 100), SpaceRefund(1, 50), SpaceRefund(0, 0))
+
+/**
+ * 예약 동의 대체 — 배포 전 서버(bookingConsents 없음)일 때만. 예전 앱의 두 줄 문구를 그대로 쓴다.
+ *  배포된 서버는 관리자 '약관·정책' 제목을 내려주므로 이 값은 쓰이지 않는다.
+ */
+internal val FALLBACK_BOOKING_CONSENTS = listOf(
+    SpaceConsentDoc("spaceRefundPolicy", "유의사항과 환불 규정을 확인했고 동의해요.", null, SPACE_REFUND_POLICY),
+    SpaceConsentDoc("spaceBookingThirdParty", "예약 정보(이름·일시·인원·요청사항)를 호스트에게 제공하는 데 동의해요", null, SPACE_BOOKING_THIRD_PARTY_POLICY),
 )
 
 /** 2.5 → "2시간 30분". */

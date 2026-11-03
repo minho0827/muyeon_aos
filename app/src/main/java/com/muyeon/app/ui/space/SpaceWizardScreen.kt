@@ -64,6 +64,8 @@ fun SpaceWizardScreen(
     var showExit by remember { mutableStateOf(false) }
     var showSearch by remember { mutableStateOf(false) }
     var categories by remember { mutableStateOf<List<SpaceCategory>>(emptyList()) }
+    // 환불 단계(서버). null = 불러오는 중(같은 크기 자리), 실패하면 단계 없이 직접 설정만.
+    var refundPresets by remember { mutableStateOf<SpaceRefundPresets?>(null) }
     // 호스트 이용 동의 — 새 공간만. null = 동의 단계 없음(이미 동의·수정·확인 실패), 값 = 동의 단계를 보인다.
     var consentDocs by remember { mutableStateOf<List<SpaceConsentDoc>?>(null) }
     var consentChecking by remember { mutableStateOf(editId == null) }
@@ -77,6 +79,11 @@ fun SpaceWizardScreen(
     LaunchedEffect(editId) {
         if (editId == null) loadConsent()
         api.categories().onSuccess { categories = it }
+        refundPresets = api.refundPresets().getOrElse {
+            // 단계를 못 읽으면 직접 설정만(새 공간은 기본 보통 숫자로 시작).
+            if (st.form.refundPreset != null) st.update { copy(refundPreset = null) }
+            SpaceRefundPresets("STANDARD", emptyList(), SPACE_REFUND_POLICY)
+        }
         if (editId != null) {
             api.detail(editId).onSuccess { st.form = SpaceForm.from(it); st.baseline = st.form }.onFailure { st.error = it.message }
             st.loading = false
@@ -155,7 +162,7 @@ fun SpaceWizardScreen(
                 2 -> SpaceStepBasic(f, categories, set)
                 3 -> SpaceStepPrice(f, set)
                 4 -> SpaceStepOperation(f, set)
-                5 -> SpaceStepRules(f, set)
+                5 -> SpaceStepRules(f, refundPresets, set)
                 else -> SpaceStepIntro(f.intro) { v -> st.update { copy(intro = v) } }
             }
         }

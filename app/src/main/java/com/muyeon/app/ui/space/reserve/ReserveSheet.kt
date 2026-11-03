@@ -47,7 +47,7 @@ import kotlinx.coroutines.launch
 /**
  * 공간 '예약하기' 시트(2026-11-03 결제 예약) — iOS `SpaceReserveSheet` 와 같은 순서.
  *  세부공간 → 달력(오늘 이전·휴무 비활성) → GET availability → 시작 시간 칩(30분, 막힌 구간 비활성) →
- *  이용 시간(minHours 부터 0.5 단위) → 인원 −/＋ → 요청사항 → 금액 미리보기 → 환불 규정 동의 + 예약 정보 호스트 제공 동의 → [결제하기].
+ *  이용 시간(minHours 부터 0.5 단위) → 인원 −/＋ → 요청사항 → 금액 미리보기 → 환불 표 → 동의(서버 bookingConsents, 모두 필수) → [결제하기].
  *  [결제하기] = POST /spaces/:id/reservation(결제 대기 10분) → 결제 창(LessonPaymentActivity)에서 웹 /spacePay/{id}.
  *  결제 창이 결제 완료로 닫히면 onPaid(시트 닫고 내 예약), 아니면 잡아 둔 자리를 풀고 가능 시간을 다시 읽는다.
  *  각 칸은 reserve/ 의 조각, 이 시트는 상태·API 연결과 조립만 한다.
@@ -83,8 +83,8 @@ fun SpaceReserveSheet(
     var hours by remember { mutableDoubleStateOf(max(1.0, (space.hourlyMinHours ?: 1).toDouble())) }
     var headcount by remember { mutableIntStateOf(max(1, space.baseHeadcount ?: 1)) }
     var message by remember { mutableStateOf("") }
-    var agree by remember { mutableStateOf(false) }
-    var agreeThirdParty by remember { mutableStateOf(false) }
+    // 동의한 문서(docKey) — 서버가 준 필수 항목을 모두 체크해야 결제.
+    var agreed by remember { mutableStateOf<Set<String>>(emptySet()) }
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var showDate by remember { mutableStateOf(false) }
@@ -126,14 +126,14 @@ fun SpaceReserveSheet(
     }
     val estimate = (unitPrice * hours + extraFee).roundToInt()
     val slotOk = a != null && a.open && startMin != null && a.fits(startMin!!, hours)
-    val canSubmit = !submitting && date != null && slotOk && agree && agreeThirdParty
+    val consentsOk = space.bookingConsents.filter { it.required }.all { it.docKey in agreed }
+    val canSubmit = !submitting && date != null && slotOk && consentsOk
     val slot = slotState(date, availLoading, availError, a)
     val extraNote = space.baseHeadcount?.takeIf { (space.extraPersonFee ?: 0) > 0 }
         ?.let { "기본 ${it}명, 초과 1인당 시간당 ${SpaceDesign.won(space.extraPersonFee ?: 0)}원" }
     val priceCaption = "시간당 ${SpaceDesign.won(unitPrice)}원 × ${hourLabel(hours)}" +
         (if (extraFee > 0) " + 초과 인원 ${SpaceDesign.won(extraFee.roundToInt())}원" else "") +
         " · 최종 금액은 결제 화면에서 확인해요."
-    val rules = (space.refundPolicy ?: emptyList()).filter { !it.label.isNullOrEmpty() }.ifEmpty { DEFAULT_REFUND }
 
     fun submit() {
         if (!api.isLoggedIn) { error = "로그인 후 이용할 수 있어요."; return }
@@ -171,9 +171,8 @@ fun SpaceReserveSheet(
                 HeadcountStepper(headcount, space.capacityMax ?: 100, space.capacityMax?.let { "최대 ${it}명" }, extraNote) { headcount = it }
                 ReserveMessageField(message) { message = it }
                 PriceSummary(estimate, priceCaption)
-                ReserveRefundTable(rules)
-                RefundAgreement(agree) { agree = !agree }
-                ThirdPartyConsent(agreeThirdParty) { agreeThirdParty = !agreeThirdParty }
+                ReserveRefundTable(space.refund)
+                BookingConsents(space.bookingConsents, agreed) { k -> agreed = if (k in agreed) agreed - k else agreed + k }
                 error?.let { ReserveError(it) }
                 Spacer(Modifier.height(8.dp))
             }

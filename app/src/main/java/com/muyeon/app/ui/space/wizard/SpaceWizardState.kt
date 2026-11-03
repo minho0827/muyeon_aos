@@ -60,6 +60,7 @@ class SpaceWizardState(val editId: Int?) {
         2 -> form.name.isNotBlank()
         3 -> (form.pricePerHour.toIntOrNull() ?: 0) > 0 || form.options.any { it.label.isNotBlank() && (it.price.toIntOrNull() ?: 0) > 0 }
         4 -> form.openDays.isNotEmpty() && form.closeHour > form.openHour
+        5 -> form.refundValid
         else -> true
     }
 
