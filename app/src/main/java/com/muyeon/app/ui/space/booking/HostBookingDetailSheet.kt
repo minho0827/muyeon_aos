@@ -66,7 +66,13 @@ fun hostCancelRows(r: SpaceReservationRow): List<Pair<String, String>>? = if (!r
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HostBookingDetailSheet(r: SpaceReservationRow, onDismiss: () -> Unit, actions: @Composable RowScope.() -> Unit) {
+fun HostBookingDetailSheet(
+    r: SpaceReservationRow,
+    onDismiss: () -> Unit,
+    /** 하단 버튼 줄 위 칸(수락 대기면 [HostBookingChatOutline]). */
+    aboveActions: @Composable ColumnScope.() -> Unit = {},
+    actions: @Composable RowScope.() -> Unit,
+) {
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = Color.White) {
         Column(
             Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp).verticalScroll(rememberScrollState()),
@@ -76,6 +82,7 @@ fun HostBookingDetailSheet(r: SpaceReservationRow, onDismiss: () -> Unit, action
             HostBookingSpace(r)
             MarketInfoTable(hostBookingRows(r))
             hostCancelRows(r)?.let { HostBookingCancelInfo(it) }
+            aboveActions()
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 16.dp), content = actions)
         }
     }
@@ -134,4 +141,17 @@ fun RowScope.HostBookingDecideActions(onDecline: () -> Unit, onAccept: () -> Uni
         Alignment.Center,
     ) { Text("거절", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = MuyeonColors.danger) }
     Box(Modifier.weight(1f)) { StageBottomButton("수락", onClick = onAccept) }
+}
+
+/** 수락 대기 — [거절][수락] 위 테두리 버튼 [예약자에게 채팅](수락 전에 물어볼 때). */
+@Composable
+fun HostBookingChatOutline(chatBusy: Boolean, onChat: () -> Unit) {
+    Box(
+        Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(16.dp))
+            .border(1.dp, MuyeonList.ink300, RoundedCornerShape(16.dp)).clickable(enabled = !chatBusy, onClick = onChat),
+        Alignment.Center,
+    ) {
+        if (chatBusy) CircularProgressIndicator(color = MuyeonColors.primary, strokeWidth = 2.dp, modifier = Modifier.size(22.dp))
+        else Text("예약자에게 채팅", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = MuyeonColors.textHead)
+    }
 }

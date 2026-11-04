@@ -111,7 +111,10 @@ fun SpaceHostReservationsScreen(
     open?.let { r ->
         // 하단 버튼은 한 번 고른다 — 결제 완료·시작 전이면 [취소(전액 환불)]까지.
         val cancellable = r.status == "PAID" && !r.isPast(nowKstYmdHm())
-        HostBookingDetailSheet(r, onDismiss = { open = null }) {
+        HostBookingDetailSheet(
+            r, onDismiss = { open = null },
+            aboveActions = { if (r.awaitingHost) HostBookingChatOutline(chatBusy) { chat(r) } },
+        ) {
             if (r.awaitingHost) HostBookingDecideActions(onDecline = { declineTarget = r }, onAccept = { acceptTarget = r })
             else if (cancellable) HostBookingChatCancelActions(chatBusy, onChat = { chat(r) }, onCancel = { cancelTarget = r })
             else HostBookingChatActions(chatBusy) { chat(r) }
