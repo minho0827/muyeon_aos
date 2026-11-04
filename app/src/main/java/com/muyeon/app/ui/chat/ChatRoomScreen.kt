@@ -124,6 +124,8 @@ fun ChatRoomScreen(
     }
     var jumpLoadCount by remember { mutableIntStateOf(0) }   // 실패 반복 시 무한 재조회 방지
     var highlightId by remember { mutableStateOf<Int?>(null) }
+    // ★ 2026-11-04 PACERA: 남의 사이트 링크 → "공유된 웹사이트" 확인 시트.
+    var externalLink by remember { mutableStateOf<String?>(null) }
 
     // 화면 복귀(다른 화면·백그라운드에서 돌아옴) — 그 사이 놓친 메시지를 순번 기준으로 채운다.
     val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
@@ -204,6 +206,25 @@ fun ChatRoomScreen(
         val offset = if (vm.isLoadingMore) 1 else 0
         listState.animateScrollToItem(i + offset)
         return true
+    }
+
+    /** 인용 상자 → 원문으로 스크롤하고 잠깐 강조(PACERA scrollToSeq). 화면에 받아 둔 메시지에 없으면 조용히 알린다. */
+    fun jumpToReply(id: Int) {
+        scope.launch {
+            if (!scrollToMessage(id)) { vm.toast = "원문이 화면에 없어요"; return@launch }
+            highlightId = id
+            kotlinx.coroutines.delay(1200)
+            if (highlightId == id) highlightId = null
+        }
+    }
+
+    /** 말풍선 링크 — 무용연 링크는 앱 안 링크 처리, 남의 사이트는 확인 시트, 그 밖(전화 등)은 시스템으로. */
+    fun openChatLink(url: String) {
+        when {
+            isMuyeonLink(url) -> openMuyeonLinkInApp(context, url)
+            isExternalWebLink(url) -> externalLink = url
+            else -> openExternal(context, url)
+        }
     }
 
     LaunchedEffect(jumpTarget, vm.messages.size, vm.isLoadingMore, vm.initialLoaded) {
@@ -392,12 +413,23 @@ fun ChatRoomScreen(
                     // key = 메시지 id — 위에 이전 메시지가 붙어도 보고 있던 위치가 유지된다.
                     items(vm.messages.size, key = { vm.messages[it].id }) { i ->
                         val m = vm.messages[i]
+                        // ★ PACERA 묶음 — 날짜가 바뀌면 구분선, 같은 사람·같은 분이면 아바타·이름은 첫 말풍선에만, 시간은 마지막에만.
+                        val divider = ChatGrouping.dayDivider(vm.messages, i)
+                        val prev = vm.messages.getOrNull(i - 1)
+                        val next = vm.messages.getOrNull(i + 1)
+                        val startsGroup = divider != null || !ChatGrouping.continuesGroup(prev, m)
+                        val endsGroup = ChatGrouping.dayDivider(vm.messages, i + 1) != null || !ChatGrouping.continuesGroup(m, next)
+                        Column {
+                        divider?.let { ChatDateDivider(it) }
                         MessageBubble(
                             message = m,
                             isMine = m.senderId == vm.currentUserId,
                             opponentImage = vm.opponentImage,
                             onOpenProfile = { openOpponentProfile() },
-                            showAvatar = vm.showAvatar(i),
+                            showAvatar = startsGroup && m.senderId != vm.currentUserId,
+                            showTime = endsGroup,
+                            replyQuote = replyQuoteModel(m, vm.messages),
+                            onReplyQuoteClick = { id -> jumpToReply(id) },
                             read = isReadByOpponent(m, vm.opponentLastReadAt),
                             currentUserId = vm.currentUserId,
                             // 예약금 결제는 웹 결제 화면(iOS LessonPaymentWebView 와 같은 경로)으로 넘긴다.
@@ -409,7 +441,7 @@ fun ChatRoomScreen(
                             token = vm.tokenForCards,
                             onLongPress = { reactionTarget = m },
                             onToggleReaction = { emoji -> vm.toggleReaction(m, emoji) },
-                            onOpenLink = { url -> openExternal(context, url) },
+                            onOpenLink = { url -> openChatLink(url) },
                             onProposalChanged = { vm.reloadContext() },
                             onOpenProvider = { id, isAcademy ->
                                 if (isAcademy) {
@@ -435,6 +467,7 @@ fun ChatRoomScreen(
                             onSurveyUpdate = { did -> jumpTarget = CardJumpTarget.Survey(did) },
                             highlighted = highlightId == m.id,
                         )
+                        }
                     }
                     items(vm.pending.size, key = { "pending-" + vm.pending[it].localId }) { i ->
                         PendingBubble(vm.pending[i]) { vm.retry(vm.pending[i]) }
@@ -721,6 +754,13 @@ fun ChatRoomScreen(
             message = m,
             onDone = { reportMessage = null; vm.toast = "신고가 접수됐어요." },
             onDismiss = { reportMessage = null },
+        )
+    }
+    externalLink?.let { url ->
+        ChatExternalLinkSheet(
+            url = url,
+            onOpen = { externalLink = null; openExternal(context, url) },
+            onDismiss = { externalLink = null },
         )
     }
     // 길게 누르기 — PACERA 시트(반응 줄 + 답장·복사·편집·삭제·신고·차단). 동작은 무용연 기존 구현 그대로.
@@ -1055,6 +1095,11 @@ private fun MessageBubble(
     onOpenLesson: (Int) -> Unit,
     onSurveyUpdate: (Int) -> Unit,
     highlighted: Boolean,
+    /** PACERA 묶음 — 마지막 말풍선에만 시간. */
+    showTime: Boolean = true,
+    /** PACERA 답장 인용 — 글 말풍선은 안쪽 위, 사진·카드는 말풍선 위. 누르면 원문으로. */
+    replyQuote: ReplyQuoteModel? = null,
+    onReplyQuoteClick: (Int) -> Unit = {},
 ) {
     // ── 말풍선이 아니라 전용 카드/안내로 그리는 타입들 ──
     //  ⚠️ 여기서 안 받으면 `else -> Text(content)` 로 떨어져 JSON 원문이 그대로 노출된다.
@@ -1138,21 +1183,24 @@ private fun MessageBubble(
             Spacer(Modifier.width(6.dp))
         }
 
-        Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
-            // 답장 인용
-            message.replyTo?.let { r ->
-                Text(
-                    "${r.senderName ?: "상대"}: ${r.content.orEmpty()}",
-                    fontFamily = customFontFamily, fontSize = 11.sp, lineHeight = 14.sp,
-                    color = MuyeonColors.secondary, maxLines = 1,
-                    modifier = Modifier.padding(bottom = 2.dp),
-                )
+        Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start, modifier = Modifier.replyHighlight(highlighted)) {
+            // PACERA — 묶음 첫 말풍선이면 상대 이름(11sp).
+            if (!isMine && showAvatar) {
+                message.sender?.displayName?.takeIf { it.isNotBlank() }?.let { name ->
+                    Text(name, fontFamily = customFontFamily, fontSize = 11.sp, color = MuyeonColors.textSub, modifier = Modifier.padding(bottom = 2.dp, start = 4.dp))
+                }
+            }
+            // 답장 인용 — 글 말풍선은 안쪽 위에, 사진·동영상 등은 말풍선 위에 따로(PACERA outerQuote).
+            val quote = replyQuote?.takeIf { !message.isDeleted }
+            if (quote != null && message.type != "TEXT") {
+                ReplyQuote(quote, onMine = false, onClick = onReplyQuoteClick, standalone = true)
+                Spacer(Modifier.height(4.dp))
             }
             // 이미지 말풍선은 배경 없이 사진만 보여준다(iOS ChatImageBubble — 말풍선 밖).
             val bare = message.type == "IMAGE" && !message.isDeleted
             Row(verticalAlignment = Alignment.Bottom) {
                 if (isMine) {
-                    BubbleMeta(message, read = read, alignEnd = true)
+                    BubbleMeta(message, read = read, alignEnd = true, showTime = showTime)
                     Spacer(Modifier.width(4.dp))
                 }
                 Box(
@@ -1184,16 +1232,26 @@ private fun MessageBubble(
                             onLongPress = onLongPress,
                         )
                         message.type == "VIDEO" -> ChatVideoBubble(message.imageUrl.orEmpty())
-                        else -> Text(
-                            message.content,
-                            fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 20.sp,
-                            color = if (isMine) Color.White else MuyeonColors.textHead,
-                        )
+                        else -> Column {
+                            quote?.let {
+                                ReplyQuote(it, onMine = isMine, onClick = onReplyQuoteClick)
+                                Spacer(Modifier.height(6.dp))
+                            }
+                            // PACERA — 링크는 눌러서 연다(밑줄). 내 말풍선은 글자색 그대로 밑줄만.
+                            ChatLinkBodyText(
+                                text = message.content,
+                                color = if (isMine) Color.White else MuyeonColors.textHead,
+                                style = TextStyle(fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 20.sp),
+                                linkColor = if (isMine) Color.White else MuyeonColors.primary,
+                                onOpenLink = onOpenLink,
+                                onLongPress = onLongPress,
+                            )
+                        }
                     }
                 }
                 if (!isMine) {
                     Spacer(Modifier.width(4.dp))
-                    BubbleMeta(message, read = false, alignEnd = false)
+                    BubbleMeta(message, read = false, alignEnd = false, showTime = showTime)
                 }
             }
             // 텍스트 안 URL 미리보기(카톡식)
@@ -1211,7 +1269,7 @@ private fun MessageBubble(
 
 /** 말풍선 옆 메타 — 읽음(내 메시지만)·수정됨·시간. alignEnd 는 내 메시지(말풍선 왼쪽에 놓임)일 때 true. */
 @Composable
-private fun BubbleMeta(message: ChatMessage, read: Boolean, alignEnd: Boolean) {
+private fun BubbleMeta(message: ChatMessage, read: Boolean, alignEnd: Boolean, showTime: Boolean = true) {
     Column(
         horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start,
         modifier = Modifier.padding(bottom = 2.dp),
@@ -1230,11 +1288,14 @@ private fun BubbleMeta(message: ChatMessage, read: Boolean, alignEnd: Boolean) {
                 color = MuyeonColors.secondary,
             )
         }
-        Text(
-            chatListTime(message.createdAt),
-            fontFamily = customFontFamily, fontSize = 10.sp, lineHeight = 12.sp,
-            color = MuyeonColors.secondary,
-        )
+        // PACERA — 시간은 묶음의 마지막 말풍선에만, "오후 3:12"(날짜는 구분선이 보여 준다).
+        if (showTime) {
+            Text(
+                ChatTimeFormat.forBubble(message.createdAt),
+                fontFamily = customFontFamily, fontSize = 10.sp, lineHeight = 12.sp,
+                color = MuyeonColors.secondary,
+            )
+        }
     }
 }
 
@@ -1323,6 +1384,18 @@ private sealed interface CardJumpTarget {
 
 /** 대상 카드를 찾을 때 이전 메시지를 더 불러오는 최대 횟수(50건 × 20 = 1,000건). */
 private const val MAX_JUMP_LOADS = 20
+
+/** 인용 상자로 찾아온 원문 — 주황 바탕이 잠깐 비쳤다 사라진다. */
+@Composable
+private fun Modifier.replyHighlight(active: Boolean): Modifier {
+    val a = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(active) {
+        if (!active) return@LaunchedEffect
+        a.snapTo(0.22f)
+        a.animateTo(0f, androidx.compose.animation.core.tween(durationMillis = 1200))
+    }
+    return this.then(Modifier.background(MuyeonColors.primary.copy(alpha = a.value), RoundedCornerShape(12.dp)))
+}
 
 /** 카드 강조 — 좌우로 짧게 흔든다(iOS ShakeEffect). [active] 가 true 로 바뀔 때 한 번 재생한다. */
 @Composable
