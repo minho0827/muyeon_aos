@@ -60,6 +60,11 @@ data class VerifiedLogo(
     /** "{org} · {verifiedAt} 확인" — title 이 있으면 "{org} · {title} · {verifiedAt} 확인", 확인일이 없으면 날짜 빼고. */
     val confirmText: String get() = listOfNotNull(org, title.ifBlank { null }, verifiedAt?.let { "$it 확인" }).joinToString(" · ")
 
+    /** ★ 11-04 로고를 누르면 뜨는 설명(웹·iOS 와 같은 문구) — 내용(있으면) · 뜻 · 확인일. */
+    val meaningText: String get() = listOfNotNull(
+        title.ifBlank { null }, LOGO_MEANING, verifiedAt?.let { "확인일 ${it.replace('-', '.')}" },
+    ).joinToString("\n")
+
     companion object {
         fun listFrom(arr: JSONArray?): List<VerifiedLogo> = (0 until (arr?.length() ?: 0)).mapNotNull { i ->
             val o = arr?.optJSONObject(i) ?: return@mapNotNull null
@@ -76,6 +81,10 @@ data class VerifiedLogo(
 
 private const val ROW_MAX = 4
 private fun logoUrl(path: String) = com.muyeon.app.ui.quote.QuoteUi.imageUrl(path)
+
+
+/** ★ 11-04 확인 기관 로고의 뜻(로고를 누르면 팝업). */
+const val LOGO_MEANING = "무용연이 공식 서류(졸업·재직·자격 증명 등)로 직접 확인한 인증 마크예요."
 
 /**
  * 이름 아래 "✔ 무용연이 확인한 경력" + 가로 로고 칩(최대 4개, 넘치면 "+N ›").
@@ -100,7 +109,7 @@ fun VerifiedLogoRow(logos: List<VerifiedLogo>, modifier: Modifier = Modifier) {
         }
     }
     shown?.let { l ->
-        MuyeonDialog(title = l.confirmText, actions = listOf(MuyeonDialogAction("확인")), onDismiss = { shown = null })
+        MuyeonDialog(title = l.org, message = l.meaningText, actions = listOf(MuyeonDialogAction("확인")), onDismiss = { shown = null })
     }
     if (sheet) VerifiedLogoSheet(visible, onDismiss = { sheet = false })
 }
@@ -140,6 +149,7 @@ fun VerifiedLogoSheet(logos: List<VerifiedLogo>, onDismiss: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text("무용연이 확인한 경력", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MuyeonColors.textHead)
+            Text(LOGO_MEANING, fontFamily = customFontFamily, fontSize = 13.sp, color = MuyeonColors.textSub)
             logos.forEach { l -> LogoSheetRow(l) }
         }
     }
