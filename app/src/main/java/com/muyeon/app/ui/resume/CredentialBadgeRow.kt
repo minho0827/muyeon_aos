@@ -40,6 +40,8 @@ data class CredentialBadges(
     val identity: Boolean,
     val items: List<Item>,
     val careerYears: Int?,
+    /** ★ 2026-11-04 확인 기관 로고(상세 전용). 옛 서버면 빈 배열. */
+    val logos: List<VerifiedLogo> = emptyList(),
 ) {
     data class Item(val kind: String, val label: String, val desc: String?, val title: String?, val years: Int?)
 
@@ -57,7 +59,7 @@ data class CredentialBadges(
                 val kind = it.stringOrNull("kind") ?: return@mapNotNull null
                 Item(kind, it.stringOrNull("label") ?: kind, it.stringOrNull("desc"), it.stringOrNull("title"), it.intOrNull("years"))
             }
-            return CredentialBadges(o.boolOrNull("identity") == true, items, o.intOrNull("careerYears"))
+            return CredentialBadges(o.boolOrNull("identity") == true, items, o.intOrNull("careerYears"), VerifiedLogo.listFrom(o.optJSONArray("logos")))
         }
     }
 }

@@ -227,6 +227,8 @@ fun PublicProfileScreen(
                             )
                         }
                     }
+                    // ★ 2026-11-04 확인 기관 로고(상세 전용) — 비어 있으면 문구·자리 모두 그리지 않는다.
+                    p.badges?.logos?.takeIf { it.isNotEmpty() }?.let { VerifiedLogoRow(it) }
                     CredentialBadgeRow(p.badges) // ★ 2026-10-12
                     if ((p.ratingCount ?: 0) > 0) {
                         Row(
@@ -382,6 +384,7 @@ private fun ProfileSections(p: PublicProfile, reviews: ReviewList?, onOpenReview
         p.careers?.takeIf { it.isNotEmpty() }?.let { cs ->
             ProfileSection("경력 (요약)") {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    verified(p, "CAREER")?.let { SectionVerifiedLine(it) }
                     ResumeOptions.careerLabel(p.career).takeIf { it.isNotEmpty() }?.let { bucket ->
                         Text(
                             bucket,
@@ -399,6 +402,7 @@ private fun ProfileSections(p: PublicProfile, reviews: ReviewList?, onOpenReview
         p.educations?.takeIf { it.isNotEmpty() }?.let { edus ->
             ProfileSection("학력") {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    verified(p, "EDUCATION")?.let { SectionVerifiedLine(it) }
                     edus.forEach { e ->
                         val text = if (e.period.isEmpty()) e.school else "${e.school} (${e.period})"
                         Text(text, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp, color = MuyeonColors.body)
@@ -406,7 +410,7 @@ private fun ProfileSections(p: PublicProfile, reviews: ReviewList?, onOpenReview
                 }
             }
         }
-        p.certificates?.takeIf { it.isNotEmpty() }?.let { LineListSection("자격증", it) }
+        p.certificates?.takeIf { it.isNotEmpty() }?.let { LineListSection("자격증", it, verified(p, "CERT")) }
         p.performances?.takeIf { it.isNotEmpty() }?.let { perfs ->
             ProfileSection("공연 이력") {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -513,15 +517,16 @@ private fun BasicProfileSections(p: PublicProfile, reviews: ReviewList?, onOpenR
             listOf(c.academy, listOf(c.position, c.classes).filter { it.isNotEmpty() }.joinToString(" · "), c.period)
                 .filter { it.isNotEmpty() }.joinToString("\n")
         }.filter { it.isNotEmpty() }.takeIf { it.isNotEmpty() }?.let {
-            ProfileSection("근무 이력") { ReadBox(it.joinToString("\n\n")) }
+            ProfileSection("근무 이력") { SectionWithVerified(verified(p, "CAREER")) { ReadBox(it.joinToString("\n\n")) } }
         }
         p.educations.orEmpty().map { listOf(it.school, it.period).filter { s -> s.isNotEmpty() }.joinToString(" · ") }
             .filter { it.isNotEmpty() }.takeIf { it.isNotEmpty() }?.let {
-                ProfileSection("학력") { ReadBox(it.joinToString("\n")) }
+                ProfileSection("학력") { SectionWithVerified(verified(p, "EDUCATION")) { ReadBox(it.joinToString("\n")) } }
             }
         if (p.companyCareer.nonBlank() != null || p.certificates.nonBlank() != null) {
             ProfileSection("경력 · 자격") {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    verified(p, "CERT")?.let { SectionVerifiedLine(it) }
                     ReadField("무용단 경력", p.companyCareer, multiline = true)
                     ReadField("자격증", p.certificates, multiline = true)
                 }
@@ -755,9 +760,10 @@ private fun BodySection(title: String, text: String) {
 
 /** 여러 줄(줄당 1건) 텍스트 — 자격증·수상. */
 @Composable
-private fun LineListSection(title: String, text: String) {
+private fun LineListSection(title: String, text: String, verifiedLogos: List<VerifiedLogo>? = null) {
     ProfileSection(title) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            verifiedLogos?.let { SectionVerifiedLine(it) }
             text.split("\n").map { it.trim() }.filter { it.isNotEmpty() }.forEach {
                 Text("· $it", fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp, color = MuyeonColors.body)
             }
@@ -792,4 +798,16 @@ private fun CtaButton(text: String, filled: Boolean, enabled: Boolean = true, mo
             .clickable(enabled = enabled, onClick = onClick)
             .padding(vertical = 14.dp),
     )
+}
+
+/** 섹션의 확인 기관 항목(없으면 null — 섹션은 지금과 같다). */
+private fun verified(p: PublicProfile, section: String): List<VerifiedLogo>? = p.badges?.logos.orEmpty().forSection(section)
+
+/** 섹션 내용 위에 확인 줄을 얹는다(확인 항목이 없으면 내용만). */
+@Composable
+private fun SectionWithVerified(logos: List<VerifiedLogo>?, content: @Composable () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        logos?.let { SectionVerifiedLine(it) }
+        content()
+    }
 }
