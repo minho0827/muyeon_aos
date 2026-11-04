@@ -83,6 +83,8 @@ data class SpaceForm(
     val facilities: Set<String> = emptySet(),
     val facilityList: String = "",
     val cautions: String = "",
+    /** 예약 방식(88f738b) — REQUEST 수락 후 확정(추천·기본) | INSTANT 바로 확정. */
+    val approvalMode: String = "REQUEST",
     /** 환불 단계 — 'FLEXIBLE'|'STANDARD'|'STRICT', null = 직접 설정(customRefund). 기본 보통. */
     val refundPreset: String? = "STANDARD",
     /** 직접 설정 줄 — [N]일 전까지 [P]% (입력 그대로 문자열, 최대 5줄). */
@@ -126,6 +128,7 @@ data class SpaceForm(
         o.put("facilities", JSONObject().apply { SpaceFacility.ALL.forEach { put(it.key, it.key in facilities) } })
         o.put("facilityList", lines(facilityList))
         o.put("cautions", lines(cautions))
+        o.put("approvalMode", approvalMode)
         // 환불 — 단계면 refundPreset(서버가 그 규칙으로 저장), 직접이면 숫자 규칙. 예전 글자 형식은 보내지 않는다.
         if (refundPreset != null) o.put("refundPreset", refundPreset)
         else o.put("refundPolicy", JSONArray(customRules().map { it.toJson() }))
@@ -155,6 +158,7 @@ data class SpaceForm(
                 facilityList = (d.facilityList ?: emptyList()).joinToString("\n"),
                 cautions = (d.cautions ?: emptyList()).joinToString("\n"),
                 // 수정 — 상세의 refund.preset 으로 선택 복원(CUSTOM 이면 숫자 규칙을 직접 설정 줄로).
+                approvalMode = d.approvalMode.takeIf { it == "INSTANT" } ?: "REQUEST",
                 refundPreset = d.refund.preset.takeIf { it in REFUND_PRESET_KEYS },
                 customRefund = d.refundPolicy.ifEmpty { DEFAULT_REFUND_RULES }.map { RefundInput(it.daysBefore.toString(), it.percent.toString()) },
                 intro = d.intro.orEmpty(), phone = d.phone.orEmpty(),

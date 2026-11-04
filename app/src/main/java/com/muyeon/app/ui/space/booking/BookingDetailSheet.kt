@@ -48,7 +48,8 @@ fun bookingInfoRows(r: SpaceReservationRow): List<Pair<String, String>> = buildL
     add("일시" to r.whenText)
     r.headcount?.let { add("인원" to "${it}명") }
     add("금액" to wonOrDash(r.amount))
-    add("상태" to r.statusLabel)
+    add("상태" to r.bookerStatusLabel)
+    r.respondByText?.takeIf { r.awaitingHost }?.let { add("응답 기한" to "${it}까지 호스트 응답") }
     r.refundAmount?.takeIf { r.isCanceled }?.let { add("환불 금액" to wonOrDash(it)) }
     r.message?.let { add("요청사항" to it) }
 }

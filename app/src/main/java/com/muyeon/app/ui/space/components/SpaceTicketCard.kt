@@ -131,7 +131,23 @@ internal fun SpaceTicketCard(space: SpaceDetail) {
                 lineHeight = 29.sp, color = SpaceDesign.ink900,
             )
         }
+        SpaceApprovalLine(space, Modifier.padding(top = 12.dp))
     }
+}
+
+/** 예약 방식 한 줄(88f738b) — REQUEST: "호스트 수락 후 확정"(+ " · {예상 응답}"), INSTANT: "바로 확정". */
+fun approvalText(space: SpaceDetail): String =
+    if (space.approvalMode == "INSTANT") "바로 확정"
+    else "호스트 수락 후 확정" + (space.hostResponseLabel?.let { " · $it" } ?: "")
+
+@Composable
+internal fun SpaceApprovalLine(space: SpaceDetail, modifier: Modifier = Modifier) {
+    Text(
+        approvalText(space),
+        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, lineHeight = 17.sp,
+        color = SpaceDesign.primaryText, maxLines = 1, overflow = TextOverflow.Ellipsis,
+        modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(SpaceDesign.primaryTint).padding(horizontal = 12.dp, vertical = 8.dp),
+    )
 }
 
 internal fun ticketSubtitle(space: SpaceDetail): String {

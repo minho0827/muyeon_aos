@@ -109,8 +109,11 @@ fun SpaceMyBookingsScreen(
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(shown, key = { it.id }) { r ->
                         // 결제 대기만 [결제하기][예약 취소] 줄이 붙는다.
-                        if (r.status == "PENDING_PAYMENT") MyPendingBookingRow(r, onClick = { open = r }, onPay = { pay(r) }, onCancel = { askCancel(r) })
-                        else MyBookingRow(r) { open = r }
+                        when {
+                            r.status == "PENDING_PAYMENT" -> MyPendingBookingRow(r, onClick = { open = r }, onPay = { pay(r) }, onCancel = { askCancel(r) })
+                            r.awaitingHost -> MyAwaitingBookingRow(r) { open = r }
+                            else -> MyBookingRow(r) { open = r }
+                        }
                     }
                 }
             }

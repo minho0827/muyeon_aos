@@ -50,3 +50,14 @@ fun HostPaidReservationRow(r: SpaceReservationRow, onClick: () -> Unit, onCancel
     ReservationCardFrame(r, bookerName = r.bookerName, onClick = onClick) {
         ReservationActions { MarketRowButton("취소(전액 환불)", Modifier.weight(1f), danger = true, onClick = onCancel) }
     }
+
+/** 수락 대기(결제 완료·응답 전) — "수락 대기" 배지 + 기한 + [거절][수락]. */
+@Composable
+fun HostAwaitingReservationRow(r: SpaceReservationRow, onClick: () -> Unit, onDecline: () -> Unit, onAccept: () -> Unit) =
+    ReservationCardFrame(r, bookerName = r.bookerName, onClick = onClick, statusLabel = r.hostStatusLabel) {
+        r.respondByText?.let { ReservationDeadlineLine("${it}까지 수락해 주세요") }
+        ReservationActions {
+            MarketRowButton("거절", Modifier.weight(1f), danger = true, onClick = onDecline)
+            MarketRowButton("수락", Modifier.weight(1f), onClick = onAccept)
+        }
+    }

@@ -62,11 +62,23 @@ fun ReserveError(text: String) {
     Text(text, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, color = Color(0xFFE64747))
 }
 
-/** 하단 고정 [결제하기]. */
+/** 수락 후 확정 공간 — 결제 버튼 위 안내(88f738b). */
 @Composable
-fun ReservePayButton(submitting: Boolean, enabled: Boolean, onClick: () -> Unit) {
+fun ReserveApprovalNote() {
+    Text(
+        "결제 후 호스트가 수락하면 확정돼요. 거절·무응답이면 전액 환불돼요.",
+        fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp, color = SpaceDesign.ink600,
+        minLines = 2, maxLines = 2,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = SpaceDesign.gutter).padding(top = 10.dp),
+    )
+}
+
+/** 하단 고정 [결제하기] — note 는 버튼 위 안내 칸(수락 후 확정이면 [ReserveApprovalNote]). */
+@Composable
+fun ReservePayButton(submitting: Boolean, enabled: Boolean, note: @Composable () -> Unit = {}, onClick: () -> Unit) {
     Column(Modifier.fillMaxWidth().background(Color.White).navigationBarsPadding()) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(SpaceDesign.ink200))
+        note()
         Text(
             if (submitting) "예약 중…" else "결제하기",
             fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp, lineHeight = 20.sp,
@@ -78,4 +90,18 @@ fun ReservePayButton(submitting: Boolean, enabled: Boolean, onClick: () -> Unit)
                 .wrapContentHeight(Alignment.CenterVertically),
         )
     }
+}
+
+/** 결제 완료(수락 후 확정) — "예약 요청을 보냈어요" + 기한 안내. 닫으면 내 예약으로. */
+@Composable
+fun ReserveRequestSentDialog(deadline: String, onDone: () -> Unit) {
+    val by = if (deadline.isNotEmpty()) "호스트가 ${deadline}까지 수락하면 확정돼요." else "호스트가 수락하면 확정돼요."
+    MuyeonDialog(
+        title = "예약 요청을 보냈어요",
+        message = "$by 수락하지 않거나 기한이 지나면 전액 환불돼요.",
+        // 버튼을 누르면 팝업이 먼저 닫히며 onDismiss(=onDone) 가 한 번 불린다(두 번 부르지 않게 버튼 동작은 비움).
+        actions = listOf(MuyeonDialogAction("내 예약 보기")),
+        force = true,
+        onDismiss = onDone,
+    )
 }

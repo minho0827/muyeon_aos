@@ -82,3 +82,33 @@ fun DeleteSpaceDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         onDismiss = onDismiss,
     )
 }
+
+/** 호스트 수락 확인. */
+@Composable
+fun HostAcceptDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    MuyeonDialog(
+        title = "예약을 수락할까요?",
+        message = "수락하면 예약이 확정되고 예약자에게 알림이 가요.",
+        actions = listOf(
+            MuyeonDialogAction("수락", MuyeonDialogKind.PRIMARY) { onConfirm() },
+            MuyeonDialogAction("닫기", MuyeonDialogKind.CANCEL),
+        ),
+        onDismiss = onDismiss,
+    )
+}
+
+/** 호스트 거절 — 사유(선택) 입력 + 전액 환불 안내. */
+@Composable
+fun HostDeclineDialog(onConfirm: (String?) -> Unit, onDismiss: () -> Unit) {
+    var reason by remember { mutableStateOf("") }
+    MuyeonDialog(
+        title = "예약을 거절할까요?",
+        message = "거절하면 예약자에게 전액 환불돼요.",
+        content = { FormTextField(reason, { reason = it }, "거절 사유(선택)", 200, minLines = 2) },
+        actions = listOf(
+            MuyeonDialogAction("거절", MuyeonDialogKind.DESTRUCTIVE) { onConfirm(reason.trim().ifEmpty { null }) },
+            MuyeonDialogAction("닫기", MuyeonDialogKind.CANCEL),
+        ),
+        onDismiss = onDismiss,
+    )
+}

@@ -49,6 +49,7 @@ fun hostBookingRows(r: SpaceReservationRow): List<Pair<String, String>> = buildL
     add("인원" to (r.headcount?.let { "${it}명" } ?: "-"))
     add("결제 금액" to wonOrDash(r.amount))
     add("결제 시각" to (kstDateTime(r.paidAt) ?: "-"))
+    r.respondByText?.takeIf { r.awaitingHost }?.let { add("응답 기한" to "${it}까지") }
     add("요청사항" to (r.message?.takeIf { it.isNotBlank() } ?: "없음"))
 }
 
@@ -84,7 +85,7 @@ fun HostBookingDetailSheet(r: SpaceReservationRow, onDismiss: () -> Unit, action
 @Composable
 private fun HostBookingHeader(r: SpaceReservationRow) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        ReservationStatusBadge(r)
+        ReservationStatusBadge(r, r.hostStatusLabel)
         Text("예약 #${r.id}", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MuyeonColors.textHead, style = TabularNums)
     }
 }
@@ -123,4 +124,14 @@ fun RowScope.HostBookingChatCancelActions(chatBusy: Boolean, onChat: () -> Unit,
         Modifier.weight(1f).height(56.dp).clip(RoundedCornerShape(16.dp)).background(MuyeonList.ink100).clickable(onClick = onCancel),
         Alignment.Center,
     ) { Text("취소(전액 환불)", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = MuyeonColors.danger) }
+}
+
+/** 하단 — 수락 대기 예약: [거절] [수락]. */
+@Composable
+fun RowScope.HostBookingDecideActions(onDecline: () -> Unit, onAccept: () -> Unit) {
+    Box(
+        Modifier.weight(1f).height(56.dp).clip(RoundedCornerShape(16.dp)).background(MuyeonList.ink100).clickable(onClick = onDecline),
+        Alignment.Center,
+    ) { Text("거절", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = MuyeonColors.danger) }
+    Box(Modifier.weight(1f)) { StageBottomButton("수락", onClick = onAccept) }
 }

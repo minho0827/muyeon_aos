@@ -53,3 +53,10 @@ fun MyPendingBookingRow(r: SpaceReservationRow, onClick: () -> Unit, onPay: () -
             MarketRowButton("예약 취소", Modifier.weight(1f), danger = true, onClick = onCancel)
         }
     }
+
+/** 호스트 응답 대기(결제 완료·수락 전) — "응답 대기" 배지 + "{기한}까지 호스트 응답". 취소는 상세 시트에서(전액). */
+@Composable
+fun MyAwaitingBookingRow(r: SpaceReservationRow, onClick: () -> Unit) =
+    ReservationCardFrame(r, bookerName = null, onClick = onClick, statusLabel = r.bookerStatusLabel) {
+        r.respondByText?.let { ReservationDeadlineLine("${it}까지 호스트 응답") }
+    }

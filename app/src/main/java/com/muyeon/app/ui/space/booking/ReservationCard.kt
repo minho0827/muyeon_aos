@@ -45,13 +45,14 @@ internal fun wonOrDash(v: Int?) = v?.let { "${SpaceDesign.won(it)}원" } ?: "-"
 
 /** 예약 상태 배지 — 확정은 주황 채움, 결제 대기·요청은 연주황, 나머지는 회색. */
 @Composable
-fun ReservationStatusBadge(r: SpaceReservationRow) {
+fun ReservationStatusBadge(r: SpaceReservationRow, label: String = r.statusLabel) {
     val (fg, bg) = when {
+        r.awaitingHost -> MuyeonColors.primary to SpaceDesign.primaryTint
         r.status == "PAID" || r.status == "CONFIRMED" -> Color.White to MuyeonColors.primary
         r.status == "PENDING_PAYMENT" || r.status == "REQUESTED" -> MuyeonColors.primary to SpaceDesign.primaryTint
         else -> MuyeonColors.textSub to MuyeonList.ink100
     }
-    MarketStatusBadge(r.statusLabel, RESERVATION_BADGE_WIDTH, fg = fg, bg = bg)
+    MarketStatusBadge(label, RESERVATION_BADGE_WIDTH, fg = fg, bg = bg)
 }
 
 /** 예약 상태 배지 폭(가장 긴 "결제 시간 초과" 기준) — 취소·결제로 상태가 바뀌어도 배지·옆 이름이 밀리지 않게. */
@@ -59,13 +60,19 @@ val RESERVATION_BADGE_WIDTH = 92.dp
 
 /** 예약 카드 틀 — 썸네일 · 상태(· 예약자) · 공간 · 일시 · 인원·금액 · 아래 칸(footer, 쓰는 곳이 고른다). */
 @Composable
-fun ReservationCardFrame(r: SpaceReservationRow, bookerName: String?, onClick: () -> Unit, footer: @Composable ColumnScope.() -> Unit = {}) {
+fun ReservationCardFrame(
+    r: SpaceReservationRow,
+    bookerName: String?,
+    onClick: () -> Unit,
+    statusLabel: String = r.statusLabel,
+    footer: @Composable ColumnScope.() -> Unit = {},
+) {
     Column(Modifier.fillMaxWidth().clip(MuyeonList.cardShape).background(Color.White).clickable(onClick = onClick).padding(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             MarketThumb(r.spaceImage, Modifier.size(72.dp).clip(RoundedCornerShape(10.dp)))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    ReservationStatusBadge(r)
+                    ReservationStatusBadge(r, statusLabel)
                     bookerName?.let { Text(it, fontFamily = customFontFamily, fontSize = 13.sp, color = MuyeonColors.textSub, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 }
                 Text(r.spaceName, fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = MuyeonColors.textHead, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -109,4 +116,13 @@ fun ReservationListSkeleton(count: Int = 5) {
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         repeat(count) { ReservationCardSkeleton() }
     }
+}
+
+/** 응답 기한 줄 — "{기한}까지 호스트 응답"(예약자) / "{기한}까지 수락해 주세요"(호스트). 카드 아래 칸에 쓴다. */
+@Composable
+fun ReservationDeadlineLine(text: String) {
+    Text(
+        text, fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = MuyeonColors.primary,
+        style = TabularNums, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp),
+    )
 }

@@ -210,6 +210,10 @@ data class SpaceDetail(
     val closedDates: List<String> = emptyList(),
     val bookingLeadMinutes: Int? = null,
     val status: String? = null,
+    /** ★ 88f738b 예약 방식 — REQUEST(호스트 수락 후 확정, 기본) | INSTANT(바로 확정). */
+    val approvalMode: String = "REQUEST",
+    /** 호스트 예상 응답 시간 표시(서버 hostResponse.label, 예: "보통 2시간 안에 응답") — REQUEST 이고 기록이 있을 때만. */
+    val hostResponseLabel: String? = null,
     /** 환불 표시(서버 refund). 배포 전 서버면 숫자 규칙으로 만든 대체. */
     val refund: SpaceRefundView = SpaceRefundView.fallback(emptyList()),
     /** 예약 동의 항목(서버 bookingConsents, 순서 그대로). 배포 전 서버면 기존 두 줄 대체. */
@@ -312,6 +316,8 @@ data class SpaceDetail(
                 closedDates = strings("closedDates") ?: emptyList(),
                 bookingLeadMinutes = intOrNull("bookingLeadMinutes"),
                 status = o.optString("status").ifEmpty { null },
+                approvalMode = o.optString("approvalMode").ifEmpty { "REQUEST" },
+                hostResponseLabel = o.optJSONObject("hostResponse")?.optString("label")?.takeIf { it.isNotBlank() && it != "null" },
                 refund = o.optJSONObject("refund")?.let(SpaceRefundView::from)
                     ?: SpaceRefundView.fallback(SpaceRefund.listFrom(o.optJSONArray("refundPolicy"))),
                 bookingConsents = o.optJSONArray("bookingConsents")?.let(SpaceConsentDoc::listFrom)?.takeIf { it.isNotEmpty() }
@@ -461,7 +467,23 @@ data class SpaceReservationRow(
     val cancelReason: String? = null,
     val userId: Int? = null,
     val createdAt: String? = null,
+    /** ★ 88f738b 수락 후 확정 — PENDING(호스트 응답 대기) | ACCEPTED | null. status 는 PAID 그대로. */
+    val approvalStatus: String? = null,
+    val respondBy: String? = null,
+    val respondedAt: String? = null,
 ) {
+    /** 결제는 됐고 호스트 응답을 기다리는 중. */
+    val awaitingHost: Boolean get() = status == "PAID" && approvalStatus == "PENDING"
+
+    /** 예약자 쪽 상태 글자 — 응답 대기면 "응답 대기". */
+    val bookerStatusLabel: String get() = if (awaitingHost) "응답 대기" else statusLabel
+
+    /** 호스트 쪽 상태 글자 — 응답 대기면 "수락 대기". */
+    val hostStatusLabel: String get() = if (awaitingHost) "수락 대기" else statusLabel
+
+    /** 응답 기한(한국 시간 "2026.11.04 18:00"). */
+    val respondByText: String? get() = kstDateTime(respondBy)
+
     val statusLabel: String get() = SpaceReservationStatus.label(status)
 
     /** 끝 시각 "16:00" — 시작 + 이용 시간(자정 넘으면 24:00 이상 그대로). */
@@ -506,6 +528,7 @@ data class SpaceReservationRow(
                 refundAmount = intOrNull("refundAmount"), paidAt = str("paidAt"), canceledAt = str("canceledAt"),
                 bookerName = str("bookerName"), message = str("message"),
                 optionLabel = str("optionLabel"), cancelReason = str("cancelReason"), userId = intOrNull("userId"), createdAt = str("createdAt"),
+                approvalStatus = str("approvalStatus"), respondBy = str("respondBy"), respondedAt = str("respondedAt"),
             )
         }
     }
@@ -627,6 +650,13 @@ class SpaceApi(context: android.content.Context) {
 
     suspend fun cancel(resId: Int): Result<Int> =
         call("/spaces/reservations/$resId/cancel", "POST", JSONObject()).mapCatching { JSONObject(it.ifBlank { "{}" }).optInt("refund") }
+
+    /** 호스트 수락 — 예약 확정. */
+    suspend fun accept(resId: Int): Result<Unit> = call("/spaces/reservations/$resId/accept", "POST", JSONObject()).map { }
+
+    /** 호스트 거절 — 예약자에게 전액 환불. */
+    suspend fun decline(resId: Int, reason: String?): Result<Unit> =
+        call("/spaces/reservations/$resId/decline", "POST", JSONObject().apply { reason?.trim()?.takeIf { it.isNotEmpty() }?.let { put("reason", it) } }).map { }
 
     suspend fun hostCancel(resId: Int): Result<Int> =
         call("/spaces/reservations/$resId/host-cancel", "POST", JSONObject()).mapCatching { JSONObject(it.ifBlank { "{}" }).optInt("refund") }

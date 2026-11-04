@@ -38,7 +38,7 @@ import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.*
 import com.muyeon.app.ui.common.market.*
-import com.muyeon.app.ui.space.booking.HostCancelDialog
+import com.muyeon.app.ui.space.booking.*
 import com.muyeon.app.ui.space.booking.HostBookingDetailSheet
 import com.muyeon.app.ui.space.booking.HostBookingChatActions
 import com.muyeon.app.ui.space.booking.HostBookingChatCancelActions
@@ -64,6 +64,8 @@ fun SpaceHostReservationsScreen(
     var tick by remember { mutableIntStateOf(0) }
     var cancelTarget by remember { mutableStateOf<SpaceReservationRow?>(null) }
     var open by remember { mutableStateOf<SpaceReservationRow?>(null) }
+    var acceptTarget by remember { mutableStateOf<SpaceReservationRow?>(null) }
+    var declineTarget by remember { mutableStateOf<SpaceReservationRow?>(null) }
     var chatBusy by remember { mutableStateOf(false) }
 
     /** 예약자에게 채팅 — 공간 채팅과 같은 1:1 방(예약자·공간). */
@@ -94,7 +96,12 @@ fun SpaceHostReservationsScreen(
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(rows, key = { it.id }) { r ->
                         // 결제 완료만 [취소(전액 환불)] 줄이 붙는다.
-                        if (r.status == "PAID") HostPaidReservationRow(r, onClick = { open = r }) { cancelTarget = r } else HostReservationRow(r) { open = r }
+                        // 줄 모양은 한 번 고른다 — 수락 대기 [거절][수락] / 결제 완료 [취소(전액 환불)] / 나머지.
+                        when {
+                            r.awaitingHost -> HostAwaitingReservationRow(r, onClick = { open = r }, onDecline = { declineTarget = r }, onAccept = { acceptTarget = r })
+                            r.status == "PAID" -> HostPaidReservationRow(r, onClick = { open = r }) { cancelTarget = r }
+                            else -> HostReservationRow(r) { open = r }
+                        }
                     }
                 }
             }
@@ -105,9 +112,33 @@ fun SpaceHostReservationsScreen(
         // 하단 버튼은 한 번 고른다 — 결제 완료·시작 전이면 [취소(전액 환불)]까지.
         val cancellable = r.status == "PAID" && !r.isPast(nowKstYmdHm())
         HostBookingDetailSheet(r, onDismiss = { open = null }) {
-            if (cancellable) HostBookingChatCancelActions(chatBusy, onChat = { chat(r) }, onCancel = { cancelTarget = r })
+            if (r.awaitingHost) HostBookingDecideActions(onDecline = { declineTarget = r }, onAccept = { acceptTarget = r })
+            else if (cancellable) HostBookingChatCancelActions(chatBusy, onChat = { chat(r) }, onCancel = { cancelTarget = r })
             else HostBookingChatActions(chatBusy) { chat(r) }
         }
+    }
+
+    acceptTarget?.let { r ->
+        HostAcceptDialog(
+            onConfirm = {
+                scope.launch {
+                    api.accept(r.id).onSuccess { open = null; onMessage("예약을 수락했어요."); onChanged(); tick++ }
+                        .onFailure { onMessage(it.message ?: "수락하지 못했어요.") }
+                }
+            },
+            onDismiss = { acceptTarget = null },
+        )
+    }
+    declineTarget?.let { r ->
+        HostDeclineDialog(
+            onConfirm = { reason ->
+                scope.launch {
+                    api.decline(r.id, reason).onSuccess { open = null; onMessage("예약을 거절하고 전액 환불했어요."); onChanged(); tick++ }
+                        .onFailure { onMessage(it.message ?: "거절하지 못했어요.") }
+                }
+            },
+            onDismiss = { declineTarget = null },
+        )
     }
 
     cancelTarget?.let { r ->

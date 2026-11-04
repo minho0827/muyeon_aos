@@ -89,6 +89,8 @@ fun SpaceReserveSheet(
     var error by remember { mutableStateOf<String?>(null) }
     var showDate by remember { mutableStateOf(false) }
     var pendingId by remember { mutableStateOf<Int?>(null) }
+    /** 결제 완료 후 '예약 요청을 보냈어요' 안내(값 = 응답 기한 글자, "" = 기한 모름). null = 안 띄움. */
+    var requestSent by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(date, optionId, availTick) {
         val d = date ?: return@LaunchedEffect
@@ -103,7 +105,12 @@ fun SpaceReserveSheet(
         val rid = pendingId
         pendingId = null
         if (paid) {
-            onPaid()
+            if (space.approvalMode == "INSTANT") onPaid()
+            else scope.launch {
+                // 수락 후 확정 — 예약 요청 안내(응답 기한은 내 예약에서 읽는다, 못 읽으면 기한 빼고).
+                val row = rid?.let { id -> api.myReservations().getOrNull()?.firstOrNull { it.id == id } }
+                requestSent = row?.respondByText ?: ""
+            }
         } else {
             // 결제를 마치지 않고 닫음 — 아직 결제 대기면 자리를 풀어 같은 시간을 바로 다시 고를 수 있게.
             scope.launch {
@@ -176,9 +183,12 @@ fun SpaceReserveSheet(
                 error?.let { ReserveError(it) }
                 Spacer(Modifier.height(8.dp))
             }
-            ReservePayButton(submitting, canSubmit) { submit() }
+            // 수락 후 확정이면 결제 버튼 위 안내(바로 확정은 없음) — 공간마다 정해져 시트가 열린 뒤 바뀌지 않는다.
+            if (space.approvalMode == "INSTANT") ReservePayButton(submitting, canSubmit) { submit() }
+            else ReservePayButton(submitting, canSubmit, note = { ReserveApprovalNote() }) { submit() }
         }
     }
 
+    requestSent?.let { deadline -> ReserveRequestSentDialog(deadline) { requestSent = null; onPaid() } }
     if (showDate) ReserveDatePicker(date, today, space::isOpenOn, onPick = { date = it }, onDismiss = { showDate = false })
 }
