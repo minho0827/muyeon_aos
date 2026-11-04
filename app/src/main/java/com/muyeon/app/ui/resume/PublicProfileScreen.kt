@@ -494,12 +494,14 @@ private fun ProfileBody(p: PublicProfile, reviews: ReviewList?, isSelf: Boolean,
 @Composable
 private fun ProfileSections(p: PublicProfile, reviews: ReviewList?, isSelf: Boolean, onOpenReviews: () -> Unit) {
     Column(Modifier.fillMaxWidth()) {
-        ContactSection(p)
         p.intro?.takeIf { it.isNotEmpty() }?.let {
             ProfileSection("소개글") {
                 Text(it, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 22.sp, color = MuyeonColors.body)
             }
         }
+        // ★ 2026-11-04 기본 정보 — 웹 TeacherDetail 꾸민 레이아웃과 같은 줄·순서(빈 값 줄은 뺀다).
+        //  활동 지역·연락처는 이 표로 옮겼다(예전엔 따로 섹션·맨 위 연락처).
+        BasicInfoSection(p)
         (p.fields ?: p.genres)?.takeIf { it.isNotEmpty() }?.let { fs ->
             ProfileSection("전문 분야") {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -516,7 +518,6 @@ private fun ProfileSections(p: PublicProfile, reviews: ReviewList?, isSelf: Bool
                 }
             }
         }
-        p.activeRegion?.takeIf { it.isNotEmpty() }?.let { BodySection("활동 지역", it) }
         if (!p.availableDays.isNullOrEmpty() || !p.availableTimeSlots.isNullOrEmpty()) {
             ProfileSection("레슨 가능 시간") { LessonTimeGrid(p) }
         }
@@ -540,11 +541,13 @@ private fun ProfileSections(p: PublicProfile, reviews: ReviewList?, isSelf: Bool
                 }
             }
         }
-        p.certificates?.takeIf { it.isNotEmpty() }?.let { cert ->
-            ProfileSection("자격증") {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    verified(p, "CERT")?.let { SectionVerifiedLine(it) }
-                    LineList(cert)
+        // 경력 · 자격 — 웹과 같이 무용단 경력·자격증 줄(확인 기관 자격 로고는 맨 위).
+        val certLogos = verified(p, "CERT")
+        if (!p.companyCareer.isNullOrBlank() || !p.certificates.isNullOrBlank() || certLogos != null) {
+            ProfileSection("경력 · 자격") {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    certLogos?.let { SectionVerifiedLine(it) }
+                    InfoRows(listOf("무용단 경력" to p.companyCareer, "자격증" to p.certificates))
                 }
             }
         }
@@ -564,6 +567,59 @@ private fun ProfileSections(p: PublicProfile, reviews: ReviewList?, isSelf: Bool
         }
         VideoSection(p)
         ReviewsSection(reviews, onOpenReviews)
+    }
+}
+
+/** 기본 정보 — 활동 지역 · 희망 근무 지역 · 경력(구간 · 연차) · 희망 급여 · 연락처(공개일 때, 누르면 전화) · 지도 가능 분야. */
+@Composable
+private fun BasicInfoSection(p: PublicProfile) {
+    val ctx = LocalContext.current
+    val phone = p.contactPhone?.trim()?.takeIf { p.contactVisible == true && it.isNotEmpty() }
+    val rows = listOf(
+        "활동 지역" to p.activeRegion,
+        "희망 근무 지역" to p.desiredRegion,
+        "경력" to listOf(ResumeOptions.careerLabel(p.career).takeIf { !p.career.isNullOrBlank() }, p.careerYears)
+            .filter { !it.isNullOrBlank() }.joinToString(" · "),
+        "희망 급여" to p.desiredSalary?.let { ResumeOptions.salaryLabel(it) },
+    )
+    val fields = p.fields.orEmpty().joinToString(", ") { ResumeOptions.fieldLabel(it) }
+    if (rows.all { it.second.isNullOrBlank() } && phone == null && fields.isBlank()) return
+    ProfileSection("기본 정보") {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            InfoRows(rows)
+            phone?.let { ph ->
+                InfoRow("연락처") {
+                    Text(
+                        "$ph · 전화하기 ›",
+                        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 20.sp,
+                        color = MuyeonColors.primary,
+                        modifier = Modifier.clickable {
+                            val digits = ph.filter { it.isDigit() }
+                            if (digits.isNotEmpty()) runCatching { ctx.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$digits"))) }
+                        },
+                    )
+                }
+            }
+            InfoRows(listOf("지도 가능 분야" to fields))
+        }
+    }
+}
+
+/** 라벨 · 값 줄들 — 값이 빈 줄은 그리지 않는다(웹 ProfileRow). */
+@Composable
+private fun InfoRows(rows: List<Pair<String, String?>>) {
+    rows.forEach { (label, value) -> value?.takeIf { it.isNotBlank() }?.let { v -> InfoRow(label) { BodyText(v) } } }
+}
+
+/** 한 줄 — 왼쪽 회색 라벨(고정폭 96) + 오른쪽 값. */
+@Composable
+private fun InfoRow(label: String, value: @Composable () -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+        Text(
+            label, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 20.sp,
+            color = MuyeonColors.textSub, modifier = Modifier.width(96.dp),
+        )
+        Box(Modifier.weight(1f)) { value() }
     }
 }
 

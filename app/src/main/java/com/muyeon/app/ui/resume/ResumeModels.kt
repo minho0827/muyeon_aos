@@ -311,6 +311,7 @@ data class PublicProfile(
     val desiredSalary: String? = null,
     val companyCareer: String? = null,
     val videoUrl: String? = null,   // ★ 2026-10-31 영상 포트폴리오 링크(카드 '영상 보유'와 같은 값)
+    val careerYears: String? = null, // ★ 2026-11-04 기본 정보 '경력' 줄(웹 TeacherDetail careerLabel · careerYears)
 ) {
     companion object {
         /**
@@ -376,6 +377,7 @@ data class PublicProfile(
             desiredSalary = o.stringOrNull("desiredSalary"),
             companyCareer = o.stringOrNull("companyCareer"),
             videoUrl = o.stringOrNull("videoUrl"),
+            careerYears = o.opt("careerYears")?.takeIf { it != org.json.JSONObject.NULL }?.toString()?.takeIf { it.isNotBlank() && it != "null" },
         )
     }
 }
