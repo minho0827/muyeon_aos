@@ -611,14 +611,15 @@ private fun InfoRows(rows: List<Pair<String, String?>>) {
     rows.forEach { (label, value) -> value?.takeIf { it.isNotBlank() }?.let { v -> InfoRow(label) { BodyText(v) } } }
 }
 
-/** 한 줄 — 왼쪽 회색 라벨(고정폭 96) + 오른쪽 값. */
+/** 한 줄 — 왼쪽 회색 라벨(고정폭 104, 간격 12 — 웹 .dancer-profile-row·iOS 와 같음) + 오른쪽 값. */
 @Composable
 private fun InfoRow(label: String, value: @Composable () -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
         Text(
             label, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 20.sp,
-            color = MuyeonColors.textSub, modifier = Modifier.width(96.dp),
+            color = MuyeonColors.textSub, modifier = Modifier.width(104.dp),
         )
+        Spacer(Modifier.width(12.dp))
         Box(Modifier.weight(1f)) { value() }
     }
 }
