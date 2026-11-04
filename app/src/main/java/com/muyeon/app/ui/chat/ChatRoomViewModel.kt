@@ -793,22 +793,21 @@ class ChatRoomViewModel(
             runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
         }
 
+    /**
+     * 반응 누르기(PACERA 규칙) — 한 사람 하나: 같은 반응 = 취소, 다른 반응 = 교체(옛것 해제 + 새것).
+     *  낙관적으로 바꾼 뒤 서버 토글을 차례로 보낸다. 소켓 'message-reaction' 이 오면 반응 묶음을 다시 읽어 맞춘다.
+     */
     fun toggleReaction(m: ChatMessage, emoji: String) {
-        // 낙관적 갱신 후 서버 반영 — 소켓 에코(message-reaction)로 재조정.
+        if (m.id <= 0) return
         val i = messages.indexOfFirst { it.id == m.id }
-        if (i >= 0) {
-            val list = (messages[i].reactions ?: emptyList()).toMutableList()
-            val j = list.indexOfFirst { it.emoji == emoji }
-            if (j >= 0) {
-                val r = list[j]
-                val next = if (r.mine) r.count - 1 else r.count + 1
-                if (next <= 0) list.removeAt(j) else list[j] = r.copy(count = next, mine = !r.mine)
-            } else {
-                list.add(ChatReaction(emoji, 1, true))
-            }
-            messages[i] = messages[i].copy(reactions = list)
+        val current = if (i >= 0) messages[i].reactions.orEmpty() else m.reactions.orEmpty()
+        val (next, calls) = ChatReactionRules.toggle(current, emoji)
+        if (i >= 0) messages[i] = messages[i].copy(reactions = next)
+        viewModelScope.launch {
+            var failed = false
+            for (e in calls) if (api.toggleReaction(roomId, m.id, e).isFailure) { failed = true; break }
+            if (failed) refreshReactions()
         }
-        viewModelScope.launch { api.toggleReaction(roomId, m.id, emoji) }
     }
 
     fun toggleMute(value: Boolean) {

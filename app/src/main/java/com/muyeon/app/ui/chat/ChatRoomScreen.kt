@@ -23,6 +23,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -102,7 +103,6 @@ fun ChatRoomScreen(
     var reportMessage by remember { mutableStateOf<ChatMessage?>(null) }   // 상대 메시지 길게 누르기 → 메시지 신고
     var confirmBlock by remember { mutableStateOf(false) }
     var reactionTarget by remember { mutableStateOf<ChatMessage?>(null) }
-    var selectCopyText by remember { mutableStateOf<String?>(null) }   // 선택복사 대상(iOS SelectCopySheet)
     // ── 상단 레슨 컨텍스트(iOS lessonContextArea) 시트·확인창 상태 ──
     var showCyclesSheet by remember { mutableStateOf(false) }
     var showLegacyTimeline by remember { mutableStateOf(false) }               // 레거시 대표 진행 타임라인
@@ -723,11 +723,14 @@ fun ChatRoomScreen(
             onDismiss = { reportMessage = null },
         )
     }
+    // 길게 누르기 — PACERA 시트(반응 줄 + 답장·복사·편집·삭제·신고·차단). 동작은 무용연 기존 구현 그대로.
     reactionTarget?.let { m ->
-        MessageActionSheet(
-            message = m,
-            isMine = m.senderId == vm.currentUserId,
-            onPickEmoji = { emoji -> vm.toggleReaction(m, emoji); reactionTarget = null },
+        val mine = m.senderId == vm.currentUserId
+        ChatMessageActionSheet(
+            actions = ChatMessageRules.actions(m, mine, canBlock = vm.opponentId > 0),
+            onDismiss = { reactionTarget = null },
+            onReact = { emoji -> vm.toggleReaction(m, emoji); reactionTarget = null },
+            onReply = { vm.startReply(m); reactionTarget = null },
             onCopy = {
                 copyToClipboard(context, m.content)
                 // Android 13 이상은 시스템이 복사 확인을 띄우므로 앱 문구는 생략한다(중복 표시 방지).
@@ -736,84 +739,16 @@ fun ChatRoomScreen(
                 }
                 reactionTarget = null
             },
-            onSelectCopy = { selectCopyText = m.content; reactionTarget = null },
-            onReply = { vm.startReply(m); reactionTarget = null },
             onEdit = { vm.startEdit(m); reactionTarget = null },
             onDelete = { vm.deleteMessage(m); reactionTarget = null },
             onReport = { reportMessage = m; reactionTarget = null },
-            // 차단은 우상단 메뉴와 같은 확인 다이얼로그를 띄운다(상대 id 를 모르면 숨김).
-            onBlock = if (vm.opponentId > 0) { { confirmBlock = true; reactionTarget = null } } else null,
-            onDismiss = { reactionTarget = null },
+            // 차단은 우상단 메뉴와 같은 확인 다이얼로그를 띄운다.
+            onBlock = { confirmBlock = true; reactionTarget = null },
         )
-    }
-    selectCopyText?.let { text ->
-        SelectCopyDialog(text = text, onDismiss = { selectCopyText = null })
     }
     vm.toast?.let { msg ->
         LaunchedEffect(msg) { kotlinx.coroutines.delay(2000); vm.toast = null }
     }
-}
-
-/**
- * 메시지 길게 누르기 — 이모지 반응(카톡식 6종) + 동작 목록.
- *
- * ⚠️ 종전에는 이모지 반응만 있어서 **복사·삭제를 할 방법이 아예 없었다**
- *   (deleteMessage 는 뷰모델에 있는데 호출부가 없었다).
- *   iOS 컨텍스트 메뉴(복사/답장/수정/삭제)와 같은 구성으로 맞춘다.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun MessageActionSheet(
-    message: ChatMessage,
-    isMine: Boolean,
-    onPickEmoji: (String) -> Unit,
-    onCopy: () -> Unit,
-    onSelectCopy: () -> Unit,
-    onReply: () -> Unit,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
-    onReport: () -> Unit,
-    onBlock: (() -> Unit)?,
-    onDismiss: () -> Unit,
-) {
-    // 삭제된 메시지나 카드형에는 복사·수정이 의미가 없다.
-    val isText = message.type == "TEXT" && !message.isDeleted
-
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            listOf("👍", "❤️", "😂", "😮", "😢", "🙏").forEach { e ->
-                Text(
-                    e, fontSize = 30.sp, lineHeight = 36.sp,
-                    modifier = Modifier.clip(RoundedCornerShape(50)).clickable { onPickEmoji(e) }.padding(6.dp),
-                )
-            }
-        }
-        HorizontalDivider(color = MuyeonColors.border)
-        Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
-            if (isText) MessageAction("복사", MuyeonColors.textHead, onCopy)
-            if (isText) MessageAction("선택복사", MuyeonColors.textHead, onSelectCopy)
-            if (!message.isDeleted) MessageAction("답장", MuyeonColors.textHead, onReply)
-            if (isMine && isText) MessageAction("수정", MuyeonColors.textHead, onEdit)
-            if (isMine && !message.isDeleted) MessageAction("삭제", MuyeonColors.danger, onDelete)
-            // 상대 메시지 — 신고·차단(Apple 1.2 / 구글 UGC 정책: 문제 메시지에서 바로 신고·차단)
-            if (!isMine && !message.isDeleted) MessageAction("신고하기", MuyeonColors.danger, onReport)
-            if (!isMine) onBlock?.let { MessageAction("이 사용자 차단", MuyeonColors.danger, it) }
-        }
-    }
-}
-
-@Composable
-private fun MessageAction(text: String, color: Color, onClick: () -> Unit) {
-    Text(
-        text,
-        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
-        lineHeight = 18.sp, color = color,
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 14.dp),
-    )
 }
 
 /** 메시지 복사 — iOS vm.copyToClipboard 대응. */
@@ -1043,54 +978,29 @@ private fun MessageEditCard(
     }
 }
 
-/** 선택복사 — 원문 일부만 골라 복사할 수 있는 창(iOS SelectCopySheet). */
-@Composable
-private fun SelectCopyDialog(text: String, onDismiss: () -> Unit) {
-    com.muyeon.app.ui.common.MuyeonDialog(
-        title = "선택복사",
-        actions = listOf(com.muyeon.app.ui.common.MuyeonDialogAction("완료")),
-        onDismiss = onDismiss,
-        content = {
-            Box(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
-                androidx.compose.foundation.text.selection.SelectionContainer {
-                    Text(text, fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 21.sp, color = MuyeonColors.textHead)
-                }
-            }
-        },
-    )
-}
-
+/**
+ * 입력바 — PACERA Android `ChatInputBar` 와 같은 모양: [+](무용연 첨부 시트 그대로) · 둥근 입력칸(최소 36, 4줄까지 늘고
+ *  그 뒤는 안에서 스크롤, 글자 14) · 36dp 동그란 전송(보낼 수 있으면 주황, 아니면 회색).
+ */
 @Composable
 private fun ChatInputBar(vm: ChatRoomViewModel, onAttach: () -> Unit) {
     Row(
-        Modifier
-            .fillMaxWidth()
-            .background(MuyeonColors.surface)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+        Modifier.fillMaxWidth().background(MuyeonColors.surface).padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.Bottom,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // 첨부(+) — iOS 입력바 좌측 '+' 버튼.
+        // 첨부(+) — 무용연 첨부 시트(사진·동영상·설문·약속 제안)를 연다.
         Box(
-            Modifier.size(34.dp).clip(RoundedCornerShape(50)).background(Color(0xFFF2F2F7))
-                .clickable(onClick = onAttach),
+            Modifier.size(36.dp).clip(CircleShape).background(MuyeonColors.groupedBg).clickable(onClick = onAttach),
             contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Filled.Add, "첨부", tint = MuyeonColors.textSub, modifier = Modifier.size(18.dp))
-        }
+        ) { Icon(Icons.Filled.Add, "첨부", tint = MuyeonColors.textSub, modifier = Modifier.size(20.dp)) }
+        Spacer(Modifier.width(8.dp))
         Box(
-            Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(20.dp))
-                .background(Color(0xFFF2F2F7))
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+            Modifier.weight(1f).heightIn(min = 36.dp, max = 120.dp).clip(RoundedCornerShape(18.dp))
+                .background(MuyeonColors.groupedBg).padding(horizontal = 14.dp, vertical = 8.dp),
+            contentAlignment = Alignment.CenterStart,
         ) {
             if (vm.input.isEmpty()) {
-                Text(
-                    "메시지를 입력하세요",
-                    fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 20.sp,
-                    color = MuyeonColors.secondary,
-                )
+                Text("메시지를 입력하세요", fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.hint)
             }
             // AI 추천 칩·드래프트처럼 바깥에서 글이 바뀌면 커서를 글 끝으로(String 판은 맨 앞에 남는다 — 10-23).
             var tfv by remember { mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(vm.input, androidx.compose.ui.text.TextRange(vm.input.length))) }
@@ -1098,24 +1008,21 @@ private fun ChatInputBar(vm: ChatRoomViewModel, onAttach: () -> Unit) {
             BasicTextField(
                 value = tfv,
                 onValueChange = { tfv = it; if (it.text != vm.input) vm.onInputChange(it.text) },
-                textStyle = TextStyle(
-                    fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 20.sp,
-                    color = MuyeonColors.textHead,
-                ),
+                textStyle = TextStyle(fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 20.sp, color = MuyeonColors.textHead),
                 cursorBrush = SolidColor(MuyeonColors.primary),
+                maxLines = 4,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+        Spacer(Modifier.width(8.dp))
         val canSend = vm.input.isNotBlank()
         Box(
-            Modifier
-                .size(34.dp)
-                .clip(RoundedCornerShape(50))
-                .background(if (canSend) MuyeonColors.primary else Color(0xFFD1D1D6))
+            Modifier.size(36.dp).clip(CircleShape)
+                .background(if (canSend) MuyeonColors.primary else MuyeonColors.groupedBg)
                 .clickable(enabled = canSend) { vm.send() },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.AutoMirrored.Filled.Send, "전송", tint = Color.White, modifier = Modifier.size(17.dp))
+            Icon(Icons.AutoMirrored.Filled.Send, "전송", tint = if (canSend) Color.White else MuyeonColors.hint, modifier = Modifier.size(18.dp))
         }
     }
 }
@@ -1296,25 +1203,8 @@ private fun MessageBubble(
                     LinkPreviewCard(url, onOpenLink)
                 }
             }
-            // 이모지 반응 집계
-            message.reactions?.takeIf { it.isNotEmpty() }?.let { list ->
-                Row(Modifier.padding(top = 3.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    list.forEach { r ->
-                        Text(
-                            "${r.emoji} ${r.count}",
-                            fontFamily = customFontFamily, fontSize = 11.sp, lineHeight = 14.sp,
-                            color = if (r.mine) MuyeonColors.primary else MuyeonColors.textSub,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(50))
-                                .background(
-                                    if (r.mine) MuyeonColors.primary.copy(alpha = 0.12f) else Color(0xFFF2F2F7)
-                                )
-                                .clickable { onToggleReaction(r.emoji) }
-                                .padding(horizontal = 7.dp, vertical = 3.dp),
-                        )
-                    }
-                }
-            }
+            // 반응 칩(PACERA ReactionChips) — 지운 메시지엔 없음.
+            if (!message.isDeleted) ReactionChips(ChatReactionRules.sorted(message.reactions.orEmpty()), onToggleReaction)
         }
     }
 }
