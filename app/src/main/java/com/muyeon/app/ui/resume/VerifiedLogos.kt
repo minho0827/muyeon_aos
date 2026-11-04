@@ -44,7 +44,7 @@ import org.json.JSONArray
 
 /**
  * ★ 2026-11-04 확인 기관 로고(백엔드 3a2da22) — 강사 공개 프로필 **상세**에서만 쓴다(작은 카드엔 없음).
- *  badges.logos[]: 관리자가 확인한 항목 중 기관을 고른 것. 옛 서버·비회원은 빈 배열.
+ *  badges.logos[]: 관리자가 강사별로 고른 확인 기관(7c41ee3), 순서는 서버가 준 그대로. 옛 서버·비회원은 빈 배열.
  */
 data class VerifiedLogo(
     val id: Int,
@@ -52,11 +52,12 @@ data class VerifiedLogo(
     /** EDUCATION | CAREER | CERT — 상세의 어느 섹션 맨 위에 붙을지. */
     val section: String,
     val org: String,
+    /** 7c41ee3 부터 늘 null(관리자가 강사별로 기관만 고른다) — 있으면 " · {title}" 로 붙인다. 없으면 "". */
     val title: String,
     val logoUrl: String,
     val verifiedAt: String?,
 ) {
-    /** "{org} · {title} · {verifiedAt} 확인" (확인일이 없으면 날짜 빼고). */
+    /** "{org} · {verifiedAt} 확인" — title 이 있으면 "{org} · {title} · {verifiedAt} 확인", 확인일이 없으면 날짜 빼고. */
     val confirmText: String get() = listOfNotNull(org, title.ifBlank { null }, verifiedAt?.let { "$it 확인" }).joinToString(" · ")
 
     companion object {
@@ -160,7 +161,7 @@ private fun LogoSheetRow(l: VerifiedLogo) {
 }
 
 /**
- * 섹션(학력·경력·자격증) 맨 위 확인 줄 — 그 섹션의 확인 항목마다 "20×20 로고 + {org} · {title}".
+ * 섹션(학력·경력·자격증) 맨 위 확인 줄 — 그 섹션의 확인 항목마다 "20×20 로고 + {org}"(title 이 있으면 " · {title}").
  *  부르는 쪽이 섹션 항목이 있을 때만 부른다. 로고를 못 불러오면 그 줄만 숨긴다.
  */
 @Composable
