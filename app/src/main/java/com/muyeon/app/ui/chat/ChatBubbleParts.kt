@@ -85,7 +85,8 @@ import java.util.Locale
 object ChatTimeFormat {
     private val zone: ZoneId get() = ZoneId.systemDefault()
     private val timeFormat get() = DateTimeFormatter.ofPattern("a h:mm", Locale.getDefault())
-    private val dayFormat get() = DateTimeFormatter.ofPattern("yyyy년 M월 d일 EEEE", Locale.KOREAN)
+    /** PACERA iOS DateSeparator — "yyyy.MM.dd(E)" → "2026.11.04(수)". */
+    private val dayFormat get() = DateTimeFormatter.ofPattern("yyyy.MM.dd(E)", Locale.getDefault())
 
     fun parse(iso: String?): LocalDateTime? {
         if (iso.isNullOrBlank()) return null
@@ -99,7 +100,7 @@ object ChatTimeFormat {
 
     fun dayOf(iso: String?): LocalDate? = parse(iso)?.toLocalDate()
 
-    /** 날짜 구분선 — "2026년 11월 4일 수요일". */
+    /** 날짜 구분선 — "2026.11.04(수)"(PACERA iOS). */
     fun forDivider(day: LocalDate): String = dayFormat.format(day)
 }
 
@@ -125,17 +126,23 @@ object ChatGrouping {
     }
 }
 
-/** 날짜 구분선 — 가운데 회색 캡슐. */
+/**
+ * 날짜 구분선 — PACERA iOS DateSeparator 와 같은 모양: 양옆 1dp 선(테두리색) + 가운데 글자(11sp Light, 3차 글자색),
+ *  글자 좌우 12, 위아래 8, 좌우 20.
+ */
 @Composable
 fun ChatDateDivider(day: LocalDate) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.Center) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 20.dp).semantics { contentDescription = "chatDateDivider" },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.weight(1f).height(1.dp).background(MuyeonColors.border))
         Text(
             ChatTimeFormat.forDivider(day),
-            fontFamily = customFontFamily, fontSize = 12.sp, color = MuyeonColors.textSub,
-            modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(MuyeonColors.groupedBg.copy(alpha = 0.9f))
-                .padding(horizontal = 12.dp, vertical = 5.dp)
-                .semantics { contentDescription = "chatDateDivider" },
+            fontFamily = customFontFamily, fontWeight = FontWeight.Light, fontSize = 11.sp, color = MuyeonColors.hint,
+            modifier = Modifier.padding(horizontal = 12.dp),
         )
+        Box(Modifier.weight(1f).height(1.dp).background(MuyeonColors.border))
     }
 }
 

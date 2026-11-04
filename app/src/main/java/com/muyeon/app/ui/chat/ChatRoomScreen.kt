@@ -427,7 +427,8 @@ fun ChatRoomScreen(
                             opponentImage = vm.opponentImage,
                             onOpenProfile = { openOpponentProfile() },
                             showAvatar = startsGroup && m.senderId != vm.currentUserId,
-                            showTime = endsGroup,
+                            // PACERA iOS showsTimeLabel — 묶음 마지막 줄이거나 고친 글(수정됨)이면 시간.
+                            showTime = endsGroup || (m.isEdited && !m.isDeleted),
                             replyQuote = replyQuoteModel(m, vm.messages),
                             onReplyQuoteClick = { id -> jumpToReply(id) },
                             read = isReadByOpponent(m, vm.opponentLastReadAt),
@@ -1387,14 +1388,15 @@ private sealed interface CardJumpTarget {
 /** 대상 카드를 찾을 때 이전 메시지를 더 불러오는 최대 횟수(50건 × 20 = 1,000건). */
 private const val MAX_JUMP_LOADS = 20
 
-/** 인용 상자로 찾아온 원문 — 주황 바탕이 잠깐 비쳤다 사라진다. */
+/**
+ * 인용 상자로 찾아온 원문 — PACERA iOS 와 같은 값: 주황 12% 둥근(12) 바탕이 0.2초에 켜지고,
+ *  1.2초 뒤 꺼질 때 0.3초에 사라진다(켜고 끄는 시점은 [jumpToReply]).
+ */
 @Composable
 private fun Modifier.replyHighlight(active: Boolean): Modifier {
     val a = remember { androidx.compose.animation.core.Animatable(0f) }
     LaunchedEffect(active) {
-        if (!active) return@LaunchedEffect
-        a.snapTo(0.22f)
-        a.animateTo(0f, androidx.compose.animation.core.tween(durationMillis = 1200))
+        a.animateTo(if (active) 0.12f else 0f, androidx.compose.animation.core.tween(durationMillis = if (active) 200 else 300))
     }
     return this.then(Modifier.background(MuyeonColors.primary.copy(alpha = a.value), RoundedCornerShape(12.dp)))
 }
