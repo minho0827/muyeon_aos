@@ -25,6 +25,8 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -50,6 +52,9 @@ import coil3.compose.AsyncImage
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.ImageViewerActivity
 import com.muyeon.app.ui.common.MuyeonColors
+import com.muyeon.app.ui.common.MuyeonDialog
+import com.muyeon.app.ui.common.MuyeonDialogAction
+import com.muyeon.app.ui.common.MuyeonDialogKind
 import com.muyeon.app.ui.quote.QuoteDialog
 import com.muyeon.app.ui.quote.QuoteUi
 import com.muyeon.app.ui.review.ReviewApi
@@ -101,8 +106,8 @@ fun PublicProfileScreen(
     var toast by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
-    // 무용수 유형은 레슨(견적) 요청 불가 — [견적 요청하기] 숨김(2026-09-26 정책).
-    val canRequestQuote = remember { !ActiveRole.isDancer(ctx) }
+    // 무용수 활동유형은 레슨(견적) 요청 불가(2026-09-26 정책) — 버튼은 보이고, 누르면 안내 후 일반 전환 시 이어서 진행(iOS attemptQuote).
+    var dancerGate by remember { mutableStateOf(false) }
 
     // 본인 프로필 → [수정하기](별도 액티비티)에서 돌아오면 다시 읽는다(결과 키 RESUME/PROFILE).
     var reloadTick by rememberSaveable { mutableIntStateOf(0) }
@@ -235,8 +240,7 @@ fun PublicProfileScreen(
 
             // 하단 CTA(iOS ctaBar) — 채용 시점은 무료 [채팅하기] 하나,
             //  일반은 기존 채팅방이 있을 때만 [문의하기] + [레슨 문의](이미 받은 견적이 있으면 [받은 견적 보기]).
-            val hasGeneralCta = (p.chatRoomId ?: 0) > 0 || canRequestQuote
-            if (!hideCta && !isSelf && (recruitMode || hasGeneralCta)) {
+            if (!hideCta && !isSelf) {
                 Row(
                     Modifier.fillMaxWidth()
                         .shadow(8.dp, ambientColor = Color.Black.copy(alpha = 0.05f), spotColor = Color.Black.copy(alpha = 0.05f))
@@ -258,11 +262,13 @@ fun PublicProfileScreen(
                         if (roomId > 0) {
                             CtaButton("문의하기", filled = false, modifier = Modifier.weight(1f)) { onOpenChat(roomId) }
                         }
-                        if (canRequestQuote) {
-                            val receivedId = (p.myQuoteId ?: 0).takeIf { it > 0 && p.myQuoteHasResponse == true }
-                            CtaButton(if (receivedId != null) "받은 견적 보기" else "레슨 문의", filled = true, modifier = Modifier.weight(1f)) {
-                                // 이미 이 강사에게 견적요청한 상태 → 받은 견적 확인으로 분기(iOS·웹 TeacherDetail 과 동일 규칙)
-                                if (receivedId != null) onOpenReceivedQuotes(receivedId) else onRequestQuote()
+                        val receivedId = (p.myQuoteId ?: 0).takeIf { it > 0 && p.myQuoteHasResponse == true }
+                        CtaButton(if (receivedId != null) "받은 견적 보기" else "레슨 문의", filled = true, modifier = Modifier.weight(1f)) {
+                            // 이미 이 강사에게 견적요청한 상태 → 받은 견적 확인으로 분기(iOS·웹 TeacherDetail 과 동일 규칙)
+                            when {
+                                receivedId != null -> onOpenReceivedQuotes(receivedId)
+                                ActiveRole.isDancer(ctx) -> dancerGate = true
+                                else -> onRequestQuote()
                             }
                         }
                     }
@@ -325,20 +331,38 @@ fun PublicProfileScreen(
         )
     }
 
+    // 신고 — 사유 4개 중 선택(iOS confirmationDialog "신고 사유를 선택해 주세요"). 본문 {targetType:TEACHER, targetId, reason}.
     if (reportOpen) {
-        QuoteDialog(
-            title = "이 강사를 신고할까요?",
-            message = "허위 정보·부적절한 프로필로 신고합니다. 운영팀이 확인 후 조치해요.",
-            confirmText = "신고하기",
-            onConfirm = {
+        ReportReasonSheet(
+            onPick = { reason ->
                 reportOpen = false
                 scope.launch {
-                    api.report(userId, "INAPPROPRIATE")
+                    api.report(userId, reason)
                         .onSuccess { toast = "신고가 접수됐어요." }
-                        .onFailure { toast = it.message }
+                        .onFailure { toast = it.message ?: "신고 접수에 실패했어요." }
                 }
             },
             onDismiss = { reportOpen = false },
+        )
+    }
+    // 무용수 활동유형 → 레슨 문의 차단 안내. 일반 전환에 성공하면 이어서 견적 요청(iOS RoleGate.dancerLessonCustomerGate).
+    if (dancerGate) {
+        MuyeonDialog(
+            title = "회원유형 안내",
+            message = "무용수 유형에서는 레슨을 요청하거나 예약할 수 없어요. 일반 유형으로 전환하면 계속할 수 있어요.",
+            actions = listOf(
+                MuyeonDialogAction("${ActiveRole.label("GENERAL")} 유형으로 전환하고 계속", MuyeonDialogKind.PRIMARY) {
+                    dancerGate = false
+                    scope.launch {
+                        if (ActiveRole.saveOnServer(ctx, "GENERAL")) {
+                            ActiveRole.store(ctx, "GENERAL")
+                            onRequestQuote()
+                        }
+                    }
+                },
+                MuyeonDialogAction("취소", MuyeonDialogKind.CANCEL) { dancerGate = false },
+            ),
+            onDismiss = { dancerGate = false },
         )
     }
     toast?.let { msg ->
@@ -855,6 +879,46 @@ private fun CtaButton(
             .clickable(enabled = enabled, onClick = onClick)
             .padding(vertical = 15.dp),
     )
+}
+
+/** 신고 사유 선택 시트 — iOS 와 같은 사유·순서·서버 코드. */
+private val REPORT_REASONS = listOf(
+    "FAKE_RESUME" to "허위 이력서/프로필",
+    "INAPPROPRIATE" to "부적절한 내용",
+    "SPAM" to "스팸/광고",
+    "ETC" to "기타",
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReportReasonSheet(onPick: (String) -> Unit, onDismiss: () -> Unit) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+            Text(
+                "신고 사유를 선택해 주세요",
+                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                lineHeight = 19.sp, color = MuyeonColors.textHead,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
+            )
+            HorizontalDivider(color = MuyeonColors.border)
+            REPORT_REASONS.forEach { (code, label) ->
+                Text(
+                    label,
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp,
+                    lineHeight = 18.sp, color = MuyeonColors.textHead,
+                    modifier = Modifier.fillMaxWidth().clickable { onPick(code) }
+                        .padding(horizontal = 20.dp, vertical = 13.dp),
+                )
+            }
+            Text(
+                "취소",
+                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
+                lineHeight = 18.sp, color = MuyeonColors.textSub,
+                modifier = Modifier.fillMaxWidth().clickable(onClick = onDismiss)
+                    .padding(horizontal = 20.dp, vertical = 13.dp),
+            )
+        }
+    }
 }
 
 /** 섹션의 확인 기관 항목(없으면 null — 섹션은 지금과 같다). */

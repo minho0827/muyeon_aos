@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -87,7 +88,7 @@ private fun logoUrl(path: String) = com.muyeon.app.ui.quote.QuoteUi.imageUrl(pat
 const val LOGO_MEANING = "무용연이 공식 서류(졸업·재직·자격 증명 등)로 직접 확인한 인증 마크예요."
 
 /**
- * 이름 아래 "✔ 무용연이 확인한 경력" + 가로 로고 칩(최대 4개, 넘치면 "+N ›").
+ * 이름 아래 "(인증 씰) 무용연이 확인한 경력" + 가로 로고 칩(최대 4개, 넘치면 "+N ›").
  *  logos 가 비어 있으면 아무것도 그리지 않는다(문구·자리 모두 없음 — 부르는 쪽도 비면 부르지 않는다).
  *  칩: 흰 둥근 칩 높이 36 · 안쪽 4 · 옅은 테두리, 로고 칸은 28×84 고정(Fit, 잘리지 않음 — 그림이 와도 칩 크기 그대로).
  *  로고를 못 불러오면 그 칩만 숨긴다.
@@ -99,8 +100,12 @@ fun VerifiedLogoRow(logos: List<VerifiedLogo>, modifier: Modifier = Modifier) {
     var shown by remember { mutableStateOf<VerifiedLogo?>(null) }
     var sheet by remember { mutableStateOf(false) }
     val visible = logos.filter { it.id !in failed }
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("✔ 무용연이 확인한 경력", fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = MuyeonColors.primary)
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // iOS Label("무용연이 확인한 경력", systemImage: "checkmark.seal.fill") — 인증 씰 아이콘 + 글자(간격 4)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Icon(Icons.Filled.Verified, null, tint = MuyeonColors.primary, modifier = Modifier.size(15.dp))
+            Text("무용연이 확인한 경력", fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = MuyeonColors.primary)
+        }
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             visible.take(ROW_MAX).forEach { l ->
                 LogoChip(l, onClick = { shown = l }, onError = { failed = failed + l.id })
