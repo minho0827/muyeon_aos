@@ -177,9 +177,10 @@ private fun LogoSheetRow(l: VerifiedLogo) {
 @Composable
 fun SectionVerifiedLine(logos: List<VerifiedLogo>) {
     var failed by remember(logos) { mutableStateOf<Set<Int>>(emptySet()) }
+    var shown by remember { mutableStateOf<VerifiedLogo?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         logos.filter { it.id !in failed }.forEach { l ->
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.clickable { shown = l }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 AsyncImage(
                     logoUrl(l.logoUrl), l.org, contentScale = ContentScale.Fit,
                     onError = { failed = failed + l.id },
@@ -193,6 +194,8 @@ fun SectionVerifiedLine(logos: List<VerifiedLogo>) {
             }
         }
     }
+    // ★ 11-04 섹션 줄 로고도 누르면 같은 설명 팝업
+    shown?.let { l -> MuyeonDialog(title = l.org, message = l.meaningText, actions = listOf(MuyeonDialogAction("확인")), onDismiss = { shown = null }) }
 }
 
 /** 섹션별 확인 항목(EDUCATION·CAREER·CERT) — 없으면 null(섹션은 지금과 같다). */
