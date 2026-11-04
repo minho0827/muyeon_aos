@@ -146,7 +146,7 @@ class ResumeActivity : ResultActivity() {
 
             fun back() { if (!nav.popBackStack()) finish() }
 
-            NavHost(nav, startDestination = route) {
+            NavHost(nav, startDestination = route, popEnterTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popEnter, popExitTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popExit) {
                 composable("list") {
                     ResumeListScreen(
                         api = api, mode = mode, onClose = { finish() },

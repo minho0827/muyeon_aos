@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 채팅방을 닫을 때 뒤 화면이 왼쪽에서 살짝(30%) 돌아온다 — iOS 와 같은 느낌. -->
+<translate xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="300"
+    android:fromXDelta="-30%"
+    android:toXDelta="0%"
+    android:interpolator="@android:interpolator/fast_out_slow_in" />

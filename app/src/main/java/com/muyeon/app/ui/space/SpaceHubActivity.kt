@@ -75,7 +75,7 @@ class SpaceHubActivity : ResultActivity() {
             }
             fun changed() { changedTick++; addResultKeys(ResultKeys.SPACE, ResultKeys.RESERVATIONS) }
 
-            NavHost(nav, startDestination = start) {
+            NavHost(nav, startDestination = start, popEnterTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popEnter, popExitTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popExit) {
                 composable("list") {
                     SpaceListScreen(
                         api = api, canCreate = canHost(this@SpaceHubActivity), onBack = { back() },

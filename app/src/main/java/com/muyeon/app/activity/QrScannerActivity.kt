@@ -34,7 +34,9 @@ class QrScannerActivity : ComponentActivity() {
 
             NavHost(
                 navController = navController,
-                startDestination = "qr_scanner"
+                startDestination = "qr_scanner",
+                popEnterTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popEnter,
+                popExitTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popExit,
             ) {
                 composable("qr_scanner") {
                     QrScannerScreen(

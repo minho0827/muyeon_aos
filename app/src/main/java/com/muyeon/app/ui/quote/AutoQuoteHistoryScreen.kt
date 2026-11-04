@@ -286,7 +286,7 @@ class AutoQuoteHistoryActivity : com.muyeon.app.result.ResultActivity() {
             // 상세는 항목을 통째로 넘긴다(QuoteHubActivity 의 sentDetail 과 동일한 이유).
             var sentDetail by remember { mutableStateOf<SentQuoteItem?>(null) }
 
-            NavHost(nav, startDestination = "list") {
+            NavHost(nav, startDestination = "list", popEnterTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popEnter, popExitTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popExit) {
                 composable("list") {
                     AutoQuoteHistoryScreen(
                         api = api,

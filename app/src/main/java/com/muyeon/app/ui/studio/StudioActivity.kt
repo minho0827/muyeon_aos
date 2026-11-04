@@ -103,7 +103,7 @@ class StudioActivity : com.muyeon.app.result.ResultActivity() {
 
         fun back() { if (!nav.popBackStack()) finish() }
 
-        NavHost(nav, startDestination = route) {
+        NavHost(nav, startDestination = route, popEnterTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popEnter, popExitTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popExit) {
             composable("hub") {
                 StudioHub(
                     onClose = { finish() },

@@ -76,7 +76,7 @@ class TransferActivity : ResultActivity() {
                 nav.navigate("editor/0")
             }
 
-            NavHost(nav, startDestination = start) {
+            NavHost(nav, startDestination = start, popEnterTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popEnter, popExitTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popExit) {
                 composable("list") {
                     TransferListScreen(
                         api = api, state = listState, canCreate = canPost(this@TransferActivity), myUserId = myId,

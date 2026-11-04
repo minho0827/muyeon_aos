@@ -363,7 +363,7 @@ class SurveyActivity : com.muyeon.app.result.ResultActivity() {
             val nav = rememberNavController()
             com.muyeon.app.analytics.TrackNavigation("Survey", nav)
             val api = remember { SurveyApi(TokenManager.getAccessToken(this)) }
-            NavHost(nav, startDestination = if (recipientId > 0) "profile" else "respond") {
+            NavHost(nav, startDestination = if (recipientId > 0) "profile" else "respond", popEnterTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popEnter, popExitTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popExit) {
                 composable("profile") {
                     SurveyProfileScreen(
                         api, recipientId,

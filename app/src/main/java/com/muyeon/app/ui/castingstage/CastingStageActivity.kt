@@ -68,7 +68,7 @@ class CastingStageActivity : ResultActivity() {
             var reloadKey by remember { mutableIntStateOf(0) }
             // 링크로 열었으면 첫 화면 위에 그 화면을 한 번 쌓는다 — 뒤로 가면 캐스팅·무대 첫 화면.
             val linkRoute = remember { if (savedInstanceState == null) intent.getStringExtra(EXTRA_ROUTE) else null }
-            NavHost(nav, startDestination = "home") {
+            NavHost(nav, startDestination = "home", popEnterTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popEnter, popExitTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popExit) {
                 composable("home") {
                     CastingStageScreen(
                         api = api,

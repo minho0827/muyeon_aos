@@ -629,7 +629,7 @@ class JobPostingActivity : com.muyeon.app.result.ResultActivity() {
                 )
             }
 
-            NavHost(nav, startDestination = route) {
+            NavHost(nav, startDestination = route, popEnterTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popEnter, popExitTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popExit) {
                 composable("list") {
                     MyPostingsScreen(
                         api = api,

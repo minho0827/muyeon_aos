@@ -116,7 +116,7 @@ class OnboardingActivity : ComponentActivity() {
             val api = remember { RoleVerificationApi(token) }
             val payload = remember(payloadJson, activeType) { RoleManagePayload.parse(payloadJson, activeType) }
 
-            NavHost(nav, startDestination = route) {
+            NavHost(nav, startDestination = route, popEnterTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popEnter, popExitTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popExit) {
                 composable("manage") {
                     RoleManageScreen(
                         payload = payload,

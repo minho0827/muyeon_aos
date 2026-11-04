@@ -94,6 +94,9 @@ abstract class ResultActivity : ComponentActivity(), ResultHost {
             setResult(RESULT_OK, resultIntent(keys, sessionPayload.takeIf { !it.isEmpty }))
         }
         super.finish()
+        // ★ 2026-11-04 네이티브 화면을 닫을 때 iOS 내비게이션처럼 오른쪽으로 밀려 나간다(페이드 대신) — ui/common/nav/MuyeonNav 와 같은 모양.
+        @Suppress("DEPRECATION")
+        overridePendingTransition(com.muyeon.app.R.anim.chat_slide_in_from_left, com.muyeon.app.R.anim.chat_slide_out_right)
     }
 
     private companion object {

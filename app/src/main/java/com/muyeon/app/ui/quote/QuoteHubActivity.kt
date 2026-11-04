@@ -84,7 +84,7 @@ class QuoteHubActivity : ResultActivity() {
             // 딥링크(알림)로 quoteId 가 오면 상세부터 — 뒤로가면 허브 목록.
             val start = if (deepQuoteId > 0) "received/$deepQuoteId" else "hub"
 
-            NavHost(nav, startDestination = start) {
+            NavHost(nav, startDestination = start, popEnterTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popEnter, popExitTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popExit) {
                 composable("hub") { entry ->
                     // 상세에서 채택·취소·삭제하고 돌아오면 목록을 다시 읽는다(결과 키 QUOTES).
                     //  rememberSaveable 이라 상세에 가 있는 동안에도 값이 살아 있다.

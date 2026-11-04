@@ -41,6 +41,7 @@ import com.muyeon.app.utils.TokenManager
  */
 class ChatActivity : ResultActivity() {
 
+
     override val defaultResultKeys = setOf(ResultKeys.CHAT_ROOMS, ResultKeys.CHAT_ROOM)
 
     companion object {
@@ -164,7 +165,12 @@ class ChatActivity : ResultActivity() {
 
             val start = if (startRoomId > 0) "room/$startRoomId" else "list"
 
-            NavHost(nav, startDestination = start) {
+            // ★ 2026-11-04 빠져나올 때만 iOS 내비게이션처럼(오른쪽으로 밀려 나감) — ui/common/nav/MuyeonNav.
+            NavHost(
+                nav, startDestination = start,
+                popEnterTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popEnter,
+                popExitTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popExit,
+            ) {
                 composable("list") { entry ->
                     // 방·차단목록에서 돌아오면 목록을 다시 읽는다(ON_RESUME 은 액티비티 복귀만 잡는다).
                     entry.OnResultKeys { keys ->

@@ -125,7 +125,7 @@ class LessonActivity : ResultActivity() {
                 }
             }
 
-            NavHost(nav, startDestination = route) {
+            NavHost(nav, startDestination = route, popEnterTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popEnter, popExitTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popExit) {
                 composable("calendar") { entry ->
                     // 배지 상태(신규 예약·조율 중 확인)는 기기 저장 — iOS UserDefaults 대응.
                     val calPrefs = remember {
