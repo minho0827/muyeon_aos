@@ -73,7 +73,7 @@ private val ROLE_OPTIONS = listOf(
     RoleOption("DANCER", "💃", "무용수", false),
     RoleOption("ACADEMY", "🏫", "학원·원장", true),
     RoleOption("TEAM", "🎭", "공연팀·기획자", true),
-    RoleOption("SPACE", "🏢", "공간보유자", true),
+    // 공간보유자 유형은 회원 기반 확대 후 이 위치에서 재오픈한다(iOS `RoleManageView.options` 와 같다 — 2026-11-04 AOS 에만 남아 있던 것 제거).
     RoleOption("HOBBY", "✨", "일반회원", false),
 )
 
@@ -110,6 +110,7 @@ data class RoleManagePayload(
                 val status = mutableMapOf<String, String>()
                 val documents = mutableMapOf<String, List<String>>()
                 o.optJSONArray("held")?.let { arr -> (0 until arr.length()).forEach { granted.add(arr.optString(it)) } }
+                // ★ 11-04 닫아 둔 공간보유자 유형은 보유·전환 목록에서 뺀다(iOS derive 와 같다).
                 o.optJSONArray("roles")?.let { arr ->
                     (0 until arr.length()).forEach { i ->
                         val r = arr.optJSONObject(i) ?: return@forEach
@@ -124,6 +125,7 @@ data class RoleManagePayload(
                         }
                     }
                 }
+                granted.remove("SPACE")
                 RoleManagePayload(granted, status, activeType.ifEmpty { "GENERAL" }, documents)
             }.getOrDefault(RoleManagePayload(emptySet(), emptyMap(), activeType))
         }
