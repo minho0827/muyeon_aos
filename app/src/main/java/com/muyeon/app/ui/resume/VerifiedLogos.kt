@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.resume
 
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -106,7 +107,7 @@ fun VerifiedLogoRow(logos: List<VerifiedLogo>, modifier: Modifier = Modifier) {
             Icon(Icons.Filled.Verified, null, tint = MuyeonColors.primary, modifier = Modifier.size(15.dp))
             Text("무용연이 확인한 경력", fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = MuyeonColors.primary)
         }
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             visible.take(ROW_MAX).forEach { l ->
                 LogoChip(l, onClick = { shown = l }, onError = { failed = failed + l.id })
             }
@@ -121,16 +122,15 @@ fun VerifiedLogoRow(logos: List<VerifiedLogo>, modifier: Modifier = Modifier) {
 
 @Composable
 private fun LogoChip(l: VerifiedLogo, onClick: () -> Unit, onError: () -> Unit) {
+    // ★ 11-04 박스 없이 로고만(사용자 요청, 웹·iOS 와 같음) — 높이 32 고정, 폭은 로고 비율대로(최대 84).
     Box(
-        Modifier.height(36.dp).clip(RoundedCornerShape(18.dp)).background(Color.White)
-            .border(1.dp, MuyeonColors.border, RoundedCornerShape(18.dp)).clickable(onClick = onClick)
-            .padding(4.dp).semantics { contentDescription = l.org },
+        Modifier.height(36.dp).clickable(onClick = onClick).semantics { contentDescription = l.org },
         Alignment.Center,
     ) {
         AsyncImage(
             logoUrl(l.logoUrl), l.org, contentScale = ContentScale.Fit,
             onError = { onError() },
-            modifier = Modifier.height(28.dp).width(84.dp),
+            modifier = Modifier.height(32.dp).widthIn(min = 32.dp, max = 84.dp),
         )
     }
 }
@@ -164,7 +164,7 @@ fun VerifiedLogoSheet(logos: List<VerifiedLogo>, onDismiss: () -> Unit) {
 private fun LogoSheetRow(l: VerifiedLogo) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(
-            Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(Color.White).border(1.dp, MuyeonColors.border, RoundedCornerShape(10.dp)).padding(4.dp),
+            Modifier.size(40.dp),
             Alignment.Center,
         ) { AsyncImage(logoUrl(l.logoUrl), l.org, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize()) }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
