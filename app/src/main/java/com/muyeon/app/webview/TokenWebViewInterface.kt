@@ -85,6 +85,10 @@ class TokenWebViewInterface(private val context: Context, private val webView: W
 
             val response = if (accessToken.isNotEmpty() && refreshToken.isNotEmpty()) {
                 TokenManager.saveTokens(context, accessToken, refreshToken)
+                // ★ 2026-11-04 새 세션 — 강제 로그아웃을 다시 받을 수 있게 하고, 네이티브 소켓을 새 토큰으로 붙인다.
+                com.muyeon.app.chat.socket.ForceLogout.reset()
+                com.muyeon.app.chat.socket.ChatSocketLifecycleObserver.ensureAttached(context)
+                com.muyeon.app.chat.socket.ChatSocketManager.connect(context)
                 // 웹 로그인·가입 — 서버 활성유형으로 X-Active-Type 값 맞춤
                 ActiveRole.syncFromServer(context)
                 // 로그인 직후 — 로그아웃 상태에서 결제했거나 못 보낸 구글 구매를 서버에 보낸다.

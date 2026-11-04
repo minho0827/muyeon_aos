@@ -90,7 +90,11 @@ object ActiveRole {
                     .addHeader("Authorization", "Bearer $token")
                     .get().build()
                 syncClient.newCall(req).execute().use { res ->
-                    if (!res.isSuccessful) return@use
+                    if (!res.isSuccessful) {
+                        // ★ 2026-11-04 화면 복귀마다 도는 조회 — 세션 교체·정지면 강제 로그아웃(놓친 소켓 신호 보완).
+                        if (TokenManager.getAccessToken(app) == token) com.muyeon.app.chat.socket.ForceLogout.checkResponse(app, res.code, res.body?.string())
+                        return@use
+                    }
                     val type = JSONObject(res.body?.string().orEmpty().ifBlank { "{}" })
                         .optString("activeType")
                     // ★ 조회 중에 사용자가 전환했으면(웹 syncActiveType·네이티브 선택) 이 응답은 옛 값이다.

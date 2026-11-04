@@ -87,6 +87,10 @@ object ChatSocketManager {
     @Volatile
     private var token: String? = null
 
+    /** 이 소켓이 force-logout 이벤트를 받았는지 — 받았으면 뒤따르는 서버 끊김에서 세션 확인을 또 하지 않는다. */
+    @Volatile
+    private var forceLogoutEventSeen = false
+
     /** 함정 3 — room:{id} → 활성 화면 refcount. */
     private val roomJoinRefs = ConcurrentHashMap<Int, Int>()
 
@@ -108,6 +112,7 @@ object ChatSocketManager {
         socket?.also { it.off(); it.disconnect() }
         socket = null
         desired = true
+        forceLogoutEventSeen = false
 
         // 네임스페이스는 URI 경로로 정해진다. 서버 게이트웨이는 /chat 이므로 경로를 붙여야 한다.
         //  경로가 없으면 기본 네임스페이스(/)에 연결되어 연결은 성공하지만 채팅 이벤트를 아무도 처리하지 않는다.
@@ -124,11 +129,17 @@ object ChatSocketManager {
             if (everConnected) ChatEventBus.emit(ChatEvent.Reconnected)
             everConnected = true
         }
+        val ctxApp = context.applicationContext
         s.on(Socket.EVENT_DISCONNECT) { args ->
-            Log.i(TAG, "/chat disconnected reason=${args.firstOrNull()}")
+            val reason = args.firstOrNull()?.toString()
+            Log.i(TAG, "/chat disconnected reason=$reason")
+            // ★ 2026-11-04 서버가 끊음 — 옛 토큰(다른 기기 로그인·정지)이면 서버는 말없이 끊기만 한다(handleConnection).
+            //  자동 재연결도 없으니 세션을 한 번 확인한다. force-logout 이벤트로 끊긴 경우는 그 처리(1.5초 확인)에 맡긴다.
+            if (reason == "io server disconnect" && desired && !forceLogoutEventSeen) ForceLogout.verifySession(ctxApp)
         }
         s.on(Socket.EVENT_CONNECT_ERROR) { args ->
             Log.w(TAG, "/chat connect_error — ${describeError(args)}")
+            if (desired) ForceLogout.verifySession(ctxApp)
         }
 
         // === 서버 이벤트 8종 ===
@@ -181,13 +192,15 @@ object ChatSocketManager {
         //   1.5초 기다려 저장된 토큰으로 다시 비교하고, 토큰이 없으면(이미 로그아웃) 할 일이 없다.
         val appContext = context.applicationContext
         s.on("force-logout") { args ->
+            forceLogoutEventSeen = true
             (args.lastOrNull() as? io.socket.client.Ack)?.call(true)
             val json = asJson(args.firstOrNull()) ?: JSONObject()
             val newSid = json.optString("newSessionId").takeIf { it.isNotBlank() && it != "null" }
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 val current = TokenManager.getAccessToken(appContext)?.takeIf { it.isNotBlank() } ?: return@postDelayed
                 if (newSid != null && newSid == sessionIdOf(current)) return@postDelayed
-                ChatEventBus.emit(ChatEvent.ForceLogout(json.optString("code"), json.optString("message")))
+                // ★ 2026-11-04 본문 구독자에 기대지 않고 한 곳에서(토큰 정리·소켓 끊기·본문 앞으로·웹 알림).
+                ForceLogout.trigger(appContext, json.optString("code").ifEmpty { ForceLogout.SESSION_REPLACED }, json.optString("message"))
             }, 1500)
         }
         // 받은 견적 도착·읽음 — AI 도우미 뱃지용(iOS FloatingSocketManager 와 같음).

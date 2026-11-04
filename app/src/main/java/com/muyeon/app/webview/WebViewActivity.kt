@@ -314,19 +314,11 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
         // ★ 2026-10-30 강제 로그아웃(다른 기기 로그인·계정 정지) — 네이티브 화면이 위에 떠 있어도 받아야 해서
         //  repeatOnLifecycle 없이 본문이 살아 있는 동안 듣는다. 위 화면을 닫고(CLEAR_TOP) 웹에 알리면
         //  웹(common/forceLogout)이 안내 팝업과 함께 로그인 화면으로 보내고 deleteToken 으로 토큰을 지운다.
-        lifecycleScope.launch {
-            com.muyeon.app.chat.socket.ChatEventBus.events.collect { e ->
-                if (e !is com.muyeon.app.chat.socket.ChatEvent.ForceLogout) return@collect
-                startActivity(
-                    Intent(this@WebViewActivity, WebViewActivity::class.java)
-                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
-                )
-                val detail = org.json.JSONObject().put("code", e.code).put("message", e.message).toString()
-                webView.post {
-                    webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('muyeonNativeForceLogout',{detail:$detail}));", null)
-                }
-            }
-        }
+        // ★ 2026-11-04 강제 로그아웃은 ForceLogout.trigger 가 이 화면을 앞으로 불러 extras 로 알린다(consumeForceLogout).
+        //  여기서 버스를 구독하던 예전 방식은 이 화면이 없으면 신호를 잃었다.
+        // 앱이 켜져 있고 토큰이 있으면 네이티브 소켓을 늘 붙여 둔다 — 어느 화면이 떠 있어도 force-logout 을 듣는다.
+        com.muyeon.app.chat.socket.ChatSocketLifecycleObserver.ensureAttached(this)
+        com.muyeon.app.chat.socket.ChatSocketManager.connect(this)
         lifecycleScope.launch {
             repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
                 com.muyeon.app.ui.membership.MembershipBilling.changes.collect {
@@ -378,6 +370,7 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
 
         // 네이티브 화면이 지정한 SPA 이동/콜백(있으면) — 최초 진입 시에도 처리.
         consumeNativeRoute(intent)
+        consumeForceLogout(intent)
         com.muyeon.app.ui.assistant.AssistantOverlay.takeDraftPush(intent) // 'AI가 글을 다 썼어요' 푸시 탭 → AI 창 결과 화면
 
         composeView.setContent {
@@ -451,6 +444,7 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
             webView.loadUrl(fullUrl)
         }
         consumeNativeRoute(intent)
+        consumeForceLogout(intent)
         com.muyeon.app.ui.assistant.AssistantOverlay.takeDraftPush(intent)
     }
 
@@ -485,6 +479,16 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
      */
     private fun readyGuarded(js: String) =
         "(function(){ if(!window.__muyeonResult && !window.__nativeGo) return 0; try { $js } catch(e) {} return 1; })()"
+
+    /** 강제 로그아웃 extras(ForceLogout.trigger) — 웹이 준비되면 'muyeonNativeForceLogout' 을 한 번 보낸다. */
+    private fun consumeForceLogout(intent: Intent) {
+        val code = intent.getStringExtra(com.muyeon.app.chat.socket.ForceLogout.EXTRA_CODE)?.takeIf { it.isNotEmpty() } ?: return
+        val message = intent.getStringExtra(com.muyeon.app.chat.socket.ForceLogout.EXTRA_MESSAGE).orEmpty()
+        intent.removeExtra(com.muyeon.app.chat.socket.ForceLogout.EXTRA_CODE)
+        intent.removeExtra(com.muyeon.app.chat.socket.ForceLogout.EXTRA_MESSAGE)
+        val detail = org.json.JSONObject().put("code", code).put("message", message).toString()
+        evalWhenReady(readyGuarded("window.dispatchEvent(new CustomEvent('muyeonNativeForceLogout',{detail:$detail}));"))
+    }
 
     /**
      * 네이티브 화면에서 돌아오며 요청한 SPA 이동/콜백 처리(NativeWebRoute).

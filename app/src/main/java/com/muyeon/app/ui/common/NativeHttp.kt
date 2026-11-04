@@ -57,7 +57,11 @@ class NativeHttp(context: Context) {
                     .build()
                 client.newCall(req).execute().use { res ->
                     val text = res.body?.string().orEmpty()
-                    if (!res.isSuccessful) throw ApiMessageError(messageOf(text, res.code), res.code, codeOf(text))
+                    if (!res.isSuccessful) {
+                        // ★ 2026-11-04 다른 기기 로그인·정지 — 네이티브 화면에서도 바로 강제 로그아웃.
+                        com.muyeon.app.chat.socket.ForceLogout.checkResponse(app, res.code, text)
+                        throw ApiMessageError(messageOf(text, res.code), res.code, codeOf(text))
+                    }
                     text
                 }
             }
