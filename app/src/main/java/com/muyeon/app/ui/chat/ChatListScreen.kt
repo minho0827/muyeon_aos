@@ -2,6 +2,7 @@ package com.muyeon.app.ui.chat
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -17,11 +18,8 @@ import androidx.compose.material.icons.outlined.WifiOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,6 +54,8 @@ fun ChatListScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     val rooms = state.rooms
     val filtered = rooms.filter { state.filter.matches(it) }
+    // 스와이프로 [나가기]가 드러난 방 — 한 번에 하나만(다른 방을 밀거나 누르면 닫힌다).
+    var openRoomId by remember { mutableStateOf<Int?>(null) }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         // 10-27 목록 화면 틀(ui/common/MuyeonListKit) — ✕ + 왼쪽 굵은 제목 + 캡슐 탭(iOS 와 같다).
@@ -85,9 +85,12 @@ fun ChatListScreen(
                         Text("현재 불러온 대화 중에는 없어요. 이전 대화를 더 확인해 보세요.", Modifier.padding(20.dp))
                     }
                     itemsIndexed(filtered, key = { _, r -> r.roomId }) { idx, room ->
-                        // iOS allowsFullSwipe:false — 끝까지 밀어도 자동 실행 안 되고 버튼을 눌러야 나간다.
+                        // iOS allowsFullSwipe:false — 밀면 [나가기]가 드러나고, 그 버튼을 눌러야 나간다(확인 없음, iOS 와 같다).
                         SwipeToLeaveRow(
+                            open = openRoomId == room.roomId,
+                            onOpenChange = { o -> openRoomId = if (o) room.roomId else if (openRoomId == room.roomId) null else openRoomId },
                             onLeave = {
+                                openRoomId = null
                                 scope.launch {
                                     if (!state.leave(room.roomId)) {
                                         android.widget.Toast.makeText(context, "채팅방을 나가지 못했어요. 잠시 후 다시 시도해 주세요.", android.widget.Toast.LENGTH_SHORT).show()
@@ -95,7 +98,10 @@ fun ChatListScreen(
                                 }
                             },
                         ) {
-                            ChatRoomRow(room) { onOpenRoom(room.roomId, room.displayTitle) }
+                            ChatRoomRow(room) {
+                                // 어느 방이든 버튼이 드러나 있으면 누름은 닫기만 한다.
+                                if (openRoomId != null) openRoomId = null else onOpenRoom(room.roomId, room.displayTitle)
+                            }
                         }
                         if (idx != filtered.lastIndex) {
                             HorizontalDivider(
@@ -119,25 +125,46 @@ fun ChatListScreen(
     }
 }
 
-/** iOS `.swipeActions(edge:.trailing, allowsFullSwipe:false)` — 나가기. */
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * iOS `.swipeActions(edge:.trailing, allowsFullSwipe:false)` — 왼쪽으로 밀면 오른쪽에 빨간 [나가기](아이콘+글자)가 드러난다.
+ *  끝까지 밀어도 자동으로 나가지 않는다(버튼을 눌러야 나감). 반쯤 넘기면 열리고, 덜 밀면 닫힌다. 다시 밀거나 줄을 누르면 닫힌다.
+ */
 @Composable
-private fun SwipeToLeaveRow(onLeave: () -> Unit, content: @Composable () -> Unit) {
-    val state = rememberSwipeToDismissBoxState(
-        confirmValueChange = { v -> if (v == SwipeToDismissBoxValue.EndToStart) { onLeave(); false } else false },
-    )
-    SwipeToDismissBox(
-        state = state,
-        enableDismissFromStartToEnd = false,
-        backgroundContent = {
-            Box(
-                Modifier.fillMaxSize().background(MuyeonColors.danger).padding(end = 24.dp),
-                contentAlignment = Alignment.CenterEnd,
-            ) {
-                Icon(Icons.Filled.ExitToApp, "나가기", tint = Color.White)
-            }
-        },
-    ) { content() }
+private fun SwipeToLeaveRow(open: Boolean, onOpenChange: (Boolean) -> Unit, onLeave: () -> Unit, content: @Composable () -> Unit) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val actionWidth = 84.dp
+    val maxPx = with(density) { actionWidth.toPx() }
+    val offset = remember { androidx.compose.animation.core.Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    // 바깥(다른 줄을 열거나 눌러 닫음)에서 바뀐 열림 상태를 따라간다.
+    LaunchedEffect(open) { offset.animateTo(if (open) -maxPx else 0f) }
+    Box(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+        // 뒤 — 오른쪽 끝 빨간 [나가기]
+        Column(
+            Modifier.align(Alignment.CenterEnd).width(actionWidth).fillMaxHeight().background(MuyeonColors.danger)
+                .clickable(enabled = open, onClick = onLeave),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Icon(Icons.Filled.ExitToApp, null, tint = Color.White, modifier = Modifier.size(20.dp))
+            Text("나가기", fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color.White)
+        }
+        // 앞 — 방 줄(가로로 밀림)
+        Box(
+            Modifier.offset { androidx.compose.ui.unit.IntOffset(offset.value.toInt(), 0) }
+                .draggable(
+                    orientation = androidx.compose.foundation.gestures.Orientation.Horizontal,
+                    state = androidx.compose.foundation.gestures.rememberDraggableState { d ->
+                        scope.launch { offset.snapTo((offset.value + d).coerceIn(-maxPx, 0f)) }
+                    },
+                    onDragStopped = {
+                        val toOpen = offset.value < -maxPx / 2
+                        offset.animateTo(if (toOpen) -maxPx else 0f)
+                        onOpenChange(toOpen)
+                    },
+                ),
+        ) { content() }
+    }
 }
 
 /** 채팅방 한 칸 — iOS ChatRoomRow 1:1. */
