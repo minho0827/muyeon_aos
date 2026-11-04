@@ -196,8 +196,12 @@ object ChatSocketManager {
             (args.lastOrNull() as? io.socket.client.Ack)?.call(true)
             val json = asJson(args.firstOrNull()) ?: JSONObject()
             val newSid = json.optString("newSessionId").takeIf { it.isNotBlank() && it != "null" }
+            // ★ 2026-11-04 신호가 온 순간의 토큰 — 1.5초 뒤 토큰이 바뀌어 있으면(이 기기에서 방금 다시 로그인) 옛 세션 신호라 무시.
+            //  서버의 '옛 토큰 재연결' 강제 로그아웃은 newSessionId 가 null 이라 sid 비교만으로는 못 거른다.
+            val tokenAtEvent = TokenManager.getAccessToken(appContext)?.takeIf { it.isNotBlank() }
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 val current = TokenManager.getAccessToken(appContext)?.takeIf { it.isNotBlank() } ?: return@postDelayed
+                if (current != tokenAtEvent) return@postDelayed
                 if (newSid != null && newSid == sessionIdOf(current)) return@postDelayed
                 // ★ 2026-11-04 본문 구독자에 기대지 않고 한 곳에서(토큰 정리·소켓 끊기·본문 앞으로·웹 알림).
                 ForceLogout.trigger(appContext, json.optString("code").ifEmpty { ForceLogout.SESSION_REPLACED }, json.optString("message"))
