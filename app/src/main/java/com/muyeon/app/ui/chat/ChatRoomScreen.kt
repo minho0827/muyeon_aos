@@ -1205,6 +1205,8 @@ private fun MessageBubble(
                 }
                 Box(
                     Modifier
+                        // 시간 칸은 제 너비(한 줄)를 먼저 갖고, 말풍선은 남은 너비 안에서 최대 260(PACERA 와 같은 배치).
+                        .weight(1f, fill = false)
                         .widthIn(max = 260.dp)
                         .then(
                             if (bare) Modifier.clip(RoundedCornerShape(12.dp))
@@ -1277,14 +1279,14 @@ private fun BubbleMeta(message: ChatMessage, read: Boolean, alignEnd: Boolean, s
         if (read) {
             Text(
                 "읽음",
-                fontFamily = customFontFamily, fontSize = 10.sp, lineHeight = 12.sp,
+                fontFamily = customFontFamily, fontSize = 10.sp, lineHeight = 12.sp, maxLines = 1, softWrap = false,
                 color = MuyeonColors.primary,
             )
         }
         if (message.isEdited && !message.isDeleted) {
             Text(
                 "수정됨",
-                fontFamily = customFontFamily, fontSize = 10.sp, lineHeight = 12.sp,
+                fontFamily = customFontFamily, fontSize = 10.sp, lineHeight = 12.sp, maxLines = 1, softWrap = false,
                 color = MuyeonColors.secondary,
             )
         }
@@ -1292,7 +1294,7 @@ private fun BubbleMeta(message: ChatMessage, read: Boolean, alignEnd: Boolean, s
         if (showTime) {
             Text(
                 ChatTimeFormat.forBubble(message.createdAt),
-                fontFamily = customFontFamily, fontSize = 10.sp, lineHeight = 12.sp,
+                fontFamily = customFontFamily, fontSize = 10.sp, lineHeight = 12.sp, maxLines = 1, softWrap = false,
                 color = MuyeonColors.secondary,
             )
         }
