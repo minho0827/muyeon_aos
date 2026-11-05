@@ -1122,9 +1122,32 @@ private fun MessageBubble(
                 return
             }
             "QUOTE_CARD" -> {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
-                    // 제공자 본인이 보낸 카드엔 자기 프로필 버튼을 노출하지 않는다.
-                    QuoteCardBubble(message.content, showProviderProfile = !isMine, onOpenProvider = onOpenProvider)
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start,
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    // 받은 견적 카드도 글 말풍선처럼 왼쪽에 강사 사진(34dp) — 묶음 첫 줄에만, 뒤이은 인사말은 들여쓰기만.
+                    if (!isMine) {
+                        if (showAvatar) {
+                            QuoteAvatar(
+                                opponentImage, message.sender?.displayName ?: "상대", 34.dp,
+                                modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onOpenProfile),
+                            )
+                        } else {
+                            Spacer(Modifier.width(34.dp))
+                        }
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
+                        if (!isMine && showAvatar) {
+                            message.sender?.displayName?.takeIf { it.isNotBlank() }?.let { name ->
+                                Text(name, fontFamily = customFontFamily, fontSize = 11.sp, color = MuyeonColors.textSub, modifier = Modifier.padding(bottom = 2.dp, start = 4.dp))
+                            }
+                        }
+                        // 제공자 본인이 보낸 카드엔 자기 프로필 버튼을 노출하지 않는다.
+                        QuoteCardBubble(message.content, showProviderProfile = !isMine, onOpenProvider = onOpenProvider)
+                    }
                 }
                 return
             }

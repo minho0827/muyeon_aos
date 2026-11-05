@@ -883,11 +883,15 @@ internal fun QuoteRespondSheet(
                 }
             }
 
-            Text(
-                "견적 메시지",
-                fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
-                lineHeight = 16.sp, color = MuyeonColors.textSub,
-            )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "견적 메시지",
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
+                    lineHeight = 16.sp, color = MuyeonColors.textSub, modifier = Modifier.weight(1f),
+                )
+                // 예시 시트 — 열고 닫아도 쓰던 메시지(message)는 그대로.
+                QuoteMessageExamplesButton()
+            }
             OutlinedTextField(
                 value = message,
                 onValueChange = { message = it },

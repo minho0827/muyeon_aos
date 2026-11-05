@@ -112,11 +112,19 @@ object ChatGrouping {
     fun continuesGroup(prev: ChatMessage?, cur: ChatMessage?): Boolean {
         if (prev == null || cur == null) return false
         if (prev.senderId <= 0 || prev.senderId != cur.senderId) return false
-        if (prev.type == "SYSTEM" || cur.type == "SYSTEM") return false
+        // 아바타 없이 따로 그리는 안내·카드(시스템·견적 요청·설문·레슨 카드 등)는 묶음을 끊는다 —
+        //  그래야 뒤이은 견적 카드·글 말풍선이 묶음 첫 줄이 되어 아바타를 갖는다.
+        if (standsAlone(prev) || standsAlone(cur)) return false
         val a = ChatTimeFormat.parse(prev.createdAt) ?: return false
         val b = ChatTimeFormat.parse(cur.createdAt) ?: return false
         return a.withSecond(0).withNano(0) == b.withSecond(0).withNano(0)
     }
+
+    private val STANDALONE_TYPES = setOf(
+        "SYSTEM", "QUOTE_REQUEST", "SURVEY_UPDATE", "LESSON_CARD", "SURVEY_CARD", "LESSON_PROPOSAL",
+    )
+
+    private fun standsAlone(m: ChatMessage): Boolean = !m.isDeleted && m.type in STANDALONE_TYPES
 
     /** [i] 번째 메시지 위에 날짜 구분선을 그릴지 — 첫 메시지이거나 앞 메시지와 날짜가 다르면. */
     fun dayDivider(list: List<ChatMessage>, i: Int): LocalDate? {

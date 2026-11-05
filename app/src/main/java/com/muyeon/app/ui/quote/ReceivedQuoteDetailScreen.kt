@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -473,7 +474,11 @@ private fun ResponseCard(
         }
 
         Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            QuoteAvatar(pro?.image, pro?.displayName ?: "강사", 52.dp)
+            // 사진 탭 = '강사프로필' 버튼과 같은 곳.
+            QuoteAvatar(
+                pro?.image, pro?.displayName ?: "강사", 52.dp,
+                modifier = if (pro?.id != null) Modifier.clip(CircleShape).clickable(onClick = onProfile) else Modifier,
+            )
             ProInfo(pro, genres, Modifier.weight(1f))
             PriceColumn(r)
         }
@@ -625,7 +630,10 @@ private fun RecommendCard(
             }
         }
         Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            QuoteAvatar(teacher.image, teacher.displayName, 52.dp)
+            QuoteAvatar(
+                teacher.image, teacher.displayName, 52.dp,
+                modifier = Modifier.clip(CircleShape).clickable(onClick = onProfile),
+            )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(

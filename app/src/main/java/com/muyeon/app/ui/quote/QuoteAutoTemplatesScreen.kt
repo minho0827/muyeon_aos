@@ -387,7 +387,7 @@ private fun AutoQuoteEditor(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            EditorField("자동 응답 메시지") {
+            EditorField("자동 응답 메시지", trailing = { QuoteMessageExamplesButton() }) {
                 Column {
                     OutlinedTextField(
                         value = message,
@@ -434,13 +434,20 @@ private fun AutoQuoteEditor(
 }
 
 @Composable
-private fun EditorField(label: String, content: @Composable () -> Unit) {
+private fun EditorField(
+    label: String,
+    trailing: (@Composable () -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            label,
-            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
-            lineHeight = 17.sp, color = MuyeonColors.textHead,
-        )
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                label,
+                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
+                lineHeight = 17.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
+            )
+            trailing?.invoke()
+        }
         content()
     }
 }

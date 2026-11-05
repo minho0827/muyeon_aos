@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -71,7 +72,13 @@ fun QuoteCardBubble(json: String, showProviderProfile: Boolean, onOpenProvider: 
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            QuoteAvatar(d.optString("image").ifEmpty { null }, d.optString("name").ifEmpty { "강사" }, 44.dp)
+            // 사진 탭도 '강사프로필 보기' 버튼과 같은 곳으로(버튼이 보일 때만 — 내가 보낸 카드는 그대로).
+            QuoteAvatar(
+                d.optString("image").ifEmpty { null }, d.optString("name").ifEmpty { "강사" }, 44.dp,
+                modifier = if (teacherId != null && showProviderProfile) {
+                    Modifier.clip(CircleShape).clickable { onOpenProvider(teacherId, isAcademy) }
+                } else Modifier,
+            )
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     "서비스 견적",
