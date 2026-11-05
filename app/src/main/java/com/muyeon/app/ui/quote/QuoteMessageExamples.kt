@@ -120,7 +120,7 @@ fun QuoteMessageExamplesSheet(onDismiss: () -> Unit) {
         profiles = coroutineScope {
             QuoteMessageExamples.items.map { item ->
                 async {
-                    api.publicProfile(item.userId).getOrNull()?.let { item.userId to (it.name to it.image) }
+                    api.publicProfile(item.userId, src = "quote").getOrNull()?.let { item.userId to (it.name to it.image) }
                 }
             }.awaitAll().filterNotNull().toMap()
         }
