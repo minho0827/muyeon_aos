@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -98,6 +99,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -708,21 +711,31 @@ private fun AllMenuPage(
         }
         // 묶음 칩 — 펼치면 여러 줄, 접으면 한 줄 가로 스크롤(지금 묶음 칩이 늘 보이게 자동으로 따라감). iOS 와 1:1.
         if (secList.isNotEmpty()) {
-            val chipRow = androidx.compose.foundation.lazy.rememberLazyListState()
-            // 펼치기 규칙(사용자 요청 10-23, iOS 와 1:1): 스크롤을 시작해도 접힌 채로 두고,
-            //  지금 묶음의 칩이 접힌 한 줄에서 화면 밖으로 벗어났을 때만 펼친다. 맨 위로 돌아오면 다시 접는다.
+            val chipScroll = androidx.compose.foundation.rememberScrollState()
+            // 접힌 칩 줄 안에서 각 칩의 오른쪽 끝(줄 내용 기준 px) · 줄 너비 — 지금 묶음 칩이 첫 화면 밖인지 판정.
+            val chipRight = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateMapOf<String, Int>() }
+            var chipRowWidth by remember { mutableStateOf(Int.MAX_VALUE) }
+            val topSlopPx = with(LocalDensity.current) { 8.dp.roundToPx() }
             val atTop by androidx.compose.runtime.remember {
-                androidx.compose.runtime.derivedStateOf { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 8 }
+                androidx.compose.runtime.derivedStateOf { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset <= topSlopPx }
             }
-            LaunchedEffect(atTop) { if (atTop) expanded = false }
-            LaunchedEffect(current) {
-                if (atTop || expanded) return@LaunchedEffect
-                val idx = secList.indexOfFirst { it.key == current }
-                val info = chipRow.layoutInfo
-                if (info.visibleItemsInfo.isEmpty()) return@LaunchedEffect // 칩 줄을 아직 재지 않았으면 판단하지 않는다
-                val seen = info.visibleItemsInfo.firstOrNull { it.index == idx }
-                val fullyVisible = seen != null && seen.offset >= info.viewportStartOffset && seen.offset + seen.size <= info.viewportEndOffset
-                if (idx >= 0 && !fullyVisible) expanded = true
+            // 펼치기 규칙(사용자 요청 10-23, iOS AssistantSheetView 와 1:1): 스크롤을 시작해도 접힌 채로 두고,
+            //  지금 묶음의 칩이 접힌 한 줄의 첫 화면 밖에 있을 때 펼친다. 맨 위로 돌아오면 다시 접는다.
+            //  ★ 2026-11-05 제대로 안 접히고·안 펼쳐지던 문제 — iOS 10-24 수정(c14317e)과 같은 원인:
+            //   - 예전엔 '지금 보이는 칩'(LazyRow 보이는 항목)으로 판정해서, 칩 줄을 옆으로 밀어 두면 늘 틀렸다
+            //     → 칩 위치를 줄 안쪽(가로 스크롤과 무관한) 좌표로 잰다.
+            //   - 예전엔 묶음이 바뀔 때만 따져서 스크롤 위치 변화를 놓쳤다 → 스크롤·묶음·칩 위치가 바뀔 때마다 따진다.
+            LaunchedEffect(Unit) {
+                var wasAtTop = true
+                androidx.compose.runtime.snapshotFlow { Triple(atTop, current, chipRight[current ?: ""] ?: 0) to chipRowWidth }
+                    .collect { (s, width) ->
+                        val (top, cur, right) = s
+                        if (top != wasAtTop) {
+                            wasAtTop = top
+                            if (top) expanded = false
+                        }
+                        if (!top && !expanded && cur != null && right > width + 1) expanded = true
+                    }
             }
             val chip: @Composable (AssistantSection) -> Unit = { sec ->
                 val on = sec.key == current
@@ -747,12 +760,29 @@ private fun AllMenuPage(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) { secList.forEach { chip(it) } }
                 } else {
-                    LazyRow(
-                        state = chipRow,
-                        modifier = Modifier.weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 8.dp),
-                    ) { items(secList, key = { it.key }) { chip(it) } }
+                    // 묶음은 열 개 남짓이라 LazyRow 대신 전부 그린다 — 화면 밖 칩도 위치를 재야 한다.
+                    // 줄 내용의 바깥(앞 여백 포함) 좌표 기준으로 칩 끝을 잰다 — 가로 스크롤과 무관하다(iOS chipRow 좌표와 같다).
+                    //  줄·칩 중 어느 쪽 위치 알림이 먼저 와도 빠지지 않게 양쪽에서 다시 잰다.
+                    val coords = remember { HashMap<String, androidx.compose.ui.layout.LayoutCoordinates>() }
+                    val rowKey = "__row"
+                    fun measure() {
+                        val row = coords[rowKey]?.takeIf { it.isAttached } ?: return
+                        secList.forEach { s ->
+                            val c = coords[s.key]?.takeIf { it.isAttached } ?: return@forEach
+                            val right = row.localPositionOf(c, androidx.compose.ui.geometry.Offset.Zero).x.toInt() + c.size.width
+                            if (chipRight[s.key] != right) chipRight[s.key] = right
+                        }
+                    }
+                    Box(Modifier.weight(1f).onSizeChanged { chipRowWidth = it.width }.horizontalScroll(chipScroll)) {
+                        Row(
+                            Modifier.onGloballyPositioned { coords[rowKey] = it; measure() }.padding(start = 16.dp, end = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            secList.forEach { sec ->
+                                Box(Modifier.onGloballyPositioned { coords[sec.key] = it; measure() }) { chip(sec) }
+                            }
+                        }
+                    }
                 }
                 IconButton(onClick = { expanded = !expanded }, modifier = Modifier.padding(end = 4.dp)) {
                     Icon(if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
