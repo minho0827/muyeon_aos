@@ -154,10 +154,12 @@ class QuoteBrowseState(private val api: QuoteApi) {
         attachmentType: String,
     ): Boolean {
         var ok = false
+        val guest = items.firstOrNull { it.id == quoteId }?.guestRequest == true
         api.sendQuoteResponse(quoteId, priceAmount, depositAmount, message, attachmentType)
             .onSuccess {
                 items = items.filterNot { it.id == quoteId }
-                toast = "견적을 보냈어요. 고객이 확인하면 알림으로 알려드릴게요."
+                // 비회원 요청은 보낼 때 채팅방이 없다 — 카카오톡 알림 안내(웹과 같은 문구).
+                toast = if (guest) GUEST_QUOTE_SENT_TOAST else "견적을 보냈어요. 고객이 확인하면 알림으로 알려드릴게요."
                 ok = true
                 onResponded()
             }
@@ -165,6 +167,14 @@ class QuoteBrowseState(private val api: QuoteApi) {
         return ok
     }
 }
+
+/** 비회원 요청 — 웹과 같은 문구. 태그·시트 안내·발송 후 안내. */
+internal const val GUEST_REQUEST_TAG = "비회원 요청"
+internal const val GUEST_REQUEST_NOTICE = "아직 가입하지 않은 고객이에요. 고객이 견적을 보고 [문의하기]를 누르면 채팅방이 열려요."
+internal const val GUEST_QUOTE_SENT_TOAST = "고객에게 카카오톡으로 견적 도착을 알렸어요. 고객이 견적을 보고 [문의하기]를 누르면 채팅방이 열려요."
+
+/** 안내가 긴 토스트(비회원 발송 안내)는 조금 더 오래 띄운다. */
+internal fun quoteToastMillis(text: String): Long = if (text == GUEST_QUOTE_SENT_TOAST) 3500L else 1800L
 
 /** 견적 카테고리 칩(웹 QUOTE_CATEGORIES 7종 — 취미무용은 위저드에서 제거됨). */
 // iOS 그림자 — 그리드 셀 .shadow(0.06, r6, y2) / 덱 카드 .shadow(0.1, r12, y6)
@@ -203,7 +213,7 @@ fun QuoteBrowseScreen(
     LaunchedEffect(reloadSignal) { state.load() }
 
     // 토스트 1.8초 자동 소멸(iOS showToast)
-    LaunchedEffect(state.toast) { if (state.toast != null) { delay(1800); state.toast = null } }
+    LaunchedEffect(state.toast) { state.toast?.let { delay(quoteToastMillis(it)); state.toast = null } }
 
     val deck = deckIndex
     if (deck != null) {
@@ -540,6 +550,10 @@ private fun GridCell(quote: QuoteFull, isNew: Boolean, onClick: () -> Unit) {
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 QuotePill(QuoteUi.categoryLabel(quote.categoryId), MuyeonColors.primary, filled = true)
+                if (quote.guestRequest) {
+                    Spacer(Modifier.width(4.dp))
+                    QuotePill(GUEST_REQUEST_TAG, MuyeonColors.textSub)
+                }
                 Spacer(Modifier.weight(1f))
                 Text(
                     QuoteUi.relativeTime(quote.createdAt),
@@ -604,7 +618,7 @@ private fun QuoteDeckScreen(state: QuoteBrowseState, initialIndex: Int, onClose:
     val current = list.getOrNull(pagerState.currentPage)
 
     LaunchedEffect(pagerState.currentPage) { current?.let { state.markSeen(it.id) } }
-    LaunchedEffect(state.toast) { if (state.toast != null) { delay(1800); state.toast = null } }
+    LaunchedEffect(state.toast) { state.toast?.let { delay(quoteToastMillis(it)); state.toast = null } }
 
     Box(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
         Column(Modifier.fillMaxSize()) {
@@ -700,6 +714,10 @@ fun QuoteRequestCard(quote: QuoteFull) {
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 QuotePill(QuoteUi.categoryLabel(quote.categoryId), MuyeonColors.primary, filled = true)
+                if (quote.guestRequest) {
+                    Spacer(Modifier.width(6.dp))
+                    QuotePill(GUEST_REQUEST_TAG, MuyeonColors.textSub)
+                }
                 Spacer(Modifier.weight(1f))
                 Text(
                     QuoteUi.relativeTime(quote.createdAt),
@@ -819,6 +837,17 @@ internal fun QuoteRespondSheet(
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp,
                 lineHeight = 20.sp, color = MuyeonColors.textHead,
             )
+            // 비회원 요청 — 보낼 때 채팅방이 없다는 안내(웹 시트 헤더와 같은 문구).
+            if (quote.guestRequest) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    QuotePill(GUEST_REQUEST_TAG, MuyeonColors.textSub)
+                    Text(
+                        GUEST_REQUEST_NOTICE,
+                        fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp,
+                        color = MuyeonColors.textSub,
+                    )
+                }
+            }
             Text(
                 "회당 금액 (원)",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,

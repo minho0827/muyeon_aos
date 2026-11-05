@@ -125,7 +125,7 @@ fun StudentConsultScreen(
     LaunchedEffect(Unit) { attachmentRole = api.myAttachmentType() }
     // 최초 + 부모 신호마다. 실패 시 기존 목록을 지키는 load() 규칙은 그대로다.
     LaunchedEffect(reloadSignal) { load() }
-    LaunchedEffect(toast) { if (toast != null) { kotlinx.coroutines.delay(1800); toast = null } }
+    LaunchedEffect(toast) { toast?.let { kotlinx.coroutines.delay(quoteToastMillis(it)); toast = null } }
 
     val shown = if (filter == ConsultKind.ALL) items else items.filter { it.kind == filter }
 
@@ -186,7 +186,7 @@ fun StudentConsultScreen(
             val ok = api.sendQuoteResponse(quote.id, amount, deposit, message, attachmentType).isSuccess
             if (ok) {
                 respondFor = null
-                toast = "제안을 보냈어요. 수강생이 확인하면 알림으로 알려드릴게요."
+                toast = if (quote.guestRequest) GUEST_QUOTE_SENT_TOAST else "제안을 보냈어요. 수강생이 확인하면 알림으로 알려드릴게요."
                 scope.launch { load() }
             }
             ok
