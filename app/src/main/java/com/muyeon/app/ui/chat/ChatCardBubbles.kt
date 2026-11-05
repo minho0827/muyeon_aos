@@ -141,6 +141,32 @@ fun QuoteCardBubble(json: String, showProviderProfile: Boolean, onOpenProvider: 
                         color = MuyeonColors.textSub,
                     )
                 }
+                // ★ 2026-11-05 이력서 요약(서버 QuotesService.resumeDigest) — 옛 카드엔 없다
+                if (!isAcademy) {
+                    val one = att.optString("oneLiner").takeIf { it.isNotEmpty() && it != "null" }
+                    val meta = listOf(
+                        ResumeOptions.careerLabel(att.optString("career").takeIf { it != "null" } ?: ""),
+                        att.optString("school").takeIf { it != "null" } ?: "",
+                    ).filter { it.isNotEmpty() }.joinToString(" · ")
+                    val hl = jsonStrings(att, "highlights").filter { it.isNotEmpty() }
+                    one?.let {
+                        Text(it, fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp, color = MuyeonColors.textHead)
+                    }
+                    if (meta.isNotEmpty()) {
+                        Text(meta, fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp, color = MuyeonColors.textSub)
+                    }
+                    hl.forEach { h ->
+                        Text("· $h", fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp, color = MuyeonColors.textSub)
+                    }
+                    if (teacherId != null && showProviderProfile && (one != null || meta.isNotEmpty() || hl.isNotEmpty())) {
+                        Text(
+                            "이력서 보기 ›",
+                            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                            lineHeight = 18.sp, color = MuyeonColors.primary,
+                            modifier = Modifier.padding(top = 2.dp).clickable { onOpenProvider(teacherId, false) },
+                        )
+                    }
+                }
             }
         }
         if (teacherId != null && showProviderProfile) {
