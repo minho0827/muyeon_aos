@@ -308,8 +308,17 @@ object ChatSocketManager {
         /** 저장됨. duplicate=true 는 같은 clientMsgId 재전송이라 서버가 처음 메시지를 돌려준 경우. */
         data class Sent(val message: ChatMessage?, val duplicate: Boolean) : SendResult()
 
-        /** 서버 거절 — INVALID_ROOM|INVALID_TYPE|TOO_LONG|EMPTY|RATE_LIMITED|ACCOUNT_RESTRICTED|FORBIDDEN|SEND_FAILED */
-        data class Rejected(val code: String) : SendResult()
+        /**
+         * 서버 거절 — INVALID_ROOM|INVALID_TYPE|TOO_LONG|EMPTY|RATE_LIMITED|ACCOUNT_RESTRICTED|FORBIDDEN|SEND_FAILED
+         *  |RECRUIT_CHAT_LIMIT(채팅 인원 한도 — message·data{tier,limit,used} 동봉).
+         *  message·data 는 서버가 줄 때만 채운다(기본값 null — 종전 Rejected(code) 호출 그대로 동작).
+         */
+        data class Rejected(
+            val code: String,
+            val message: String? = null,
+            val data: JSONObject? = null,
+            val raw: JSONObject? = null,
+        ) : SendResult()
 
         /** 응답 대기 한도 초과 — 저장됐을 수도 있다(에코가 오면 clientMsgId 로 정리된다). */
         data object TimedOut : SendResult()
@@ -364,7 +373,12 @@ object ChatSocketManager {
     private fun parseSendAck(args: Array<out Any?>): SendResult {
         val json = asJson(args.firstOrNull()) ?: return SendResult.Sent(null, false)
         if (!json.optBoolean("ok", false)) {
-            return SendResult.Rejected(json.optString("code").ifEmpty { "SEND_FAILED" })
+            return SendResult.Rejected(
+                code = json.optString("code").ifEmpty { "SEND_FAILED" },
+                message = json.optString("message").takeIf { json.has("message") && !json.isNull("message") && it.isNotBlank() },
+                data = json.optJSONObject("data"),
+                raw = json,
+            )
         }
         val msg = json.optJSONObject("message")?.let { runCatching { ChatMessage.from(it) }.getOrNull() }
         return SendResult.Sent(msg, json.optBoolean("duplicate", false))

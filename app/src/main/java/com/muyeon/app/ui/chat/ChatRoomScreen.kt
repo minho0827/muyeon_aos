@@ -787,6 +787,14 @@ fun ChatRoomScreen(
             onBlock = { confirmBlock = true; reactionTarget = null },
         )
     }
+    // 이번 달 새 강사·무용수 채팅 한도(전송 거절 RECRUIT_CHAT_LIMIT) — 이력서 화면과 같은 팝업·멤버십 화면
+    vm.chatLimit?.let { limit ->
+        com.muyeon.app.ui.resume.RecruitChatLimitDialog(
+            e = limit,
+            onUpgrade = { vm.chatLimit = null; com.muyeon.app.ui.membership.MembershipActivity.start(context) },
+            onDismiss = { vm.chatLimit = null },
+        )
+    }
     vm.toast?.let { msg ->
         LaunchedEffect(msg) { kotlinx.coroutines.delay(2000); vm.toast = null }
     }

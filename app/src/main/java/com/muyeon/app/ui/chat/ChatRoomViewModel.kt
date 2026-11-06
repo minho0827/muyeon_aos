@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.chat
 
+import com.muyeon.app.ui.resume.RecruitChatLimitException
 import android.os.SystemClock
 import android.util.Log
 import androidx.compose.runtime.getValue
@@ -192,6 +193,8 @@ class ChatRoomViewModel(
     var editingMessage by mutableStateOf<ChatMessage?>(null)
     var isUploadingMedia by mutableStateOf(false)
     var toast by mutableStateOf<String?>(null)
+    /** 전송 거절 RECRUIT_CHAT_LIMIT → 채팅 한도 팝업([멤버십 보기]). */
+    var chatLimit by mutableStateOf<RecruitChatLimitException?>(null)
 
     /** 메시지 좌/우 정렬 기준 — JWT sub 에서 추출(iOS userIdFromToken 동일). */
     val currentUserId: Int = runCatching {
@@ -697,7 +700,12 @@ class ChatRoomViewModel(
                 is SendResult.Rejected -> {
                     Log.w(TAG, "send rejected code=${result.code} clientMsgId=${p.localId}")
                     markFailed(p.localId)
-                    toast = rejectMessage(result.code)
+                    if (result.code == RecruitChatLimitException.CODE) {
+                        // 이번 달 새 강사·무용수 채팅 한도 — 말풍선은 실패로 두고 멤버십 안내 팝업(이력서 화면과 같은 것)
+                        chatLimit = RecruitChatLimitException.fromAck(result.message, result.data, result.raw)
+                    } else {
+                        toast = rejectMessage(result.code)
+                    }
                 }
                 SendResult.TimedOut, SendResult.NotConnected -> markFailed(p.localId)
             }
