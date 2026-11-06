@@ -1,124 +1,63 @@
 package com.muyeon.app.ui.quote
 
-import com.muyeon.app.result.launchScreen
-import com.muyeon.app.result.resultKeys
-import com.muyeon.app.result.resultPayload
-import com.muyeon.app.webview.withActiveType
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.outlined.Circle
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import com.muyeon.app.BuildConfig
-import com.muyeon.app.theme.customFontFamily
+import com.muyeon.app.result.OnChildResult
+import com.muyeon.app.result.ResultKeys
+import com.muyeon.app.result.launchScreen
+import com.muyeon.app.result.resultKeys
+import com.muyeon.app.result.resultPayload
 import com.muyeon.app.ui.common.MuyeonColors
+import com.muyeon.app.ui.common.MuyeonDialog
+import com.muyeon.app.ui.common.MuyeonDialogAction
+import com.muyeon.app.ui.common.MuyeonDialogKind
+import com.muyeon.app.ui.common.MuyeonEmptyState
+import com.muyeon.app.ui.common.MuyeonHeaderIcon
+import com.muyeon.app.ui.common.MuyeonList
+import com.muyeon.app.ui.common.MuyeonListHeader
+import com.muyeon.app.ui.membership.MembershipActivity
+import com.muyeon.app.ui.resume.ResumeActivity
 import com.muyeon.app.utils.TokenManager
 import com.muyeon.app.webview.ActiveRole
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONArray
-import org.json.JSONObject
+import com.muyeon.app.webview.NativeWebRoute
 
 /**
- * 견적 자동응답 "메시지+금액 묶음" 관리 — iOS `QuoteAutoTemplatesView.swift` 1:1.
- *  배달의민족 '가게 요청사항/주소 설정' 패턴. 저장된 묶음을 라디오로 선택(활성) + 추가/편집/삭제.
- *  활성 묶음의 message+price 가 백엔드 chat_auto_messages 로 복사되어 자동견적 발송에 사용된다.
- *  웹 `openAutoQuoteTemplates` 브릿지로 진입.
- */
-
-data class AutoQuoteTemplate(val id: Int, val title: String?, val message: String, val price: String?)
-
-/** /api/chat/my/auto-quote — iOS AutoQuoteTemplatesViewModel 의 엔드포인트와 동일. */
-class AutoQuoteApi(private val token: String?) {
-    private val client = OkHttpClient()
-    private val base = BuildConfig.API_BASE_URL + "/api/chat/my/auto-quote"
-
-    private suspend fun fire(path: String, method: String, body: JSONObject? = null): String? =
-        withContext(Dispatchers.IO) {
-            runCatching {
-                val payload = when {
-                    body != null -> body.toString().toRequestBody(JSON)
-                    method != "GET" && method != "DELETE" -> "".toRequestBody(JSON)
-                    else -> null
-                }
-                val req = Request.Builder().url(base + path).method(method, payload)
-                    .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }.withActiveType()
-                    .apply { if (body != null) addHeader("Content-Type", "application/json") }
-                    .build()
-                client.newCall(req).execute().use { res ->
-                    if (!res.isSuccessful) return@use null
-                    res.body?.string().orEmpty()
-                }
-            }.getOrNull()
-        }
-
-    /** 활성 템플릿 id(설정 조회). */
-    suspend fun activeId(): Int? =
-        fire("", "GET")?.let { runCatching { JSONObject(it).intOrNull("activeTemplateId") }.getOrNull() }
-
-    suspend fun templates(): List<AutoQuoteTemplate> =
-        fire("/templates", "GET")?.let { text ->
-            runCatching {
-                JSONArray(text).map { o ->
-                    AutoQuoteTemplate(
-                        o.optInt("id"), o.stringOrNull("title"),
-                        o.optString("message"), o.stringOrNull("price"),
-                    )
-                }
-            }.getOrNull()
-        } ?: emptyList()
-
-    suspend fun activate(id: Int): Boolean = fire("/templates/$id/activate", "POST") != null
-    suspend fun remove(id: Int): Boolean = fire("/templates/$id", "DELETE") != null
-    suspend fun save(id: Int?, title: String, message: String, price: String): Boolean {
-        val body = JSONObject().put("title", title).put("message", message).put("price", price)
-        return if (id != null) fire("/templates/$id", "PUT", body) != null
-        else fire("/templates", "POST", body) != null
-    }
-
-    private companion object { val JSON = "application/json".toMediaType() }
-}
-
-/**
- * 견적 자동응답 템플릿 — 웹 `openAutoQuoteTemplates` / 개인레슨 관리의 '자동응답'.
- *  결과: AUTO_QUOTE — X·시스템 뒤로·예측 뒤로가기 어느 쪽으로 닫아도 finish() 가 싣는다(ResultActivity).
- *  부모가 웹이면 WebViewActivity 가 __muyeonResult('AUTO_QUOTE')(옛 웹은 __onAutoQuoteChanged)로 전한다.
+ * 견적 자동응답 — iOS `QuoteAutoTemplatesView.swift`·웹 quoteAuto 와 같은 구성(★ 2026-11-06 개편).
+ *  맨 위 '자동 견적 발송' 스위치(+이번 달 사용량) → 안 나가는 이유 → 내 자동응답 메시지(라디오 선택).
+ *  바뀐 건 그 자리에서 서버에 저장된다('완료' 버튼 없음). 웹 `openAutoQuoteTemplates` 브릿지 / 개인레슨 관리의 '자동응답'으로 진입.
+ *  나눈 파일: AutoQuoteApi · AutoQuoteSettingsState · AutoQuoteStatusSection · AutoQuoteBlockerList ·
+ *   AutoQuoteTemplateList · AutoQuoteEditorSheet.
  */
 class QuoteAutoTemplatesActivity : com.muyeon.app.result.ResultActivity() {
 
-    override val defaultResultKeys = setOf(com.muyeon.app.result.ResultKeys.AUTO_QUOTE)
+    override val defaultResultKeys = setOf(ResultKeys.AUTO_QUOTE)
 
     companion object {
         /** ★ 2026-11-06 true 면 열자마자 '새 메시지' 편집을 띄운다(자동견적 발송 내역 [+]). */
@@ -136,15 +75,19 @@ class QuoteAutoTemplatesActivity : com.muyeon.app.result.ResultActivity() {
     /** 새 메시지 편집을 열라는 신호 — 값이 바뀔 때마다 한 번 연다(0 = 안 연다). */
     private var newEditorSignal by mutableIntStateOf(0)
 
+    /** ★ 2026-11-06 발송 내역에서 돌아오면 이번 달 사용량을 다시 읽는다. */
+    private var reloadSignal by mutableIntStateOf(0)
+
     /**
      * ★ 2026-11-06 '발송 내역 보기'는 전용 런처로 띄운다 — 내역의 [+]가 START_NEW 플래그를 들고 닫히면
      *  자동응답 화면을 하나 더 쌓지 않고 여기서 새 메시지 편집을 연다. 결과 키는 childLauncher 와 똑같이 합친다.
      */
     private val historyLauncher =
-        registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { r ->
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
             val keys = r.data.resultKeys()
             if (keys.isNotEmpty()) absorbChildResult(keys, r.data.resultPayload())
-            if (com.muyeon.app.result.ResultKeys.LOGIN_REQUIRED in keys) { finish(); return@registerForActivityResult }
+            if (ResultKeys.LOGIN_REQUIRED in keys) { finish(); return@registerForActivityResult }
+            reloadSignal++
             if (r.data?.getBooleanExtra(EXTRA_START_NEW, false) == true) newEditorSignal++
         }
 
@@ -162,19 +105,30 @@ class QuoteAutoTemplatesActivity : com.muyeon.app.result.ResultActivity() {
                 //  ★ 예전 notifyWebAndFinish 는 CLEAR_TOP 이라 네이티브 부모(개인레슨 관리)까지 죽였다.
                 onClose = { finish() },
                 newEditorSignal = newEditorSignal,
+                reloadSignal = reloadSignal,
                 onOpenHistory = {
                     historyLauncher.launch(
                         AutoQuoteHistoryActivity.intent(this, fromTemplates = true)
-                            .putExtra(com.muyeon.app.result.ResultKeys.EXTRA_FROM_NATIVE, true),
+                            .putExtra(ResultKeys.EXTRA_FROM_NATIVE, true),
                     )
                 },
+                onOpenNative = ::openNative,
+                // ★ 2026-11-06 레슨 설정·장르처럼 웹에만 있는 화면 — 이 화면을 닫고 웹뷰가 그 경로로 간다(QuoteDashboardActivity 와 같은 길).
+                onOpenWebPath = { path -> NativeWebRoute.openWebAndFinish(this, path) },
             )
         }
     }
-}
 
-/** 편집 시트 상태 — id null = 신규(iOS EditorState). */
-private data class EditorState(val id: Int?, val title: String, val message: String, val price: String)
+    /** ★ 2026-11-06 막힌 이유의 앱 화면 열기 — 모르는 이름이면 false(웹 경로로 넘긴다). */
+    private fun openNative(name: String): Boolean {
+        when (name) {
+            "openMembership" -> MembershipActivity.start(this)
+            "openFieldVisibility" -> ResumeActivity.startVisibility(this, "teacher")
+            else -> return false
+        }
+        return true
+    }
+}
 
 @Composable
 fun QuoteAutoTemplatesScreen(
@@ -182,296 +136,94 @@ fun QuoteAutoTemplatesScreen(
     onClose: () -> Unit,
     /** ★ 2026-11-06 값이 바뀌면(>0) '새 메시지 추가'와 같은 빈 편집을 연다. */
     newEditorSignal: Int = 0,
+    /** ★ 2026-11-06 값이 바뀌면 상태·목록을 다시 읽는다(발송 내역에서 복귀 등). */
+    reloadSignal: Int = 0,
     onOpenHistory: (() -> Unit)? = null,
+    /** 막힌 이유의 nativeAction — 열었으면 true. */
+    onOpenNative: (String) -> Boolean = { false },
+    /** 막힌 이유의 webPath — 이 화면을 닫고 웹뷰를 그 경로로. */
+    onOpenWebPath: ((String) -> Unit)? = null,
 ) {
-    var templates by remember { mutableStateOf<List<AutoQuoteTemplate>>(emptyList()) }
-    var activeId by remember { mutableStateOf<Int?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
-    var busy by remember { mutableStateOf(false) }
-    var editing by remember { mutableStateOf<EditorState?>(null) }
-    val scope = rememberCoroutineScope()
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
+    val vm = rememberAutoQuoteSettingsState(api) { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+    val openHistory: () -> Unit = { onOpenHistory?.invoke() ?: AutoQuoteHistoryActivity.start(context) }
 
-    suspend fun load() {
-        activeId = api.activeId()
-        templates = api.templates()
-        isLoading = false
+    LaunchedEffect(Unit) { vm.reload(showSpinner = true) }
+    LaunchedEffect(reloadSignal) { if (reloadSignal > 0) vm.reload() }
+    LaunchedEffect(newEditorSignal) { if (newEditorSignal > 0) vm.openNew() }
+    // 멤버십·공개 설정 화면에서 돌아오면 막힌 이유가 풀렸을 수 있다 — 결과 키로 다시 읽는다.
+    OnChildResult { vm.reload() }
+
+    val onBlocker: (AutoQuoteBlocker) -> Unit = onBlocker@{ b ->
+        if (b.code == "NO_TEMPLATE") { vm.openNew(); return@onBlocker }
+        val a = b.action ?: return@onBlocker
+        if (a.nativeAction != null && onOpenNative(a.nativeAction)) return@onBlocker
+        a.webPath?.let { onOpenWebPath?.invoke(it) }
     }
 
-    LaunchedEffect(Unit) { load() }
-    LaunchedEffect(newEditorSignal) { if (newEditorSignal > 0) editing = EditorState(null, "", "", "") }
+    Column(Modifier.fillMaxSize().background(MuyeonList.pageBg)) {
+        MuyeonListHeader("견적 자동응답", onClose = onClose) {
+            MuyeonHeaderIcon(Icons.Outlined.History, "발송 내역", onClick = openHistory)
+        }
 
-    Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        // ★ 2026-11-06 손으로 그린 가운데 제목줄 → 목록 공용 제목줄(✕ + 왼쪽 굵은 제목, ui/common/MuyeonListKit).
-        com.muyeon.app.ui.common.MuyeonListHeader("견적 자동응답", onClose = onClose)
-        HorizontalDivider(color = MuyeonColors.border)
-
-        if (isLoading) {
-            Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
+        when (val load = vm.load) {
+            AutoQuoteLoad.Loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                 CircularProgressIndicator(color = MuyeonColors.primary)
             }
-        } else {
-            Column(
-                Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+            AutoQuoteLoad.Failed -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
+                MuyeonEmptyState(
+                    title = "불러오지 못했어요",
+                    message = "네트워크 상태를 확인하고 다시 시도해 주세요.",
+                    icon = Icons.Outlined.ErrorOutline,
+                    actionTitle = "다시 시도",
+                    onAction = { vm.reload(showSpinner = true) },
+                )
+            }
+            is AutoQuoteLoad.Ready -> Column(
+                Modifier.weight(1f).verticalScroll(rememberScrollState())
+                    .padding(horizontal = MuyeonList.gutter).padding(top = 8.dp, bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                Text(
-                    "상황에 맞는 금액·메시지를 저장해두고, 하나를 선택하면 자동 견적에 그대로 사용돼요.",
-                    fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 16.sp,
-                    color = MuyeonColors.secondary,
-                    modifier = Modifier.padding(horizontal = 20.dp).padding(top = 16.dp),
+                AutoQuoteStatusSection(
+                    status = load.status,
+                    switchOn = vm.switchOn,
+                    onToggle = vm::toggle,
+                    onOpenHistory = openHistory,
                 )
-                // 어느 요청에 자동견적이 나갔는지 — 발송 내역 화면으로.
-                Text(
-                    "발송 내역 보기 >",
-                    fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                    lineHeight = 16.sp, color = MuyeonColors.primary,
-                    modifier = Modifier
-                        .padding(horizontal = 20.dp)
-                        .clickable { onOpenHistory?.invoke() ?: AutoQuoteHistoryActivity.start(context) },
+                val blockers = visibleAutoQuoteBlockers(load.status.blockers)
+                if (blockers.isNotEmpty()) AutoQuoteBlockerList(blockers, onBlocker)
+                AutoQuoteTemplateList(
+                    templates = load.templates,
+                    activeId = load.status.activeId,
+                    onAdd = vm::openNew,
+                    onActivate = vm::activate,
+                    onEdit = vm::openEdit,
+                    onDelete = { vm.confirmDelete = it },
                 )
-
-                if (templates.isEmpty()) {
-                    // ★ 2026-11-06 공용 빈 화면(MuyeonEmptyState) — 버튼은 아래 '새 메시지 추가'가 맡는다.
-                    com.muyeon.app.ui.common.MuyeonEmptyState(
-                        title = "저장된 자동응답이 없어요.",
-                        message = "아래에서 추가해보세요.",
-                        icon = Icons.Outlined.ChatBubbleOutline,
-                    )
-                } else {
-                    templates.forEach { t ->
-                        TemplateRow(
-                            t = t,
-                            isActive = activeId == t.id,
-                            onActivate = { scope.launch { busy = true; if (api.activate(t.id)) load(); busy = false } },
-                            onEdit = { editing = EditorState(t.id, t.title ?: "", t.message, t.price ?: "") },
-                            onDelete = { scope.launch { busy = true; if (api.remove(t.id)) load(); busy = false } },
-                        )
-                    }
-                }
-
-                Row(
-                    Modifier
-                        .padding(horizontal = 20.dp).padding(top = 4.dp)
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .border(1.dp, MuyeonColors.primary.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
-                        .clickable { editing = EditorState(null, "", "", "") }
-                        .padding(vertical = 14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Filled.Add, null, tint = MuyeonColors.primary, modifier = Modifier.size(15.dp))
-                    Text(
-                        "새 메시지 추가",
-                        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
-                        lineHeight = 18.sp, color = MuyeonColors.primary,
-                    )
-                }
             }
         }
-
-        // bottomBar — 완료
-        HorizontalDivider(color = MuyeonColors.border)
-        Text(
-            "완료",
-            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
-            lineHeight = 19.sp, color = Color.White, textAlign = TextAlign.Center,
-            modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 10.dp)
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(MuyeonColors.primary)
-                .clickable(onClick = onClose)
-                .padding(vertical = 15.dp),
-        )
     }
 
-    editing?.let { st ->
-        AutoQuoteEditor(
+    vm.editing?.let { st ->
+        AutoQuoteEditorSheet(
             state = st,
-            busy = busy,
-            onSave = { title, message, price ->
-                scope.launch {
-                    busy = true
-                    if (api.save(st.id, title, message, price)) { load(); editing = null }
-                    busy = false
-                }
-            },
-            onCancel = { editing = null },
+            busy = vm.busy,
+            onSave = { title, message, price -> vm.save(st, title, message, price) },
+            onCancel = { vm.editing = null },
         )
     }
-}
 
-/** 배민 '주소 설정' 카드 — 라디오(활성) + 금액 강조 + 메시지 + 편집/삭제. iOS row(). */
-@Composable
-private fun TemplateRow(
-    t: AutoQuoteTemplate,
-    isActive: Boolean,
-    onActivate: () -> Unit,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
-) {
-    Row(
-        Modifier
-            .padding(horizontal = 20.dp)
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color(0xFFF2F2F7))
-            .then(if (isActive) Modifier.border(1.5.dp, MuyeonColors.primary.copy(alpha = 0.5f), RoundedCornerShape(14.dp)) else Modifier)
-            .clickable(onClick = onActivate)
-            .padding(14.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Icon(
-            if (isActive) Icons.Filled.CheckCircle else Icons.Outlined.Circle,
-            null,
-            tint = if (isActive) MuyeonColors.primary else Color(0xFFC7C7CC),
-            modifier = Modifier.padding(top = 2.dp).size(22.dp),
+    vm.confirmDelete?.let { t ->
+        val active = (vm.load as? AutoQuoteLoad.Ready)?.status?.activeId == t.id
+        MuyeonDialog(
+            title = "이 메시지를 삭제할까요?",
+            message = if (active) "지금 자동 견적에 쓰는 메시지예요. 삭제하면 다음 메시지로 바뀌고, 남은 메시지가 없으면 자동 견적이 꺼져요."
+            else "삭제한 메시지는 되돌릴 수 없어요.",
+            actions = listOf(
+                MuyeonDialogAction("삭제", MuyeonDialogKind.DESTRUCTIVE) { vm.delete(t) },
+                MuyeonDialogAction("취소", MuyeonDialogKind.CANCEL),
+            ),
+            onDismiss = { vm.confirmDelete = null },
         )
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                val hasPrice = !t.price.isNullOrEmpty()
-                Text(
-                    if (hasPrice) t.price!! else "금액 미입력",
-                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
-                    lineHeight = 18.sp, color = if (hasPrice) MuyeonColors.textHead else MuyeonColors.secondary,
-                )
-                if (isActive) {
-                    Text(
-                        "사용 중",
-                        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 11.sp,
-                        lineHeight = 13.sp, color = MuyeonColors.primary,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(MuyeonColors.primary.copy(alpha = 0.12f))
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
-                    )
-                }
-            }
-            Text(
-                t.message,
-                fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 16.sp, color = MuyeonColors.secondary,
-            )
-            Row(Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(
-                    "편집",
-                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
-                    lineHeight = 16.sp, color = MuyeonColors.primary,
-                    modifier = Modifier.clickable(onClick = onEdit),
-                )
-                Text(
-                    "삭제",
-                    fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 16.sp, color = MuyeonColors.secondary,
-                    modifier = Modifier.clickable(onClick = onDelete),
-                )
-            }
-        }
-    }
-}
-
-/** 추가/편집 — iOS AutoQuoteEditor(이름/금액/메시지 300자). */
-@Composable
-private fun AutoQuoteEditor(
-    state: EditorState,
-    busy: Boolean,
-    onSave: (String, String, String) -> Unit,
-    onCancel: () -> Unit,
-) {
-    var title by remember { mutableStateOf(state.title) }
-    var message by remember { mutableStateOf(state.message) }
-    var price by remember { mutableStateOf(state.price) }
-    val canSave = !busy && message.trim().isNotEmpty()
-
-    Dialog(onDismissRequest = onCancel) {
-        Column(
-            Modifier
-                .clip(RoundedCornerShape(16.dp))
-                .background(MuyeonColors.surface)
-                .padding(20.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            Text(
-                if (state.id == null) "새 메시지" else "메시지 편집",
-                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp,
-                lineHeight = 20.sp, color = MuyeonColors.textHead,
-            )
-            EditorField("이름 (선택)") {
-                OutlinedTextField(
-                    value = title, onValueChange = { title = it }, singleLine = true,
-                    placeholder = { Text("예: 기본 인사, 주말 전용", fontFamily = customFontFamily, fontSize = 14.sp) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            EditorField("자동 견적 금액") {
-                OutlinedTextField(
-                    value = price, onValueChange = { price = it }, singleLine = true,
-                    placeholder = { Text("예: 회당 60,000원", fontFamily = customFontFamily, fontSize = 14.sp) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            EditorField("자동 응답 메시지", trailing = { QuoteMessageExamplesButton() }) {
-                Column {
-                    OutlinedTextField(
-                        value = message,
-                        onValueChange = { if (it.length <= 300) message = it },
-                        placeholder = {
-                            Text(
-                                "예: 안녕하세요! 발레 전문 강사예요. 편하게 상담 도와드릴게요 :)",
-                                fontFamily = customFontFamily, fontSize = 14.sp,
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
-                    )
-                    Text(
-                        "${message.length}/300",
-                        fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 14.sp,
-                        color = MuyeonColors.secondary, textAlign = TextAlign.End,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    "취소",
-                    fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
-                    lineHeight = 18.sp, color = MuyeonColors.textSub, textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .border(1.dp, MuyeonColors.border, RoundedCornerShape(12.dp))
-                        .clickable(onClick = onCancel).padding(vertical = 13.dp),
-                )
-                Text(
-                    if (state.id == null) "추가" else "저장",
-                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
-                    lineHeight = 18.sp, color = Color.White, textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (canSave) MuyeonColors.primary else Color.Gray.copy(alpha = 0.4f))
-                        .clickable(enabled = canSave) { onSave(title.trim(), message.trim(), price.trim()) }
-                        .padding(vertical = 13.dp),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun EditorField(
-    label: String,
-    trailing: (@Composable () -> Unit)? = null,
-    content: @Composable () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                label,
-                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
-                lineHeight = 17.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
-            )
-            trailing?.invoke()
-        }
-        content()
     }
 }

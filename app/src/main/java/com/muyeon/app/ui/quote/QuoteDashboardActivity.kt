@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -82,9 +83,12 @@ class QuoteDashboardActivity : ResultActivity() {
                     if (ResultKeys.QUOTE_PREFS in keys) prefsReload++
                 }
                 // 자동응답 템플릿 — 활성 템플릿이 바뀌면 자동 제안이 상담 목록에 쌓인다.
-                //  (이 화면엔 자동응답 켜짐 표시가 따로 없어 상담 탭을 다시 읽는 것으로 맞춘다.)
+                //  ★ 2026-11-06 제목줄 아이콘이 켜짐 상태를 보이므로 status 도 다시 읽는다.
+                var autoState by remember { mutableStateOf<AutoQuoteHubState?>(null) }
+                var autoReload by remember { mutableIntStateOf(0) }
+                LaunchedEffect(autoReload) { autoApi.status()?.let { autoState = AutoQuoteHubState.of(it) } }
                 val autoLauncher = rememberResultLauncher { keys ->
-                    if (ResultKeys.AUTO_QUOTE in keys) consultReload++
+                    if (ResultKeys.AUTO_QUOTE in keys) { consultReload++; autoReload++ }
                 }
                 // 보낸 제안 → 채팅: 대화·채택 상태가 바뀌었을 수 있다 → 상담 목록.
                 val chatLauncher = rememberResultLauncher { consultReload++ }
@@ -119,6 +123,7 @@ class QuoteDashboardActivity : ResultActivity() {
                         // 수강생 찾기에서 제안을 보내면 상담 탭(보낸 제안)에 곧바로 보여야 한다 — 같은 화면 안 신호.
                         onResponded = { consultReload++; addResultKeys(ResultKeys.QUOTES) },
                         onLessonsChanged = { addResultKeys(ResultKeys.LESSONS) },
+                        autoQuoteState = autoState,
                     )
                 }
             } else {

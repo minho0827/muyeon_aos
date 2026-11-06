@@ -6,6 +6,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -58,6 +59,22 @@ enum class LessonStudioTab(val title: String, val guide: String) {
     fun titleFor(academy: Boolean): String = if (academy && this == LESSON) "수업 소개" else title
 }
 
+/** ★ 2026-11-06 개인레슨 관리 제목줄 자동응답 아이콘 상태 — 읽기 문구는 iOS 와 같다. */
+enum class AutoQuoteHubState(val label: String) {
+    SENDING("자동응답 (보내는 중)"),
+    OFF("자동응답 (꺼짐)"),
+    ATTENTION("자동응답 (확인 필요)"),
+    ;
+
+    companion object {
+        fun of(s: AutoQuoteStatus): AutoQuoteHubState = when {
+            s.sending -> SENDING
+            s.switchOn -> ATTENTION
+            else -> OFF
+        }
+    }
+}
+
 @Composable
 fun PersonalLessonManagementScreen(
     quoteApi: QuoteApi,
@@ -79,6 +96,8 @@ fun PersonalLessonManagementScreen(
     onResponded: () -> Unit = {},
     /** 레슨 소개 탭에서 삭제·복원·노출권 — 부모 결과에 LESSONS. */
     onLessonsChanged: () -> Unit = {},
+    /** ★ 2026-11-06 자동응답 상태(GET /auto-quote/status). null = 아직 모름. */
+    autoQuoteState: AutoQuoteHubState? = null,
 ) {
     val tabs = LessonStudioTab.entries
     val pagerState = rememberPagerState(pageCount = { tabs.size })
@@ -95,10 +114,13 @@ fun PersonalLessonManagementScreen(
             onBack = onClose,
             trailing = {
                 // 자동응답은 상담 탭에서만 — 다른 탭에서는 할 일이 아니다.
+                //  ★ 2026-11-06 iOS 처럼 켜짐 상태를 보인다 — 보내는 중이면 채운 아이콘 + 주황.
                 if (tab == LessonStudioTab.CONSULT) {
+                    val sending = autoQuoteState == AutoQuoteHubState.SENDING
                     Icon(
-                        Icons.Outlined.ChatBubbleOutline, contentDescription = "자동응답 설정",
-                        tint = MuyeonColors.textHead,
+                        if (sending) Icons.Filled.ChatBubble else Icons.Outlined.ChatBubbleOutline,
+                        contentDescription = autoQuoteState?.label ?: "자동응답 설정",
+                        tint = if (sending) MuyeonColors.primary else MuyeonColors.textHead,
                         modifier = Modifier.padding(end = 12.dp).size(22.dp)
                             .clickable(onClick = onAutoReply),
                     )
