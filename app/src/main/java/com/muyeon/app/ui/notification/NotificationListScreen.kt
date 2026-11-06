@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.notification
 
+import com.muyeon.app.ui.common.muyeonCardBorder
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -193,7 +194,7 @@ private fun NotificationRow(n: AppNotification, onClick: () -> Unit) {
     Row(
         // 10-27 흰 카드 한 장씩 — 안 읽음은 카드 바탕을 연한 주황으로(행 배경 한 가지 규칙 그대로).
         Modifier.fillMaxWidth()
-            .clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+            .clip(com.muyeon.app.ui.common.MuyeonList.cardShape).muyeonCardBorder()
             .background(MuyeonColors.surface)
             .background(MuyeonColors.primary.copy(alpha = if (n.isRead) 0f else 0.07f))
             .clickable(onClick = onClick)

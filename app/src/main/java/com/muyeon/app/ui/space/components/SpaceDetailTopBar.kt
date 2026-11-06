@@ -81,11 +81,14 @@ fun SpaceNotFound() {
 /** 상세 자리(불러오는 중) — 회색 바탕 · 갤러리(240) · 티켓 카드 · 섹션 제목 · 요금 카드 자리. 실제 화면과 같은 여백. */
 @Composable
 fun SpaceDetailSkeleton() {
-    Column(Modifier.fillMaxSize().background(SpaceDesign.ink100)) {
+    // ★ 2026-11-06 목록·화면 바탕 흰색(웹과 같게, 사용자 결정) — 상세 바탕과 같게 흰색, 자리 카드는 테두리.
+    Column(Modifier.fillMaxSize().background(Color.White)) {
         Box(Modifier.fillMaxWidth().height(240.dp).background(SkeletonColor))
         Column(
             Modifier.padding(horizontal = SpaceDesign.gutter).padding(top = 32.dp).fillMaxWidth()
-                .clip(RoundedCornerShape(SpaceDesign.cardRadius)).background(Color.White).padding(SpaceDesign.cardPadding),
+                .clip(RoundedCornerShape(SpaceDesign.cardRadius))
+                .border(1.dp, com.muyeon.app.ui.common.MuyeonColors.border, RoundedCornerShape(SpaceDesign.cardRadius))
+                .background(Color.White).padding(SpaceDesign.cardPadding),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             SkeletonLine(18, 0.6f, lineHeight = 22)

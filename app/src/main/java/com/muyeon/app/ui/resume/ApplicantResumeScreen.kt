@@ -108,7 +108,8 @@ fun ApplicantResumeScreen(
         }
     }
 
-    Column(Modifier.fillMaxSize().background(Color(0xFFF7F7F7))) {
+    // ★ 2026-11-06 목록·화면 바탕 흰색(웹과 같게, 사용자 결정) — #F7F7F7 → 흰색.
+    Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         // 내비 — 확정한 뒤에는 우측에 확정 상태를 남긴다(iOS confirmedInCurrentView).
         QuoteNavBar(
             title = "지원자 이력서",
@@ -227,7 +228,7 @@ private fun ResumeBody(a: Applicant) {
     val d = a.mergedData
     Column(
         Modifier.padding(vertical = 16.dp).fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp)).background(MuyeonColors.surface)
+            .clip(RoundedCornerShape(12.dp)).border(1.dp, MuyeonColors.border, RoundedCornerShape(12.dp)).background(MuyeonColors.surface)
             .padding(horizontal = 16.dp),
     ) {
         // 기본 정보

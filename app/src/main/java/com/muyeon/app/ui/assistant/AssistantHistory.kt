@@ -2,6 +2,7 @@ package com.muyeon.app.ui.assistant
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -73,7 +74,8 @@ fun AssistantHistoryPage(onBack: () -> Unit, onOpenDraft: (String) -> Unit) {
     LaunchedEffect(nearEnd, next) { if (nearEnd && !loading && !ended) load(next) }
 
     BackHandler { onBack() }
-    Column(Modifier.fillMaxSize().background(Color(0xFFF8F9FB)).statusBarsPadding().navigationBarsPadding()) {
+    // ★ 2026-11-06 목록·화면 바탕 흰색(웹과 같게, 사용자 결정) — #F8F9FB → 흰색, 내역 카드는 1dp 테두리.
+    Column(Modifier.fillMaxSize().background(Color.White).statusBarsPadding().navigationBarsPadding()) {
         Box(Modifier.fillMaxWidth().height(56.dp).background(Color.White)) {
             IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart).padding(start = 4.dp)) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "뒤로", tint = Color(0xFF101116))
@@ -92,7 +94,7 @@ fun AssistantHistoryPage(onBack: () -> Unit, onOpenDraft: (String) -> Unit) {
         LazyColumn(state = listState, contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxSize().testTag("assistant.history")) {
             items(rows, key = { it.draftId }) { r ->
-                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color.White)
+                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).border(1.dp, Color(0xFFEAEAEA), RoundedCornerShape(20.dp)).background(Color.White)
                     .clickable { onOpenDraft(r.draftId) }.padding(20.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(r.flowTitle, fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = AppColor.Primary)

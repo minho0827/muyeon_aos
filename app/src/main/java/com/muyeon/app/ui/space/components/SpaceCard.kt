@@ -46,7 +46,7 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun SpaceCard(s: SpaceListItem, onClick: () -> Unit, topEnd: @Composable BoxScope.() -> Unit = {}) {
-    Column(Modifier.fillMaxWidth().clip(MuyeonList.cardShape).background(Color.White).clickable(onClick = onClick)) {
+    Column(Modifier.fillMaxWidth().clip(MuyeonList.cardShape).muyeonCardBorder().background(Color.White).clickable(onClick = onClick)) {
         Box {
             MarketThumb(s.image, Modifier.fillMaxWidth().height(180.dp))
             topEnd()
@@ -71,7 +71,7 @@ fun BoxScope.SpaceCardHeart(liked: Boolean, onHeart: () -> Unit) {
 /** 카드 자리(불러오는 중) — 사진 180 + 글 3줄, SpaceCard 와 같은 높이. */
 @Composable
 fun SpaceCardSkeleton() {
-    Column(Modifier.fillMaxWidth().clip(MuyeonList.cardShape).background(Color.White)) {
+    Column(Modifier.fillMaxWidth().clip(MuyeonList.cardShape).muyeonCardBorder().background(Color.White)) {
         Box(Modifier.fillMaxWidth().height(180.dp).background(SkeletonColor))
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             SkeletonLine(16, 0.6f)

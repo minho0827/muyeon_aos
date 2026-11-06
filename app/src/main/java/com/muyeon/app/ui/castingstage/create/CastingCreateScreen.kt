@@ -99,7 +99,8 @@ import java.time.ZoneOffset
 private val TitleStyle = TextStyle(fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp)
 private val SubStyle = TextStyle(fontFamily = customFontFamily, fontWeight = FontWeight.Normal, fontSize = 14.sp)
 private val CaptionStyle = TextStyle(fontFamily = customFontFamily, fontWeight = FontWeight.Normal, fontSize = 12.sp)
-private val PageBg = Color(0xFFF8F8F8)
+// ★ 2026-11-06 목록·화면 바탕 흰색(웹과 같게, 사용자 결정) — #F8F8F8 → 흰색.
+private val PageBg = Color.White
 
 private val STEP_TITLES = listOf("공연 정보", "모집 조건", "비용·안내", "확인")
 private val STEP_SUBS = listOf(

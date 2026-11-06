@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.lesson
 
+import com.muyeon.app.ui.common.muyeonCardBorder
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -300,7 +301,7 @@ private fun LessonCard(
 ) {
     Column(
         // 10-27 테두리 카드 → 회색 바탕 위 흰 카드(iOS 와 같다).
-        Modifier.fillMaxWidth().clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+        Modifier.fillMaxWidth().clip(com.muyeon.app.ui.common.MuyeonList.cardShape).muyeonCardBorder()
             .background(MuyeonColors.surface).padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {

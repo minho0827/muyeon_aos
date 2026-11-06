@@ -177,8 +177,7 @@ internal const val GUEST_QUOTE_SENT_TOAST = "고객에게 카카오톡으로 견
 internal fun quoteToastMillis(text: String): Long = if (text == GUEST_QUOTE_SENT_TOAST) 3500L else 1800L
 
 /** 견적 카테고리 칩(웹 QUOTE_CATEGORIES 7종 — 취미무용은 위저드에서 제거됨). */
-// iOS 그림자 — 그리드 셀 .shadow(0.06, r6, y2) / 덱 카드 .shadow(0.1, r12, y6)
-private val gridInk = Color.Black.copy(alpha = 0.06f)
+// iOS 그림자 — 덱 카드 .shadow(0.1, r12, y6). (그리드 셀은 2026-11-06 부터 테두리)
 private val deckInk = Color.Black.copy(alpha = 0.10f)
 
 /** 칩 줄의 [필터] 칩 id — 장르 id("", "ballet" …)와 겹치지 않는 값. */
@@ -536,8 +535,9 @@ private fun GridCell(quote: QuoteFull, isNew: Boolean, onClick: () -> Unit) {
         Column(
             Modifier
                 .fillMaxWidth()
-                .shadow(3.dp, RoundedCornerShape(14.dp), ambientColor = gridInk, spotColor = gridInk)
+                // ★ 2026-11-06 흰 바탕이 되어 그림자 대신 1dp #EAEAEA 테두리(목록 카드 공통).
                 .clip(RoundedCornerShape(14.dp))
+                .border(1.dp, MuyeonColors.border, RoundedCornerShape(14.dp))
                 .background(MuyeonColors.surface)
                 .clickable(onClick = onClick)
                 .padding(12.dp),

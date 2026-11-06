@@ -218,7 +218,8 @@ private fun SpaceDetailBody(
     onOpenMap: () -> Unit,
     onOpenSpace: (Int) -> Unit,
 ) {
-    Column(Modifier.fillMaxSize().background(SpaceDesign.ink100).verticalScroll(rememberScrollState())) {
+    // ★ 2026-11-06 목록·화면 바탕 흰색(웹과 같게, 사용자 결정) — SpaceDesign.ink100 → 흰색. 티켓 카드는 그림자로 구분된다.
+    Column(Modifier.fillMaxSize().background(Color.White).verticalScroll(rememberScrollState())) {
         view.images?.let { SpaceGallery(it) }
         SpaceTicketCard(space)
         SpaceSectionHeadline("이 공간의 요금 안내")

@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.notification
 
+import com.muyeon.app.ui.common.muyeonCardBorder
 import com.muyeon.app.result.launchScreen
 import android.app.Activity
 import android.content.Context
@@ -331,7 +332,7 @@ private fun PermissionBanner() {
 
     Row(
         Modifier.fillMaxWidth()
-            .clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+            .clip(com.muyeon.app.ui.common.MuyeonList.cardShape).muyeonCardBorder()
             .background(MuyeonColors.surface)
             .clickable {
                 val i = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)

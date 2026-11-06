@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.academy
 
+import com.muyeon.app.ui.common.muyeonCardBorder
 import com.muyeon.app.result.findActivity
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -97,7 +98,7 @@ fun AcademyTeachersScreen(api: AcademyTeacherApi, onClose: () -> Unit) {
                 ) {
                     // 우리 학원 코드 — 강사에게 알려주면 강사가 이 코드로 신청한다.
                     Column(
-                        Modifier.fillMaxWidth().clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+                        Modifier.fillMaxWidth().clip(com.muyeon.app.ui.common.MuyeonList.cardShape).muyeonCardBorder()
                             .background(MuyeonColors.surface).padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {

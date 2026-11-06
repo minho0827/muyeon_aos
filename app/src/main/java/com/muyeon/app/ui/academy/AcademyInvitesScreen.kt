@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.academy
 
+import com.muyeon.app.ui.common.muyeonCardBorder
 import com.muyeon.app.result.findActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -95,7 +96,7 @@ fun AcademyInvitesScreen(api: AcademyTeacherApi, onClose: () -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(20.dp),
                 ) {
                     Column(
-                        Modifier.fillMaxWidth().clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+                        Modifier.fillMaxWidth().clip(com.muyeon.app.ui.common.MuyeonList.cardShape).muyeonCardBorder()
                             .background(MuyeonColors.surface).padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {

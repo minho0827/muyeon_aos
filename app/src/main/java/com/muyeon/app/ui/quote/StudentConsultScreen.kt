@@ -1,6 +1,7 @@
 package com.muyeon.app.ui.quote
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -199,7 +200,8 @@ fun StudentConsultScreen(
 @Composable
 private fun ConsultRow(item: ConsultItem, onClick: () -> Unit) {
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+        // ★ 2026-11-06 흰 바탕 위 카드 — 1dp #EAEAEA 테두리.
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).border(1.dp, MuyeonColors.border, RoundedCornerShape(14.dp))
             .background(MuyeonColors.surface).clickable(onClick = onClick).padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {

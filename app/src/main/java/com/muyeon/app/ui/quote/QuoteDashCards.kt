@@ -150,7 +150,8 @@ private fun QuoteDashCardEditor(initial: List<QuoteDashCard>, onReset: () -> Uni
 
     Dialog(onDismissRequest = { back() }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         BackHandler { back() }
-        Column(Modifier.fillMaxSize().background(Color(0xFFF8F9FB)).statusBarsPadding().navigationBarsPadding()) {
+        // ★ 2026-11-06 목록·화면 바탕 흰색(웹과 같게, 사용자 결정) — #F8F9FB → 흰색. 카드는 그림자로 구분된다.
+        Column(Modifier.fillMaxSize().background(Color.White).statusBarsPadding().navigationBarsPadding()) {
             Box(Modifier.fillMaxWidth().height(56.dp)) {
                 IconButton(onClick = { back() }, modifier = Modifier.align(Alignment.CenterStart).padding(start = 4.dp)) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, "뒤로", tint = Ink)

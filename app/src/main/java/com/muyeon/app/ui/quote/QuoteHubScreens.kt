@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.quote
 
+import com.muyeon.app.ui.common.muyeonCardBorder
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.animation.core.tween
@@ -168,7 +169,7 @@ fun RequestedQuotesList(api: QuoteApi, onOpen: (Int) -> Unit, reloadSignal: Int 
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 itemsIndexed(quotes, key = { _, q -> q.id }) { _, q ->
-                    Box(Modifier.clip(com.muyeon.app.ui.common.MuyeonList.cardShape)) {
+                    Box(Modifier.clip(com.muyeon.app.ui.common.MuyeonList.cardShape).muyeonCardBorder()) {
                         SwipeToDeleteRow(onDelete = { scope.launch { delete(q) } }) {
                             MyQuoteRow(quote = q, onClick = { onOpen(q.id) })
                         }
@@ -331,7 +332,7 @@ fun SentQuotesList(api: QuoteApi, onOpen: (SentQuoteItem) -> Unit, reloadSignal:
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 itemsIndexed(items, key = { _, it -> it.id }) { _, item ->
-                    Box(Modifier.clip(com.muyeon.app.ui.common.MuyeonList.cardShape)) {
+                    Box(Modifier.clip(com.muyeon.app.ui.common.MuyeonList.cardShape).muyeonCardBorder()) {
                         SentQuoteRow(item = item, onClick = { onOpen(item) })
                     }
                 }

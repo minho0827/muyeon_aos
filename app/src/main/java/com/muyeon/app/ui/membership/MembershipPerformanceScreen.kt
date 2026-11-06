@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -302,7 +303,7 @@ private fun PerformanceContent(
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp,
                 lineHeight = 24.sp, color = MuyeonColors.textHead,
             )
-            Column(Modifier.clip(RoundedCornerShape(22.dp)).background(MuyeonColors.surface)) {
+            Column(Modifier.clip(RoundedCornerShape(22.dp)).border(1.dp, MuyeonColors.border, RoundedCornerShape(22.dp)).background(MuyeonColors.surface)) {
                 funnelRows.forEachIndexed { i, (label, value) ->
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 17.dp),
@@ -336,7 +337,7 @@ private fun CardShell(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(MuyeonColors.surface).padding(20.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).border(1.dp, MuyeonColors.border, RoundedCornerShape(22.dp)).background(MuyeonColors.surface).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(spacing),
         content = content,
     )

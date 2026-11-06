@@ -775,7 +775,7 @@ private fun DirectTeacherCard(target: QuotePro, progress: String, onOpen: () -> 
         Row(
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(12.dp)).border(1.dp, MuyeonColors.border, RoundedCornerShape(12.dp))
                 .background(MuyeonColors.surface)
                 .clickable(onClick = onOpen)
                 .padding(14.dp),

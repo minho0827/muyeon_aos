@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -39,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
@@ -63,8 +65,13 @@ import com.muyeon.app.theme.customFontFamily
  *  캐스팅·무대(StageListBar·장르 칩)에서 먼저 쓰던 모양을 일반화했다.
  */
 object MuyeonList {
-    /** #F3F4F7 — 목록 화면 바탕(흰 카드가 떠 보이는 옅은 회색). iOS Color.muyeonPageBg. */
-    val pageBg = Color(0xFFF3F4F7)
+    /**
+     * 목록 화면 바탕. ★ 2026-11-06 #F3F4F7 회색 → 흰색(웹처럼 목록 전부 흰 바탕, 사용자 결정).
+     *  카드는 회색 바탕에 기대지 않고 1dp #EAEAEA 테두리로 구분한다([muyeonCardBorder]).
+     */
+    val pageBg = MuyeonColors.surface
+    /** #F3F4F7 — 카드·줄 안의 옅은 회색 칸(예전 pageBg 값). 바탕이 흰색이 되며 안쪽 칸이 같이 하얘지지 않게 나눴다. */
+    val fillBg = Color(0xFFF3F4F7)
     val ink100 = Color(0xFFF8F8F8)
     val ink200 = Color(0xFFEAEAEA)
     val ink300 = Color(0xFFDADADA)
@@ -210,9 +217,13 @@ fun <T> MuyeonPillTabs(
 
 // ───────── B 흰 카드·묶음 메뉴 ─────────
 
-/** 회색 바탕 위 흰 둥근 카드(그림자 없음). */
+/** ★ 2026-11-06 흰 바탕 위 카드 테두리 — 1dp #EAEAEA(MuyeonColors.border). clip 바로 뒤에 붙인다. */
+fun Modifier.muyeonCardBorder(shape: Shape = MuyeonList.cardShape): Modifier =
+    this.border(1.dp, MuyeonColors.border, shape)
+
+/** 흰 둥근 카드(그림자 없음) — ★ 2026-11-06 흰 바탕이 되어 1dp 테두리를 두른다. */
 fun Modifier.muyeonPanel(padding: Int = 16): Modifier =
-    this.fillMaxWidth().clip(MuyeonList.cardShape).background(MuyeonColors.surface).padding(padding.dp)
+    this.fillMaxWidth().clip(MuyeonList.cardShape).muyeonCardBorder().background(MuyeonColors.surface).padding(padding.dp)
 
 /** 카드 위 굵은 묶음 제목. trailing 은 오른쪽 작은 회색 글이나 링크. */
 @Composable
@@ -228,7 +239,7 @@ fun MuyeonSectionTitle(title: String, trailing: (@Composable RowScope.() -> Unit
 fun MuyeonGroupSection(title: String? = null, content: @Composable ColumnScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         title?.let { MuyeonSectionTitle(it) }
-        Column(Modifier.fillMaxWidth().clip(MuyeonList.cardShape).background(MuyeonColors.surface).padding(vertical = 8.dp), content = content)
+        Column(Modifier.fillMaxWidth().clip(MuyeonList.cardShape).muyeonCardBorder().background(MuyeonColors.surface).padding(vertical = 8.dp), content = content)
     }
 }
 
@@ -269,7 +280,7 @@ data class MuyeonShortcut(val icon: ImageVector, val title: String, val badge: I
 @Composable
 fun MuyeonShortcutCard(items: List<MuyeonShortcut>) {
     Column(
-        Modifier.fillMaxWidth().clip(MuyeonList.cardShape).background(MuyeonColors.surface).padding(vertical = 12.dp),
+        Modifier.fillMaxWidth().clip(MuyeonList.cardShape).muyeonCardBorder().background(MuyeonColors.surface).padding(vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         items.chunked(3).forEach { row ->
@@ -316,7 +327,7 @@ data class MuyeonHighlightItem(
 /** 제목 줄(오른쪽 작은 회색 글) + 썸네일·굵은 제목·회색 부제·메타·› 행들. 행 사이 선 없음. */
 @Composable
 fun MuyeonHighlightCard(title: String, items: List<MuyeonHighlightItem>, side: String? = null, onSide: (() -> Unit)? = null) {
-    Column(Modifier.fillMaxWidth().clip(MuyeonList.cardShape).background(MuyeonColors.surface).padding(20.dp)) {
+    Column(Modifier.fillMaxWidth().clip(MuyeonList.cardShape).muyeonCardBorder().background(MuyeonColors.surface).padding(20.dp)) {
         Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(title, style = pt(FontWeight.Bold, 20), color = MuyeonColors.textHead, modifier = Modifier.weight(1f))
             side?.let { s ->
@@ -356,7 +367,7 @@ fun MuyeonHighlightCard(title: String, items: List<MuyeonHighlightItem>, side: S
 @Composable
 fun MuyeonInfoRow(text: String, onClick: () -> Unit, detail: String? = null, icon: ImageVector? = null, highlight: String? = null) {
     Row(
-        Modifier.fillMaxWidth().clip(MuyeonList.cardShape).background(MuyeonColors.surface).clickable(onClick = onClick)
+        Modifier.fillMaxWidth().clip(MuyeonList.cardShape).muyeonCardBorder().background(MuyeonColors.surface).clickable(onClick = onClick)
             .padding(horizontal = 20.dp, vertical = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),

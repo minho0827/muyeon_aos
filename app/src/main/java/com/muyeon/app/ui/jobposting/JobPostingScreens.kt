@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.jobposting
 
+import com.muyeon.app.ui.common.muyeonCardBorder
 import com.muyeon.app.result.launchScreen
 import android.content.Context
 import android.content.Intent
@@ -281,7 +282,7 @@ private fun ArchivedPostingRow(posting: MyPosting, onRestore: () -> Unit, onPurg
         },
     ) {
         Row(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).border(1.dp, MuyeonColors.border, RoundedCornerShape(12.dp))
                 .background(MuyeonColors.surface).padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -322,7 +323,7 @@ private fun PostingCard(
     var menuOpen by remember { mutableStateOf(false) }
     Column(
         // 10-27 테두리 카드 → 회색 바탕 위 흰 카드.
-        Modifier.fillMaxWidth().clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+        Modifier.fillMaxWidth().clip(com.muyeon.app.ui.common.MuyeonList.cardShape).muyeonCardBorder()
             .background(MuyeonColors.surface)
             .clickable(onClick = onClick).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),

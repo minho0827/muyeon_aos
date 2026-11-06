@@ -48,7 +48,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun TransferStepPreview(f: TransferForm) {
     SectionHead("미리보기", "목록에는 이렇게 보여요. 확인 후 등록해 주세요.")
-    Box(Modifier.fillMaxWidth().clip(MuyeonList.cardShape).background(MuyeonList.pageBg).padding(12.dp)) {
+    Box(Modifier.fillMaxWidth().clip(MuyeonList.cardShape).background(MuyeonList.fillBg).padding(12.dp)) {
         TransferCardView(previewCard(f), onClick = {})
     }
     MarketInfoTable(previewRows(f))

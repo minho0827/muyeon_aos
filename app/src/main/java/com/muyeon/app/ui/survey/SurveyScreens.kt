@@ -477,7 +477,7 @@ fun SurveyProfileScreen(
 @Composable
 private fun SurveyProfileRow(d: SurveyDispatchDetail, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(MuyeonColors.surface)
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).border(1.dp, MuyeonColors.border, RoundedCornerShape(14.dp)).background(MuyeonColors.surface)
             .clickable(onClick = onClick).padding(14.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,

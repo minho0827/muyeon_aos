@@ -43,7 +43,7 @@ import kotlinx.coroutines.launch
 /** 내 양도 글 한 줄 — 카드 · (숨김이면) 안내 · [수정][상태 변경][삭제]. */
 @Composable
 fun MyTransferRow(c: TransferCard, onOpen: () -> Unit, onEdit: () -> Unit, onStatus: () -> Unit, onDelete: () -> Unit) {
-    Column(Modifier.fillMaxWidth().clip(MuyeonList.cardShape).background(Color.White)) {
+    Column(Modifier.fillMaxWidth().clip(MuyeonList.cardShape).muyeonCardBorder().background(Color.White)) {
         TransferCardView(c, onClick = onOpen)
         c.takeIf { !it.isExposed }?.let { HiddenNotice() }
         Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -65,7 +65,7 @@ private fun HiddenNotice() {
 /** 내 글 줄 자리(불러오는 중) — 카드 자리 + 버튼 줄 높이(40). */
 @Composable
 fun MyTransferRowSkeleton() {
-    Column(Modifier.fillMaxWidth().clip(MuyeonList.cardShape).background(Color.White)) {
+    Column(Modifier.fillMaxWidth().clip(MuyeonList.cardShape).muyeonCardBorder().background(Color.White)) {
         TransferCardSkeleton()
         Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             repeat(3) { Box(Modifier.weight(1f).height(40.dp).skeleton(10)) }

@@ -67,7 +67,7 @@ fun ReservationCardFrame(
     statusLabel: String = r.statusLabel,
     footer: @Composable ColumnScope.() -> Unit = {},
 ) {
-    Column(Modifier.fillMaxWidth().clip(MuyeonList.cardShape).background(Color.White).clickable(onClick = onClick).padding(12.dp)) {
+    Column(Modifier.fillMaxWidth().clip(MuyeonList.cardShape).muyeonCardBorder().background(Color.White).clickable(onClick = onClick).padding(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             MarketThumb(r.spaceImage, Modifier.size(72.dp).clip(RoundedCornerShape(10.dp)))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -97,7 +97,7 @@ fun ReservationActions(content: @Composable RowScope.() -> Unit) {
 /** 예약 카드 자리(불러오는 중) — 썸네일 72 + 글 4줄(배지 줄·공간·일시·금액), ReservationCardFrame 과 같은 높이. */
 @Composable
 fun ReservationCardSkeleton() {
-    Column(Modifier.fillMaxWidth().clip(MuyeonList.cardShape).background(Color.White).padding(12.dp)) {
+    Column(Modifier.fillMaxWidth().clip(MuyeonList.cardShape).muyeonCardBorder().background(Color.White).padding(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.size(72.dp).skeleton(10))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {

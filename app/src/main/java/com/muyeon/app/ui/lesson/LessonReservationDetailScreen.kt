@@ -470,7 +470,7 @@ private fun DetailInfoSection(p: LessonResPlace) {
 @Composable
 private fun Card(content: @Composable ColumnScope.() -> Unit) {
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(MuyeonColors.surface).padding(16.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).border(1.dp, MuyeonColors.border, RoundedCornerShape(14.dp)).background(MuyeonColors.surface).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         content = content,
     )

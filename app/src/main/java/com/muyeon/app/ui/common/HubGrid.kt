@@ -1,6 +1,7 @@
 package com.muyeon.app.ui.common
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -74,7 +75,7 @@ fun HubGridScreen(
 private fun HubCard(item: HubItem, onSelect: (HubItem) -> Unit) {
     Column(
         Modifier.fillMaxWidth().heightIn(min = 128.dp)
-            .clip(RoundedCornerShape(16.dp)).background(MuyeonColors.surface)
+            .clip(RoundedCornerShape(16.dp)).border(1.dp, MuyeonColors.border, RoundedCornerShape(16.dp)).background(MuyeonColors.surface)
             .clickable { onSelect(item) }.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {

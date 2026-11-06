@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.academy
 
+import com.muyeon.app.ui.common.muyeonCardBorder
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -64,7 +65,7 @@ fun AcademyStatusChip(status: String?) {
 fun AcademyPersonCard(row: AcademyTeacher, actions: @Composable RowScope.() -> Unit) {
     Column(
         // 10-27 테두리 카드 → 회색 바탕 위 흰 카드(iOS 와 같다).
-        Modifier.fillMaxWidth().clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+        Modifier.fillMaxWidth().clip(com.muyeon.app.ui.common.MuyeonList.cardShape).muyeonCardBorder()
             .background(MuyeonColors.surface).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -142,7 +143,7 @@ fun AcademyEmptyText(text: String) {
         fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
         lineHeight = 20.sp, color = MuyeonColors.textSub, textAlign = TextAlign.Center,
         // 10-27 섹션 안이라 흰 카드 안 가운데 글자로(회색 바탕 위).
-        modifier = Modifier.fillMaxWidth().clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+        modifier = Modifier.fillMaxWidth().clip(com.muyeon.app.ui.common.MuyeonList.cardShape).muyeonCardBorder()
             .background(MuyeonColors.surface).padding(vertical = 28.dp),
     )
 }

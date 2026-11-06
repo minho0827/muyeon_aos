@@ -50,7 +50,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun TransferCardView(c: TransferCard, onClick: () -> Unit, trailing: @Composable ColumnScope.() -> Unit = {}) {
     Row(
-        Modifier.fillMaxWidth().clip(MuyeonList.cardShape).background(Color.White).clickable(onClick = onClick).padding(12.dp),
+        Modifier.fillMaxWidth().clip(MuyeonList.cardShape).muyeonCardBorder().background(Color.White).clickable(onClick = onClick).padding(12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         TransferCardThumb(c.image, c.status.takeIf { it != "OPEN" })
@@ -101,7 +101,7 @@ private fun TransferCardText(c: TransferCard, modifier: Modifier) {
 @Composable
 fun TransferCardSkeleton() {
     Row(
-        Modifier.fillMaxWidth().clip(MuyeonList.cardShape).background(Color.White).padding(12.dp),
+        Modifier.fillMaxWidth().clip(MuyeonList.cardShape).muyeonCardBorder().background(Color.White).padding(12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(Modifier.size(96.dp).skeleton(12))

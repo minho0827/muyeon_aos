@@ -667,7 +667,8 @@ private fun DateHeader(text: String) {
         lineHeight = 16.sp, color = MuyeonColors.textSub,
         modifier = Modifier
             .fillMaxWidth()
-            .background(com.muyeon.app.ui.common.MuyeonList.pageBg)
+            // ★ 2026-11-06 pageBg 가 흰색이 되어 날짜 띠는 옅은 회색 ink100(#F8F8F8)으로 — 흰 줄들과 구분되게.
+            .background(com.muyeon.app.ui.common.MuyeonList.ink100)
             .padding(horizontal = 16.dp, vertical = 8.dp),
     )
 }

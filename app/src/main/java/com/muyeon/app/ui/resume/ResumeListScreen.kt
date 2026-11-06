@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.resume
 
+import com.muyeon.app.ui.common.muyeonCardBorder
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -151,7 +152,7 @@ private fun CreateCard(isDancer: Boolean, onCreate: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+            .clip(com.muyeon.app.ui.common.MuyeonList.cardShape).muyeonCardBorder()
             .background(MuyeonColors.surface)
             .padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -223,7 +224,7 @@ private fun VisibilityEntry(onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+            .clip(com.muyeon.app.ui.common.MuyeonList.cardShape).muyeonCardBorder()
             .background(MuyeonColors.surface)
             .clickable(onClick = onClick)
             .padding(16.dp),
@@ -265,7 +266,7 @@ private fun ResumeRow(
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+            .clip(com.muyeon.app.ui.common.MuyeonList.cardShape).muyeonCardBorder()
             .background(MuyeonColors.surface)
             .clickable(onClick = onEdit)
             .padding(16.dp),

@@ -1,6 +1,8 @@
 package com.muyeon.app.ui.quote
 
+import com.muyeon.app.ui.common.muyeonCardBorder
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -299,7 +301,8 @@ private fun LegacyFunctionList(functions: List<QuoteDashFunction>, unreadQuotes:
             fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
             lineHeight = 18.sp, color = MuyeonColors.textSub,
         )
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(MuyeonColors.surface)) {
+        // ★ 2026-11-06 흰 바탕 위 카드 — 1dp #EAEAEA 테두리.
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).border(1.dp, MuyeonColors.border, RoundedCornerShape(12.dp)).background(MuyeonColors.surface)) {
             functions.forEachIndexed { idx, fn ->
                 Row(
                     Modifier.fillMaxWidth().clickable { fn.action() }.padding(horizontal = 14.dp, vertical = 12.dp),
@@ -353,7 +356,7 @@ private fun GroupedFunctionSections(functions: List<QuoteDashFunction>, unreadQu
                 com.muyeon.app.ui.common.MuyeonSectionTitle(grp)
                 // LazyVerticalGrid 는 스크롤 Column 안에서 높이가 불확정이라 고정 행으로 배치.
                 Column(
-                    Modifier.fillMaxWidth().clip(com.muyeon.app.ui.common.MuyeonList.cardShape)
+                    Modifier.fillMaxWidth().clip(com.muyeon.app.ui.common.MuyeonList.cardShape).muyeonCardBorder()
                         .background(MuyeonColors.surface).padding(vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {

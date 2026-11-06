@@ -1,6 +1,7 @@
 package com.muyeon.app.ui.review
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -269,6 +270,8 @@ private fun ReviewCard(item: ReviewList.Item, onHelpful: (Int) -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 8.dp)
             .clip(RoundedCornerShape(14.dp))
+            // ★ 2026-11-06 흰 바탕 위 #FAFAFA 카드가 거의 안 보여 1dp #EAEAEA 테두리.
+            .border(1.dp, MuyeonColors.border, RoundedCornerShape(14.dp))
             .background(Color(0xFFFAFAFA))
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
