@@ -61,6 +61,7 @@ object FloatingState {
     private val AUTH_ROUTES = setOf(
         "/", "/login", "/register", "/signupTerms", "/social-signup",
         "/oauth/kakao", "/naverAuth", "/accountRecovery", "/notFound", "/maintenance",
+        "/verify-required", // ★ 2026-11-07 학원 인증 강제 차단 화면 — 플로팅(채팅·책갈피·AI 버튼) 없음
     )
 
     /** 플로팅 채팅버튼 노출 라우트(최상위 탭만) + 일반회원 탭. */

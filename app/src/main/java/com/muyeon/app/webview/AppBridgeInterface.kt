@@ -50,6 +50,11 @@ class AppBridgeInterface(
             onSilentAction(action, data)
             return
         }
+        // ★ 2026-11-07 학원 인증 강제 차단 중 — 학원 인증·약관 화면 말고는 네이티브 화면을 열지 않는다(웹이 차단 화면으로).
+        if (VerifyGate.blocksAction(action)) {
+            VerifyGate.recheckWeb(webView)
+            return
+        }
         // 하단 MY 탭 길게 누르기 → 내 유형 바텀시트(결과는 이 웹뷰의 __onActiveTypePicked).
         when (action) {
             "openActiveTypeSheet" -> {

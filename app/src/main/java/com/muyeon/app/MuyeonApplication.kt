@@ -18,5 +18,7 @@ class MuyeonApplication : Application() {
         Analytics.start(this)
         // AI 도우미 플로팅 — 모든 화면 위에 버튼을 붙인다(ui/assistant/AssistantOverlay).
         com.muyeon.app.ui.assistant.AssistantOverlay.start(this)
+        // ★ 2026-11-07 학원 인증 강제 차단 — 앱이 앞으로 올 때 서버에 묻고, 차단 중이면 네이티브 화면을 닫고 웹 차단 화면으로.
+        com.muyeon.app.webview.VerifyGate.start(this)
     }
 }
