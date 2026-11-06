@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.jobposting
 
+import com.muyeon.app.ui.common.appliedPills
 import com.muyeon.app.ui.common.muyeonCardBorder
 import com.muyeon.app.result.launchScreen
 import android.content.Context
@@ -117,6 +118,9 @@ fun MyPostingsScreen(
     val archivePages = remember { PostingCursorState() }
     val postings = pages.items
     var tab by remember { mutableStateOf("ALL") }
+    // ★ 2026-11-06 목록 필터 — 기간만(탭이 상태). 화면을 떠나면 버린다.
+    var listFilter by remember { mutableStateOf(com.muyeon.app.ui.common.ListFilter()) }
+    var filterSheet by remember { mutableStateOf(false) }
     val loading = pages.busy && pages.items.isEmpty()
     var toast by remember { mutableStateOf<String?>(null) }
     var refreshing by remember { mutableStateOf(false) }
@@ -129,11 +133,13 @@ fun MyPostingsScreen(
 
     suspend fun load() {
         val selectedTab = tab
-        pages.load(true) { cursor -> api.postingsPage(tab = selectedTab, cursor = cursor) }
+        val selectedFilter = listFilter
+        pages.load(true) { cursor -> api.postingsPage(tab = selectedTab, cursor = cursor, filter = selectedFilter) }
         archivePages.load(true) { cursor -> api.postingsPage(archived = true, cursor = cursor) }
     }
 
-    LaunchedEffect(tab) { load() }
+    // 탭·필터가 바뀌면 커서를 버리고 처음부터.
+    LaunchedEffect(tab, listFilter) { load() }
 
     // 상태 변경·마감·복사·삭제 — 상세와 같은 PostingActions(2026-10-04).
     val actions = rememberPostingActions(api) { _, _ -> onChanged(); scope.launch { load() } }
@@ -148,7 +154,10 @@ fun MyPostingsScreen(
         com.muyeon.app.ui.common.MuyeonPillTabs(
             JobPostingOptions.tabs.map { (key, label) -> com.muyeon.app.ui.common.MuyeonPillTab(key, label, pages.counts[key] ?: 0) },
             tab, { tab = it }, tagPrefix = "postings.tab",
-        )
+            leadingPills = listFilter.appliedPills(emptyList()) { listFilter = it },
+        ) {
+            com.muyeon.app.ui.common.ListFilterButton(listFilter.isActive, { filterSheet = true }, tag = "postings.filter")
+        }
 
         when {
             loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
@@ -164,7 +173,9 @@ fun MyPostingsScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    if (filtered.isEmpty() && pages.error == null) item(key = "empty-postings") {
+                    if (filtered.isEmpty() && pages.error == null && listFilter.isActive) item(key = "empty-postings") {
+                        com.muyeon.app.ui.common.ListFilterEmpty({ listFilter = com.muyeon.app.ui.common.ListFilter() })
+                    } else if (filtered.isEmpty() && pages.error == null) item(key = "empty-postings") {
                         com.muyeon.app.ui.common.MuyeonEmptyState(
                             if (tab == JobPostingOptions.tabs.first().first) "아직 등록한 공고가 없어요" else "이 상태의 공고가 없어요",
                             "새 공고를 올리면 지원자를 여기서 관리할 수 있어요.",
@@ -187,7 +198,7 @@ fun MyPostingsScreen(
                         )
                     }
                     item(key = "postings-footer") {
-                        PostingCursorFooter(pages) { scope.launch { pages.load(pages.items.isEmpty()) { cursor -> api.postingsPage(tab = tab, cursor = cursor) } } }
+                        PostingCursorFooter(pages) { scope.launch { pages.load(pages.items.isEmpty()) { cursor -> api.postingsPage(tab = tab, cursor = cursor, filter = listFilter) } } }
                     }
                     if (archivePages.archivedCount > 0 || archivePages.error != null) {
                         item(key = "archived-toggle") {
@@ -232,6 +243,12 @@ fun MyPostingsScreen(
             modifier = Modifier.padding(horizontal = 20.dp).padding(top = 8.dp, bottom = 12.dp)
                 .fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(MuyeonColors.primary)
                 .clickable(onClick = onCreate).padding(vertical = 16.dp),
+        )
+    }
+
+    if (filterSheet) {
+        com.muyeon.app.ui.common.ListFilterSheet(
+            listFilter, onApply = { listFilter = it; filterSheet = false }, onDismiss = { filterSheet = false },
         )
     }
 

@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.chat.ChatActivity
 import com.muyeon.app.ui.common.MuyeonColors
+import com.muyeon.app.ui.common.appliedPills
 import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.result.ResultActivity
 import com.muyeon.app.result.ResultKeys
@@ -62,6 +63,9 @@ fun NotificationListScreen(
 ) {
     var items by remember { mutableStateOf<List<AppNotification>>(emptyList()) }
     var category by remember { mutableStateOf(NotiCategory.ALL) }
+    // ★ 2026-11-06 목록 필터(기간·안 읽음) — 화면을 떠나면 버린다.
+    var filter by remember { mutableStateOf(com.muyeon.app.ui.common.ListFilter()) }
+    var filterSheet by remember { mutableStateOf(false) }
     var chips by remember { mutableStateOf<List<NotiCategory>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var loadingMore by remember { mutableStateOf(false) }
@@ -73,7 +77,7 @@ fun NotificationListScreen(
     suspend fun reload() {
         loading = items.isEmpty()
         reachedEnd = false
-        api.list(null, 20, category).onSuccess { items = it; reachedEnd = it.size < 20 }
+        api.list(null, 20, category, filter).onSuccess { items = it; reachedEnd = it.size < 20 }
         loading = false
     }
 
@@ -88,7 +92,8 @@ fun NotificationListScreen(
         }
     }
 
-    LaunchedEffect(category) { reload() }
+    // 칩·필터가 바뀌면 커서를 버리고 처음부터.
+    LaunchedEffect(category, filter) { reload() }
     LaunchedEffect(Unit) { loadChips() }
 
     // 10-27 목록 화면 틀(ui/common/MuyeonListKit) — ✕ + 왼쪽 굵은 제목, 캡슐 탭, 회색 바탕 위 흰 카드.
@@ -103,6 +108,7 @@ fun NotificationListScreen(
         com.muyeon.app.ui.common.MuyeonPillTabs(
             listOf(com.muyeon.app.ui.common.MuyeonPillTab(NotiCategory.ALL, "전체")) + chips.map { com.muyeon.app.ui.common.MuyeonPillTab(it.key, it.label) },
             category, { category = it }, tagPrefix = "noti.tab",
+            leadingPills = filter.appliedPills(notiStatusOptions) { filter = it },
         ) {
             // 문구는 늘 '모두 읽음'. 종류를 걸러 보고 있으면 **보고 있는 목록의 모두**를 읽는다
             //  (메일함 관례). 문구를 상황마다 바꾸면 버튼 폭이 흔들리고 읽기만 번거롭다.
@@ -120,11 +126,15 @@ fun NotificationListScreen(
                     }
                 }.padding(horizontal = 14.dp, vertical = 12.dp),
             )
+            com.muyeon.app.ui.common.ListFilterButton(filter.isActive, { filterSheet = true }, tag = "noti.filter")
         }
 
         when {
             loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                 CircularProgressIndicator(color = MuyeonColors.primary)
+            }
+            items.isEmpty() && filter.isActive -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
+                com.muyeon.app.ui.common.ListFilterEmpty({ filter = com.muyeon.app.ui.common.ListFilter() })
             }
             items.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                 com.muyeon.app.ui.common.MuyeonEmptyState(
@@ -166,7 +176,7 @@ fun NotificationListScreen(
                         if (idx == items.lastIndex && !reachedEnd && !loadingMore) {
                             LaunchedEffect(n.id) {
                                 loadingMore = true
-                                api.list(n.id, 20, category).onSuccess { more ->
+                                api.list(n.id, 20, category, filter).onSuccess { more ->
                                     items = items + more.filterNot { m -> items.any { it.id == m.id } }
                                     reachedEnd = more.size < 20
                                 }
@@ -177,6 +187,14 @@ fun NotificationListScreen(
                 }
             }
         }
+    }
+
+    if (filterSheet) {
+        com.muyeon.app.ui.common.ListFilterSheet(
+            filter, notiStatusOptions,
+            onApply = { filter = it; filterSheet = false },
+            onDismiss = { filterSheet = false },
+        )
     }
 }
 

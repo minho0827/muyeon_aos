@@ -129,7 +129,14 @@ fun MuyeonHeaderIcon(icon: ImageVector, label: String, tint: Color = MuyeonColor
 
 // ───────── A 캡슐 탭 ─────────
 
-data class MuyeonPillTab<T>(val id: T, val title: String, val count: Int? = null)
+/** trailingIcon — ★ 2026-11-06 글자 뒤 작은 아이콘(예: 적용한 필터 칩의 ×). 기본 null 이면 예전 모양 그대로. */
+data class MuyeonPillTab<T>(val id: T, val title: String, val count: Int? = null, val trailingIcon: ImageVector? = null)
+
+/**
+ * ★ 2026-11-06 탭 줄 맨 앞에 붙는 '적용한 조건' 알약 — 늘 검정 바탕 흰 글자 + ×. 누르면 [onRemove].
+ *  기존 탭(id 타입 T)과 따로 들고 다니려고 별도 모델로 뒀다([MuyeonPillTabs] leadingPills).
+ */
+data class MuyeonRemovablePill(val key: String, val title: String, val onRemove: () -> Unit)
 
 /**
  * 가로로 미는 캡슐 탭 + 아래 구분선. 고른 탭은 검정 바탕 흰 글자, 나머지는 연회색 바탕.
@@ -157,12 +164,33 @@ fun <T> MuyeonPillTabs(
     scrollable: Boolean = true,
     /** ★ 2026-11-06 '고름' 판정을 바꿀 때 — 예: 필터 칩처럼 selected 와 따로 켜지는 탭(수강생 찾기 지역 필터). */
     isSelected: (T) -> Boolean = { it == selected },
+    /** ★ 2026-11-06 탭들 앞에 붙는 적용 조건 알약(검정 + ×) — 목록 필터 시트. 기본 빈 목록이면 예전 그대로. */
+    leadingPills: List<MuyeonRemovablePill> = emptyList(),
     trailing: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val state = rememberLazyListState()
     val idx = tabs.indexOfFirst { it.id == selected }
-    if (scrollable) LaunchedEffect(idx) { if (idx >= 0) state.animateScrollToItem(idx, -120) }
+    val lead = leadingPills.size
+    if (scrollable) LaunchedEffect(idx) { if (idx >= 0) state.animateScrollToItem(idx + lead, -120) }
     val vPad = 8.dp
+    val pillHeight = if (compact) 36.dp else 40.dp
+    val pillSize = if (compact) 14 else 15
+    val pillPad = if (!scrollable) 8.dp else if (compact) 16.dp else 18.dp
+
+    @Composable
+    fun Removable(p: MuyeonRemovablePill) {
+        Row(
+            Modifier.height(pillHeight).clip(CircleShape).background(MuyeonColors.textHead)
+                .clickable(onClick = p.onRemove)
+                .semantics { tagPrefix?.let { contentDescription = "$it.applied.${p.key}" } }
+                .padding(start = pillPad, end = pillPad - 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(p.title, style = pt(FontWeight.SemiBold, pillSize), color = Color.White, maxLines = 1)
+            Icon(Icons.Filled.Close, "${p.title} 해제", tint = Color.White, modifier = Modifier.size(16.dp))
+        }
+    }
 
     @Composable
     fun Pill(tab: MuyeonPillTab<T>, modifier: Modifier) {
@@ -188,6 +216,7 @@ fun <T> MuyeonPillTabs(
                 modifier = if (scrollable) Modifier else Modifier.weight(1f, fill = false),
             )
             tab.count?.let { Text("$it", style = pt(w, size), color = c.copy(alpha = if (on) 0.85f else 0.6f), maxLines = 1) }
+            tab.trailingIcon?.let { Icon(it, null, tint = c, modifier = Modifier.size(16.dp)) }
         }
     }
 
@@ -199,6 +228,7 @@ fun <T> MuyeonPillTabs(
                     contentPadding = PaddingValues(horizontal = MuyeonList.gutter, vertical = vPad),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    itemsIndexed(leadingPills, key = { _, p -> "lead:${p.key}" }) { _, p -> Removable(p) }
                     itemsIndexed(tabs) { _, tab -> Pill(tab, Modifier) }
                 }
             } else {
@@ -206,6 +236,7 @@ fun <T> MuyeonPillTabs(
                     Modifier.weight(1f).padding(horizontal = MuyeonList.gutter, vertical = vPad),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    leadingPills.forEach { Removable(it) }
                     tabs.forEach { tab -> Pill(tab, Modifier.weight(1f)) }
                 }
             }

@@ -66,6 +66,9 @@ fun SpaceMyBookingsScreen(
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var tab by remember { mutableStateOf("upcoming") }
+    // ★ 2026-11-06 목록 필터 — 기간만(탭이 이미 상태). 예약 createdAt 으로 앱에서 거른다. 화면을 떠나면 버린다.
+    var listFilter by remember { mutableStateOf(ListFilter()) }
+    var filterSheet by remember { mutableStateOf(false) }
     var tick by remember { mutableIntStateOf(0) }
     var open by remember { mutableStateOf<SpaceReservationRow?>(null) }
     var cancelAsk by remember { mutableStateOf<Pair<SpaceReservationRow, Pair<Int, Int>>?>(null) }
@@ -79,10 +82,11 @@ fun SpaceMyBookingsScreen(
     val pay = rememberLauncherForActivityResult(LessonPaymentActivity.PathContract()) { paid -> if (paid) onChanged(); tick++ }
 
     val now = remember(rows) { nowKst() }
+    val inPeriod = rows.filter { listFilter.withinPeriod(it.createdAt) }
     val shown = when (tab) {
-        "upcoming" -> rows.filter { !it.isCanceled && !it.isPast(now) }.sortedBy { "${it.date} ${it.startTime}" }
-        "past" -> rows.filter { !it.isCanceled && it.isPast(now) }
-        else -> rows.filter { it.isCanceled }
+        "upcoming" -> inPeriod.filter { !it.isCanceled && !it.isPast(now) }.sortedBy { "${it.date} ${it.startTime}" }
+        "past" -> inPeriod.filter { !it.isCanceled && it.isPast(now) }
+        else -> inPeriod.filter { it.isCanceled }
     }
 
     fun askCancel(r: SpaceReservationRow) {
@@ -101,10 +105,14 @@ fun SpaceMyBookingsScreen(
         MuyeonPillTabs(
             listOf(MuyeonPillTab("upcoming", "예정"), MuyeonPillTab("past", "지난"), MuyeonPillTab("canceled", "취소")),
             tab, { tab = it }, tagPrefix = "space.bookings.tab", fixedWeight = true,
-        )
+            leadingPills = listFilter.appliedPills(emptyList()) { listFilter = it },
+        ) {
+            ListFilterButton(listFilter.isActive, { filterSheet = true }, tag = "space.bookings.filter")
+        }
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {
                 loading -> ReservationListSkeleton()  // 실제 카드 높이의 자리(스피너가 커지며 바뀌지 않게)
+                shown.isEmpty() && error == null && listFilter.isActive -> ListFilterEmpty({ listFilter = ListFilter() }, Modifier.align(Alignment.Center))
                 shown.isEmpty() -> MuyeonEmptyState(error ?: "예약 내역이 없어요.", icon = Icons.Outlined.EventNote, modifier = Modifier.align(Alignment.Center))
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(shown, key = { it.id }) { r ->
@@ -118,6 +126,10 @@ fun SpaceMyBookingsScreen(
                 }
             }
         }
+    }
+
+    if (filterSheet) {
+        ListFilterSheet(listFilter, onApply = { listFilter = it; filterSheet = false }, onDismiss = { filterSheet = false })
     }
 
     open?.let { r ->

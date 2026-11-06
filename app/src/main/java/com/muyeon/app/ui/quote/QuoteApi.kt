@@ -43,9 +43,11 @@ class QuoteApi(private val token: String?) {
         call("/quotes/me").map { it.asArray().map(MyQuoteSummary::from) }
 
     data class MyQuotePage(val items: List<MyQuoteSummary>, val nextCursor: String?)
-    suspend fun getMyQuotesPage(cursor: String? = null): Result<MyQuotePage> {
+    suspend fun getMyQuotesPage(cursor: String? = null, filter: com.muyeon.app.ui.common.ListFilter = com.muyeon.app.ui.common.ListFilter()): Result<MyQuotePage> {
         val suffix = cursor?.let { "&cursor=" + java.net.URLEncoder.encode(it, "UTF-8") } ?: ""
-        return call("/quotes/me/page?limit=30$suffix").map {
+        // ★ 2026-11-06 목록 필터 — period·status 는 서버 커서 scope 에 들어간다(조건이 바뀌면 화면이 커서를 버린다).
+        val f = filter.queryString().takeIf { it.isNotEmpty() }?.let { "&$it" } ?: ""
+        return call("/quotes/me/page?limit=30$f$suffix").map {
             val obj = it.asObject()
             MyQuotePage(obj.getJSONArray("items").map(MyQuoteSummary::from),
                 if (obj.isNull("nextCursor")) null else obj.getString("nextCursor"))
@@ -53,9 +55,11 @@ class QuoteApi(private val token: String?) {
     }
 
     data class SentQuotePage(val items: List<SentQuoteItem>, val nextCursor: String?)
-    suspend fun getSentQuotesPage(cursor: String? = null): Result<SentQuotePage> {
+    suspend fun getSentQuotesPage(cursor: String? = null, filter: com.muyeon.app.ui.common.ListFilter = com.muyeon.app.ui.common.ListFilter()): Result<SentQuotePage> {
         val suffix = cursor?.let { "&cursor=" + java.net.URLEncoder.encode(it, "UTF-8") } ?: ""
-        return call("/quotes/sent/page?limit=30$suffix").map {
+        // ★ 2026-11-06 목록 필터 — period·status 는 서버 커서 scope 에 들어간다(조건이 바뀌면 화면이 커서를 버린다).
+        val f = filter.queryString().takeIf { it.isNotEmpty() }?.let { "&$it" } ?: ""
+        return call("/quotes/sent/page?limit=30$f$suffix").map {
             val obj = it.asObject()
             SentQuotePage(obj.getJSONArray("items").map(SentQuoteItem::from),
                 if (obj.isNull("nextCursor")) null else obj.getString("nextCursor"))

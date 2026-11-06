@@ -115,22 +115,28 @@ data class NotiPrefs(
     }
 }
 
+/** 알림 필터 시트 상태 섹션 — 전체 / 안 읽음. */
+const val NOTI_STATUS_UNREAD = "UNREAD"
+val notiStatusOptions = listOf(com.muyeon.app.ui.common.ListStatusOption(NOTI_STATUS_UNREAD, "안 읽음"))
+
 class NotificationApi(private val token: String?, private val activeType: String = "GENERAL") {
 
     private val client = OkHttpClient()
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
 
     /** 커서 페이징 — cursor 는 직전 페이지 마지막 id.
-     *  안읽음 필터는 화면에서 걷어냈다(안읽음은 행 배경으로만 보여준다) — 파라미터도 안 보낸다. */
+     *  ★ 2026-11-06 필터 시트 — 기간(`period`) + 상태 '안 읽음'(`unreadOnly=true`, 서버에 이미 있던 파라미터). */
     suspend fun list(
         cursor: Int?,
         limit: Int = 20,
         category: String = NotiCategory.ALL,
+        filter: com.muyeon.app.ui.common.ListFilter = com.muyeon.app.ui.common.ListFilter(),
     ): Result<List<AppNotification>> {
         val q = buildList {
             add("limit=$limit")
             cursor?.let { add("cursor=$it") }
             categoryParam(category)?.let { add("category=$it") }
+            filter.queryString { if (it == NOTI_STATUS_UNREAD) "unreadOnly" to "true" else null }.takeIf { it.isNotEmpty() }?.let(::add)
         }
         return call("/notifications?" + q.joinToString("&"))
             .map { JSONArray(it.ifBlank { "[]" }).map(AppNotification::from) }

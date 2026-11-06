@@ -37,6 +37,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
+import com.muyeon.app.ui.common.AppliedFilterChips
+import com.muyeon.app.ui.common.ListFilter
+import com.muyeon.app.ui.common.ListFilterButton
+import com.muyeon.app.ui.common.ListFilterEmpty
+import com.muyeon.app.ui.common.ListFilterSheet
+import com.muyeon.app.ui.common.ListStatusOption
+import com.muyeon.app.ui.common.MuyeonRemovablePill
+import com.muyeon.app.ui.common.appliedPills
 import kotlinx.coroutines.launch
 
 /**
@@ -60,6 +68,15 @@ fun QuoteHubScreen(
     reloadSignal: Int = 0,
 ) {
     var tab by remember { mutableIntStateOf(if (isPro) initialTab else 0) }
+    // ★ 2026-11-06 목록 필터(기간·상태) — 탭마다 따로, 화면을 떠나면 버린다.
+    var receivedFilter by remember { mutableStateOf(ListFilter()) }
+    var sentFilter by remember { mutableStateOf(ListFilter()) }
+    var filterSheet by remember { mutableStateOf(false) }
+    val sentTab = isPro && tab == 1
+    val filter = if (sentTab) sentFilter else receivedFilter
+    val statusOptions = if (sentTab) sentQuoteStatusOptions else receivedQuoteStatusOptions
+    val setFilter: (ListFilter) -> Unit = { if (sentTab) sentFilter = it else receivedFilter = it }
+    val pills = filter.appliedPills(statusOptions, setFilter)
 
     // 10-27 목록 화면 틀(ui/common/MuyeonListKit) — ✕ + 왼쪽 굵은 제목 + 캡슐 탭, 회색 바탕 위 흰 카드(iOS 와 같다).
     Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
@@ -69,15 +86,36 @@ fun QuoteHubScreen(
             com.muyeon.app.ui.common.MuyeonHeaderIcon(Icons.Outlined.VisibilityOff, "추천 제외한 강사", onClick = onOpenRecommendBlocks)
         }
         if (isPro) {
-            QuoteTabBar(tab = tab, titles = listOf("받은 제안", "보낸 제안"), onSelect = { tab = it })
-        }
-        if (isPro && tab == 1) {
-            SentQuotesList(api = api, onOpen = onOpenSent, reloadSignal = reloadSignal)
+            QuoteTabBar(tab = tab, titles = listOf("받은 제안", "보낸 제안"), onSelect = { tab = it }, leadingPills = pills) {
+                ListFilterButton(filter.isActive, { filterSheet = true }, tag = "quote.filter")
+            }
         } else {
-            RequestedQuotesList(api = api, onOpen = onOpenReceived, reloadSignal = reloadSignal)
+            // 탭 줄이 없는 회원 — 적용 칩 + 오른쪽 필터 아이콘만 있는 줄.
+            AppliedFilterChips(filter, statusOptions, setFilter, tagPrefix = "quote.tab") {
+                ListFilterButton(filter.isActive, { filterSheet = true }, tag = "quote.filter")
+            }
+        }
+        if (sentTab) {
+            SentQuotesList(api = api, onOpen = onOpenSent, reloadSignal = reloadSignal, filter = sentFilter, onResetFilter = { sentFilter = ListFilter() })
+        } else {
+            RequestedQuotesList(api = api, onOpen = onOpenReceived, reloadSignal = reloadSignal, filter = receivedFilter, onResetFilter = { receivedFilter = ListFilter() })
         }
     }
+
+    if (filterSheet) {
+        ListFilterSheet(filter, statusOptions, onApply = { setFilter(it); filterSheet = false }, onDismiss = { filterSheet = false })
+    }
 }
+
+/** 내 레슨 요청·받은 제안(회원) 상태 — ACTIVE=OPEN, MATCHED=MATCHED+CLOSED, ENDED=CANCELED+EXPIRED(서버가 묶는다). */
+val receivedQuoteStatusOptions = listOf(
+    ListStatusOption("ACTIVE", "진행 중"), ListStatusOption("MATCHED", "매칭됨"), ListStatusOption("ENDED", "마감"),
+)
+
+/** 보낸 제안(강사) 상태 — SENT=답변 대기, ACCEPTED=수락됨, ENDED=거절·요청 마감(서버가 묶는다). */
+val sentQuoteStatusOptions = listOf(
+    ListStatusOption("SENT", "답변 대기"), ListStatusOption("ACCEPTED", "수락됨"), ListStatusOption("ENDED", "마감"),
+)
 
 /** 상단 내비바 — iOS navigationBar(제목 17 bold, 좌측 X 16 semibold, 높이 44). */
 @Composable
@@ -98,9 +136,17 @@ fun QuoteNavBar(
 
 /** 10-27 밑줄 탭 → 공용 캡슐 탭(MuyeonPillTabs, 고름=검정 + 아래 구분선). iOS QuoteTabBar 와 같다. */
 @Composable
-fun QuoteTabBar(tab: Int, titles: List<String>, onSelect: (Int) -> Unit) {
+fun QuoteTabBar(
+    tab: Int,
+    titles: List<String>,
+    onSelect: (Int) -> Unit,
+    /** ★ 2026-11-06 적용한 필터 칩(맨 앞) + 오른쪽 끝 슬롯(필터 아이콘). 기본값이면 예전 그대로. */
+    leadingPills: List<MuyeonRemovablePill> = emptyList(),
+    trailing: (@Composable RowScope.() -> Unit)? = null,
+) {
     com.muyeon.app.ui.common.MuyeonPillTabs(
         titles.mapIndexed { i, t -> com.muyeon.app.ui.common.MuyeonPillTab(i, t) }, tab, onSelect, tagPrefix = "quote.tab",
+        leadingPills = leadingPills, trailing = trailing,
     )
 }
 
@@ -109,7 +155,13 @@ fun QuoteTabBar(tab: Int, titles: List<String>, onSelect: (Int) -> Unit) {
 /** iOS `RequestedQuotesList` 1:1. GET /quotes/me. 행 스와이프 삭제(진행중이면 취소 후 삭제). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RequestedQuotesList(api: QuoteApi, onOpen: (Int) -> Unit, reloadSignal: Int = 0) {
+fun RequestedQuotesList(
+    api: QuoteApi,
+    onOpen: (Int) -> Unit,
+    reloadSignal: Int = 0,
+    filter: ListFilter = ListFilter(),
+    onResetFilter: () -> Unit = {},
+) {
     var quotes by remember { mutableStateOf<List<MyQuoteSummary>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var refreshing by remember { mutableStateOf(false) }
@@ -124,7 +176,7 @@ fun RequestedQuotesList(api: QuoteApi, onOpen: (Int) -> Unit, reloadSignal: Int 
         if (reset) generation++
         val current = generation
         pageLoading = true
-        api.getMyQuotesPage(if (reset) null else nextCursor).onSuccess { page ->
+        api.getMyQuotesPage(if (reset) null else nextCursor, filter).onSuccess { page ->
             if (current == generation) {
                 quotes = if (reset) page.items else (quotes + page.items).distinctBy { it.id }
                 nextCursor = page.nextCursor
@@ -136,7 +188,8 @@ fun RequestedQuotesList(api: QuoteApi, onOpen: (Int) -> Unit, reloadSignal: Int 
     }
 
     // 최초 + 부모 신호(reloadSignal)마다. 목록이 있으면 스켈레톤 없이 조용히 갈아끼운다.
-    LaunchedEffect(reloadSignal) { isLoading = quotes.isEmpty(); load(); isLoading = false }
+    // 필터가 바뀌면 커서를 버리고 처음부터(load(reset) 가 generation 을 올려 늦게 온 이전 페이지를 버린다).
+    LaunchedEffect(reloadSignal, filter) { isLoading = quotes.isEmpty(); load(); isLoading = false }
 
     // iOS delete(): OPEN 이면 먼저 취소한 뒤 삭제. 매칭 건은 서버가 소프트 삭제(내 목록 숨김).
     suspend fun delete(q: MyQuoteSummary) {
@@ -149,7 +202,9 @@ fun RequestedQuotesList(api: QuoteApi, onOpen: (Int) -> Unit, reloadSignal: Int 
             }
     }
 
-    if (quotes.isEmpty() && !isLoading) {
+    if (quotes.isEmpty() && !isLoading && filter.isActive) {
+        ListFilterEmpty(onResetFilter, Modifier.fillMaxSize().wrapContentHeight(Alignment.CenterVertically))
+    } else if (quotes.isEmpty() && !isLoading) {
         QuoteEmptyState(
             icon = Icons.Outlined.Inbox,
             title = "받은 제안이 없어요",
@@ -283,7 +338,13 @@ fun MyQuoteRow(quote: MyQuoteSummary, onClick: () -> Unit) {
 /** iOS `SentQuotesList` 1:1. GET /quotes/sent. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SentQuotesList(api: QuoteApi, onOpen: (SentQuoteItem) -> Unit, reloadSignal: Int = 0) {
+fun SentQuotesList(
+    api: QuoteApi,
+    onOpen: (SentQuoteItem) -> Unit,
+    reloadSignal: Int = 0,
+    filter: ListFilter = ListFilter(),
+    onResetFilter: () -> Unit = {},
+) {
     var items by remember { mutableStateOf<List<SentQuoteItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var refreshing by remember { mutableStateOf(false) }
@@ -298,7 +359,7 @@ fun SentQuotesList(api: QuoteApi, onOpen: (SentQuoteItem) -> Unit, reloadSignal:
         if (reset) generation++
         val current = generation
         pageLoading = true
-        api.getSentQuotesPage(if (reset) null else nextCursor).onSuccess { page ->
+        api.getSentQuotesPage(if (reset) null else nextCursor, filter).onSuccess { page ->
             if (current == generation) {
                 items = if (reset) page.items else (items + page.items).distinctBy { it.id }
                 nextCursor = page.nextCursor
@@ -311,9 +372,11 @@ fun SentQuotesList(api: QuoteApi, onOpen: (SentQuoteItem) -> Unit, reloadSignal:
 
 
     // 최초 + 부모 신호(reloadSignal)마다. 목록이 있으면 스켈레톤 없이 조용히 갈아끼운다.
-    LaunchedEffect(reloadSignal) { isLoading = items.isEmpty(); load(); isLoading = false }
+    LaunchedEffect(reloadSignal, filter) { isLoading = items.isEmpty(); load(); isLoading = false }
 
-    if (items.isEmpty() && !isLoading) {
+    if (items.isEmpty() && !isLoading && filter.isActive) {
+        ListFilterEmpty(onResetFilter, Modifier.fillMaxSize().wrapContentHeight(Alignment.CenterVertically))
+    } else if (items.isEmpty() && !isLoading) {
         QuoteEmptyState(
             icon = Icons.Outlined.Send,
             title = "보낸 제안이 없어요",

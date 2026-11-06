@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.quote
 
+import com.muyeon.app.ui.common.appliedPills
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -98,6 +99,9 @@ fun StudentConsultScreen(
 ) {
     var items by remember { mutableStateOf<List<ConsultItem>>(emptyList()) }
     var filter by remember { mutableStateOf(ConsultKind.ALL) }
+    // ★ 2026-11-06 목록 필터 — 기간만(상태는 칩이 이미 상태). 서버 파라미터 없이 요청 createdAt 으로 앱에서 거른다.
+    var listFilter by remember { mutableStateOf(com.muyeon.app.ui.common.ListFilter()) }
+    var filterSheet by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
     var respondFor by remember { mutableStateOf<QuoteFull?>(null) }
     var attachmentRole by remember { mutableStateOf("TEACHER") }
@@ -128,24 +132,33 @@ fun StudentConsultScreen(
     LaunchedEffect(reloadSignal) { load() }
     LaunchedEffect(toast) { toast?.let { kotlinx.coroutines.delay(quoteToastMillis(it)); toast = null } }
 
-    val shown = if (filter == ConsultKind.ALL) items else items.filter { it.kind == filter }
+    // 기간 필터는 칩과 AND. 칩 숫자도 기간 안의 것만 센다(칩 숫자와 목록이 어긋나지 않게).
+    val inPeriod = items.filter { listFilter.withinPeriod(it.sortAt) }
+    val shown = if (filter == ConsultKind.ALL) inPeriod else inPeriod.filter { it.kind == filter }
 
     Box(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
         Column(Modifier.fillMaxSize()) {
             // 10-27 공용 캡슐 탭(작은 크기, 고름=검정·개수) — 넷이 한 줄에 안 들어가면 밀어서 본다(iOS 와 같다).
             //  ★ 2026-11-06 scrollable=false 는 쓰지 않는다 — '수강생 문의 3'·'제안 보냄 2' 등 넷(개수 포함)이 360dp 폭에
             //   못 들어가 나눠 가지면 글자가 … 로 잘린다. 페이저 제스처 겹침은 남는다(칩 줄을 시트로 바꿀 때 함께 정리).
+            //  ★ 2026-11-06 오른쪽 끝 필터 아이콘(기간 시트) + 적용한 기간은 칩 줄 맨 앞 검은 칩 ×.
             com.muyeon.app.ui.common.MuyeonPillTabs(
                 ConsultKind.entries.map { kind ->
-                    val count = if (kind == ConsultKind.ALL) items.size else items.count { it.kind == kind }
+                    val count = if (kind == ConsultKind.ALL) inPeriod.size else inPeriod.count { it.kind == kind }
                     com.muyeon.app.ui.common.MuyeonPillTab(kind, kind.chipTitle, count.takeIf { it > 0 })
                 },
                 filter, { filter = it }, tagPrefix = "consult.tab", compact = true,
-            )
+                leadingPills = listFilter.appliedPills(emptyList()) { listFilter = it },
+            ) {
+                com.muyeon.app.ui.common.ListFilterButton(listFilter.isActive, { filterSheet = true }, tag = "consult.filter")
+            }
 
             when {
                 loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                     CircularProgressIndicator(color = MuyeonColors.primary)
+                }
+                shown.isEmpty() && listFilter.isActive -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
+                    com.muyeon.app.ui.common.ListFilterEmpty({ listFilter = com.muyeon.app.ui.common.ListFilter() })
                 }
                 shown.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                     QuoteEmptyState(
@@ -178,6 +191,12 @@ fun StudentConsultScreen(
                     .padding(horizontal = 20.dp, vertical = 13.dp),
             )
         }
+    }
+
+    if (filterSheet) {
+        com.muyeon.app.ui.common.ListFilterSheet(
+            listFilter, onApply = { listFilter = it; filterSheet = false }, onDismiss = { filterSheet = false },
+        )
     }
 
     respondFor?.let { quote ->

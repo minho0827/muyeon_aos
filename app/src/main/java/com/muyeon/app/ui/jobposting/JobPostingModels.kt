@@ -318,10 +318,17 @@ class JobPostingApi(internal val token: String?) {
 
     data class PostingPage(val items: List<MyPosting>, val hasMore: Boolean, val nextCursor: String?,
         val counts: Map<String, Int>, val archivedCount: Int, val totalApplicants: Int)
-    suspend fun postingsPage(archived: Boolean = false, tab: String = "ALL", cursor: String? = null): Result<PostingPage> {
+    suspend fun postingsPage(
+        archived: Boolean = false,
+        tab: String = "ALL",
+        cursor: String? = null,
+        filter: com.muyeon.app.ui.common.ListFilter = com.muyeon.app.ui.common.ListFilter(),
+    ): Result<PostingPage> {
         val suffix = cursor?.let { "&cursor=" + java.net.URLEncoder.encode(it, "UTF-8") } ?: ""
         val path = if (archived) "/me/postings/archived/page" else "/me/postings/page"
-        return call("$path?limit=30&sort=native&tab=$tab$suffix").mapCatching {
+        // ★ 2026-11-06 목록 필터 — 기간(period)만. 상태는 탭이 이미 상태라 보내지 않는다.
+        val f = filter.queryString { null }.takeIf { it.isNotEmpty() }?.let { "&$it" } ?: ""
+        return call("$path?limit=30&sort=native&tab=$tab$f$suffix").mapCatching {
             val obj = JSONObject(it)
             val counts = obj.optJSONObject("counts")
             PostingPage(obj.getJSONArray("items").map(MyPosting::from), obj.getBoolean("hasMore"), obj.stringOrNull("nextCursor"),
