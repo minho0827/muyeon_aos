@@ -37,6 +37,14 @@ class ChatApi(private val token: String?) {
         }
     }
 
+    /** ★ 2026-11-07 GET /support-chat/eligibility — 채팅 목록 '상담' 칩(showChip). */
+    suspend fun supportEligibility(): Result<SupportChatAccess> =
+        call("/support-chat/eligibility").map { SupportChatAccess.from(JSONObject(it)) }
+
+    /** ★ 2026-11-07 GET /support-chat/rooms — 내 상담 목록(무용연 고객센터). */
+    suspend fun supportRooms(): Result<List<SupportChatRoom>> =
+        call("/support-chat/rooms").map { JSONArray(it.ifBlank { "[]" }).map(SupportChatRoom::from) }
+
     /** GET /chat/rooms/:id */
     suspend fun getRoomDetail(roomId: Int): Result<ChatRoomDetail> =
         call("/chat/rooms/$roomId").map { ChatRoomDetail.from(JSONObject(it)) }

@@ -143,6 +143,9 @@ class ChatActivity : ResultActivity() {
             // ★ 목록 상태는 NavHost **바깥**에 둔다 — 방에 들어가면 목록 composable 이
             //   composition 에서 빠지므로, 안에 두면 목록·필터가 매번 날아간다.
             val listState = remember { ChatListState(api) }
+            // ★ 2026-11-07 '상담' 칩(무용연 고객센터) — 보일 때만(eligibility.showChip).
+            val supportState = remember { SupportChatState(api, token) }
+            LaunchedEffect(Unit) { supportState.refreshAccess() }
             val scope = rememberCoroutineScope()
             LaunchedEffect(Unit) {
                 listState.setFilterFrom(filter)
@@ -181,6 +184,8 @@ class ChatActivity : ResultActivity() {
                         onClose = { finish() },
                         onOpenRoom = { rid, title -> nav.navigate("room/$rid?title=$title") },
                         onOpenBlocked = { nav.navigate("blocked") },
+                        support = supportState,
+                        onOpenWebPath = { path -> com.muyeon.app.webview.NativeWebRoute.openWebAndFinish(this@ChatActivity, path) },
                     )
                 }
                 composable("blocked") { entry ->

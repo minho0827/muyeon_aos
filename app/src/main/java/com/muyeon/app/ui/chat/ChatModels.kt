@@ -108,7 +108,10 @@ enum class ChatRoomFilter(val title: String) {
     ALL("전체"),
     REQUESTED("내 레슨 요청"),
     RESPONDED("보낸 제안"),
-    INQUIRY("일반·문의");
+    INQUIRY("일반·문의"),
+
+    /** ★ 2026-11-07 '상담'(무용연 고객센터) — 채팅 방이 아니라 support-chat 방. 보일 때만 칩에 넣는다(ChatListScreen). */
+    SUPPORT("상담");
 
     /**
      * 다이렉트 문의방(kind=direct)은 견적방이 아니라 기본 세그먼트에서 사라지던 문제 →
@@ -119,6 +122,7 @@ enum class ChatRoomFilter(val title: String) {
         REQUESTED -> (room.kind == "quote" && room.myQuoteRole == "customer") || room.kind == "direct"
         RESPONDED -> (room.kind == "quote" && room.myQuoteRole == "pro") || room.kind == "direct"
         INQUIRY -> room.kind != "quote"
+        SUPPORT -> false
     }
 
     companion object {

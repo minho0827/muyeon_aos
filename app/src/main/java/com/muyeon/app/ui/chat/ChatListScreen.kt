@@ -49,6 +49,9 @@ fun ChatListScreen(
     onClose: () -> Unit,
     onOpenRoom: (Int, String) -> Unit,
     onOpenBlocked: () -> Unit,
+    /** ★ 2026-11-07 '상담' 칩 — null 이거나 showChip=false 면 예전 그대로. */
+    support: SupportChatState? = null,
+    onOpenWebPath: (String) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -63,14 +66,20 @@ fun ChatListScreen(
             // 차단 해제 진입점 — 설정(MY)이 웹이라 차단이 일어나는 이 화면에 둔다.
             com.muyeon.app.ui.common.MuyeonHeaderIcon(Icons.Outlined.DoNotDisturbOn, "차단한 사용자", onClick = onOpenBlocked)
         }
-        if (rooms.isNotEmpty()) {
+        val showSupport = support?.access?.showChip == true
+        LaunchedEffect(showSupport) {
+            if (!showSupport && state.filter == ChatRoomFilter.SUPPORT) state.filter = ChatRoomFilter.ALL
+        }
+        if (rooms.isNotEmpty() || showSupport) {
             com.muyeon.app.ui.common.MuyeonPillTabs(
-                ChatRoomFilter.entries.map { com.muyeon.app.ui.common.MuyeonPillTab(it, it.title) },
+                ChatRoomFilter.entries.filter { it != ChatRoomFilter.SUPPORT || showSupport }
+                    .map { com.muyeon.app.ui.common.MuyeonPillTab(it, it.title) },
                 state.filter, { state.filter = it }, tagPrefix = "chat.tab",
             )
         }
 
         when {
+            support != null && showSupport && state.filter == ChatRoomFilter.SUPPORT -> SupportChatList(support, onOpenWebPath)
             state.isLoading && rooms.isEmpty() -> ChatListSkeleton()
             state.loadFailed && rooms.isEmpty() -> LoadFailed { scope.launch { state.retry() } }
             rooms.isEmpty() && !state.hasMore -> EmptyMessage(Icons.Outlined.ChatBubbleOutline, "진행 중인 채팅이 없어요", "견적·공고·레슨으로 대화를 시작하면 여기에 모여요.")
