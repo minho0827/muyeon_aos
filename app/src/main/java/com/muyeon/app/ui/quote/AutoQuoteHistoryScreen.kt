@@ -492,7 +492,8 @@ private fun SummaryCard(
 @Composable
 private fun MonthChips(months: List<AutoQuoteMonth>, selected: String, onSelect: (String) -> Unit) {
     // 10-27 월 칩 → 공용 캡슐(작은 크기, 고름=검정). iOS 와 같다.
-    Box(Modifier.padding(vertical = 12.dp)) {
+    // ★ 2026-11-06 compact 캡슐 줄이 위아래 8dp 를 스스로 가져서 바깥 여백 12 → 4(합 12 그대로).
+    Box(Modifier.padding(vertical = 4.dp)) {
         com.muyeon.app.ui.common.MuyeonPillTabs(
             months.map { com.muyeon.app.ui.common.MuyeonPillTab(it.ym, it.label) }, selected, onSelect,
             tagPrefix = "autoquote.month", showDivider = false, compact = true,

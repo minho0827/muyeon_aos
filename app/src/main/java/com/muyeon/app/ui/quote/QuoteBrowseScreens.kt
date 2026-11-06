@@ -181,6 +181,9 @@ internal fun quoteToastMillis(text: String): Long = if (text == GUEST_QUOTE_SENT
 private val gridInk = Color.Black.copy(alpha = 0.06f)
 private val deckInk = Color.Black.copy(alpha = 0.10f)
 
+/** 칩 줄의 [필터] 칩 id — 장르 id("", "ballet" …)와 겹치지 않는 값. */
+private const val FILTER_CHIP_ID = "__filter"
+
 private val BROWSE_CATEGORIES: List<Pair<String, String>> = listOf(
     "" to "전체", "ballet" to "발레", "barre" to "바레", "korean" to "한국무용",
     "modern" to "현대무용", "practical" to "실용무용", "balletfit" to "발레핏", "musical" to "뮤지컬",
@@ -357,23 +360,22 @@ private fun FilterChips(state: QuoteBrowseState, onReload: () -> Unit) {
         listOf(all) + mine
     }
 
-    Row(
-        Modifier.fillMaxWidth().background(MuyeonColors.surface)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        shown.forEach { (id, label) ->
-            BrowseChip(label, state.categoryId == id, Modifier.weight(1f)) {
-                state.categoryId = id
-                onReload()
-            }
-        }
-        BrowseChip(
-            text = if (state.regionSido.isEmpty()) "필터" else state.regionSido,
-            selected = state.regionSido.isNotEmpty(),
-            modifier = Modifier.weight(1f),
-        ) { sheetOpen = true }
-    }
+    // ★ 2026-11-06 개인레슨 관리 두 번째 칩 줄도 공용 캡슐 탭(작은 크기·고름=검정)으로 — 가로로 밀지 않는 한 줄(scrollable=false).
+    //  [필터] 칩은 장르와 따로 '지역을 골랐을 때' 켜진다(isSelected). 누르면 시트만 연다.
+    val filterId = FILTER_CHIP_ID
+    com.muyeon.app.ui.common.MuyeonPillTabs(
+        tabs = shown.map { (id, label) -> com.muyeon.app.ui.common.MuyeonPillTab(id, label) } +
+            com.muyeon.app.ui.common.MuyeonPillTab(filterId, if (state.regionSido.isEmpty()) "필터" else state.regionSido),
+        selected = state.categoryId,
+        onSelect = { id ->
+            if (id == filterId) sheetOpen = true
+            else { state.categoryId = id; onReload() }
+        },
+        tagPrefix = "browse.chip",
+        compact = true,
+        scrollable = false,
+        isSelected = { id -> if (id == filterId) state.regionSido.isNotEmpty() else id == state.categoryId },
+    )
 
     if (sheetOpen) {
         QuoteBrowseFilterSheet(

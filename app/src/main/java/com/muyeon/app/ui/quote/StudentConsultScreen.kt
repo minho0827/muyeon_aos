@@ -132,6 +132,8 @@ fun StudentConsultScreen(
     Box(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
         Column(Modifier.fillMaxSize()) {
             // 10-27 공용 캡슐 탭(작은 크기, 고름=검정·개수) — 넷이 한 줄에 안 들어가면 밀어서 본다(iOS 와 같다).
+            //  ★ 2026-11-06 scrollable=false 는 쓰지 않는다 — '수강생 문의 3'·'제안 보냄 2' 등 넷(개수 포함)이 360dp 폭에
+            //   못 들어가 나눠 가지면 글자가 … 로 잘린다. 페이저 제스처 겹침은 남는다(칩 줄을 시트로 바꿀 때 함께 정리).
             com.muyeon.app.ui.common.MuyeonPillTabs(
                 ConsultKind.entries.map { kind ->
                     val count = if (kind == ConsultKind.ALL) items.size else items.count { it.kind == kind }

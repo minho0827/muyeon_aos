@@ -136,42 +136,70 @@ fun <T> MuyeonPillTabs(
     onSelect: (T) -> Unit,
     tagPrefix: String? = null,
     showDivider: Boolean = true,
-    /** 작은 크기(높이 36·글자 14) — 섹션 안에 끼는 줄(캐스팅·무대 장르 칩)용. iOS compact 와 같다. */
+    /**
+     * 작은 크기(높이 36·글자 14) — 섹션 안에 끼는 줄(캐스팅·무대 장르 칩)용. iOS compact 와 같다.
+     *  ★ 2026-11-06 줄 위아래 8dp 여백 — 0 이면 위 구분선에 칩이 붙어 보였다(compact 쓰는 화면 전부).
+     */
     compact: Boolean = false,
     /** true 면 고른 탭도 글자 굵기를 바꾸지 않는다 — 고를 때 탭 폭이 변해 옆 탭이 밀리지 않게(양도양수·공간 대관). */
     fixedWeight: Boolean = false,
+    /**
+     * ★ 2026-11-06 false 면 가로로 밀지 않는 한 줄(Row) — 탭들이 폭을 똑같이 나눠 갖고 넘치는 글자는 … 로 줄인다.
+     *  좌우 스와이프 페이저(개인레슨 관리) 안에서는 가로 스크롤 면이 페이저 제스처와 겹쳐서 이걸 쓴다.
+     */
+    scrollable: Boolean = true,
+    /** ★ 2026-11-06 '고름' 판정을 바꿀 때 — 예: 필터 칩처럼 selected 와 따로 켜지는 탭(수강생 찾기 지역 필터). */
+    isSelected: (T) -> Boolean = { it == selected },
     trailing: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val state = rememberLazyListState()
     val idx = tabs.indexOfFirst { it.id == selected }
-    LaunchedEffect(idx) { if (idx >= 0) state.animateScrollToItem(idx, -120) }
+    if (scrollable) LaunchedEffect(idx) { if (idx >= 0) state.animateScrollToItem(idx, -120) }
+    val vPad = 8.dp
+
+    @Composable
+    fun Pill(tab: MuyeonPillTab<T>, modifier: Modifier) {
+        val on = isSelected(tab.id)
+        Row(
+            modifier.height(if (compact) 36.dp else 40.dp).clip(CircleShape)
+                .background(if (on) MuyeonColors.textHead else MuyeonList.ink100)
+                .clickable { onSelect(tab.id) }
+                .semantics {
+                    this.selected = on
+                    tagPrefix?.let { contentDescription = "$it.${tab.title}" + if (on) ".selected" else "" }
+                }
+                .padding(horizontal = if (!scrollable) 8.dp else if (compact) 16.dp else 18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+        ) {
+            val c = if (on) Color.White else MuyeonColors.textHead
+            val size = if (compact) 14 else 15
+            val w = if (on || fixedWeight) FontWeight.SemiBold else FontWeight.Medium
+            Text(
+                tab.title, style = pt(w, size), color = c, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                // 가로로 밀 땐 폭 제한이 없어 weight 를 걸지 않는다 — 나눠 갖는 줄에서만 글자를 줄인다.
+                modifier = if (scrollable) Modifier else Modifier.weight(1f, fill = false),
+            )
+            tab.count?.let { Text("$it", style = pt(w, size), color = c.copy(alpha = if (on) 0.85f else 0.6f), maxLines = 1) }
+        }
+    }
+
     Column(Modifier.fillMaxWidth().background(MuyeonColors.surface)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            LazyRow(
-                state = state, modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = MuyeonList.gutter, vertical = if (compact) 0.dp else 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                itemsIndexed(tabs) { _, tab ->
-                    val on = tab.id == selected
-                    Row(
-                        Modifier.height(if (compact) 36.dp else 40.dp).clip(CircleShape)
-                            .background(if (on) MuyeonColors.textHead else MuyeonList.ink100)
-                            .clickable { onSelect(tab.id) }
-                            .semantics {
-                                this.selected = on
-                                tagPrefix?.let { contentDescription = "$it.${tab.title}" + if (on) ".selected" else "" }
-                            }
-                            .padding(horizontal = if (compact) 16.dp else 18.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        val c = if (on) Color.White else MuyeonColors.textHead
-                        val size = if (compact) 14 else 15
-                        val w = if (on || fixedWeight) FontWeight.SemiBold else FontWeight.Medium
-                        Text(tab.title, style = pt(w, size), color = c, maxLines = 1)
-                        tab.count?.let { Text("$it", style = pt(w, size), color = c.copy(alpha = if (on) 0.85f else 0.6f)) }
-                    }
+            if (scrollable) {
+                LazyRow(
+                    state = state, modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = MuyeonList.gutter, vertical = vPad),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    itemsIndexed(tabs) { _, tab -> Pill(tab, Modifier) }
+                }
+            } else {
+                Row(
+                    Modifier.weight(1f).padding(horizontal = MuyeonList.gutter, vertical = vPad),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    tabs.forEach { tab -> Pill(tab, Modifier.weight(1f)) }
                 }
             }
             trailing?.invoke(this)
