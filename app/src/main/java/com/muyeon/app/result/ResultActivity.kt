@@ -29,6 +29,15 @@ abstract class ResultActivity : ComponentActivity(), ResultHost {
     private val sessionKeys = LinkedHashSet<String>()
     private val sessionPayload = Bundle()
 
+    /**
+     * ★ 2026-11-06 결과 키가 아닌 '바로 위 부모에게만' 주는 플래그(웹·버블링으로는 안 나간다).
+     *  예: 자동견적 발송 내역 [+] → 그 내역을 띄운 자동응답 화면이 새 메시지 편집을 연다.
+     *  부모는 전용 런처로 받아 Intent extra 로 읽는다(childLauncher 는 키만 본다).
+     */
+    private val resultFlags = Bundle()
+
+    fun putResultFlag(name: String) { resultFlags.putBoolean(name, true) }
+
     private val _childResults = MutableSharedFlow<Set<String>>(extraBufferCapacity = 8)
 
     /**
@@ -90,8 +99,8 @@ abstract class ResultActivity : ComponentActivity(), ResultHost {
 
     override fun finish() {
         val keys = LinkedHashSet(defaultResultKeys).apply { addAll(sessionKeys) }
-        if (keys.isNotEmpty()) {
-            setResult(RESULT_OK, resultIntent(keys, sessionPayload.takeIf { !it.isEmpty }))
+        if (keys.isNotEmpty() || !resultFlags.isEmpty) {
+            setResult(RESULT_OK, resultIntent(keys, sessionPayload.takeIf { !it.isEmpty }).putExtras(resultFlags))
         }
         super.finish()
         // ★ 2026-11-04 네이티브 화면을 닫을 때 iOS 내비게이션처럼 오른쪽으로 밀려 나간다(페이드 대신) — ui/common/nav/MuyeonNav 와 같은 모양.

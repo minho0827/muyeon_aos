@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Inbox
@@ -264,10 +265,13 @@ class AutoQuoteHistoryActivity : com.muyeon.app.result.ResultActivity() {
 
     companion object {
         private const val EXTRA_MONTH = "month"
+        /** ★ 2026-11-06 자동응답 화면(QuoteAutoTemplatesActivity)의 '발송 내역 보기'로 열렸다 — [+]는 그 화면으로 돌아가 새 편집을 연다. */
+        const val EXTRA_FROM_TEMPLATES = "autoQuote.fromTemplates"
 
-        fun intent(context: Context, month: String? = null): Intent =
+        fun intent(context: Context, month: String? = null, fromTemplates: Boolean = false): Intent =
             Intent(context, AutoQuoteHistoryActivity::class.java)
                 .apply { if (AutoQuoteMonths.isValid(month)) putExtra(EXTRA_MONTH, month) }
+                .apply { if (fromTemplates) putExtra(EXTRA_FROM_TEMPLATES, true) }
 
         fun start(context: Context, month: String? = null) = context.launchScreen(intent(context, month))
     }
@@ -293,6 +297,17 @@ class AutoQuoteHistoryActivity : com.muyeon.app.result.ResultActivity() {
                         state = state,
                         onClose = { finish() },
                         onOpenSent = { item -> sentDetail = item; nav.navigate("sent") },
+                        onCreateTemplate = {
+                            // ★ 2026-11-06 [+] 자동견적 메시지 만들기 — 자동응답 화면에서 왔으면 쌓지 않고
+                            //  플래그를 들고 닫아 그 화면이 새 편집을 연다. 아니면 새 편집이 열린 자동응답 화면을 띄운다
+                            //  (그 화면이 닫히며 싣는 AUTO_QUOTE 는 ResultActivity 가 웹까지 흘려보낸다).
+                            if (intent.getBooleanExtra(EXTRA_FROM_TEMPLATES, false)) {
+                                putResultFlag(QuoteAutoTemplatesActivity.EXTRA_START_NEW)
+                                finish()
+                            } else {
+                                QuoteAutoTemplatesActivity.start(this@AutoQuoteHistoryActivity, startNew = true)
+                            }
+                        },
                     )
                 }
                 composable("sent") {
@@ -322,6 +337,7 @@ fun AutoQuoteHistoryScreen(
     state: AutoQuoteHistoryState,
     onClose: () -> Unit,
     onOpenSent: (SentQuoteItem) -> Unit,
+    onCreateTemplate: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -364,7 +380,11 @@ fun AutoQuoteHistoryScreen(
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         // 10-27 목록 화면 틀(ui/common/MuyeonListKit) — ✕ + 왼쪽 굵은 제목(iOS 와 같다).
-        com.muyeon.app.ui.common.MuyeonListHeader("자동견적 발송 내역", onClose = onClose)
+        com.muyeon.app.ui.common.MuyeonListHeader("자동견적 발송 내역", onClose = onClose) {
+            if (onCreateTemplate != null) {
+                com.muyeon.app.ui.common.MuyeonHeaderIcon(Icons.Filled.Add, "자동견적 메시지 만들기", onClick = onCreateTemplate)
+            }
+        }
 
         SummaryCard(
             summary = state.summary,

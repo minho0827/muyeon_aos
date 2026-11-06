@@ -1,6 +1,8 @@
 package com.muyeon.app.ui.quote
 
 import com.muyeon.app.result.launchScreen
+import com.muyeon.app.result.resultKeys
+import com.muyeon.app.result.resultPayload
 import com.muyeon.app.webview.withActiveType
 import android.content.Context
 import android.content.Intent
@@ -119,15 +121,39 @@ class QuoteAutoTemplatesActivity : com.muyeon.app.result.ResultActivity() {
     override val defaultResultKeys = setOf(com.muyeon.app.result.ResultKeys.AUTO_QUOTE)
 
     companion object {
-        fun intent(context: Context): Intent = Intent(context, QuoteAutoTemplatesActivity::class.java)
+        /** ★ 2026-11-06 true 면 열자마자 '새 메시지' 편집을 띄운다(자동견적 발송 내역 [+]). */
+        const val EXTRA_START_NEW = "autoQuote.startNew"
+
+        fun intent(context: Context, startNew: Boolean = false): Intent =
+            Intent(context, QuoteAutoTemplatesActivity::class.java)
+                .apply { if (startNew) putExtra(EXTRA_START_NEW, true) }
 
         fun start(context: Context) = context.launchScreen(intent(context))
+
+        fun start(context: Context, startNew: Boolean) = context.launchScreen(intent(context, startNew))
     }
+
+    /** 새 메시지 편집을 열라는 신호 — 값이 바뀔 때마다 한 번 연다(0 = 안 연다). */
+    private var newEditorSignal by mutableIntStateOf(0)
+
+    /**
+     * ★ 2026-11-06 '발송 내역 보기'는 전용 런처로 띄운다 — 내역의 [+]가 START_NEW 플래그를 들고 닫히면
+     *  자동응답 화면을 하나 더 쌓지 않고 여기서 새 메시지 편집을 연다. 결과 키는 childLauncher 와 똑같이 합친다.
+     */
+    private val historyLauncher =
+        registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { r ->
+            val keys = r.data.resultKeys()
+            if (keys.isNotEmpty()) absorbChildResult(keys, r.data.resultPayload())
+            if (com.muyeon.app.result.ResultKeys.LOGIN_REQUIRED in keys) { finish(); return@registerForActivityResult }
+            if (r.data?.getBooleanExtra(EXTRA_START_NEW, false) == true) newEditorSignal++
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // 자동 견적 템플릿은 강사·학원 전용 — 무용수 유형이면 안내 후 종료(2026-09-26 정책).
         if (!ActiveRole.allowLessonProvider(this)) { finish(); return }
+        // 처음 열릴 때만(회전 등 재생성 땐 다시 안 연다).
+        if (savedInstanceState == null && intent.getBooleanExtra(EXTRA_START_NEW, false)) newEditorSignal = 1
         setContent {
             val api = remember { AutoQuoteApi(TokenManager.getAccessToken(this)) }
             QuoteAutoTemplatesScreen(
@@ -135,6 +161,13 @@ class QuoteAutoTemplatesActivity : com.muyeon.app.result.ResultActivity() {
                 // 닫기 = 결과(AUTO_QUOTE)를 싣고 부모로 돌아간다(iOS presentAutoQuoteTemplates 닫힘 콜백 대응).
                 //  ★ 예전 notifyWebAndFinish 는 CLEAR_TOP 이라 네이티브 부모(개인레슨 관리)까지 죽였다.
                 onClose = { finish() },
+                newEditorSignal = newEditorSignal,
+                onOpenHistory = {
+                    historyLauncher.launch(
+                        AutoQuoteHistoryActivity.intent(this, fromTemplates = true)
+                            .putExtra(com.muyeon.app.result.ResultKeys.EXTRA_FROM_NATIVE, true),
+                    )
+                },
             )
         }
     }
@@ -144,7 +177,13 @@ class QuoteAutoTemplatesActivity : com.muyeon.app.result.ResultActivity() {
 private data class EditorState(val id: Int?, val title: String, val message: String, val price: String)
 
 @Composable
-fun QuoteAutoTemplatesScreen(api: AutoQuoteApi, onClose: () -> Unit) {
+fun QuoteAutoTemplatesScreen(
+    api: AutoQuoteApi,
+    onClose: () -> Unit,
+    /** ★ 2026-11-06 값이 바뀌면(>0) '새 메시지 추가'와 같은 빈 편집을 연다. */
+    newEditorSignal: Int = 0,
+    onOpenHistory: (() -> Unit)? = null,
+) {
     var templates by remember { mutableStateOf<List<AutoQuoteTemplate>>(emptyList()) }
     var activeId by remember { mutableStateOf<Int?>(null) }
     var isLoading by remember { mutableStateOf(true) }
@@ -160,20 +199,11 @@ fun QuoteAutoTemplatesScreen(api: AutoQuoteApi, onClose: () -> Unit) {
     }
 
     LaunchedEffect(Unit) { load() }
+    LaunchedEffect(newEditorSignal) { if (newEditorSignal > 0) editing = EditorState(null, "", "", "") }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        // topBar — 제목 17 bold 가운데, 좌측 X 17 semibold
-        Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), contentAlignment = Alignment.Center) {
-            Text(
-                "견적 자동응답",
-                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp,
-                lineHeight = 20.sp, color = MuyeonColors.textHead,
-            )
-            Icon(
-                Icons.Filled.Close, "닫기", tint = MuyeonColors.textHead,
-                modifier = Modifier.align(Alignment.CenterStart).size(17.dp).clickable(onClick = onClose),
-            )
-        }
+        // ★ 2026-11-06 손으로 그린 가운데 제목줄 → 목록 공용 제목줄(✕ + 왼쪽 굵은 제목, ui/common/MuyeonListKit).
+        com.muyeon.app.ui.common.MuyeonListHeader("견적 자동응답", onClose = onClose)
         HorizontalDivider(color = MuyeonColors.border)
 
         if (isLoading) {
@@ -198,22 +228,16 @@ fun QuoteAutoTemplatesScreen(api: AutoQuoteApi, onClose: () -> Unit) {
                     lineHeight = 16.sp, color = MuyeonColors.primary,
                     modifier = Modifier
                         .padding(horizontal = 20.dp)
-                        .clickable { AutoQuoteHistoryActivity.start(context) },
+                        .clickable { onOpenHistory?.invoke() ?: AutoQuoteHistoryActivity.start(context) },
                 )
 
                 if (templates.isEmpty()) {
-                    Column(
-                        Modifier.fillMaxWidth().padding(vertical = 32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Icon(Icons.Outlined.ChatBubbleOutline, null, tint = MuyeonColors.secondary, modifier = Modifier.size(34.dp))
-                        Text(
-                            "저장된 자동응답이 없어요.\n아래에서 추가해보세요.",
-                            fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 17.sp,
-                            color = MuyeonColors.secondary, textAlign = TextAlign.Center,
-                        )
-                    }
+                    // ★ 2026-11-06 공용 빈 화면(MuyeonEmptyState) — 버튼은 아래 '새 메시지 추가'가 맡는다.
+                    com.muyeon.app.ui.common.MuyeonEmptyState(
+                        title = "저장된 자동응답이 없어요.",
+                        message = "아래에서 추가해보세요.",
+                        icon = Icons.Outlined.ChatBubbleOutline,
+                    )
                 } else {
                     templates.forEach { t ->
                         TemplateRow(
