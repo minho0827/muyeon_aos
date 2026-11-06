@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -53,7 +54,7 @@ import com.muyeon.app.webview.NativeWebRoute
  *  맨 위 '자동 견적 발송' 스위치(+이번 달 사용량) → 안 나가는 이유 → 내 자동응답 메시지(라디오 선택).
  *  바뀐 건 그 자리에서 서버에 저장된다('완료' 버튼 없음). 웹 `openAutoQuoteTemplates` 브릿지 / 개인레슨 관리의 '자동응답'으로 진입.
  *  나눈 파일: AutoQuoteApi · AutoQuoteSettingsState · AutoQuoteStatusSection · AutoQuoteBlockerList ·
- *   AutoQuoteTemplateList · AutoQuoteEditorSheet.
+ *   AutoQuoteTemplateList · AutoQuoteEditorSheet · AutoQuotePreviewSheet.
  */
 class QuoteAutoTemplatesActivity : com.muyeon.app.result.ResultActivity() {
 
@@ -147,6 +148,7 @@ fun QuoteAutoTemplatesScreen(
     val context = LocalContext.current
     val vm = rememberAutoQuoteSettingsState(api) { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
     val openHistory: () -> Unit = { onOpenHistory?.invoke() ?: AutoQuoteHistoryActivity.start(context) }
+    var previewing by remember { mutableStateOf<AutoQuoteEditorState?>(null) }
 
     LaunchedEffect(Unit) { vm.reload(showSpinner = true) }
     LaunchedEffect(reloadSignal) { if (reloadSignal > 0) vm.reload() }
@@ -197,6 +199,7 @@ fun QuoteAutoTemplatesScreen(
                     activeId = load.status.activeId,
                     onAdd = vm::openNew,
                     onActivate = vm::activate,
+                    onPreview = { t -> previewing = AutoQuoteEditorState(t.id, t.title.orEmpty(), t.message, t.price.orEmpty()) },
                     onEdit = vm::openEdit,
                     onDelete = { vm.confirmDelete = it },
                 )
@@ -210,8 +213,12 @@ fun QuoteAutoTemplatesScreen(
             busy = vm.busy,
             onSave = { title, message, price -> vm.save(st, title, message, price) },
             onCancel = { vm.editing = null },
+            onPreview = { title, message, price -> previewing = AutoQuoteEditorState(st.id, title, message, price) },
         )
     }
+
+    // ★ 2026-11-06 미리보기 — 목록 카드(저장된 값)·편집 시트(저장 전 값) 둘 다 여기로. 편집 시트 위에 뜬다.
+    previewing?.let { p -> AutoQuotePreviewSheet(value = p, onDismiss = { previewing = null }) }
 
     vm.confirmDelete?.let { t ->
         val active = (vm.load as? AutoQuoteLoad.Ready)?.status?.activeId == t.id

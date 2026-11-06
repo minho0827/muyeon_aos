@@ -79,6 +79,23 @@ object QuoteMessageExamples {
         .put("priceAmount", item.priceAmount)
         .put("priceUnit", item.priceUnit)
         .toString()
+
+    /**
+     * ★ 2026-11-06 자동응답 미리보기용 카드 JSON — 금액은 강사가 쓴 문구 그대로("price").
+     *  비어 있으면 넣지 않아 카드가 '협의 가능'으로 그린다(QuoteUi.priceText).
+     */
+    fun previewCardJson(
+        userId: Int, name: String, image: String?,
+        service: String?, region: String?, career: String?, price: String?,
+    ): String = JSONObject()
+        .put("id", userId)
+        .put("name", name)
+        .put("image", image ?: "")
+        .put("service", service ?: "")
+        .put("region", region ?: "")
+        .put("career", career ?: "")
+        .apply { price?.trim()?.takeIf { it.isNotEmpty() }?.let { put("price", it) } }
+        .toString()
 }
 
 /** 메시지 칸 라벨 옆(오른쪽) 작은 글자 버튼 — "ⓘ 다른 강사님들은 이렇게 보내요". 누르면 예시 시트. */
@@ -127,6 +144,37 @@ fun QuoteMessageExamplesSheet(onDismiss: () -> Unit) {
     }
     val openProfile: (Int) -> Unit = { id -> ResumeActivity.startProfile(context, id, "quote_example") }
 
+    QuoteThreadSheet(
+        title = "다른 강사님들은 이렇게 보내요",
+        sub = "무용연 대표 강사 프로필의 견적 예시예요.",
+        onDismiss = onDismiss,
+    ) {
+        QuoteMessageExamples.items.forEach { item ->
+            val loaded = profiles[item.userId]
+            val name = loaded?.first?.takeIf { it.isNotBlank() } ?: item.fallbackName
+            val image = loaded?.second?.takeIf { it.isNotBlank() }
+            QuoteChatThread(
+                name = name,
+                image = image,
+                cardJson = QuoteMessageExamples.cardJson(item, name, image),
+                text = item.text,
+                onOpenProfile = { openProfile(item.userId) },
+            )
+        }
+    }
+}
+
+/**
+ * ★ 2026-11-06 예시 시트·자동응답 미리보기가 같이 쓰는 시트 틀 — 제목 + 닫기 + 안내 한 줄 + 스레드 목록.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun QuoteThreadSheet(
+    title: String,
+    sub: String,
+    onDismiss: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -138,7 +186,7 @@ fun QuoteMessageExamplesSheet(onDismiss: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "다른 강사님들은 이렇게 보내요",
+                    title,
                     fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp,
                     lineHeight = 20.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
                 )
@@ -156,19 +204,11 @@ fun QuoteMessageExamplesSheet(onDismiss: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
                 Text(
-                    "무용연 대표 강사 프로필의 견적 예시예요.",
+                    sub,
                     fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 16.sp,
                     color = MuyeonColors.textSub,
                 )
-                QuoteMessageExamples.items.forEach { item ->
-                    val loaded = profiles[item.userId]
-                    ExampleThread(
-                        item = item,
-                        name = loaded?.first?.takeIf { it.isNotBlank() } ?: item.fallbackName,
-                        image = loaded?.second?.takeIf { it.isNotBlank() },
-                        onOpenProfile = { openProfile(item.userId) },
-                    )
-                }
+                content()
             }
         }
     }
@@ -176,10 +216,11 @@ fun QuoteMessageExamplesSheet(onDismiss: () -> Unit) {
 
 /** 받은 채팅처럼 — 왼쪽 34dp 아바타, 위에 이름(11sp), 견적 카드, 글 말풍선(ChatRoomScreen MessageBubble 상대 쪽과 같은 모양). */
 @Composable
-private fun ExampleThread(
-    item: QuoteMessageExamples.Item,
+internal fun QuoteChatThread(
     name: String,
     image: String?,
+    cardJson: String,
+    text: String,
     onOpenProfile: () -> Unit,
 ) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
@@ -196,7 +237,7 @@ private fun ExampleThread(
                     .padding(start = 4.dp, end = 4.dp),
             )
             QuoteCardBubble(
-                QuoteMessageExamples.cardJson(item, name, image),
+                cardJson,
                 showProviderProfile = true,
                 onOpenProvider = { _, _ -> onOpenProfile() },
             )
@@ -206,7 +247,7 @@ private fun ExampleThread(
                     .padding(horizontal = 14.dp, vertical = 10.dp),
             ) {
                 Text(
-                    item.text,
+                    text,
                     fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 20.sp,
                     color = MuyeonColors.textHead,
                 )

@@ -41,6 +41,8 @@ fun AutoQuoteEditorSheet(
     busy: Boolean,
     onSave: (title: String, message: String, price: String) -> Unit,
     onCancel: () -> Unit,
+    /** ★ 2026-11-06 저장 전 지금 쓰는 내용으로 미리보기. */
+    onPreview: ((title: String, message: String, price: String) -> Unit)? = null,
 ) {
     var title by remember(state) { mutableStateOf(state.title) }
     var message by remember(state) { mutableStateOf(state.message) }
@@ -106,6 +108,17 @@ fun AutoQuoteEditorSheet(
                         .border(1.dp, MuyeonColors.border, RoundedCornerShape(12.dp))
                         .clickable(onClick = onCancel).padding(vertical = 13.dp),
                 )
+                if (onPreview != null) {
+                    Text(
+                        "미리보기",
+                        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
+                        lineHeight = 18.sp, color = MuyeonColors.textSub, textAlign = TextAlign.Center,
+                        modifier = Modifier.weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(1.dp, MuyeonColors.border, RoundedCornerShape(12.dp))
+                            .clickable { onPreview(title, message, price) }.padding(vertical = 13.dp),
+                    )
+                }
                 Text(
                     if (state.id == null) "추가" else "저장",
                     fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,

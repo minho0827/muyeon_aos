@@ -43,6 +43,7 @@ fun AutoQuoteTemplateList(
     activeId: Int?,
     onAdd: () -> Unit,
     onActivate: (AutoQuoteTemplate) -> Unit,
+    onPreview: (AutoQuoteTemplate) -> Unit,
     onEdit: (AutoQuoteTemplate) -> Unit,
     onDelete: (AutoQuoteTemplate) -> Unit,
 ) {
@@ -65,6 +66,7 @@ fun AutoQuoteTemplateList(
                         t = t,
                         isActive = activeId == t.id,
                         onActivate = { if (activeId != t.id) onActivate(t) },
+                        onPreview = { onPreview(t) },
                         onEdit = { onEdit(t) },
                         onDelete = { onDelete(t) },
                     )
@@ -74,12 +76,13 @@ fun AutoQuoteTemplateList(
     }
 }
 
-/** 한 줄 — 라디오 + 이름·사용 중 + 금액 + 메시지 두 줄 + 편집/삭제. */
+/** 한 줄 — 라디오 + 이름·사용 중 + 금액 + 메시지 두 줄 + 미리보기/편집/삭제. */
 @Composable
 private fun AutoQuoteTemplateRow(
     t: AutoQuoteTemplate,
     isActive: Boolean,
     onActivate: () -> Unit,
+    onPreview: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -125,6 +128,11 @@ private fun AutoQuoteTemplateRow(
                 maxLines = 2, overflow = TextOverflow.Ellipsis,
             )
             Row(Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(
+                    "미리보기",
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
+                    color = MuyeonColors.primary, modifier = Modifier.clickable(onClick = onPreview),
+                )
                 Text(
                     "편집",
                     fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
