@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 웹 src/assets/icons/ic-location.svg 에서 옮김. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="M12 2.25C16.1435 2.25363 19.5 5.41248 19.5 9.30957C19.4997 13.6525 15.1534 18.9772 13.0801 21.2764C12.5224 21.9083 11.4919 21.9083 10.9199 21.2764C8.84657 18.9772 4.5003 13.6525 4.5 9.30957C4.5 5.41248 7.85648 2.25363 12 2.25ZM11.9248 6.7998C10.3095 6.79991 9.00011 8.10933 9 9.72461C9 11.34 10.3095 12.6493 11.9248 12.6494C13.5402 12.6494 14.8496 11.34 14.8496 9.72461C14.8495 8.10927 13.5402 6.7998 11.9248 6.7998Z" android:fillColor="#FF000000" />
+</vector>

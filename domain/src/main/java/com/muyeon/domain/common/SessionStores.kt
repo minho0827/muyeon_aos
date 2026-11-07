@@ -29,3 +29,12 @@ interface ForceLogoutTrigger {
     /** @return 강제 로그아웃을 시작했으면 true. */
     fun check(httpCode: Int, body: String?): Boolean
 }
+
+/**
+ * 작은 화면 기억값(칩 선택·보기 방식) — 웹 usePersistedState(localStorage)와 같은 역할. 구현은 :data(SharedPreferences).
+ *   서버 데이터가 아니다. 지워져도 기본값으로 돌아갈 뿐이다.
+ */
+interface KeyValueStore {
+    fun getString(key: String): String?
+    fun putString(key: String, value: String?)
+}

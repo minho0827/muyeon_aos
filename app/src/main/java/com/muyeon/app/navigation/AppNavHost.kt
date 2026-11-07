@@ -5,7 +5,10 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.muyeon.app.ui.main.MainScreen
+import com.muyeon.app.ui.performance.PerformanceDetailScreen
 import com.muyeon.app.ui.main.MainViewModel
 
 /**
@@ -16,6 +19,7 @@ import com.muyeon.app.ui.main.MainViewModel
 fun AppNavHost(
     mainViewModel: MainViewModel,
     onMyLongPress: () -> Unit,
+    onOpenWeb: (String) -> Unit,
     navController: NavHostController = rememberNavController(),
 ) {
     NavHost(navController, startDestination = Screen.Main.route) {
@@ -24,6 +28,16 @@ fun AppNavHost(
                 viewModel = mainViewModel,
                 onOpenDetail = { route -> navController.navigate(route) },
                 onMyLongPress = onMyLongPress,
+                onOpenWeb = onOpenWeb,
+            )
+        }
+        composable(
+            Screen.PerformanceDetail.route,
+            arguments = listOf(navArgument(Screen.PerformanceDetail.ARG_ID) { type = NavType.StringType }),
+        ) {
+            PerformanceDetailScreen(
+                onBack = { navController.popBackStack() },
+                onLogin = { onOpenWeb(WebPaths.login("/performance")) },
             )
         }
     }

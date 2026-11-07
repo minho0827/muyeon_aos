@@ -2,7 +2,13 @@ package com.muyeon.data.di
 
 import com.muyeon.data.local.MenuCache
 import com.muyeon.data.repository.AppMenuRepositoryImpl
+import com.muyeon.data.local.PrefsKeyValueStore
 import com.muyeon.data.repository.MemberRepositoryImpl
+import com.muyeon.data.repository.PerformanceRepositoryImpl
+import com.muyeon.data.repository.ScrapRepositoryImpl
+import com.muyeon.domain.common.KeyValueStore
+import com.muyeon.domain.repository.PerformanceRepository
+import com.muyeon.domain.repository.ScrapRepository
 import com.muyeon.domain.repository.AppMenuRepository
 import com.muyeon.domain.repository.MemberRepository
 import org.koin.android.ext.koin.androidContext
@@ -13,4 +19,7 @@ val dataModule = module {
     single { MenuCache(androidContext(), get()) }
     single<AppMenuRepository> { AppMenuRepositoryImpl(get(), get(), get()) }
     single<MemberRepository> { MemberRepositoryImpl(get(), get(), get()) }
+    single<KeyValueStore> { PrefsKeyValueStore(androidContext()) }
+    single<ScrapRepository> { ScrapRepositoryImpl(get(), get(), get()) }
+    single<PerformanceRepository> { PerformanceRepositoryImpl(get(), get()) }
 }

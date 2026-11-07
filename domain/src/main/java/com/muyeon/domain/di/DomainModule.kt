@@ -5,6 +5,10 @@ import com.muyeon.domain.usecase.menu.GetTabMenusUseCase
 import com.muyeon.domain.usecase.member.GetMyRolesUseCase
 import com.muyeon.domain.usecase.member.GetRoleManageLaunchUseCase
 import com.muyeon.domain.usecase.member.SwitchActiveTypeUseCase
+import com.muyeon.domain.usecase.performance.GetPerformanceDetailUseCase
+import com.muyeon.domain.usecase.performance.GetPerformancePageUseCase
+import com.muyeon.domain.usecase.scrap.GetLikedIdsUseCase
+import com.muyeon.domain.usecase.scrap.ToggleScrapUseCase
 import org.koin.dsl.module
 
 /**
@@ -19,4 +23,11 @@ val domainModule = module {
     factory { GetMyRolesUseCase(get()) }
     factory { SwitchActiveTypeUseCase(get()) }
     factory { GetRoleManageLaunchUseCase(get()) }
+    // 찜
+    factory { GetLikedIdsUseCase(get(), get()) }
+    factory { ToggleScrapUseCase(get(), get()) }
+    factory { com.muyeon.domain.usecase.scrap.ObserveScrapChangesUseCase(get()) }
+    // 공연
+    factory { GetPerformancePageUseCase(get()) }
+    factory { GetPerformanceDetailUseCase(get()) }
 }

@@ -3,6 +3,8 @@ package com.muyeon.network.di
 import com.muyeon.network.BuildConfig
 import com.muyeon.network.api.AppMenuApi
 import com.muyeon.network.api.MemberApi
+import com.muyeon.network.api.PerformanceApi
+import com.muyeon.network.api.ScrapApi
 import com.muyeon.network.interceptor.ForceLogoutInterceptor
 import com.muyeon.network.interceptor.SessionHeadersInterceptor
 import com.squareup.moshi.Moshi
@@ -50,6 +52,8 @@ val networkModule = module {
 val apiModule = module {
     single<AppMenuApi> { get<Retrofit>().create(AppMenuApi::class.java) }
     single<MemberApi> { get<Retrofit>().create(MemberApi::class.java) }
+    single<ScrapApi> { get<Retrofit>().create(ScrapApi::class.java) }
+    single<PerformanceApi> { get<Retrofit>().create(PerformanceApi::class.java) }
 }
 
 fun networkModules(): List<Module> = listOf(networkModule, apiModule)

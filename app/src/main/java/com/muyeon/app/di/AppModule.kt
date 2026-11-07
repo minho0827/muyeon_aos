@@ -42,4 +42,7 @@ val appModule = module {
 /** 화면 ViewModel — 새 화면은 여기 한 줄(docs/ARCHITECTURE.md 9단계 체크리스트 7번). */
 val viewModelModule = module {
     viewModel { MainViewModel(get(), get(), get(), get(), get(), get()) }
+    // 공연
+    viewModel { com.muyeon.app.ui.performance.PerformanceListViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel { com.muyeon.app.ui.performance.PerformanceDetailViewModel(get(), get(), get(), get()) }
 }

@@ -18,6 +18,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.muyeon.app.navigation.Screen
+import com.muyeon.app.navigation.WebPaths
+import com.muyeon.app.ui.performance.PerformanceListScreen
 import com.muyeon.app.ui.theme.AppColors
 import com.muyeon.app.ui.theme.AppTypography
 
@@ -30,6 +32,8 @@ fun MainScreen(
     viewModel: MainViewModel,
     onOpenDetail: (String) -> Unit,
     onMyLongPress: () -> Unit,
+    /** 웹 페이지 창(로그인 등). */
+    onOpenWeb: (String) -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val tabNav = rememberNavController()
@@ -56,7 +60,12 @@ fun MainScreen(
                 composable(Screen.TabHome.route) { TabPlaceholder(MainTab.HOME) }
                 composable(Screen.TabLessons.route) { TabPlaceholder(MainTab.LESSONS) }
                 composable(Screen.TabCommunity.route) { TabPlaceholder(MainTab.COMMUNITY) }
-                composable(Screen.TabPerformance.route) { TabPlaceholder(MainTab.PERFORMANCE) }
+                composable(Screen.TabPerformance.route) {
+                    PerformanceListScreen(
+                        onOpenDetail = { id -> onOpenDetail(Screen.PerformanceDetail.build(id)) },
+                        onLogin = { onOpenWeb(WebPaths.login(MainTab.PERFORMANCE.webPath)) },
+                    )
+                }
                 composable(Screen.TabMy.route) { TabPlaceholder(MainTab.MY) }
             }
         }

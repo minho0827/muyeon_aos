@@ -23,6 +23,18 @@ object ApiEndpoints {
         const val ROLE_HERO = "$API/home/role-hero"
     }
 
+    /** scraps.controller.ts — 목록은 me/scraps, 토글은 영역별 경로. */
+    object Scraps {
+        const val MINE = "$API/me/scraps"                     // GET ?targetType=
+        const val TOGGLE = "$API/{segment}/{id}/scrap"        // POST 찜 / DELETE 해제
+    }
+
+    /** performances.controller.ts */
+    object Performances {
+        const val PAGE = "$API/performances/page"             // GET genre·subGenre·tag·cursor·limit
+        const val DETAIL = "$API/performances/{id}"
+    }
+
     /** auth.controller.ts */
     object Auth {
         const val ACTIVE_TYPE = "$API/auth/me/active-type"   // PATCH { type }
