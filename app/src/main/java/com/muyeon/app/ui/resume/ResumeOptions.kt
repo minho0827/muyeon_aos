@@ -31,12 +31,23 @@ object ResumeOptions {
         "W5_6" to "5만원~6만원 미만", "W6_8" to "6만원~8만원 미만", "W8_UP" to "8만원 이상", "NEGOTIABLE" to "추후 협의",
     )
 
-    /** 수업 분야 — 웹 TEACHING_FIELDS 와 1:1. */
+    /**
+     * 수업 분야 — 웹 constants/subOptions.js TEACHING_FIELDS·iOS ResumeOptions.teachingFields 와 1:1.
+     *  ★ 2026-11-07 옛 목록(유아발레·초등발레…)에 머물러 있어, 웹·iOS·서버가 쓰는 새 코드(BASIC·HOBBY·MAJOR·EXAM·
+     *  REPERTOIRE·AUDITION·OTHER)가 강사 프로필 '전문 분야' 등에 영문 그대로 보였다. 옛 코드는 아래 legacyFieldLabels 로 읽기만 한다.
+     */
     val teachingFields = listOf(
-        "BALLET_KIDS" to "유아발레", "BALLET_ELEM" to "초등발레", "BALLET_ADULT" to "성인취미발레",
-        "BALLET_EXAM" to "입시발레", "BALLET_MAJOR" to "전공반", "CONCOURS" to "콩쿠르 작품지도",
-        "MODERN" to "현대무용", "KOREAN" to "한국무용", "STRETCH" to "스트레칭",
-        "PILATES" to "필라테스", "BALLET_FIT" to "발레핏", "BARRE" to "바레",
+        "BASIC" to "기초반", "HOBBY" to "취미반", "MAJOR" to "전공반", "EXAM" to "입시반",
+        "REPERTOIRE" to "작품지도", "CONCOURS" to "콩쿠르지도", "AUDITION" to "오디션준비",
+        "PILATES" to "필라테스", "STRETCH" to "스트레칭", "OTHER" to "기타",
+    )
+
+    /** 예전에 저장된 값은 기존 이름으로 계속 읽는다(웹 LEGACY_FIELD_MAP·iOS legacyFieldLabels 와 같다). */
+    private val legacyFieldLabels = mapOf(
+        "BALLET_KIDS" to "유아반", "BALLET_ELEM" to "초등반", "BALLET_TEEN" to "중등반",
+        "BALLET_MAJOR" to "전공반", "BALLET_EXAM" to "입시반", "BALLET_ADULT" to "성인취미",
+        "KOREAN" to "한국무용", "MODERN" to "현대무용", "PRACTICAL" to "실용무용",
+        "BALLET_FIT" to "발레핏", "BARRE" to "바레",
     )
 
     /** 수업 대상 — 웹 CLASS_TARGETS 와 1:1. */
@@ -62,7 +73,7 @@ object ResumeOptions {
         "저녁" to listOf("evening", "night"),
     )
 
-    fun fieldLabel(v: String) = teachingFields.firstOrNull { it.first == v }?.second ?: v
+    fun fieldLabel(v: String) = teachingFields.firstOrNull { it.first == v }?.second ?: legacyFieldLabels[v] ?: v
     fun targetLabel(v: String) = classTargets.firstOrNull { it.first == v }?.second ?: v
     fun careerLabel(v: String?) = careerLevels.firstOrNull { it.first == v }?.second ?: (v ?: "")
     fun salaryLabel(v: String?) = salaryRanges.firstOrNull { it.first == v }?.second ?: (v ?: "")

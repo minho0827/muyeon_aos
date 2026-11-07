@@ -559,30 +559,13 @@ fun JobPostingWizardScreen(
 
 /**
  * ★ 2026-11-02 AI 지도 분야 코드 → 앱 칩 코드.
- *  서버·웹의 새 코드(BASIC…OTHER)와 이 앱 칩(ResumeOptions.teachingFields, 옛 코드)이 다르다.
- *  앱이 저장하는 값·칩 목록은 바꾸지 않고, 뜻이 분명히 같은 것만 가까운 칩으로 옮긴다(애매하면 버림).
- *
- *   AI 코드    (웹 라벨)    → 앱 칩 코드     (앱 라벨)
- *   HOBBY      취미반       → BALLET_ADULT   성인취미발레   (앱의 유일한 취미반 칩)
- *   MAJOR      전공반       → BALLET_MAJOR   전공반
- *   EXAM       입시반       → BALLET_EXAM    입시발레
- *   REPERTOIRE 작품지도     → CONCOURS       콩쿠르 작품지도
- *   CONCOURS   콩쿠르지도   → CONCOURS       콩쿠르 작품지도
- *   PILATES    필라테스     → PILATES        필라테스
- *   STRETCH    스트레칭     → STRETCH        스트레칭
- *   BASIC      기초반       → (없음 — 유아/초등/성인 중 어느 쪽인지 알 수 없음)
- *   AUDITION   오디션준비   → (없음)
- *   OTHER      기타         → (없음)
- *  이미 앱 칩 코드로 온 값(BALLET_KIDS 등)은 그대로 받는다.
+ *  ★ 2026-11-07 앱 칩(ResumeOptions.teachingFields)을 서버·웹·iOS 와 같은 새 코드(BASIC…OTHER)로 바꿔 AI 코드를 그대로 받는다.
+ *  옛 코드로 온 값만 뜻이 같은 새 코드로 옮긴다(애매한 유아·초등·한국무용 등은 버림).
  */
 private val AI_FIELD_TO_APP_CHIP = mapOf(
-    "HOBBY" to "BALLET_ADULT",
-    "MAJOR" to "BALLET_MAJOR",
-    "EXAM" to "BALLET_EXAM",
-    "REPERTOIRE" to "CONCOURS",
-    "CONCOURS" to "CONCOURS",
-    "PILATES" to "PILATES",
-    "STRETCH" to "STRETCH",
+    "BALLET_ADULT" to "HOBBY",
+    "BALLET_MAJOR" to "MAJOR",
+    "BALLET_EXAM" to "EXAM",
 )
 
 private fun mapAiTeachingFields(codes: List<String>): List<String> =
