@@ -497,7 +497,6 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
         val path = vm.state.value.tabs.firstOrNull { it.tabKey == key }?.path ?: tab?.webPath ?: return
         when (tab?.kind) {
             com.muyeon.app.ui.main.MainTab.Kind.NATIVE -> com.muyeon.app.ui.main.MainActivity.openTab(this, tab)
-            com.muyeon.app.ui.main.MainTab.Kind.ACTIVITY -> com.muyeon.app.ui.castingstage.CastingStageActivity.start(this)
             else -> if (key == webTabKey) {
                 // 지금 탭 다시 누름 — 맨 위로(웹 Footer 와 같다).
                 webView.evaluateJavascript("window.scrollTo({top:0,behavior:'smooth'})", null)

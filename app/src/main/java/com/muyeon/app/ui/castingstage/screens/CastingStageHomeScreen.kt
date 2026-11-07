@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -62,7 +63,8 @@ import com.muyeon.app.ui.castingstage.components.*
 @Composable
 fun CastingStageScreen(
     api: CastingStageApi,
-    onClose: () -> Unit,
+    /** null = 하단 탭(뒤로 버튼 없음 · 탭바가 아래 여백을 맡는다). */
+    onClose: (() -> Unit)?,
     onOpenCasting: (Int) -> Unit,
     onOpenNews: (StageNewsItem, StageCategory) -> Unit,
     onCastingList: () -> Unit,
@@ -135,12 +137,22 @@ fun CastingStageScreen(
         }
     }
 
-    Column(Modifier.fillMaxSize().background(Color.White).statusBarsPadding().navigationBarsPadding()) {
+    // 하단 탭으로 열리면 흰 바 위 상태바 아이콘을 검정으로(탭 셸은 주황 바 기준 흰 아이콘이 기본).
+    if (onClose == null) {
+        val view = androidx.compose.ui.platform.LocalView.current
+        androidx.compose.runtime.DisposableEffect(Unit) {
+            (view.context as? android.app.Activity)?.window?.let { w ->
+                androidx.core.view.WindowCompat.getInsetsController(w, view).isAppearanceLightStatusBars = true
+            }
+            onDispose { }
+        }
+    }
+    Column(Modifier.fillMaxSize().background(Color.White).statusBarsPadding().then(if (onClose != null) Modifier.navigationBarsPadding() else Modifier)) {
         // 상단바
         Row(Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(44.dp).clickable(onClick = onClose).semantics { contentDescription = "뒤로" }, Alignment.Center) {
+            if (onClose != null) Box(Modifier.size(44.dp).clickable(onClick = onClose).semantics { contentDescription = "뒤로" }, Alignment.Center) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = MuyeonColors.textHead)
-            }
+            } else Spacer(Modifier.width(16.dp))
             Text("캐스팅·무대", style = Bold, fontSize = 20.sp, color = MuyeonColors.textHead)
             Spacer(Modifier.weight(1f))
             if (onCreate != null) {

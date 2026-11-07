@@ -76,10 +76,35 @@ fun MainScreen(
         },
     ) { inner ->
         CompositionLocalProvider(LocalTabReselect provides viewModel.reselect) {
-            NavHost(tabNav, startDestination = Screen.TabHome.route, modifier = Modifier.padding(inner)) {
+            NavHost(
+                tabNav, startDestination = Screen.TabHome.route, modifier = Modifier.padding(inner),
+                enterTransition = com.muyeon.app.ui.common.nav.MuyeonNav.tabEnter, exitTransition = com.muyeon.app.ui.common.nav.MuyeonNav.tabExit,
+                popEnterTransition = com.muyeon.app.ui.common.nav.MuyeonNav.tabEnter, popExitTransition = com.muyeon.app.ui.common.nav.MuyeonNav.tabExit,
+            ) {
+                // 캐스팅·무대 첫 화면 — 상세·목록은 바깥 NavHost(탭 위 화면, StageRoutes.SHELL)로 밀려 들어온다.
+                composable(Screen.TabCasting.route) {
+                    val r = com.muyeon.app.ui.castingstage.StageRoutes.SHELL
+                    val canCreate = com.muyeon.app.ui.castingstage.stageCanCreate()
+                    com.muyeon.app.ui.castingstage.screens.CastingStageScreen(
+                        api = com.muyeon.app.ui.castingstage.rememberStageApi(),
+                        onClose = null,
+                        onOpenCasting = { onOpenDetail(r.casting(it)) },
+                        onOpenNews = { item, cat ->
+                            com.muyeon.app.ui.castingstage.CastingStageSession.newsCache[item.id] = item to cat
+                            onOpenDetail(r.news(item.id))
+                        },
+                        onCastingList = { onOpenDetail(r.castingList) },
+                        onNewsList = { no, code -> onOpenDetail(r.newsList(no, code)) },
+                        onIssues = { onOpenDetail(r.issues) },
+                        onCreate = if (canCreate) ({ onOpenDetail(r.create) }) else null,
+                        reloadKey = com.muyeon.app.ui.castingstage.CastingStageSession.reloadKey,
+                    )
+                }
                 composable(Screen.TabHome.route) {
                     HomeScreen(
-                        HomeActions(
+                        activeType = state.activeType,
+                        isLoggedIn = state.isLoggedIn,
+                        actions = HomeActions(
                             openPath = onOpenPath,
                             native = onNativeAction,
                             openTab = viewModel::selectTab,

@@ -39,8 +39,6 @@ data class MainUiState(
 sealed interface MainEvent {
     /** 웹 탭(구인구직·대타) — 웹 창을 탭으로 연다. */
     data class OpenWebTab(val tab: MainTab, val path: String) : MainEvent
-    /** 액티비티 탭(캐스팅) 또는 모르는 키의 웹 경로. */
-    data class OpenActivityTab(val tab: MainTab) : MainEvent
     data class OpenWebPath(val path: String) : MainEvent
     data class TypeSwitched(val type: String) : MainEvent
     data object TypeSwitchFailed : MainEvent
@@ -146,8 +144,7 @@ class MainViewModel(
             tab.kind == MainTab.Kind.NATIVE ->
                 if (_state.value.selectedKey == key) _reselect.tryEmit(key)
                 else _state.update { it.copy(selectedKey = key) }
-            tab.kind == MainTab.Kind.WEB -> _events.tryEmit(MainEvent.OpenWebTab(tab, item?.path ?: tab.webPath))
-            else -> _events.tryEmit(MainEvent.OpenActivityTab(tab))
+            else -> _events.tryEmit(MainEvent.OpenWebTab(tab, item?.path ?: tab.webPath))
         }
     }
 

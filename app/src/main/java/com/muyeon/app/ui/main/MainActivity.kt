@@ -25,7 +25,6 @@ import com.muyeon.app.result.ResultHost
 import com.muyeon.app.result.ResultKeys
 import com.muyeon.app.result.resultKeys
 import com.muyeon.app.theme.MuyeonTheme
-import com.muyeon.app.ui.castingstage.CastingStageActivity
 import com.muyeon.app.ui.chat.ChatActivity
 import com.muyeon.app.ui.floating.FloatingApi
 import com.muyeon.app.ui.floating.FloatingOverlay
@@ -108,7 +107,7 @@ class MainActivity : ComponentActivity(), ResultHost {
                 launch {
                     viewModel.state.collect { s ->
                         // 플로팅(채팅 버튼) 표시 판정은 웹 라우트 기준이다 — 앱 탭도 같은 주소를 알린다.
-                        if (!FloatingState.currentRoute.startsWith("/community/post") && !FloatingState.currentRoute.startsWith("/performance/"))
+                        if (!FloatingState.currentRoute.startsWith("/community/post") && !FloatingState.currentRoute.startsWith("/performance/") && !FloatingState.currentRoute.startsWith("/stage/"))
                             MainTab.fromKey(s.selectedKey)?.let { FloatingState.updateRoute(it.webPath) }
                     }
                 }
@@ -139,7 +138,7 @@ class MainActivity : ComponentActivity(), ResultHost {
         viewModel.detectRegionIfNeeded { DeviceLocation.lastKnown(this) }
         FloatingState.requestRefresh()
         ActiveRole.syncFromServer(this)
-        if (!FloatingState.currentRoute.startsWith("/community/post") && !FloatingState.currentRoute.startsWith("/performance/"))
+        if (!FloatingState.currentRoute.startsWith("/community/post") && !FloatingState.currentRoute.startsWith("/performance/") && !FloatingState.currentRoute.startsWith("/stage/"))
             MainTab.fromKey(viewModel.state.value.selectedKey)?.let { FloatingState.updateRoute(it.webPath) }
     }
 
@@ -165,6 +164,11 @@ class MainActivity : ComponentActivity(), ResultHost {
             com.muyeon.app.analytics.Analytics.pushOpen(intent.getStringExtra("type"), url)
             openPath(url, viaLink = false)
         }
+        if (intent.getBooleanExtra(EXTRA_STAGE, false)) {
+            intent.removeExtra(EXTRA_STAGE)
+            val route = intent.getStringExtra(EXTRA_STAGE_ROUTE).also { intent.removeExtra(EXTRA_STAGE_ROUTE) }
+            openCastingStage(route)
+        }
         intent.getStringExtra(EXTRA_PATH)?.takeIf { it.isNotEmpty() }?.let { path ->
             intent.removeExtra(EXTRA_PATH)
             openPath(path, viaLink = false)
@@ -181,17 +185,13 @@ class MainActivity : ComponentActivity(), ResultHost {
             null -> Unit
         }
         val tab = MainTab.fromWebPath(path)
-        when {
-            tab?.kind == MainTab.Kind.ACTIVITY -> CastingStageActivity.start(this)
-            else -> WebViewActivity.startPath(this, path, viaLink = viaLink, tabKey = tab?.takeIf { it.kind == MainTab.Kind.WEB }?.key)
-        }
+        WebViewActivity.startPath(this, path, viaLink = viaLink, tabKey = tab?.takeIf { it.kind == MainTab.Kind.WEB }?.key)
     }
 
     private fun onEvent(e: MainEvent) {
         when (e) {
             is MainEvent.OpenWebTab -> WebViewActivity.startPath(this, e.path, tabKey = e.tab.key)
             is MainEvent.OpenWebPath -> openPath(e.path, viaLink = false)
-            is MainEvent.OpenActivityTab -> CastingStageActivity.start(this)
             is MainEvent.TypeSwitched -> {
                 Toast.makeText(this, getString(R.string.main_type_switched, ActiveRole.label(e.type)), Toast.LENGTH_SHORT).show()
                 // 전문 유형으로 바뀌면 첫 화면은 홈(웹은 그 자리에 머문다 — 강사 탭은 새 목록에 없어 홈으로 간다).
@@ -200,6 +200,17 @@ class MainActivity : ComponentActivity(), ResultHost {
             is MainEvent.Message -> Toast.makeText(this, e.text, Toast.LENGTH_SHORT).show()
             is MainEvent.OpenRoleManage -> OnboardingActivity.startRoleManage(this, e.launch.rolesJson, e.launch.heroImage, e.activeType)
         }
+    }
+
+    /**
+     * 캐스팅·무대 열기 — 탭 목록에 캐스팅이 있으면 그 탭, 없으면(일반 회원 메뉴 등) 첫 화면을 탭 위 화면으로.
+     *  [route] 링크로 열 그 화면(CastingStageActivity.linkRoute 값) — 그 위에 쌓는다.
+     */
+    private fun openCastingStage(route: String?) {
+        val r = com.muyeon.app.ui.castingstage.StageRoutes.SHELL
+        val inTabs = viewModel.state.value.tabs.any { it.tabKey == MainTab.CASTING.key }
+        if (inTabs) viewModel.selectTab(MainTab.CASTING) else if (route == null) viewModel.openRoute(r.home)
+        route?.let { viewModel.openRoute(r.link(it)) }
     }
 
     /** MY 길게 누르기 — 내 유형 시트(웹 ActiveTypeSheet 와 같은 줄 구성). */
@@ -245,6 +256,16 @@ class MainActivity : ComponentActivity(), ResultHost {
         /** 경로로 — 앱 탭 주소면 탭, 아니면 웹 창(위 창들은 닫힌다). NativeWebRoute 가 쓴다. */
         fun openPath(context: Context, path: String) {
             val i = intent(context).putExtra(EXTRA_PATH, path)
+            if (!isAlive) i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            context.startActivity(i)
+        }
+
+        const val EXTRA_STAGE = "muyeon.main.stage"
+        const val EXTRA_STAGE_ROUTE = "muyeon.main.stage.route"
+
+        /** 캐스팅·무대(웹 openCastingStage · 다른 화면 링크) — 셸 안 화면으로 연다. 위에 쌓인 창은 닫힌다. */
+        fun openCastingStage(context: Context, route: String?) {
+            val i = intent(context).putExtra(EXTRA_STAGE, true).putExtra(EXTRA_STAGE_ROUTE, route)
             if (!isAlive) i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             context.startActivity(i)
         }

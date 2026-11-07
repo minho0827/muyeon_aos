@@ -12,6 +12,8 @@ import com.muyeon.app.ui.performance.PerformanceDetailScreen
 import com.muyeon.app.ui.community.CommunityPostScreen
 import com.muyeon.app.result.findActivity
 import com.muyeon.app.ui.main.MainViewModel
+import com.muyeon.app.ui.castingstage.StageRoutes
+import com.muyeon.app.ui.castingstage.castingStageGraph
 
 /**
  * 앱 셸 바깥 NavHost — 탭 셸([Screen.Main]) + 탭 위 상세(탭바 없음). PaceERA AppNavHost 와 같은 자리.
@@ -48,7 +50,15 @@ fun AppNavHost(
             }
         }
     }
-    NavHost(navController, startDestination = Screen.Main.route) {
+    // 화면 전환 — PaceERA AppNavHost 와 같다(들어갈 때·나올 때 모두 페이드 + 가로 밀기 300ms).
+    val t = com.muyeon.app.ui.common.nav.MuyeonNav
+    NavHost(
+        navController, startDestination = Screen.Main.route,
+        enterTransition = t.enter, exitTransition = t.exit, popEnterTransition = t.shellPopEnter, popExitTransition = t.shellPopExit,
+    ) {
+        // 캐스팅·무대 상세·목록·등록(첫 화면은 탭 — 탭에 없는 유형이 링크로 열면 첫 화면도 여기).
+        castingStageGraph(navController, StageRoutes.SHELL, includeHome = true, onExit = {},
+            onCreated = { AppResults.publish(setOf(com.muyeon.app.result.ResultKeys.JOB_POSTINGS)) })
         composable(Screen.Main.route) {
             MainScreen(
                 viewModel = mainViewModel,

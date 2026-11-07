@@ -10,7 +10,6 @@ import com.muyeon.app.navigation.Screen
  *
  *   [Kind.NATIVE]   앱 화면(MainScreen 안쪽 NavHost)
  *   [Kind.WEB]      웹 페이지 창(WebViewActivity)을 탭으로 연다 — 구인구직·대타(아직 웹). 그 창 아래에도 같은 탭바를 그린다.
- *   [Kind.ACTIVITY] 이미 있는 앱 화면(Activity) — 캐스팅·무대(CastingStageActivity)
  *
  *   서버가 모르는 키를 보내면 [fromKey] 가 null — 그 탭은 웹 경로로 연다(무반응 금지).
  */
@@ -29,9 +28,10 @@ enum class MainTab(
     MY("my", "/mypage", Kind.NATIVE, R.string.tab_my, R.drawable.ic_tab_my, Screen.TabMy.route),
     JOBS("jobs", "/jobs", Kind.WEB, R.string.tab_jobs, R.drawable.ic_tab_note),
     SUBS("subs", "/subs", Kind.WEB, R.string.tab_subs, R.drawable.ic_tab_paper),
-    CASTING("casting", "/casting", Kind.ACTIVITY, R.string.tab_casting, R.drawable.ic_tab_star);
+    /** 캐스팅·무대 — 첫 화면은 탭, 상세·목록은 탭 위 화면(StageRoutes.SHELL). 2026-11-08 액티비티에서 옮김. */
+    CASTING("casting", "/casting", Kind.NATIVE, R.string.tab_casting, R.drawable.ic_tab_star, Screen.TabCasting.route);
 
-    enum class Kind { NATIVE, WEB, ACTIVITY }
+    enum class Kind { NATIVE, WEB }
 
     companion object {
         fun fromKey(key: String): MainTab? = entries.firstOrNull { it.key == key }

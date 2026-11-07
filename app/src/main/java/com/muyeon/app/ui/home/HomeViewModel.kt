@@ -118,8 +118,10 @@ class HomeViewModel(
     private fun type() = ActiveType.visible(activeTypeStore.current())
 
     /** 화면 복귀 — 유형·로그인이 바뀌었으면 다시(웹은 user.id·activeType 이 바뀌면 다시 받는다). */
-    fun onResume() {
-        val t = type(); val li = tokens.isLoggedIn
+    fun onResume() = onSession(type(), tokens.isLoggedIn)
+
+    fun onSession(type: String, loggedIn: Boolean) {
+        val t = ActiveType.visible(type); val li = loggedIn
         if (t != _state.value.activeType || li != _state.value.isLoggedIn) {
             _state.update { it.copy(activeType = t, isLoggedIn = li) }
             load()

@@ -15,6 +15,8 @@ sealed class Screen(val route: String) {
     data object TabCommunity : Screen("tab/community")
     data object TabPerformance : Screen("tab/performance")
     data object TabMy : Screen("tab/my")
+    data object TabCasting : Screen("tab/casting")
+    // 캐스팅·무대 상세·목록 경로는 ui/castingstage/StageRoutes.SHELL("stage/…") 한 곳.
 
     // === 탭 위 상세(바깥 NavHost — 탭바가 없다) ===
     data object CommunityPost : Screen("community/post/{id}") {

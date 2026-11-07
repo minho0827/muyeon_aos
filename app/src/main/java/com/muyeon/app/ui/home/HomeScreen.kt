@@ -54,8 +54,10 @@ import org.koin.androidx.compose.koinViewModel
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(actions: HomeActions, viewModel: HomeViewModel = koinViewModel()) {
+fun HomeScreen(activeType: String, isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    // 탭 셸에서 유형을 바꾸거나 로그아웃하면 화면이 멈추지 않으니(onResume 없음) 셸 값을 따라간다.
+    LaunchedEffect(activeType, isLoggedIn) { viewModel.onSession(activeType, isLoggedIn) }
     val context = LocalContext.current
     LifecycleResumeEffect(Unit) { viewModel.onResume(); onPauseOrDispose { } }
     HomeEventsEffect(viewModel.events, actions)
@@ -63,8 +65,8 @@ fun HomeScreen(actions: HomeActions, viewModel: HomeViewModel = koinViewModel())
     Column(Modifier.fillMaxSize().background(AppColors.Surface)) {
         HomeTopBar(state.region?.name, state.unread, onRegion = { actions.openPath("/myRegions") }, onBell = { actions.native("openNotifications", emptyMap()) })
         when (state.activeType) {
-            ActiveType.TEACHER -> TeacherHomeBody(actions, state)
-            ActiveType.DANCER, ActiveType.TEAM -> ClassicHomeBody(actions)
+            ActiveType.TEACHER -> TeacherHomeBody(actions, state, koinViewModel(key = "home-teacher"))
+            ActiveType.DANCER, ActiveType.TEAM -> ClassicHomeBody(actions, koinViewModel(key = "home-classic-${state.activeType}"))
             else -> {
                 val listState = rememberLazyListState()
                 TabReselectEffect(MainTab.HOME) { listState.animateScrollToItem(0) }
