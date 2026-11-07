@@ -37,6 +37,8 @@ fun MemberMyHome(
     onShortcutCalendar: () -> Unit,
     onShortcutCasting: () -> Unit,
     onShortcutCommunity: () -> Unit,
+    regionName: String?,
+    onRegion: () -> Unit,
     onSettings: () -> Unit,
     onLogout: () -> Unit,
     modifier: Modifier = Modifier,
@@ -70,6 +72,7 @@ fun MemberMyHome(
         MyProfileHeader(stringResource(R.string.my_header, name, withEuro(typeLabel)), onClick = onHeader)
         MyShortcutsCard(listOf(middle, MyShortcut(stringResource(R.string.tab_community), MyIcons.of("filled-community"), onShortcutCommunity)))
         Column(Modifier.offset(y = (-60).dp)) {
+            MyRegionRow(regionName, onRegion)
             MyCommunitySection(onShortcutCommunity)
             groups.forEachIndexed { gi, group ->
                 val rows = group.map { item ->

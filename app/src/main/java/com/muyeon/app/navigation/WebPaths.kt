@@ -9,6 +9,8 @@ object WebPaths {
     /** 로그인 — 마치면 [redirect] 로(웹 useLikes 와 같은 규칙). */
     const val COMMUNITY_WRITE = "/community/write"
     const val SETTINGS = "/setting"
+    /** 대표 지역 고르기(MY 대표 지역 줄). */
+    const val MY_REGIONS = "/myRegions"
 
     fun login(redirect: String): String = "/login?redirect=" + Uri.encode(redirect)
 }

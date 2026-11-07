@@ -44,6 +44,8 @@ fun MyScreen(
     viewModel: MyViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    // 대표 지역(홈 위 바에서 옮김) — 웹 /myRegions 에서 고르면 웹 창 닫힐 때 앱으로 맞춰진다(WebViewActivity syncRegionFromWeb).
+    val region by org.koin.compose.koinInject<com.muyeon.domain.usecase.region.ObserveActiveRegionUseCase>().invoke().collectAsStateWithLifecycle()
     val context = androidx.compose.ui.platform.LocalContext.current
     LifecycleResumeEffect(isLoggedIn) {
         viewModel.refresh()
@@ -56,7 +58,8 @@ fun MyScreen(
     Column(Modifier.fillMaxSize().background(AppColors.Surface)) {
         MainTopBar(title = stringResource(R.string.tab_my))
         if (!isLoggedIn) {
-            GuestMyHome(onLogin = { onOpenWeb(WebPaths.login(MainTab.MY.webPath)) }, onOpenPath = onOpenWeb, onOpenCommunity = onOpenCommunity)
+            GuestMyHome(onLogin = { onOpenWeb(WebPaths.login(MainTab.MY.webPath)) }, onOpenPath = onOpenWeb, onOpenCommunity = onOpenCommunity,
+                regionName = region?.name, onRegion = { onOpenWeb(WebPaths.MY_REGIONS) })
         } else {
             MemberMyHome(
                 state = state,
@@ -71,6 +74,8 @@ fun MyScreen(
                 onShortcutCalendar = { onNativeAction("openLessonCalendar", emptyMap()) },
                 onShortcutCasting = onOpenCasting,
                 onShortcutCommunity = onOpenCommunity,
+                regionName = region?.name,
+                onRegion = { onOpenWeb(WebPaths.MY_REGIONS) },
                 onSettings = { onOpenWeb(WebPaths.SETTINGS) },
                 onLogout = { viewModel.askLogout(true) },
             )
