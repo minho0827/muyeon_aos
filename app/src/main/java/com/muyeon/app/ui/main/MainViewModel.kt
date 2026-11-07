@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 data class MainUiState(
@@ -67,10 +68,12 @@ class MainViewModel(
     val events: SharedFlow<MainEvent> = _events.asSharedFlow()
 
     /** 탭 위 앱 화면 열기 요청(바깥 NavHost 경로) — 푸시·링크·웹 창에서 온 상세 주소. */
-    private val _routes = MutableSharedFlow<String>(extraBufferCapacity = 4)
-    val routes: SharedFlow<String> = _routes.asSharedFlow()
+    // ★ 2026-11-08 Channel — 앱을 막 켠 순간(푸시·링크) 화면이 아직 받기 전이면 SharedFlow 는 그냥 버렸다(상세 대신 홈).
+    //  Channel 은 받을 때까지 쥐고 있다가 한 번만 넘긴다.
+    private val _routes = kotlinx.coroutines.channels.Channel<String>(kotlinx.coroutines.channels.Channel.BUFFERED)
+    val routes: kotlinx.coroutines.flow.Flow<String> = _routes.receiveAsFlow()
 
-    fun openRoute(route: String) { _routes.tryEmit(route) }
+    fun openRoute(route: String) { _routes.trySend(route) }
 
     /** 지금 탭을 다시 눌렀다(키) — 탭 화면이 맨 위로/다음 칩(웹 emitTabReselect). */
     private val _reselect = MutableSharedFlow<String>(extraBufferCapacity = 4)
