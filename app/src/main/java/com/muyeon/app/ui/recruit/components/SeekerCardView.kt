@@ -25,6 +25,7 @@ import com.muyeon.app.R
 import com.muyeon.app.ui.components.CardTags
 import com.muyeon.app.ui.components.HeartButton
 import com.muyeon.app.ui.components.RemoteImage
+import com.muyeon.app.ui.components.SlotText
 import com.muyeon.app.ui.lessons.LessonLabels
 import com.muyeon.app.ui.recruit.RecruitLabels
 import com.muyeon.app.ui.theme.AppColors
@@ -44,10 +45,11 @@ fun SeekerCardView(c: SeekerCard, liked: Boolean, onClick: () -> Unit, onLike: (
                 modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).shadow(4.dp, CircleShape).background(AppColors.OverlayWhite, CircleShape))
         }
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(c.name, style = AppTypography.CardTitle16, color = AppColors.TextHead, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // 이름 · "장르 강사" · 지역 · 태그 — 값이 없어도 자리를 남긴다(카드 높이 맞춤).
+            SlotText(c.name, AppTypography.CardTitle16, AppColors.TextHead)
             val head = c.genres.firstOrNull() ?: c.fields.firstOrNull()?.let { f -> LessonLabels.field(f)?.let { stringResource(it) } ?: f }
-            Text(listOfNotNull(head, stringResource(RecruitLabels.seekType(c.role))).joinToString(" "), style = AppTypography.Sub13, color = AppColors.TextSub, maxLines = 1)
-            c.region?.let { Text("📍 $it", style = AppTypography.Sub13, color = AppColors.TextSub, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            SlotText(listOfNotNull(head, stringResource(RecruitLabels.seekType(c.role))).joinToString(" "), AppTypography.Sub13, AppColors.TextSub)
+            SlotText(c.region?.let { "📍 $it" }, AppTypography.Sub13, AppColors.TextSub)
             val tags = (if (c.fields.isNotEmpty()) c.fields.map { f -> LessonLabels.field(f)?.let { stringResource(it) } ?: f } else c.genres) +
                 listOfNotNull(LessonLabels.career(c.career)?.let { stringResource(it) })
             CardTags(tags, Modifier.padding(top = 4.dp))

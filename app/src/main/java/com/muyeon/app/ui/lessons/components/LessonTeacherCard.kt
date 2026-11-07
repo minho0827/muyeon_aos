@@ -100,7 +100,8 @@ fun LessonTeacherCard(
                 }
                 if (showDm) DmButton(onClick = onRequest, enabled = !t.isDemoProfile, modifier = Modifier.tutorialAnchor(anchors, "quote"))
             }
-            t.region?.let { Text("📍 $it", style = AppTypography.Sub13, color = AppColors.TextSub, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            // 지역 줄은 값이 없어도 자리를 남긴다(카드 높이 맞춤).
+            com.muyeon.app.ui.components.SlotText(t.region?.let { "📍 $it" }, AppTypography.Sub13, AppColors.TextSub)
             CardTags(tags)
         }
     }

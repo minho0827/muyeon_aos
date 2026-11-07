@@ -13,6 +13,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.muyeon.app.R
 import com.muyeon.app.ui.components.RemoteImage
+import com.muyeon.app.ui.components.SlotText
 import com.muyeon.app.ui.theme.AppColors
 import com.muyeon.app.ui.theme.AppTypography
 import com.muyeon.domain.model.teacher.TeacherCard
@@ -26,11 +27,9 @@ fun ArtistCard(t: TeacherCard, onClick: () -> Unit, modifier: Modifier = Modifie
     Column(modifier.fillMaxWidth().border(1.dp, AppColors.Divider).clickable(onClick = onClick)) {
         RemoteImage(t.image, Modifier.fillMaxWidth().aspectRatio(PHOTO_RATIO), fallbackRes = R.drawable.img_noimage_teacher, thumbnail = true)
         Column(Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
-            Text(t.name, style = AppTypography.Body15Medium, color = AppColors.TextHead, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            t.genres.takeIf { it.isNotEmpty() }?.let {
-                Text(it.joinToString(" · "), style = AppTypography.Caption12, color = AppColors.TextHint, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp))
-            }
+            // 이름·장르 줄은 값이 없어도 자리를 남긴다(카드 높이 맞춤).
+            SlotText(t.name, AppTypography.Body15Medium, AppColors.TextHead)
+            SlotText(t.genres.joinToString(" · "), AppTypography.Caption12, AppColors.TextHint, Modifier.padding(top = 2.dp))
         }
     }
 }

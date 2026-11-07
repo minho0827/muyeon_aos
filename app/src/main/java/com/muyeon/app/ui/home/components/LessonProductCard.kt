@@ -19,6 +19,7 @@ import com.muyeon.app.R
 import com.muyeon.app.ui.components.HeartButton
 import com.muyeon.app.ui.components.Pill
 import com.muyeon.app.ui.components.RemoteImage
+import com.muyeon.app.ui.components.SlotText
 import com.muyeon.app.ui.home.HomeLabels
 import com.muyeon.app.ui.theme.AppColors
 import com.muyeon.app.ui.theme.AppTypography
@@ -38,11 +39,9 @@ fun LessonProductCard(lesson: HomeLesson, tag: String?, liked: Boolean, onClick:
             label?.let { Pill(it, CategoryColors.lessonTag(tag, lesson.genre), Modifier.align(Alignment.TopStart).padding(8.dp)) }
             HeartButton(liked, onToggleLike, size = 22.dp, emptyColor = AppColors.Surface, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp))
         }
-        lesson.place?.let {
-            Text(it, style = AppTypography.Caption12, color = AppColors.TextHint, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp))
-        }
-        Text(lesson.title, style = AppTypography.Body15, color = AppColors.TextHead, maxLines = 2, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = if (lesson.place != null) 2.dp else 10.dp))
+        // 장소 1줄 · 제목 2줄 — 값이 없거나 짧아도 자리를 남긴다(카드 높이 맞춤).
+        SlotText(lesson.place, AppTypography.Caption12, AppColors.TextHint, Modifier.padding(top = 10.dp))
+        SlotText(lesson.title, AppTypography.Body15, AppColors.TextHead, Modifier.padding(top = 2.dp), lines = 2)
         Text(
             when (val p = lesson.price) {
                 null -> stringResource(R.string.home_price_ask)

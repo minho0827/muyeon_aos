@@ -25,6 +25,7 @@ import com.muyeon.app.R
 import com.muyeon.app.ui.components.CardTags
 import com.muyeon.app.ui.components.HeartButton
 import com.muyeon.app.ui.components.RemoteImage
+import com.muyeon.app.ui.components.SlotText
 import com.muyeon.app.ui.home.HomeLabels
 import com.muyeon.app.ui.lessons.LessonLabels
 import com.muyeon.app.ui.recruit.RecruitLabels
@@ -51,10 +52,11 @@ fun JobCardView(card: JobCard, grid: Boolean, status: String?, liked: Boolean, o
                 modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).shadow(4.dp, CircleShape).background(AppColors.OverlayWhite, CircleShape))
         }
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(card.title, style = AppTypography.CardTitle16, color = AppColors.TextHead, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            card.region?.let { Line("📍 $it") }
-            listOfNotNull(card.days, card.time).takeIf { it.isNotEmpty() }?.let { Line("⏰ " + it.joinToString(" · ")) }
-            card.pay?.let { Line("₩ $it") }
+            // 제목 2줄 · 지역 · 요일/시간 · 급여 — 값이 없어도 자리를 남긴다(카드 높이 맞춤).
+            SlotText(card.title, AppTypography.CardTitle16, AppColors.TextHead, lines = 2)
+            Line(card.region?.let { "📍 $it" })
+            Line(listOfNotNull(card.days, card.time).takeIf { it.isNotEmpty() }?.let { "⏰ " + it.joinToString(" · ") })
+            Line(card.pay?.let { "₩ $it" })
             val salary = HomeLabels.salary(card.salary)?.let { stringResource(it) }
             val fields = card.fields.map { f -> LessonLabels.field(f)?.let { stringResource(it) } ?: f }
             CardTags(listOfNotNull(status, card.genre, card.job, salary) + fields, Modifier.padding(top = 4.dp))
@@ -63,7 +65,7 @@ fun JobCardView(card: JobCard, grid: Boolean, status: String?, liked: Boolean, o
 }
 
 @Composable
-private fun Line(text: String) = Text(text, style = AppTypography.Sub13, color = AppColors.TextSub, maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun Line(text: String?) = SlotText(text, AppTypography.Sub13, AppColors.TextSub)
 
 @Composable
 private fun Badge(text: String, bg: Color, modifier: Modifier) =
