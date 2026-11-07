@@ -26,7 +26,9 @@ import com.muyeon.app.ui.theme.Dimensions
  */
 @Composable
 fun GuestMyHome(onLogin: () -> Unit, onOpenPath: (String) -> Unit, onOpenCommunity: () -> Unit, regionName: String?, onRegion: () -> Unit, modifier: Modifier = Modifier) {
+    // 비회원은 위 바로가기 카드가 없어 커뮤니티를 메뉴 첫 줄로 둔다(회원은 바로가기 카드에 있다).
     val rows = listOf(
+        MyMenuRow(COMMUNITY_KEY, stringResource(R.string.tab_community), R.drawable.ic_menu_community_filled),
         MyMenuRow("/notice", stringResource(R.string.my_menu_notice), R.drawable.ic_menu_notice),
         MyMenuRow("/faq", stringResource(R.string.my_menu_faq), R.drawable.ic_menu_faq),
         MyMenuRow("/policy?doc=terms", stringResource(R.string.my_menu_terms), R.drawable.ic_menu_myinfo),
@@ -41,9 +43,10 @@ fun GuestMyHome(onLogin: () -> Unit, onOpenPath: (String) -> Unit, onOpenCommuni
         )
         PrimaryBottomButton(stringResource(R.string.my_guest_login), onClick = onLogin, modifier = Modifier.padding(top = Dimensions.spacingS), atScreenBottom = false)
         MyRegionRow(regionName, onRegion, Modifier.padding(top = Dimensions.spacingL))
-        MyCommunitySection(onOpenCommunity)
-        MyMenuList(rows, onClick = { onOpenPath(it.key) })
+        MyMenuList(rows, onClick = { if (it.key == COMMUNITY_KEY) onOpenCommunity() else onOpenPath(it.key) })
         MySubMenu(listOf(MySubMenuItem("/setting", stringResource(R.string.my_app_settings), R.drawable.ic_web_gear)), onClick = { onOpenPath(it.key) })
         androidx.compose.foundation.layout.Spacer(Modifier.padding(bottom = Dimensions.spacing3XL))
     }
 }
+
+private const val COMMUNITY_KEY = "community"

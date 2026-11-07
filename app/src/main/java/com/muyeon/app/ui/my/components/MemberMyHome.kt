@@ -73,7 +73,6 @@ fun MemberMyHome(
         MyShortcutsCard(listOf(middle, MyShortcut(stringResource(R.string.tab_community), MyIcons.of("filled-community"), onShortcutCommunity)))
         Column(Modifier.offset(y = (-60).dp)) {
             MyRegionRow(regionName, onRegion)
-            MyCommunitySection(onShortcutCommunity)
             groups.forEachIndexed { gi, group ->
                 val rows = group.map { item ->
                     MyMenuRow(
