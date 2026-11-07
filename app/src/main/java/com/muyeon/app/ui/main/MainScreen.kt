@@ -194,7 +194,9 @@ fun MainScreen(
                 dotOn = { item -> item == BarItem.MY && state.myDot },
                 onItemClick = viewModel::onBarItem,
                 onItemLongClick = { item -> if (item == BarItem.MY && state.isLoggedIn) onMyLongPress() },
-                onItemDoubleClick = { item -> if (item == BarItem.MY && state.switchableTypes.size == 2) viewModel.onMyDoubleTap() else viewModel.onBarItem(item) },
+                onItemDoubleClick = if (state.switchableTypes.size == 2) ({ _ -> viewModel.onMyDoubleTap() }) else null,
+                // 로그인 회원의 MY 칸만 길게(유형 시트)·두 번(유형 바꾸기) 누르기를 받는다 — 나머지 칸은 바로 반응.
+                gestureItems = if (state.isLoggedIn) setOf(BarItem.MY) else emptySet(),
                 backDescription = stringResource(R.string.tab_back),
             )
         }

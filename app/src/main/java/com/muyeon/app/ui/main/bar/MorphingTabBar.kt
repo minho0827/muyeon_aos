@@ -9,6 +9,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -82,6 +83,11 @@ fun MorphingTabBar(
     modifier: Modifier = Modifier,
     onItemLongClick: ((BarItem) -> Unit)? = null,
     onItemDoubleClick: ((BarItem) -> Unit)? = null,
+    /**
+     * 길게·두 번 누르기를 받는 칸(MY — 유형 시트·유형 바꾸기). 나머지 칸은 보통 누르기만.
+     *   ⚠️ 두 번 누르기를 받는 칸은 첫 누르기를 두 번째가 오는지 기다렸다(약 0.3초) 처리한다 — 모든 칸에 걸면 탭바가 늦게 반응한다.
+     */
+    gestureItems: Set<BarItem> = emptySet(),
     backDescription: String,
 ) {
     val anims = remember { BarItem.entries.associateWith { ItemAnim(it, mode) } }
@@ -123,11 +129,13 @@ fun MorphingTabBar(
                     .then(
                         if (interactive) Modifier
                             .clip(RoundedCornerShape(percent = 50))
-                            .combinedClickable(
-                                role = Role.Tab,
-                                onClick = { onItemClick(item) },
-                                onLongClick = onItemLongClick?.let { f -> { f(item) } },
-                                onDoubleClick = onItemDoubleClick?.let { f -> { f(item) } },
+                            .then(
+                                if (item in gestureItems) Modifier.combinedClickable(
+                                    role = Role.Tab,
+                                    onClick = { onItemClick(item) },
+                                    onLongClick = onItemLongClick?.let { f -> { f(item) } },
+                                    onDoubleClick = onItemDoubleClick?.let { f -> { f(item) } },
+                                ) else Modifier.clickable(role = Role.Tab) { onItemClick(item) },
                             )
                             .semantics { this.selected = isSelected }
                         else Modifier,
