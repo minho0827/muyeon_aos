@@ -340,6 +340,7 @@ data class ChatRoomDetail(
     val hasPendingProposal: Boolean? = null,   // 방에 응답 대기 중인 약속 제안이 있는지(2026-10-29 서버부터)
     val locked: Boolean = false,               // 대화 종료 — 입력창 대신 안내 띠
     val lockReason: String? = null,            // CANCELED | MATCHED_OTHER | EXPIRED
+    val reRequest: ChatReRequest? = null,      // 잠긴 방 + 내가 끝난 요청의 요청자일 때만(강사 탈퇴면 null) — '다시 레슨 요청하기'
 ) {
     companion object {
         /** 잠긴 방 안내 띠 문구. */
@@ -366,7 +367,22 @@ data class ChatRoomDetail(
             hasPendingProposal = o.boolOrNull("hasPendingProposal"),
             locked = o.optBoolean("locked", false),
             lockReason = o.stringOrNull("lockReason"),
+            reRequest = ChatReRequest.from(o.optJSONObject("reRequest")),
         )
+    }
+}
+
+/**
+ * 잠긴 방에서 같은 강사에게 다시 레슨 요청(GET /chat/rooms/:id 의 reRequest, 2026-11-07 서버부터).
+ *  teacherId 가 없거나 0 이면 버튼을 띄울 수 없어 null 로 본다.
+ */
+data class ChatReRequest(val teacherId: Int, val categoryId: String?, val quoteId: Int) {
+    companion object {
+        fun from(o: JSONObject?): ChatReRequest? {
+            val t = o?.intOrNull("teacherId") ?: return null
+            if (t <= 0) return null
+            return ChatReRequest(t, o.stringOrNull("categoryId"), o.optInt("quoteId"))
+        }
     }
 }
 

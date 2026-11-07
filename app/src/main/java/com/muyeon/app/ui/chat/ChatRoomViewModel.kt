@@ -70,6 +70,7 @@ class ChatRoomViewModel(
     var hasPendingProposal by mutableStateOf(false)                        // 방에 응답 대기 중인 약속 제안(서버 hasPendingProposal)
     var locked by mutableStateOf(false)                                    // 대화 종료(요청 취소·다른 강사 채택·만료) — 입력창 대신 안내 띠
     var lockReason by mutableStateOf<String?>(null)                        // CANCELED | MATCHED_OTHER | EXPIRED
+    var reRequest by mutableStateOf<ChatReRequest?>(null)                  // 잠긴 방 '이 강사님께 다시 레슨 요청하기'(요청자에게만)
 
     /** 잠긴 방 안내 띠 문구. */
     val lockNotice: String get() = ChatRoomDetail.lockNotice(lockReason)
@@ -315,6 +316,7 @@ class ChatRoomViewModel(
             hasPendingProposal = d.hasPendingProposal == true
             locked = d.locked
             lockReason = d.lockReason
+            reRequest = d.reRequest
         }
     }
 

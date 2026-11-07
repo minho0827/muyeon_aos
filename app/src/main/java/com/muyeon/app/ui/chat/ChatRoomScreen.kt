@@ -152,6 +152,9 @@ fun ChatRoomScreen(
     val quoteLauncher = com.muyeon.app.result.rememberResultLauncher { vm.reloadContext() }
     // 전체 알림 설정에서 돌아오면 방 상세(음소거 상태 등)를 다시 읽는다.
     val notiSettingsLauncher = com.muyeon.app.result.rememberResultLauncher { vm.reloadContext() }
+    // 잠긴 방 '다시 레슨 요청하기' — 문진에서 돌아오면(보냈든 닫았든) 방 상세·최신 메시지를 다시 읽는다.
+    //  요청을 보내 방이 다시 열리면 서버 room-refresh 도 오지만, 복귀 직후 상태를 바로 맞추려고 한 번 더 읽는다.
+    val reRequestLauncher = com.muyeon.app.result.rememberResultLauncher { vm.reloadMessagesAndContext() }
 
     /**
      * 상대 공개 프로필 — iOS PublicProfileView(userId: recipientId, src: "chat", hideCta: true).
@@ -555,7 +558,18 @@ fun ChatRoomScreen(
         val editing = vm.editingMessage
         if (vm.locked) {
             // 대화 종료 방(요청 취소·다른 강사 채택·만료) — 입력창 대신 안내 띠. 서버도 전송을 막는다.
-            ChatLockedBar(vm.lockNotice)
+            val re = vm.reRequest
+            ChatLockedBar(
+                vm.lockNotice,
+                // 같은 강사·종류로 지정(1:1) 견적 문진 — 강사 프로필 '레슨 요청'과 같은 진입(ResumeActivity onRequestQuote).
+                onReRequest = re?.let { r ->
+                    {
+                        reRequestLauncher.launch(
+                            com.muyeon.app.ui.quote.QuoteWizardActivity.intent(context, r.categoryId, r.teacherId.toString()),
+                        )
+                    }
+                },
+            )
         } else if (editing != null) {
             MessageEditCard(
                 original = editing.content,
@@ -1036,10 +1050,13 @@ private fun MessageEditCard(
  * 입력바 — PACERA Android `ChatInputBar` 와 같은 모양: [+](무용연 첨부 시트 그대로) · 둥근 입력칸(최소 36, 4줄까지 늘고
  *  그 뒤는 안에서 스크롤, 글자 14) · 36dp 동그란 전송(보낼 수 있으면 주황, 아니면 회색).
  */
-/** 대화 종료 안내 띠 — 입력바와 같은 바탕·여백, 문구는 보조색(입력 불가). */
+/**
+ * 대화 종료 안내 띠 — 입력바와 같은 바탕·여백, 문구는 보조색(입력 불가).
+ *  [onReRequest] 가 있으면(서버 reRequest — 요청자에게만) 아래에 '다시 레슨 요청하기' 버튼과 보조 안내를 붙인다.
+ */
 @Composable
-private fun ChatLockedBar(text: String) {
-    Box(
+private fun ChatLockedBar(text: String, onReRequest: (() -> Unit)? = null) {
+    Column(
         Modifier.fillMaxWidth().background(MuyeonColors.surface).padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
         Text(
@@ -1050,6 +1067,21 @@ private fun ChatLockedBar(text: String) {
                 .background(MuyeonColors.groupedBg).padding(horizontal = 14.dp, vertical = 8.dp)
                 .testTag("chat.lockedBar"),
         )
+        if (onReRequest != null) {
+            Spacer(Modifier.height(8.dp))
+            com.muyeon.app.ui.quote.QuotePrimaryButton(
+                "이 강사님께 다시 레슨 요청하기",
+                Modifier.fillMaxWidth().testTag("chat.lockedBar.reRequest"),
+                onClick = onReRequest,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "요청을 보내면 이 채팅방에서 다시 대화할 수 있어요.",
+                fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp, color = MuyeonColors.secondary,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
 
