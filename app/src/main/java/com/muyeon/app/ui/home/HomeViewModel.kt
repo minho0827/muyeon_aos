@@ -55,6 +55,8 @@ data class HomeUiState(
     val previewLoaded: Boolean = false,
     val genreLessons: PagedList<HomeLesson> = PagedList(),
     val likedLessons: Set<Long> = emptySet(),
+    /** 장르 순서(사용자가 정한 것 — 순서 편집). 위 탭·장르 그림 줄이 이 순서. */
+    val genres: List<String> = com.muyeon.domain.model.teacher.LessonGenres.ALL,
 ) {
     companion object { const val LESSON_RECOMMEND = "RECOMMEND" }
 }
@@ -88,6 +90,7 @@ class HomeViewModel(
             mode = if (prefs.getString(K_MODE) == HomeMode.LESSONS.name) HomeMode.LESSONS else HomeMode.TEACHERS,
             isLoggedIn = tokens.isLoggedIn,
             region = regionFlow.value,
+            genres = orderedGenres(prefs.getString(K_ORDER)),
         ),
     )
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
@@ -113,6 +116,17 @@ class HomeViewModel(
             loadLikes()
         }
         refreshUnread()
+    }
+
+    /** 순서 편집 저장 — 기억한다(home.genreOrder). */
+    fun saveGenreOrder(order: List<String>) {
+        prefs.putString(K_ORDER, order.joinToString(","))
+        _state.update { it.copy(genres = orderedGenres(prefs.getString(K_ORDER))) }
+    }
+
+    fun resetGenreOrder() {
+        prefs.putString(K_ORDER, "")
+        _state.update { it.copy(genres = com.muyeon.domain.model.teacher.LessonGenres.ALL) }
     }
 
     fun setMode(mode: HomeMode) {
@@ -243,5 +257,15 @@ class HomeViewModel(
         }
     }
 
-    private companion object { const val K_MODE = "home.mode" }
+    private companion object {
+        const val K_MODE = "home.mode"
+        const val K_ORDER = "home.genreOrder"
+
+        /** 저장된 순서 + 새로 생긴 장르는 뒤에, 없어진 장르는 뺀다. */
+        fun orderedGenres(saved: String?): List<String> {
+            val all = com.muyeon.domain.model.teacher.LessonGenres.ALL
+            val s = saved.orEmpty().split(",").map { it.trim() }.filter { it in all }.distinct()
+            return s + all.filterNot { it in s }
+        }
+    }
 }

@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
@@ -27,9 +30,17 @@ import com.muyeon.app.ui.theme.AppTypography
  *   고른 탭은 검정 글자 + 검정 막대(2026-11-08 사용자 요청). 캐스팅(캐스팅·공연) · 공간(대관·양도양수) 탭 안 나눔과 홈 위쪽 탭이 같이 쓴다.
  */
 @Composable
-fun UnderlineTabs(options: List<ChipOption>, selected: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
+fun UnderlineTabs(
+    options: List<ChipOption>,
+    selected: String,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    /** 오른쪽 끝에 붙는 버튼(홈 '순서편집') — 흰 그라데이션 위에 떠서 뒤 탭이 은은하게 비친다. */
+    trailing: (@Composable () -> Unit)? = null,
+) {
     Column(modifier.fillMaxWidth().background(AppColors.Surface)) {
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp)) {
+      Box(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(start = 8.dp, end = if (trailing != null) 64.dp else 8.dp)) {
             options.forEach { o ->
                 val on = o.value == selected
                 val color by animateColorAsState(if (on) AppColors.TextHead else AppColors.TextSub, label = "underlineTab")
@@ -40,6 +51,13 @@ fun UnderlineTabs(options: List<ChipOption>, selected: String, onSelect: (String
                 }
             }
         }
+        if (trailing != null) Row(
+            Modifier.align(Alignment.CenterEnd).fillMaxHeight()
+                .background(Brush.horizontalGradient(0f to AppColors.Surface.copy(alpha = 0f), 0.35f to AppColors.Surface.copy(alpha = 0.92f), 1f to AppColors.Surface))
+                .padding(start = 24.dp, end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) { trailing() }
+      }
         Box(Modifier.fillMaxWidth().height(1.dp).background(AppColors.Divider))
     }
 }

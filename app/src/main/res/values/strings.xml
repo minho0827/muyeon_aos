@@ -523,6 +523,11 @@
     <!-- ★ 2026-11-08 홈 개편(강사 | 레슨) -->
     <string name="home_logo">무용연 DANCE</string>
     <string name="my_region">대표 지역</string>
+    <string name="home_order_edit">순서편집</string>
+    <string name="home_order_title">순서 편집</string>
+    <string name="home_order_desc">길게 눌러 위아래로 옮기면 홈 장르 순서가 바뀌어요.</string>
+    <string name="home_order_reset">기본 순서로</string>
+    <string name="home_order_save">저장</string>
     <string name="home_mode_teachers">강사</string>
     <string name="home_mode_lessons">레슨</string>
     <string name="home_artists">강사 · 무용수</string>

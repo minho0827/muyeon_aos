@@ -3,6 +3,8 @@ package com.muyeon.app.ui.home
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,6 +13,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridItemSpanScope
@@ -81,8 +85,16 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
 
     val all = stringResource(R.string.common_all)
     val recommend = stringResource(R.string.home_lesson_recommend)
-    val teacherTabs = listOf(ChipOption(HomeArtistsUseCase.ALL, all)) + LessonGenres.ALL.map { ChipOption(it, it) }
-    val lessonTabs = listOf(ChipOption(HomeUiState.LESSON_RECOMMEND, recommend)) + LessonGenres.ALL.map { ChipOption(it, it) }
+    val teacherTabs = listOf(ChipOption(HomeArtistsUseCase.ALL, all)) + s.genres.map { ChipOption(it, it) }
+    val lessonTabs = listOf(ChipOption(HomeUiState.LESSON_RECOMMEND, recommend)) + s.genres.map { ChipOption(it, it) }
+    var editOrder by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    // 오른쪽 끝 순서편집 아이콘(흰 그라데이션 위 검정).
+    val orderButton: @Composable () -> Unit = {
+        androidx.compose.material3.Icon(
+            androidx.compose.material.icons.Icons.Rounded.SwapVert, stringResource(R.string.home_order_edit), tint = AppColors.TextHead,
+            modifier = Modifier.clickable { editOrder = true }.padding(8.dp).size(22.dp),
+        )
+    }
     val openLesson: (HomeLesson) -> Unit = { actions.openPath("/lessons/${it.id}") }
     val lessonList: (String, String) -> Unit = { title, type -> actions.openPath("/lessonList?title=${Uri.encode(title)}&type=$type") }
 
@@ -98,8 +110,8 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
 
     Column(Modifier.fillMaxSize().background(AppColors.Surface)) {
         HomeTopBar(s.mode, viewModel::setMode, s.unread, onBell = { actions.native("openNotifications", emptyMap()) })
-        if (s.mode == HomeMode.TEACHERS) UnderlineTabs(teacherTabs, s.teacherGenre, viewModel::selectTeacherGenre)
-        else UnderlineTabs(lessonTabs, s.lessonTab, viewModel::selectLessonTab)
+        if (s.mode == HomeMode.TEACHERS) UnderlineTabs(teacherTabs, s.teacherGenre, viewModel::selectTeacherGenre, trailing = orderButton)
+        else UnderlineTabs(lessonTabs, s.lessonTab, viewModel::selectLessonTab, trailing = orderButton)
 
         PullToRefreshBox(s.isRefreshing, onRefresh = viewModel::pullRefresh, modifier = Modifier.fillMaxSize()) {
             if (s.mode == HomeMode.TEACHERS) {
@@ -144,7 +156,7 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
                                 onAll = { lessonList(recommendTitle(context), "popular") },
                             )
                         }
-                        item(key = "icons", span = FULL) { LessonCategoryIcons(LessonGenres.ALL, viewModel::selectLessonTab) }
+                        item(key = "icons", span = FULL) { LessonCategoryIcons(s.genres, viewModel::selectLessonTab) }
                         item(key = "popular", span = FULL) {
                             LessonSection(stringResource(R.string.home_sec_recommend), stringResource(R.string.home_sec_popular_desc), p.popular, null, s.likedLessons,
                                 openLesson, viewModel::toggleLessonLike, onAll = { lessonList(recommendTitle(context), "popular") })
@@ -190,6 +202,12 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
             }
         }
     }
+    if (editOrder) com.muyeon.app.ui.home.components.GenreOrderEditor(
+        s.genres,
+        onSave = { viewModel.saveGenreOrder(it); editOrder = false },
+        onReset = { viewModel.resetGenreOrder(); editOrder = false },
+        onClose = { editOrder = false },
+    )
 }
 
 private const val BANNER_COUNT = 10
