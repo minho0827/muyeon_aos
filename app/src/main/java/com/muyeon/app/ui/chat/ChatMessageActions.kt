@@ -110,14 +110,14 @@ object ChatMessageRules {
     fun canDelete(m: ChatMessage, mine: Boolean): Boolean = mine && canAddress(m) && !m.isDeleted
 
     /**
-     * @param locked 대화 종료 방 — 서버가 반응을 ROOM_LOCKED 로 거절하므로 반응 줄을 숨긴다. 내 메시지 삭제는 그대로.
+     * @param locked 대화 종료 방 — 서버가 반응·수정을 ROOM_LOCKED 로 거절하고 입력창도 없으므로 반응·답장·수정을 숨긴다. 내 메시지 삭제는 그대로.
      */
     fun actions(m: ChatMessage, mine: Boolean, canBlock: Boolean, locked: Boolean = false) = ChatMessageActions(
         canReact = !locked && canReact(m),
         myReaction = m.reactions?.firstOrNull { it.mine }?.emoji,
-        canReply = canReply(m),
+        canReply = !locked && canReply(m),
         canCopy = canCopy(m),
-        canEdit = canEdit(m, mine),
+        canEdit = !locked && canEdit(m, mine),
         canDelete = canDelete(m, mine),
         canReport = !mine && canAddress(m),
         canBlock = !mine && canBlock,

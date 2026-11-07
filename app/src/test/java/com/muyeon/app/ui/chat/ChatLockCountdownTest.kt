@@ -131,6 +131,10 @@ class ChatLockCountdownTest {
         val locked = ChatMessageRules.actions(m, mine = true, canBlock = false, locked = true)
         assertFalse(locked.canReact)
         assertTrue(locked.canDelete)
+        assertFalse(locked.canReply)
+        assertFalse(locked.canEdit)
+        assertTrue(open.canReply)
+        assertTrue(open.canEdit)
     }
 
     @Test fun `REST 거절 코드 — ROOM_LOCKED 판정`() {
