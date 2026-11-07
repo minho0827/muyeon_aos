@@ -36,7 +36,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.muyeon.app.R
-import com.muyeon.app.ui.components.RemoteImage
+import com.muyeon.app.ui.components.BlurFitImage
 import com.muyeon.app.ui.theme.AppTypography
 import kotlinx.coroutines.delay
 
@@ -47,12 +47,12 @@ private const val AUTO_MS = 4000L
 
 /**
  * ★ 2026-11-08 홈 맨 위 넘기는 배너 — 뷰티컬리 첫 띠와 같은 모양(사용자 요청): 꽉 찬 사진(4:3) · 아래 어둡게 + 흰 글자 ·
- *   오른쪽 아래 [⏸] [01 | 10 전체보기 ›] 표시 · 4초마다 넘어감(멈춤 가능) · 손으로 넘기기(뷰페이저).
+ *   사진은 자르지 않고 양옆을 흐린 같은 사진으로 채운다(BlurFitImage). 오른쪽 아래 [⏸] [01 | 10 전체보기 ›] 표시 · 4초마다 넘어감(멈춤 가능) · 손으로 넘기기(뷰페이저).
  *   [onAll] 이 없으면 표시는 숫자만.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun HomeBannerPager(banners: List<HomeBanner>, onAll: (() -> Unit)?, modifier: Modifier = Modifier) {
+fun HomeBannerPager(banners: List<HomeBanner>, onAll: (() -> Unit)?, modifier: Modifier = Modifier, ratio: Float = 4f / 3f) {
     if (banners.isEmpty()) return
     val pager = rememberPagerState { banners.size }
     var playing by rememberSaveable { mutableStateOf(true) }
@@ -61,11 +61,12 @@ fun HomeBannerPager(banners: List<HomeBanner>, onAll: (() -> Unit)?, modifier: M
         delay(AUTO_MS)
         pager.animateScrollToPage((pager.currentPage + 1) % banners.size)
     }
-    Box(modifier.fillMaxWidth().aspectRatio(4f / 3f)) {
+    Box(modifier.fillMaxWidth().aspectRatio(ratio)) {
         HorizontalPager(pager, Modifier.fillMaxSize(), key = { banners[it].key }) { i ->
             val b = banners[i]
             Box(Modifier.fillMaxSize().clickable(onClick = b.onClick)) {
-                RemoteImage(b.image, Modifier.fillMaxSize(), alignment = Alignment.TopCenter)
+                // 인스타 방식 — 사진 전체가 보이고 양옆은 같은 사진을 흐리게(공개 프로필 히어로와 같다, 사용자 요청).
+                BlurFitImage(b.image, Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.55f))))
                 Column(Modifier.align(Alignment.BottomStart).padding(start = 22.dp, end = 22.dp, bottom = 64.dp)) {
                     Text(b.title, style = AppTypography.Title20.copy(color = Color.White), maxLines = 2, overflow = TextOverflow.Ellipsis)

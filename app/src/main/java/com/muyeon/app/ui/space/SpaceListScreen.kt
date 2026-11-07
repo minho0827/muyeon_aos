@@ -53,10 +53,13 @@ import kotlinx.coroutines.launch
 fun SpaceListScreen(
     api: SpaceApi,
     canCreate: Boolean,
-    onBack: () -> Unit,
+    /** null = 탭(뒤로 없음). */
+    onBack: (() -> Unit)?,
     onOpen: (Int, String?) -> Unit,
     onCreate: () -> Unit,
     onMessage: (String) -> Unit,
+    /** 공간 탭 안 머리(위 바 + 대관·양도양수 탭). 주면 이 화면 위 바 대신 그린다 — 등록(＋)은 머리가 맡는다. */
+    header: (@Composable () -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
     var categories by remember { mutableStateOf<List<SpaceCategory>>(emptyList()) }
@@ -95,7 +98,7 @@ fun SpaceListScreen(
     }
 
     Column(Modifier.fillMaxSize().background(MuyeonList.pageBg)) {
-        MuyeonListHeader("공간 대관", onBack = onBack) {
+        if (header != null) header() else MuyeonListHeader("공간 대관", onBack = onBack) {
             if (canCreate) MuyeonHeaderIcon(Icons.Filled.Add, "공간 등록", onClick = onCreate)
         }
         SpaceCategoryChips(categories, categoryId) { categoryId = it }

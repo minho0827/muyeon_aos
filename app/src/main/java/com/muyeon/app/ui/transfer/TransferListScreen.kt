@@ -57,11 +57,14 @@ fun TransferListScreen(
     state: TransferListState,
     canCreate: Boolean,
     myUserId: Int?,
-    onBack: () -> Unit,
+    /** null = 탭(뒤로 없음). */
+    onBack: (() -> Unit)?,
     onOpen: (Int) -> Unit,
     onCreate: () -> Unit,
     onChatRoom: (Int, String) -> Unit,
     onMessage: (String) -> Unit,
+    /** 공간 탭 안 머리(위 바 + 대관·양도양수 탭). 주면 이 화면 위 바 대신 그린다 — 등록(＋)은 머리가 맡는다. */
+    header: (@Composable () -> Unit)? = null,
     /** 문의 채팅 전 이용약관 동의(액티비티가 하나를 만들어 넘기고 시트도 그린다). */
     chatConsent: TransferChatConsent,
 ) {
@@ -110,7 +113,7 @@ fun TransferListScreen(
     }
 
     Column(Modifier.fillMaxSize().background(MuyeonList.pageBg)) {
-        MuyeonListHeader("무용센터 양도양수", onBack = onBack) {
+        if (header != null) header() else MuyeonListHeader("무용센터 양도양수", onBack = onBack) {
             if (canCreate) MuyeonHeaderIcon(Icons.Filled.Add, "양도 글 등록", onClick = onCreate)
         }
         TransferRegionChips(state.region, state.filter.isActive, onRegion = { state.region = it }, onFilter = { showFilter = true })

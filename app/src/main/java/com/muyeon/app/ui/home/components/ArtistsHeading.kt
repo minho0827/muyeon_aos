@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.sp
 import com.muyeon.app.R
 import com.muyeon.app.ui.theme.AppColors
 
-/** "ARTISTS" 제목 + 굵은 밑줄(COREO). */
+/** "강사 · 무용수" 제목 + 굵은 밑줄(COREO ARTISTS 자리를 한글로 — 사용자 요청 2026-11-08). */
 @Composable
 fun ArtistsHeading(modifier: Modifier = Modifier) {
     Column(modifier.fillMaxWidth().padding(top = 28.dp, bottom = 10.dp)) {
@@ -26,4 +26,5 @@ fun ArtistsHeading(modifier: Modifier = Modifier) {
     }
 }
 
-private val HEADING = TextStyle(fontWeight = FontWeight.Black, fontSize = 22.sp, letterSpacing = 0.5.sp)
+/** 앱 글꼴(Pretendard) 굵게 — 처음엔 글꼴을 안 줘서 기기 기본 글꼴(Black)이 나왔다. */
+private val HEADING = TextStyle(fontFamily = com.muyeon.app.ui.theme.AppFonts.Pretendard, fontWeight = FontWeight.Bold, fontSize = 22.sp, letterSpacing = (-0.3).sp)

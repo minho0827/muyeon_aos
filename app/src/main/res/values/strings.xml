@@ -521,7 +521,7 @@
     <string name="my_region">대표 지역</string>
     <string name="home_mode_teachers">강사</string>
     <string name="home_mode_lessons">레슨</string>
-    <string name="home_artists">ARTISTS</string>
+    <string name="home_artists">강사 · 무용수</string>
     <string name="home_artists_empty">이 장르의 강사가 아직 없어요.</string>
     <string name="home_artists_failed">강사를 불러오지 못했어요.</string>
     <string name="home_lesson_recommend">추천</string>
