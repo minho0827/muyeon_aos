@@ -143,8 +143,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
         } else {
-            Intent(this, WebViewActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            // ★ 2026-11-07 푸시 목적지는 앱 루트(탭 셸)가 받는다 — 앱 탭 주소면 탭, 아니면 웹 창.
+            Intent(this, com.muyeon.app.ui.main.MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                 if (!url.isNullOrEmpty()) putExtra("notification_url", url)
                 customData.forEach { (k, v) -> putExtra(k, v) }
             }

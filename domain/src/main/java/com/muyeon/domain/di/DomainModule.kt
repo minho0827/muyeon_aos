@@ -2,6 +2,9 @@ package com.muyeon.domain.di
 
 import com.muyeon.domain.usecase.menu.GetMyMenusUseCase
 import com.muyeon.domain.usecase.menu.GetTabMenusUseCase
+import com.muyeon.domain.usecase.member.GetMyRolesUseCase
+import com.muyeon.domain.usecase.member.GetRoleManageLaunchUseCase
+import com.muyeon.domain.usecase.member.SwitchActiveTypeUseCase
 import org.koin.dsl.module
 
 /**
@@ -12,4 +15,8 @@ val domainModule = module {
     // 메뉴(탭·MY)
     factory { GetTabMenusUseCase(get()) }
     factory { GetMyMenusUseCase(get()) }
+    // 회원 유형
+    factory { GetMyRolesUseCase(get()) }
+    factory { SwitchActiveTypeUseCase(get()) }
+    factory { GetRoleManageLaunchUseCase(get()) }
 }

@@ -55,15 +55,17 @@ object ForceLogout {
             Log.i(TAG, "trigger code=$code")
             TokenManager.clearTokens(app)
             ChatSocketManager.disconnect()
-            val flags = if (WebViewActivity.isAlive) {
-                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            } else {
-                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            }
+            // ★ 2026-11-07 앱 루트(탭 셸)를 새로 세우고 그 위에 웹 로그인 창 — 웹(common/forceLogout)이 안내 팝업을 띄운다.
+            com.muyeon.app.webview.ActiveRole.clear(app)
             runCatching {
-                app.startActivity(
-                    Intent(app, WebViewActivity::class.java).addFlags(flags)
-                        .putExtra(EXTRA_CODE, code).putExtra(EXTRA_MESSAGE, message.orEmpty()),
+                app.startActivities(
+                    arrayOf(
+                        Intent(app, com.muyeon.app.ui.main.MainActivity::class.java)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
+                        Intent(app, WebViewActivity::class.java)
+                            .putExtra(WebViewActivity.EXTRA_START_PATH, "/login")
+                            .putExtra(EXTRA_CODE, code).putExtra(EXTRA_MESSAGE, message.orEmpty()),
+                    ),
                 )
             }.onFailure { Log.w(TAG, "본문 열기 실패: ${it.message}") }
         }

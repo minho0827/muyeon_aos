@@ -38,7 +38,7 @@ fun IpConfigScreen(
     LaunchedEffect(viewModel.connectEvent) {
         viewModel.connectEvent.collect { event ->
             if (event is ConnectEvent.Success) {
-                context.startActivity(Intent(context, WebViewActivity::class.java))
+                com.muyeon.app.ui.main.MainActivity.launch(context, null)
             }
         }
     }

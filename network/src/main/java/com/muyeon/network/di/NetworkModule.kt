@@ -2,6 +2,7 @@ package com.muyeon.network.di
 
 import com.muyeon.network.BuildConfig
 import com.muyeon.network.api.AppMenuApi
+import com.muyeon.network.api.MemberApi
 import com.muyeon.network.interceptor.ForceLogoutInterceptor
 import com.muyeon.network.interceptor.SessionHeadersInterceptor
 import com.squareup.moshi.Moshi
@@ -48,6 +49,7 @@ val networkModule = module {
 /** 새 Api 는 여기 한 줄 — docs/ARCHITECTURE.md 9단계 체크리스트 3번. */
 val apiModule = module {
     single<AppMenuApi> { get<Retrofit>().create(AppMenuApi::class.java) }
+    single<MemberApi> { get<Retrofit>().create(MemberApi::class.java) }
 }
 
 fun networkModules(): List<Module> = listOf(networkModule, apiModule)

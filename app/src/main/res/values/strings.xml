@@ -47,4 +47,30 @@
     <!-- ★ 2026-11-07 공통 오류 문구(:domain UserFacingError) — 새 네이티브 탭 화면 문구 규칙: <기능>_<화면>_<요소> -->
     <string name="common_error_network">네트워크 연결을 확인해 주세요.</string>
     <string name="common_error_server">잠시 후 다시 시도해 주세요.</string>
+    <!-- ★ 2026-11-07 앱 탭바(서버 문구가 없을 때 기본값 — 웹 useTabMenus fallbackTabs 와 같은 말) -->
+    <string name="tab_home">홈</string>
+    <string name="tab_lessons">강사</string>
+    <string name="tab_community">커뮤니티</string>
+    <string name="tab_performance">공연</string>
+    <string name="tab_my">MY</string>
+    <string name="tab_jobs">구인구직</string>
+    <string name="tab_subs">대타공고</string>
+    <string name="tab_casting">캐스팅</string>
+    <!-- MY 탭 이름(로그인 후 활성유형) — 웹 ActiveTypeSheet TYPE_TAB_LABEL -->
+    <string name="tab_my_general">일반</string>
+    <string name="tab_my_teacher">강사</string>
+    <string name="tab_my_academy">원장</string>
+    <string name="tab_my_dancer">무용수</string>
+    <string name="tab_my_team">공연/기획</string>
+    <!-- 유형 시트 줄 이름 — 웹 TYPE_SHEET_LABEL -->
+    <string name="type_sheet_general">일반</string>
+    <string name="type_sheet_teacher">강사</string>
+    <string name="type_sheet_academy">학원/원장</string>
+    <string name="type_sheet_dancer">무용수</string>
+    <string name="type_sheet_team">공연/기획</string>
+    <string name="main_type_switched">%1$s 유형으로 전환됐어요</string>
+    <string name="main_type_switch_failed">유형 전환을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.</string>
+    <string name="main_exit_title">앱을 종료할까요?</string>
+    <string name="main_exit_confirm">종료</string>
+    <string name="common_cancel">취소</string>
 </resources>

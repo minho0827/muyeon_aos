@@ -54,7 +54,7 @@ class SplashActivity : ComponentActivity() {
 
         // 앱이 켜진 채 링크가 왔다 — 시작 흐름 없이 본문에 넘기되, 강제 업데이트는 먼저 확인한다.
         //  강제면 평소 시작 흐름(권한 → 게이트 팝업)으로 간다. 권한 등록(initialize)은 onCreate 안에서 끝나 있어야 한다.
-        if (linkSaved && com.muyeon.app.webview.WebViewActivity.isAlive) {
+        if (linkSaved && com.muyeon.app.ui.main.MainActivity.isAlive) {
             lifecycleScope.launch {
                 val forced = com.muyeon.app.ui.splash.AppGateApi.fetch()?.update?.action == "FORCE"
                 if (forced || !forwardLinkToRunningApp()) setContent { PermissionScreen() }
@@ -105,10 +105,11 @@ class SplashActivity : ComponentActivity() {
      *  예전엔 늘 CLEAR_TASK 로 본문을 새로 만들어 보던 화면이 사라졌다.
      */
     private fun forwardLinkToRunningApp(): Boolean {
-        if (!linkSaved || !com.muyeon.app.webview.WebViewActivity.isAlive) return false
+        if (!linkSaved || !com.muyeon.app.ui.main.MainActivity.isAlive) return false
         linkSaved = false
+        // ★ 2026-11-07 링크는 앱 루트(탭 셸)가 받아 탭 또는 웹 창으로 연다.
         startActivity(
-            android.content.Intent(this, com.muyeon.app.webview.WebViewActivity::class.java)
+            android.content.Intent(this, com.muyeon.app.ui.main.MainActivity::class.java)
                 .addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP),
         )
         finish()

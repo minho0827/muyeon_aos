@@ -25,7 +25,8 @@ object NativeWebRoute {
 
     /** 웹 경로로 이동하고 현재 네이티브 화면을 종료. */
     fun openWebAndFinish(activity: Activity, path: String) {
-        activity.startActivity(webIntent(activity).putExtra(EXTRA_GO_PATH, path))
+        // ★ 2026-11-07 앱 루트(탭 셸)가 받는다 — 앱 탭 주소면 그 탭, 아니면 웹 창(위 화면들은 닫힌다).
+        com.muyeon.app.ui.main.MainActivity.openPath(activity, path)
         activity.finish()
     }
 

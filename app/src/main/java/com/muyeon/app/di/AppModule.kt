@@ -7,7 +7,9 @@ import com.muyeon.app.webview.ActiveRole
 import com.muyeon.domain.common.ActiveTypeStore
 import com.muyeon.domain.common.ForceLogoutTrigger
 import com.muyeon.domain.common.TokenStore
+import com.muyeon.app.ui.main.MainViewModel
 import org.koin.android.ext.koin.androidContext
+import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 /**
@@ -26,6 +28,7 @@ val appModule = module {
         val ctx: Context = androidContext()
         object : ActiveTypeStore {
             override fun current(): String? = runCatching { ActiveRole.current(ctx) }.getOrNull()
+            override fun save(type: String) = ActiveRole.store(ctx, type)
         }
     }
     single<ForceLogoutTrigger> {
@@ -36,5 +39,7 @@ val appModule = module {
     }
 }
 
+/** 화면 ViewModel — 새 화면은 여기 한 줄(docs/ARCHITECTURE.md 9단계 체크리스트 7번). */
 val viewModelModule = module {
+    viewModel { MainViewModel(get(), get(), get(), get(), get(), get()) }
 }

@@ -21,6 +21,8 @@ class AppBridgeInterface(
     private val webView: WebView,
     /** 웹이 결과 콜백(__muyeonResult 등)을 다 심었다는 신호 — WebViewActivity 가 밀린 JS 를 흘린다. */
     private val onWebReady: () -> Unit = {},
+    /** ★ 2026-11-07 웹 라우트 변경 — 웹 창이 앱 탭 주소로 가면 앱 탭으로 돌아간다(WebViewActivity.onWebRoute). */
+    private val onRouteChanged: (String) -> Unit = {},
 ) {
 
     @JavascriptInterface
@@ -98,7 +100,10 @@ class AppBridgeInterface(
                 }
             }
             // 플로팅(채팅 버튼·인증 책갈피) 표시 판정 — iOS WebViewModel.currentRoute / floatingHidden.
-            "routeChanged" -> com.muyeon.app.ui.floating.FloatingState.updateRoute(data.optString("path"))
+            "routeChanged" -> {
+                com.muyeon.app.ui.floating.FloatingState.updateRoute(data.optString("path"))
+                onRouteChanged(data.optString("path"))
+            }
             "setFloatingHidden" ->
                 com.muyeon.app.ui.floating.FloatingState.updateFloatingHidden(data.optString("hidden") == "1")
             // 웹이 window.__muyeonResult 를 등록함(페이지 로드당 1회). 예전 300ms 재시도 루프를 대신한다.

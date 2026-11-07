@@ -124,17 +124,18 @@ object VerifyGate {
             return
         }
         Log.i(TAG, "차단 중 — ${activity.javaClass.simpleName} 닫고 본문으로")
-        bringWeb(activity, closeCurrent = true)
+        // ★ 2026-11-07 앱 루트(탭 셸)는 닫지 않는다 — 그 위에 웹 차단 화면 창을 덮는다.
+        bringWeb(activity, closeCurrent = activity !is com.muyeon.app.ui.main.MainActivity)
     }
 
     /** 본문을 앞으로(CLEAR_TOP — 그 위 네이티브 화면은 닫힌다) + 웹에 다시 확인 요청. */
     private fun bringWeb(activity: Activity, closeCurrent: Boolean) {
         runCatching {
-            activity.startActivity(
-                Intent(activity, WebViewActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                    .putExtra(NativeWebRoute.EXTRA_EVAL_JS, RECHECK_JS),
-            )
+            // ★ 2026-11-07 웹 창이 떠 있으면 그 창에서 다시 확인, 없으면(앱 탭 화면) 차단 화면 주소로 새 창.
+            val web = Intent(activity, WebViewActivity::class.java).putExtra(NativeWebRoute.EXTRA_EVAL_JS, RECHECK_JS)
+            if (WebViewActivity.isAlive) web.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            else web.putExtra(WebViewActivity.EXTRA_START_PATH, "/verify-required")
+            activity.startActivity(web)
             if (closeCurrent && activity !is WebViewActivity) activity.finish()
         }.onFailure { Log.w(TAG, "본문 열기 실패: ${it.message}") }
     }

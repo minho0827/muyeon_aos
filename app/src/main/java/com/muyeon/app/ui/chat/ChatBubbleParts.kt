@@ -272,7 +272,7 @@ fun openMuyeonLinkInApp(context: Context, url: String) {
     val uri = Uri.parse(url.trim())
     com.muyeon.app.utils.AppLinkManager.save(uri.buildUpon().scheme("https").build())
     context.startActivity(
-        Intent(context, com.muyeon.app.webview.WebViewActivity::class.java)
+        Intent(context, com.muyeon.app.ui.main.MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
     )
 }

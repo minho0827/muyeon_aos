@@ -192,6 +192,16 @@
             </intent-filter>
         </activity>
 
+        <!-- ★ 2026-11-07 앱 루트 — 하단 탭바 + 앱 탭 화면. 웹 페이지는 그 위 WebViewActivity 창. -->
+        <activity
+            android:name=".ui.main.MainActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:configChanges="orientation|screenSize|keyboardHidden|locale|layoutDirection|screenLayout|uiMode"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.Muyeon"
+            tools:ignore="DiscouragedApi" />
+
         <activity
             android:name=".webview.WebViewActivity"
             android:exported="false"

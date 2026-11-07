@@ -17,6 +17,8 @@ interface TokenStore {
 interface ActiveTypeStore {
     /** 바인드 전이면 null(헤더 생략 → 서버가 GENERAL 로 본다). */
     fun current(): String?
+    /** 로컬 저장(서버 저장은 MemberRepository.setActiveType 가 먼저 한다). */
+    fun save(type: String)
 }
 
 /**

@@ -62,6 +62,21 @@ object ActiveTypeSheet {
                 .map { it.optString("type") to it.optString("label") }
                 .filter { it.first.isNotEmpty() }
         }.getOrNull().orEmpty()
+        present(activity, rows, current, newTypes) { p ->
+            // ["TEACHER"] 배열로 넘겨 따옴표·특수문자 걱정 없이 전달한다.
+            val arg = JSONArray().put(p).toString()
+            webView.evaluateJavascript("window.__onActiveTypePicked && window.__onActiveTypePicked($arg[0])", null)
+        }
+    }
+
+    /**
+     * ★ 2026-11-07 앱 탭바(MainActivity)의 MY 길게 누르기 — 웹을 거치지 않고 고른 값을 바로 돌려준다.
+     *  rows = (유형, 표시 이름). 지금 유형을 다시 고르거나 닫으면 [onPick] 을 부르지 않는다. 'MANAGE' = 유형 편집.
+     */
+    fun showNative(activity: Activity, rows: List<Pair<String, String>>, current: String, newTypes: Set<String>, onPick: (String) -> Unit) =
+        present(activity, rows, current, newTypes, onPick)
+
+    private fun present(activity: Activity, rows: List<Pair<String, String>>, current: String, newTypes: Set<String>, onPicked: (String) -> Unit) {
         if (rows.isEmpty()) return
         val root = activity.findViewById<ViewGroup>(android.R.id.content) ?: return
         val host = ComposeView(activity).apply {
@@ -73,11 +88,7 @@ object ActiveTypeSheet {
                 if (!closed) {
                     closed = true
                     root.removeView(host)
-                    picked?.let { p ->
-                        // ["TEACHER"] 배열로 넘겨 따옴표·특수문자 걱정 없이 전달한다.
-                        val arg = JSONArray().put(p).toString()
-                        webView.evaluateJavascript("window.__onActiveTypePicked && window.__onActiveTypePicked($arg[0])", null)
-                    }
+                    picked?.let(onPicked)
                 }
             }
         }

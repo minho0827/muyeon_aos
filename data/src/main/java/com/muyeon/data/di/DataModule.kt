@@ -2,7 +2,9 @@ package com.muyeon.data.di
 
 import com.muyeon.data.local.MenuCache
 import com.muyeon.data.repository.AppMenuRepositoryImpl
+import com.muyeon.data.repository.MemberRepositoryImpl
 import com.muyeon.domain.repository.AppMenuRepository
+import com.muyeon.domain.repository.MemberRepository
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
@@ -10,4 +12,5 @@ import org.koin.dsl.module
 val dataModule = module {
     single { MenuCache(androidContext(), get()) }
     single<AppMenuRepository> { AppMenuRepositoryImpl(get(), get(), get()) }
+    single<MemberRepository> { MemberRepositoryImpl(get(), get(), get()) }
 }

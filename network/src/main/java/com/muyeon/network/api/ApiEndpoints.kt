@@ -12,4 +12,19 @@ object ApiEndpoints {
     object AppMenus {
         const val LIST = "$API/app-menus"
     }
+
+    /** roles.controller.ts — 내 보유 유형·활성유형. */
+    object Roles {
+        const val MINE = "$API/me/roles"
+    }
+
+    /** home controller — 회원유형 화면 배경(랜덤 1장). */
+    object Home {
+        const val ROLE_HERO = "$API/home/role-hero"
+    }
+
+    /** auth.controller.ts */
+    object Auth {
+        const val ACTIVE_TYPE = "$API/auth/me/active-type"   // PATCH { type }
+    }
 }

@@ -5,7 +5,6 @@ import android.content.Intent
 import com.muyeon.app.activity.IpConnectActivity
 import com.muyeon.app.activity.LoginActivity
 import com.muyeon.app.activity.SplashActivity
-import com.muyeon.app.webview.WebViewActivity
 
 interface SplashRouter {
     fun navigateToLogin()
@@ -22,9 +21,8 @@ class SplashRouterImpl(private val context: Context) : SplashRouter {
     }
 
     override fun navigateToWebView() {
-        val intent = Intent(context, WebViewActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        context.startActivity(intent)
+        // ★ 2026-11-07 앱 루트는 탭 셸(MainActivity). 웹은 그 위 창으로 열린다.
+        com.muyeon.app.ui.main.MainActivity.launch(context, null)
         if (context is SplashActivity) {
             context.finish()
         }

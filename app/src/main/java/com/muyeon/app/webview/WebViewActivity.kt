@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.muyeon.app.R
@@ -107,7 +108,27 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
      *  채팅·알림이 바뀌었으면 플로팅 배지도 곧바로 다시 읽는다(폴링 대신).
      */
     /** 웹 브리지(액션 → 네이티브 화면). 로그인 후 이어서 열기에도 같은 처리를 쓴다. */
-    private val appBridge by lazy { AppBridgeInterface(this, webView, onWebReady = ::onWebReady) }
+    private val appBridge by lazy { AppBridgeInterface(this, webView, onWebReady = ::onWebReady, onRouteChanged = ::onWebRoute) }
+
+    /**
+     * ★ 2026-11-07 앱 탭 셸(MainActivity) 위의 웹 창.
+     *  · 웹 탭(구인구직·대타) 주소에 있으면 아래에 앱 탭바를 그린다([webTabKey]).
+     *  · 앱 탭 주소(/home·/lessons·/community·/performance·/mypage)로 가면 이 창을 닫고 앱 탭으로 돌아간다.
+     *    웹의 __nativeGo 가 첫 칸을 /home 으로 바꾼 뒤 목적지를 쌓는 순간이 있어, 주소가 잠깐 머문 뒤에만 돌아간다.
+     */
+    private var webTabKey by mutableStateOf<String?>(null)
+    private var lastRoute: String = ""
+    private val routeHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    private fun onWebRoute(path: String) {
+        lastRoute = path
+        val tab = com.muyeon.app.ui.main.MainTab.fromWebPath(path)
+        webTabKey = tab?.takeIf { it.kind == com.muyeon.app.ui.main.MainTab.Kind.WEB }?.key
+        if (tab?.kind != com.muyeon.app.ui.main.MainTab.Kind.NATIVE || path.contains('?')) return
+        routeHandler.postDelayed({
+            if (lastRoute == path && !isFinishing) com.muyeon.app.ui.main.MainActivity.openTab(this, tab)
+        }, ROUTE_SETTLE_MS)
+    }
 
     /**
      * ★ 2026-11-03 로그인 후 이어서 할 일(LoginResume) — 네이티브 화면이 '로그인 필요'로 닫히며 실어 보낸 값.
@@ -362,6 +383,11 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
                     Log.d("WebViewActivity", "Loading notification URL: $fullUrl")
                     webView.loadUrl(fullUrl)
                 }
+            } else if (!intent.getStringExtra(EXTRA_START_PATH).isNullOrEmpty()) {
+                // ★ 2026-11-07 앱 탭 셸이 연 웹 창 — 그 주소를 바로 연다(밑에 홈을 깔지 않는다. 홈은 앱 탭이다).
+                val path = intent.getStringExtra(EXTRA_START_PATH).orEmpty()
+                webTabKey = intent.getStringExtra(EXTRA_TAB_KEY)
+                webView.loadUrl(if (path.startsWith("http")) path else baseUrl.trimEnd('/') + path)
             } else {
                 android.util.Log.d("QR_DEBUG", "🌐 WebView 로드 URL=$baseUrl (홈 새로 로드)")
                 webView.loadUrl(baseUrl)
@@ -391,6 +417,19 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
                         )
                     },
                 )
+                // ★ 2026-11-07 웹 탭(구인구직·대타) — 앱 탭 화면과 같은 탭바(웹 Footer 는 nativeTabBar 표시로 숨는다).
+                webTabKey?.let { key ->
+                    val mainVm: com.muyeon.app.ui.main.MainViewModel = org.koin.androidx.compose.koinViewModel()
+                    androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
+                        com.muyeon.app.ui.main.MainTabBarHost(
+                            viewModel = mainVm,
+                            selectedKey = key,
+                            onMyLongPress = { com.muyeon.app.ui.main.MainActivity.openTab(this@WebViewActivity, com.muyeon.app.ui.main.MainTab.MY) },
+                            modifier = androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.BottomCenter),
+                            onTap = { k -> onWebTabBarTap(k, mainVm) },
+                        )
+                    }
+                }
                 if (showImagePicker) {
                     ImagePickerBottomSheet(
                         images = allowedImages,
@@ -448,8 +487,30 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
         com.muyeon.app.ui.assistant.AssistantOverlay.takeDraftPush(intent)
     }
 
+    /** 웹 창 탭바 누름 — 앱 탭이면 돌아가고, 다른 웹 탭이면 이 창에서 이동, 캐스팅은 그 화면. */
+    private fun onWebTabBarTap(key: String, vm: com.muyeon.app.ui.main.MainViewModel) {
+        val tab = com.muyeon.app.ui.main.MainTab.fromKey(key)
+        val path = vm.state.value.tabs.firstOrNull { it.tabKey == key }?.path ?: tab?.webPath ?: return
+        when (tab?.kind) {
+            com.muyeon.app.ui.main.MainTab.Kind.NATIVE -> com.muyeon.app.ui.main.MainActivity.openTab(this, tab)
+            com.muyeon.app.ui.main.MainTab.Kind.ACTIVITY -> com.muyeon.app.ui.castingstage.CastingStageActivity.start(this)
+            else -> if (key == webTabKey) {
+                // 지금 탭 다시 누름 — 맨 위로(웹 Footer 와 같다).
+                webView.evaluateJavascript("window.scrollTo({top:0,behavior:'smooth'})", null)
+            } else {
+                val safe = path.replace("'", "\\'")
+                webView.evaluateJavascript("(function(){ if(window.__nativeGo){ window.__nativeGo('$safe'); return 1; } location.href='$safe'; return 0; })()", null)
+            }
+        }
+    }
+
     override fun onResume() {
         super.onResume()
+        // ★ 2026-11-07 앱 탭(유형 시트)에서 바꾼 활성유형을 웹에도 — 웹은 자기 저장값으로 헤더·메뉴를 그린다.
+        if (::webView.isInitialized) {
+            val t = ActiveRole.current(this).replace("'", "")
+            webView.evaluateJavascript("(function(){ try{ if(localStorage.getItem('muyeon.activeType')!=='$t' && window.__onActiveTypeChanged){ window.__onActiveTypeChanged('$t'); } }catch(e){} return null; })()", null)
+        }
         // 웹뷰에 '다시 보임'을 알린다 → 웹 document.visibilityState 가 visible 로 바뀌고 visibilitychange 가 난다.
         //  웹의 예약내역·견적·지원 목록은 이 이벤트로 '화면 복귀 시 재조회'를 한다(콜백을 못 받는 경로의 안전망).
         //  예전엔 onPause/onResume 을 웹뷰에 넘기지 않아, 네이티브 화면을 닫고 돌아와도 웹은 계속 보이는 중으로 알았다.
@@ -575,6 +636,23 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
 
     companion object {
         private const val QUEUE_KEY = "__webCallbackQueue"
+        /** ★ 2026-11-07 앱 탭 셸이 연 웹 창 — 이 주소를 바로 연다. */
+        const val EXTRA_START_PATH = "muyeon.web.startPath"
+        /** 웹 탭(구인구직·대타)으로 연 창 — 아래에 앱 탭바를 그린다. */
+        const val EXTRA_TAB_KEY = "muyeon.web.tabKey"
+        private const val ROUTE_SETTLE_MS = 250L
+
+        /**
+         * 웹 페이지 창 열기(MainActivity 위). viaLink(링크·알림톡)는 지금은 그 주소를 그대로 연다 —
+         *  링크 표(웹 nativeLink.js)로 앱 화면을 여는 일은 웹 페이지가 한다.
+         */
+        fun startPath(context: android.content.Context, path: String, viaLink: Boolean = false, tabKey: String? = null) {
+            context.startActivity(
+                Intent(context, WebViewActivity::class.java)
+                    .putExtra(EXTRA_START_PATH, path)
+                    .apply { tabKey?.let { putExtra(EXTRA_TAB_KEY, it) } },
+            )
+        }
         private const val STATE_AFTER_LOGIN = "muyeon.afterLogin"
 
         /** 떠 있는 본문 화면 수 — 앱이 켜진 채 링크가 오면 스플래시가 새로 만들지 않고 이 화면으로 넘긴다.
@@ -685,7 +763,7 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
                 //  표시를 넣은 뒤 'muyeonCapabilities' 이벤트 — 페이지 로드 뒤라 이미 그린 웹 화면(홈 섹션·MY 메뉴)이 다시 읽는다(2026-11-03).
                 //  castingStageLink: openCastingStage payload(castingId·screen·issueNo)로 그 화면부터 연다(2026-10-27). 없으면 웹은 안쪽 링크를 웹으로.
                 view?.evaluateJavascript(
-                    "window.__muyeonNativeCapabilities=Object.assign({},window.__muyeonNativeCapabilities||{},{publicProfileJobs:true,nativeCastingStage:true,castingStageLink:true,activeTypeSheet:true,nativeStudioTransfers:true,nativeSpaceBooking:true});try{window.dispatchEvent(new Event('muyeonCapabilities'))}catch(e){}",
+                    "window.__muyeonNativeCapabilities=Object.assign({},window.__muyeonNativeCapabilities||{},{publicProfileJobs:true,nativeCastingStage:true,castingStageLink:true,activeTypeSheet:true,nativeStudioTransfers:true,nativeSpaceBooking:true,nativeTabBar:true});try{window.dispatchEvent(new Event('muyeonCapabilities'))}catch(e){}",
                     null,
                 )
                 // webReady 를 안 보내는 옛 웹 안전망. 준비 전이면 가드가 0 을 돌려 그대로 남는다.
@@ -797,6 +875,7 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
 
     override fun onDestroy() {
         liveCount--
+        routeHandler.removeCallbacksAndMessages(null)
         downloadInterface.cleanup()
         super.onDestroy()
     }

@@ -48,11 +48,8 @@ object AssistantExecutor {
         }
         val path = item.webPath
         if (path != null && path.startsWith("/")) {
-            activity.startActivity(
-                Intent(activity, WebViewActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                    .putExtra(NativeWebRoute.EXTRA_GO_PATH, path),
-            )
+            // ★ 2026-11-07 앱 루트가 받아 탭 또는 웹 창으로.
+            com.muyeon.app.ui.main.MainActivity.openPath(activity, path)
             return Outcome.Opened
         }
         return Outcome.NeedsUpdate

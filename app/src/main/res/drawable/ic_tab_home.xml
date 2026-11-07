@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 웹 src/assets/icons/ic-home-filled.svg 에서 옮김. 탭바가 단색(tint)으로 칠한다 — 웹 CSS filter 와 같다. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp" android:height="28dp"
+    android:viewportWidth="28" android:viewportHeight="28">
+    <path android:fillColor="#FF000000" android:pathData="M12.9482 4.58301C13.8329 3.80621 15.1642 3.80621 16.0488 4.58301L24.2178 11.7666C24.7138 12.2031 25 12.8314 25 13.4912V21.6904C25 22.966 23.9549 24 22.666 24H16V19.5C15.9999 18.6716 15.3284 18 14.5 18C13.6716 18 13.0001 18.6716 13 19.5V24H6.33398C5.04511 24 4 22.966 4 21.6904V13.4912C4 12.8314 4.28363 12.2057 4.78223 11.7666L12.9482 4.58301Z" />
+</vector>
