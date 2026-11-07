@@ -13,4 +13,6 @@ enum class ScrapTarget(val serverType: String, val pathSegment: String) {
     CASTING("CASTING", "casting"),
     QUOTE("QUOTE", "quotes"),
     SPACE("SPACE", "spaces"),
+    /** 커뮤니티 글 — 경로 `/community/posts/:id/scrap`(가운데 '/' 는 Retrofit encoded 경로로 넣는다). */
+    POST("POST", "community/posts"),
 }

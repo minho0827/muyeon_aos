@@ -124,9 +124,10 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
         lastRoute = path
         val tab = com.muyeon.app.ui.main.MainTab.fromWebPath(path)
         webTabKey = tab?.takeIf { it.kind == com.muyeon.app.ui.main.MainTab.Kind.WEB }?.key
-        if (tab?.kind != com.muyeon.app.ui.main.MainTab.Kind.NATIVE || path.contains('?')) return
+        // 앱 탭 주소 또는 앱으로 옮긴 상세(커뮤니티 글·공연) — 이 창을 닫고 앱 화면으로(NativeRoutes 표).
+        if (com.muyeon.app.navigation.NativeRoutes.resolve(path) == null) return
         routeHandler.postDelayed({
-            if (lastRoute == path && !isFinishing) com.muyeon.app.ui.main.MainActivity.openTab(this, tab)
+            if (lastRoute == path && !isFinishing) com.muyeon.app.ui.main.MainActivity.openPath(this, path)
         }, ROUTE_SETTLE_MS)
     }
 

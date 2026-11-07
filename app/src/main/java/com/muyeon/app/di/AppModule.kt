@@ -22,6 +22,7 @@ val appModule = module {
         val ctx: Context = androidContext()
         object : TokenStore {
             override fun accessToken(): String? = TokenManager.getAccessToken(ctx)?.takeIf { it.isNotBlank() }
+            override fun myUserId(): Long? = com.muyeon.app.ui.common.NativeHttp(ctx).myUserId()?.toLong()
         }
     }
     single<ActiveTypeStore> {
@@ -45,4 +46,7 @@ val viewModelModule = module {
     // 공연
     viewModel { com.muyeon.app.ui.performance.PerformanceListViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { com.muyeon.app.ui.performance.PerformanceDetailViewModel(get(), get(), get(), get()) }
+    // 커뮤니티
+    viewModel { com.muyeon.app.ui.community.CommunityListViewModel(get(), get(), get()) }
+    viewModel { com.muyeon.app.ui.community.CommunityPostViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
 }

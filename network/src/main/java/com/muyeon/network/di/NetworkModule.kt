@@ -54,6 +54,8 @@ val apiModule = module {
     single<MemberApi> { get<Retrofit>().create(MemberApi::class.java) }
     single<ScrapApi> { get<Retrofit>().create(ScrapApi::class.java) }
     single<PerformanceApi> { get<Retrofit>().create(PerformanceApi::class.java) }
+    single<com.muyeon.network.api.CommunityApi> { get<Retrofit>().create(com.muyeon.network.api.CommunityApi::class.java) }
+    single<com.muyeon.network.api.SafetyApi> { get<Retrofit>().create(com.muyeon.network.api.SafetyApi::class.java) }
 }
 
 fun networkModules(): List<Module> = listOf(networkModule, apiModule)

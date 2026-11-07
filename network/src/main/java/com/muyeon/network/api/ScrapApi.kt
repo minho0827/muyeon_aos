@@ -15,8 +15,8 @@ interface ScrapApi {
     suspend fun mine(@Query("targetType") targetType: String): Response<List<ScrapItemDto>>
 
     @POST(ApiEndpoints.Scraps.TOGGLE)
-    suspend fun add(@Path("segment") segment: String, @Path("id") id: Long): Response<ResponseBody>
+    suspend fun add(@Path("segment", encoded = true) segment: String, @Path("id") id: Long): Response<ResponseBody>
 
     @DELETE(ApiEndpoints.Scraps.TOGGLE)
-    suspend fun remove(@Path("segment") segment: String, @Path("id") id: Long): Response<ResponseBody>
+    suspend fun remove(@Path("segment", encoded = true) segment: String, @Path("id") id: Long): Response<ResponseBody>
 }

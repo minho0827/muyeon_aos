@@ -74,6 +74,12 @@ class MainViewModel(
     private val _events = MutableSharedFlow<MainEvent>(extraBufferCapacity = 8)
     val events: SharedFlow<MainEvent> = _events.asSharedFlow()
 
+    /** 탭 위 앱 화면 열기 요청(바깥 NavHost 경로) — 푸시·링크·웹 창에서 온 상세 주소. */
+    private val _routes = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    val routes: SharedFlow<String> = _routes.asSharedFlow()
+
+    fun openRoute(route: String) { _routes.tryEmit(route) }
+
     /** 지금 탭을 다시 눌렀다(키) — 탭 화면이 맨 위로/다음 칩(웹 emitTabReselect). */
     private val _reselect = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val reselect: SharedFlow<String> = _reselect.asSharedFlow()

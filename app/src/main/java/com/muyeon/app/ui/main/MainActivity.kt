@@ -172,9 +172,13 @@ class MainActivity : ComponentActivity(), ResultHost {
     private fun openPath(urlOrPath: String, viaLink: Boolean) {
         val base = com.muyeon.app.utils.Constants.getBaseUrl(this).trimEnd('/')
         val path = if (urlOrPath.startsWith(base)) urlOrPath.removePrefix(base).ifEmpty { "/" } else urlOrPath
+        when (val target = com.muyeon.app.navigation.NativeRoutes.resolve(path)) {
+            is com.muyeon.app.navigation.NativeRoutes.Target.Tab -> { viewModel.selectTab(target.tab); return }
+            is com.muyeon.app.navigation.NativeRoutes.Target.Route -> { viewModel.openRoute(target.route); return }
+            null -> Unit
+        }
         val tab = MainTab.fromWebPath(path)
         when {
-            tab?.kind == MainTab.Kind.NATIVE && !path.contains('?') -> viewModel.selectTab(tab)
             tab?.kind == MainTab.Kind.ACTIVITY -> CastingStageActivity.start(this)
             else -> WebViewActivity.startPath(this, path, viaLink = viaLink, tabKey = tab?.takeIf { it.kind == MainTab.Kind.WEB }?.key)
         }

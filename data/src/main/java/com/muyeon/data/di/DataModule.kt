@@ -22,4 +22,6 @@ val dataModule = module {
     single<KeyValueStore> { PrefsKeyValueStore(androidContext()) }
     single<ScrapRepository> { ScrapRepositoryImpl(get(), get(), get()) }
     single<PerformanceRepository> { PerformanceRepositoryImpl(get(), get()) }
+    single<com.muyeon.domain.repository.CommunityRepository> { com.muyeon.data.repository.CommunityRepositoryImpl(get(), get(), get()) }
+    single<com.muyeon.domain.repository.SafetyRepository> { com.muyeon.data.repository.SafetyRepositoryImpl(get(), get()) }
 }

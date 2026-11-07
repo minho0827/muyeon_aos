@@ -9,6 +9,9 @@ import com.muyeon.domain.usecase.performance.GetPerformanceDetailUseCase
 import com.muyeon.domain.usecase.performance.GetPerformancePageUseCase
 import com.muyeon.domain.usecase.scrap.GetLikedIdsUseCase
 import com.muyeon.domain.usecase.scrap.ToggleScrapUseCase
+import com.muyeon.domain.usecase.community.*
+import com.muyeon.domain.usecase.safety.BlockUserUseCase
+import com.muyeon.domain.usecase.safety.ReportUseCase
 import org.koin.dsl.module
 
 /**
@@ -30,4 +33,14 @@ val domainModule = module {
     // 공연
     factory { GetPerformancePageUseCase(get()) }
     factory { GetPerformanceDetailUseCase(get()) }
+    // 커뮤니티
+    factory { GetCommunityPostsUseCase(get()) }
+    factory { GetCommunityPostUseCase(get()) }
+    factory { GetCommunityCommentsUseCase(get()) }
+    factory { EditCommunityCommentUseCase(get()) }
+    factory { LikeCommunityUseCase(get()) }
+    factory { DeleteCommunityPostUseCase(get()) }
+    // 신고·차단
+    factory { ReportUseCase(get()) }
+    factory { BlockUserUseCase(get()) }
 }

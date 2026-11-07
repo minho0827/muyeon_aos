@@ -22,6 +22,7 @@ import com.muyeon.app.navigation.Screen
 import com.muyeon.app.navigation.WebPaths
 import com.muyeon.app.ui.performance.PerformanceListScreen
 import com.muyeon.app.ui.my.MyScreen
+import com.muyeon.app.ui.community.CommunityListScreen
 import com.muyeon.app.ui.theme.AppColors
 import com.muyeon.app.ui.theme.AppTypography
 
@@ -70,7 +71,13 @@ fun MainScreen(
             NavHost(tabNav, startDestination = Screen.TabHome.route, modifier = Modifier.padding(inner)) {
                 composable(Screen.TabHome.route) { TabPlaceholder(MainTab.HOME) }
                 composable(Screen.TabLessons.route) { TabPlaceholder(MainTab.LESSONS) }
-                composable(Screen.TabCommunity.route) { TabPlaceholder(MainTab.COMMUNITY) }
+                composable(Screen.TabCommunity.route) {
+                    CommunityListScreen(
+                        onOpenPost = { id -> onOpenDetail(Screen.CommunityPost.build(id)) },
+                        // 글쓰기는 로그인 필요(웹 community.write 게이트) — 비회원은 로그인 뒤 글쓰기로.
+                        onWrite = { onOpenWeb(if (state.isLoggedIn) WebPaths.COMMUNITY_WRITE else WebPaths.login(WebPaths.COMMUNITY_WRITE)) },
+                    )
+                }
                 composable(Screen.TabPerformance.route) {
                     PerformanceListScreen(
                         onOpenDetail = { id -> onOpenDetail(Screen.PerformanceDetail.build(id)) },

@@ -35,6 +35,24 @@ object ApiEndpoints {
         const val DETAIL = "$API/performances/{id}"
     }
 
+    /** community.controller.ts */
+    object Community {
+        const val POSTS_PAGE = "$API/community/posts/page"                        // GET category·sort·cursor·limit
+        const val POST = "$API/community/posts/{id}"                              // GET(?comments=0) · DELETE
+        const val POST_LIKE = "$API/community/posts/{id}/like"                    // POST → { liked, likeCount }
+        const val COMMENTS_PAGE = "$API/community/posts/{id}/comments/page"
+        const val REPLIES_PAGE = "$API/community/posts/{id}/comments/{parentId}/replies/page"
+        const val COMMENTS = "$API/community/posts/{id}/comments"                 // POST { body, parentId? }
+        const val COMMENT = "$API/community/posts/{id}/comments/{commentId}"      // PATCH { body } · DELETE
+        const val COMMENT_LIKE = "$API/community/posts/{id}/comments/{commentId}/like"
+    }
+
+    /** reports.controller.ts · blocks.controller.ts */
+    object Safety {
+        const val REPORTS = "$API/reports"                                        // POST { targetType, targetId, reason, detail? }
+        const val BLOCK = "$API/users/{id}/block"                                 // POST 차단
+    }
+
     /** auth.controller.ts */
     object Auth {
         const val ACTIVE_TYPE = "$API/auth/me/active-type"   // PATCH { type }

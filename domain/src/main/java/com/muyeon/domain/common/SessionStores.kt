@@ -8,6 +8,8 @@ interface TokenStore {
     /** 없으면 null(비회원). */
     fun accessToken(): String?
     val isLoggedIn: Boolean get() = !accessToken().isNullOrBlank()
+    /** 내 회원 번호(토큰 sub). 비회원·해석 실패는 null — 서버가 isMine 을 주지 않는 곳(댓글)의 '내 것' 판정. */
+    fun myUserId(): Long?
 }
 
 /**
