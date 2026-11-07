@@ -16,6 +16,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -172,6 +173,8 @@ fun FloatingOverlay(
             Box(
                 Modifier
                     .align(Alignment.BottomEnd)
+                    // ★ 2026-11-07 앱 탭 셸은 화면 끝까지 그린다 — 내비게이션 바만큼 더 띄운다(웹뷰 창은 0).
+                    .navigationBarsPadding()
                     .padding(end = 16.dp, bottom = 216.dp)
                     .absoluteOffset(x = offset.dp)
                     .alpha(if (hide) 0f else 1f),

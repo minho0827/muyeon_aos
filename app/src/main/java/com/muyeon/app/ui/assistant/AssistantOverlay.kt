@@ -244,7 +244,9 @@ private fun AssistantLayer(activity: Activity) {
     }
     val imeVisible = WindowInsets.ime.getBottom(density) > 0
     // 웹 라우트·웹 모달 상태는 웹뷰 화면에서만 의미가 있다(네이티브 화면은 웹 상태와 무관하게 보인다).
-    val onWeb = activity is com.muyeon.app.webview.WebViewActivity
+    // ★ 2026-11-07 앱 탭 셸(MainActivity)도 탭바가 있는 화면 — 웹과 같은 자리·같은 판정(FloatingState 라우트는 앱 탭이 알린다).
+    val tabShell = activity is com.muyeon.app.ui.main.MainActivity
+    val onWeb = activity is com.muyeon.app.webview.WebViewActivity || tabShell
     val loggedIn = !TokenManager.getAccessToken(context).isNullOrEmpty()
     // ★ 2026-11-04 비회원도 빠른 메뉴 버튼을 보인다(iOS 와 같게) — 목록은 서버가 로그인 없이 볼 수 있는 화면만 준다.
     // 예약금 결제 창 위에는 띄우지 않는다 — 결제 중 다른 화면으로 나가면 결제 창이 닫히지 않은 채 남는다(iOS 와 같다).
@@ -253,7 +255,7 @@ private fun AssistantLayer(activity: Activity) {
         !(onWeb && (FloatingState.isAuthRoute || FloatingState.floatingHidden))
 
     Box(Modifier.fillMaxSize()) {
-        if (show) AssistantFab(Modifier.align(Alignment.BottomEnd).then(if (onWeb) Modifier else Modifier.navigationBarsPadding()), onWeb = onWeb, onOpen = { open = true })
+        if (show) AssistantFab(Modifier.align(Alignment.BottomEnd).then(if (onWeb && !tabShell) Modifier else Modifier.navigationBarsPadding()), onWeb = onWeb, onOpen = { open = true })
     }
     if (open) {
         // 지금 보고 있는 화면 — 웹 화면 위에서 열었을 때만(웹이 routeChanged 로 알려 준 경로, FloatingState.currentRoute).
@@ -324,7 +326,7 @@ internal object NativeScreens {
 
     fun onCreated(activity: Activity) {
         val p = pending ?: return
-        if (activity is com.muyeon.app.webview.WebViewActivity) return
+        if (activity is com.muyeon.app.webview.WebViewActivity || activity is com.muyeon.app.ui.main.MainActivity) return
         pending = null
         if (System.currentTimeMillis() - p.second < 3000) byActivity[activity] = p.first
     }
