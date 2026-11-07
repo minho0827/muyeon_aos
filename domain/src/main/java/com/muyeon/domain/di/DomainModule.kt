@@ -69,4 +69,5 @@ val domainModule = module {
     factory { com.muyeon.domain.usecase.recruit.JobListUseCase(get(), get()) }
     factory { com.muyeon.domain.usecase.recruit.SeekerListUseCase(get()) }
     factory { com.muyeon.domain.usecase.recruit.SubListUseCase(get()) }
+    factory { com.muyeon.domain.usecase.recruit.CreateSubUseCase(get()) }
 }

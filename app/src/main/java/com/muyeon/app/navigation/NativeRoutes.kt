@@ -21,6 +21,8 @@ object NativeRoutes {
         val p = clean.substringBefore('?')
         COMMUNITY_POST.find(p)?.let { return Target.Route(Screen.CommunityPost.build(it.groupValues[1].toLong())) }
         if (p.trimEnd('/') == "/community" && !clean.contains('?')) return Target.Route(Screen.CommunityList.route)
+        // 대타공고 등록 — 설문식 앱 화면(레슨 요청에서 넘어온 미리 채움 ?prefill= 은 아직 웹).
+        if (p.trimEnd('/') == "/subs/create" && !clean.contains('?')) return Target.Route(Screen.SubWizard.route)
         PERFORMANCE.find(p)?.let { return Target.Route(Screen.PerformanceDetail.build(it.groupValues[1].toLong())) }
         // 탭 루트는 쿼리가 없을 때만(쿼리 = 웹 화면 상태 지정 — 웹이 그린다).
         if (clean.contains('?')) return null

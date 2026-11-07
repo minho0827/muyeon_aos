@@ -28,3 +28,8 @@ class SubListUseCase(private val repo: RecruitRepository) {
         list.filter { filter.genre == null || it.genre == filter.genre }.filterNot { DemoContent.isDemoTitle(it.title) }
     }
 }
+
+/** 대타공고 설문 등록. */
+class CreateSubUseCase(private val repo: RecruitRepository) {
+    suspend operator fun invoke(draft: com.muyeon.domain.model.recruit.SubDraft) = repo.createSub(draft)
+}

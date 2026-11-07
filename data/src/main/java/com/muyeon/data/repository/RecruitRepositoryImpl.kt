@@ -39,6 +39,13 @@ class RecruitRepositoryImpl(private val api: RecruitApi, private val moshi: Mosh
         }.map { list -> list.mapNotNull { d -> d.toDomain(now, ::epochMs) } }
     }
 
+    override suspend fun createSub(draft: com.muyeon.domain.model.recruit.SubDraft): ApiResult<Long> = with(draft) {
+        safeApiCall(moshi) {
+            api.createSub(com.muyeon.network.dto.recruit.SubCreateBody(title, academy, genre, target, fields, scheduleType, classDate, classTime, classCount,
+                region, regionCode, salary, pay, description))
+        }.map { it.id ?: 0L }
+    }
+
     private fun epochMs(iso: String?): Long? = iso?.let { runCatching { OffsetDateTime.parse(it).toInstant().toEpochMilli() }.getOrNull() }
 
     private companion object {

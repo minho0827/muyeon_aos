@@ -16,4 +16,6 @@ interface RecruitRepository {
     suspend fun jobsForMe(): ApiResult<List<JobCard>>
     suspend fun seekersPage(filter: SeekFilter, cursor: String?): ApiResult<CursorPage<SeekerCard>>
     suspend fun subs(region: ActiveRegion?, filter: SubFilter): ApiResult<List<SubRow>>
+    /** 대타공고 등록 — 만든 공고 id. 권한(강사·학원·무용수·공연팀 인증)은 서버가 본다(403 이면 서버 문구). */
+    suspend fun createSub(draft: com.muyeon.domain.model.recruit.SubDraft): ApiResult<Long>
 }

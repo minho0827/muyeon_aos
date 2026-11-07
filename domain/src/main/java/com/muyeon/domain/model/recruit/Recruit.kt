@@ -80,3 +80,24 @@ data class SubFilter(
 ) {
     val sheetActive get() = scheduleType != null || minClassCount != null || field != null || target != null || salary != null
 }
+
+/**
+ * 대타공고 등록 값(설문 답 → POST /subs). 웹 SubCreate buildPayload · 백엔드 CreateSubDto 와 같은 이름·값.
+ *   classDate 'YYYY-MM-DD' · classTime 'HH:mm~HH:mm' · salary SalaryRange 코드.
+ */
+data class SubDraft(
+    val title: String,
+    val academy: String?,
+    val genre: String,
+    val target: String,
+    val fields: List<String>,
+    val scheduleType: String,
+    val classDate: String,
+    val classTime: String,
+    val classCount: Int,
+    val region: String?,
+    val regionCode: String?,
+    val salary: String?,
+    val pay: String?,
+    val description: String?,
+)

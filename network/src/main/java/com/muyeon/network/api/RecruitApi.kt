@@ -5,7 +5,11 @@ import com.muyeon.network.dto.recruit.JobCardDto
 import com.muyeon.network.dto.recruit.SeekerCardDto
 import com.muyeon.network.dto.recruit.SubRowDto
 import retrofit2.Response
+import com.muyeon.network.dto.recruit.CreatedIdDto
+import com.muyeon.network.dto.recruit.SubCreateBody
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.POST
 import retrofit2.http.Query
 
 /** 출처: ApiEndpoints.Recruit. 여러 개 고르는 필터는 쉼표로 이어 보낸다(웹 JobBoard). */
@@ -32,4 +36,7 @@ interface RecruitApi {
         @Query("field") field: String?, @Query("target") target: String?, @Query("salary") salary: String?,
         @Query("scheduleType") scheduleType: String?, @Query("minClassCount") minClassCount: Int?,
     ): Response<List<SubRowDto>>
+
+    @POST(ApiEndpoints.Recruit.SUBS)
+    suspend fun createSub(@Body body: SubCreateBody): Response<CreatedIdDto>
 }

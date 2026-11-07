@@ -57,3 +57,14 @@ data class SubRowDto(
             genre?.takeIf { s -> s.isNotBlank() }, target, scheduleType, classCount, classDate, classTime, salary, pay?.takeIf { s -> s.isNotBlank() }, change)
     }
 }
+
+/** POST /subs 본문(CreateSubDto). null 칸은 보내지 않는다(Moshi 기본). */
+@JsonClass(generateAdapter = true)
+data class SubCreateBody(
+    val title: String, val academy: String?, val genre: String, val target: String, val fields: List<String>,
+    val scheduleType: String, val classDate: String, val classTime: String, val classCount: Int,
+    val region: String?, val regionCode: String?, val salary: String?, val pay: String?, val description: String?,
+)
+
+@JsonClass(generateAdapter = true)
+data class CreatedIdDto(val id: Long? = null)

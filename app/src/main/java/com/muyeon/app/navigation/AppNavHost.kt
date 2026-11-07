@@ -74,6 +74,16 @@ fun AppNavHost(
                 },
             )
         }
+        // 대타공고 설문 등록 — 올리면 닫고 대타공고 목록을 다시 받는다.
+        composable(Screen.SubWizard.route) {
+            com.muyeon.app.ui.subwizard.SubWizardScreen(
+                onClose = { navController.popBackStack() },
+                onCreated = {
+                    AppResults.publish(setOf(com.muyeon.app.result.ResultKeys.JOB_POSTINGS))
+                    navController.popBackStack()
+                },
+            )
+        }
         // 커뮤니티 목록 — MY 섹션·웹 /community 에서 연다(탭이 아니다).
         composable(Screen.CommunityList.route) {
             val loggedIn = mainViewModel.state.collectAsState().value.isLoggedIn

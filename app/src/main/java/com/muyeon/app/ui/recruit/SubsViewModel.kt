@@ -2,6 +2,7 @@ package com.muyeon.app.ui.recruit
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.muyeon.app.navigation.collectAppResults
 import com.muyeon.domain.common.ApiResult
 import com.muyeon.domain.model.recruit.SubFilter
 import com.muyeon.domain.model.recruit.SubRow
@@ -33,6 +34,8 @@ class SubsViewModel(private val subs: SubListUseCase, observeRegion: ObserveActi
     init {
         refresh()
         viewModelScope.launch { region.drop(1).collect { refresh() } }
+        // 설문 등록으로 새 공고를 올리면 다시 받는다.
+        viewModelScope.collectAppResults(com.muyeon.app.result.ResultKeys.JOB_POSTINGS) { refresh() }
     }
 
     fun selectGenre(g: String?) { _state.update { it.copy(filter = it.filter.copy(genre = g)) }; refresh() }
