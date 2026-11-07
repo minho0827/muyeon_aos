@@ -244,10 +244,10 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                         title = title,
                         message = "레슨 요청은 직접(또는 자녀가) 배우실 분과 강사를 이어 드려요. 학원에서 일할 강사는 공고로 구하실 수 있어요.",
                         actions = listOf(
-                            com.muyeon.app.ui.common.MuyeonDialogAction("아니요, 제가(자녀가) 배워요", com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY) {
+                            com.muyeon.app.ui.common.MuyeonDialogAction("아니요, 배우려고요", com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY) {
                                 recruitAnswer = "NO"; startSubmit(lastAnswers)
                             },
-                            com.muyeon.app.ui.common.MuyeonDialogAction("네, 강사를 구해요", com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL) {
+                            com.muyeon.app.ui.common.MuyeonDialogAction("네, 강사 구해요", com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL) {
                                 recruitAnswer = "YES"; startSubmit(lastAnswers)
                             },
                         ),
