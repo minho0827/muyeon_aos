@@ -8,23 +8,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.muyeon.app.R
 import com.muyeon.app.ui.theme.AppColors
 
 /**
- * ★ 2026-11-08 컬리 방식 흰 위 바 — 왼쪽 舞踊緣 · 가운데 [center](알약 토글) · 오른쪽 [actions].
+ * ★ 2026-11-08 컬리 방식 흰 위 바 — 왼쪽 DANCE 로고 · 가운데 [center](알약 토글) · 오른쪽 [actions].
  *   홈([강사 | 레슨])과 캐스팅 탭([캐스팅 | 공연])이 같이 쓴다. 흰 바라 상태바 아이콘은 검정.
  */
 @Composable
@@ -38,12 +33,14 @@ fun BrandTopBar(modifier: Modifier = Modifier, center: @Composable () -> Unit, a
     }
     Box(modifier.fillMaxWidth().background(AppColors.Surface).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().height(60.dp).padding(start = 20.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.home_logo), style = LOGO, color = AppColors.TextHead)
+            // DANCE 로고 — 웹 앱 아이콘(muyeon-front public/logo512.png)의 글자 부분을 잘라 넣었다(사용자 요청 2026-11-08).
+            androidx.compose.foundation.Image(
+                androidx.compose.ui.res.painterResource(R.drawable.logo_dance), stringResource(R.string.home_logo),
+                modifier = Modifier.height(24.dp),
+            )
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { center() }
             Row(verticalAlignment = Alignment.CenterVertically, content = actions)
         }
     }
 }
 
-/** 무용연 — 검은 명조(기기 명조 글꼴) 레귤러, 19sp(사용자 요청 2026-11-08). */
-private val LOGO = TextStyle(fontFamily = FontFamily.Serif, fontWeight = FontWeight.Normal, fontSize = 19.sp, letterSpacing = (-0.5).sp)
