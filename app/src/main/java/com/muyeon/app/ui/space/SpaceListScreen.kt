@@ -118,7 +118,8 @@ fun SpaceListScreen(
                     ListPhase.Empty, ListPhase.Error -> MuyeonEmptyState(
                         error ?: "조건에 맞는 공간이 없어요.", icon = Icons.Outlined.MeetingRoom, modifier = Modifier.align(Alignment.Center),
                     )
-                    ListPhase.Items -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ListPhase.Items -> LazyColumn(Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = if (onBack == null) com.muyeon.app.ui.main.tabBarBottomPadding() else 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(items, key = { it.id }) { s ->
                             SpaceCard(s, onClick = { onOpen(s.id, date) }) { SpaceCardHeart(s.id in scrapped) { toggleScrap(s) } }
                         }

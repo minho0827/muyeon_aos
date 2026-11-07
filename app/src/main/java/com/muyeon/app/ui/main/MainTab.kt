@@ -44,7 +44,7 @@ enum class MainTab(
 
     companion object {
         /** 앱 화면을 만드는 중인 탭 — 만들면 여기서 뺀다(개편 계획 3·4단계). */
-        private val NOT_READY = setOf(JOBS, SEEK, SUBS, SPACES, TRANSFERS)
+        private val NOT_READY = setOf(JOBS, SEEK, SUBS)
 
         fun fromKey(key: String): MainTab? = entries.firstOrNull { it.key == key }
         fun fromRoute(route: String?): MainTab? = entries.firstOrNull { it.route == route }

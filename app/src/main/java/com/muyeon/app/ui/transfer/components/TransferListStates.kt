@@ -69,11 +69,13 @@ fun <T> TransferListItems(
     key: (T) -> Any,
     hasMore: Boolean,
     loadingMore: Boolean,
+    /** 맨 아래 여백 — 탭(떠 있는 탭바 아래)에서 열면 더 크게. */
+    bottomPadding: androidx.compose.ui.unit.Dp = 16.dp,
     card: @Composable (T) -> Unit,
 ) {
     LazyColumn(
         state = listState, modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = bottomPadding), verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         items(items, key = key) { card(it) }
         if (hasMore) item(key = "more") { ListMoreFooter(loadingMore) }

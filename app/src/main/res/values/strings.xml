@@ -65,6 +65,8 @@
     <string name="tab_transfer">양도양수</string>
     <string name="tab_back">뒤로</string>
     <string name="tab_stage_title">공연/캐스팅</string>
+    <string name="space_create">공간 등록</string>
+    <string name="transfer_create">양도 글 등록</string>
     <string name="casting_create">공연 공고 등록</string>
     <string name="casting_all">캐스팅 공고 전체 보기</string>
     <string name="interim_tab_desc">이 화면은 앱 화면으로 옮기는 중이에요.</string>

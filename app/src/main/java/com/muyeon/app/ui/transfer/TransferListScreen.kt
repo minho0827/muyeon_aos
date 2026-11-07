@@ -130,7 +130,8 @@ fun TransferListScreen(
                 ListPhase.Loading -> TransferListLoading()
                 ListPhase.Error -> TransferListError(state.error ?: "") { scope.launch { state.load(api, true) } }
                 ListPhase.Empty -> TransferListEmpty()
-                ListPhase.Items -> TransferListItems(state.listState, state.items, { it.id }, hasMore = state.hasMore, loadingMore = state.loading && state.items.isNotEmpty()) { c ->
+                ListPhase.Items -> TransferListItems(state.listState, state.items, { it.id }, hasMore = state.hasMore, loadingMore = state.loading && state.items.isNotEmpty(),
+                    bottomPadding = if (onBack == null) com.muyeon.app.ui.main.tabBarBottomPadding() else 16.dp) { c ->
                     // 카드 오른쪽 칸 — 내 글이면 하트만, 남의 글이면 하트 + 바로 채팅.
                     val mine = myUserId != null && c.authorId == myUserId
                     if (mine) TransferCardView(c, onClick = { onOpen(c.id) }) { TransferOwnCardActions(c.scrapped) { toggleScrap(c) } }

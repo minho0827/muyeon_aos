@@ -105,9 +105,9 @@ fun MainScreen(
                         onCreate = if (canCreate) ({ onOpenDetail(r.create) }) else null,
                         reloadKey = com.muyeon.app.ui.castingstage.CastingStageSession.reloadKey,
                         header = {
-                            TabSectionHeader(stageTitle(), STAGE_SECTIONS, MainTab.CASTING, viewModel::selectTab) {
-                                if (canCreate) com.muyeon.app.ui.components.TopBarIconButton(R.drawable.ic_web_edit, stringResource(R.string.casting_create), onClick = { onOpenDetail(r.create) })
-                                com.muyeon.app.ui.components.TopBarIconButton(R.drawable.ic_web_filter, stringResource(R.string.casting_all), onClick = { onOpenDetail(r.castingList) })
+                            StageTopBar(MainTab.CASTING, viewModel::selectTab) {
+                                if (canCreate) com.muyeon.app.ui.components.TopBarIconButton(R.drawable.ic_web_edit, stringResource(R.string.casting_create), onClick = { onOpenDetail(r.create) }, primary = false)
+                                com.muyeon.app.ui.components.TopBarIconButton(R.drawable.ic_web_filter, stringResource(R.string.casting_all), onClick = { onOpenDetail(r.castingList) }, primary = false)
                             }
                         },
                     )
@@ -138,7 +138,7 @@ fun MainScreen(
                     PerformanceListScreen(
                         onOpenDetail = { id -> onOpenDetail(Screen.PerformanceDetail.build(id)) },
                         onLogin = { onOpenWeb(WebPaths.login(MainTab.PERFORMANCE.webPath)) },
-                        header = { TabSectionHeader(stageTitle(), STAGE_SECTIONS, MainTab.PERFORMANCE, viewModel::selectTab) },
+                        header = { StageTopBar(MainTab.PERFORMANCE, viewModel::selectTab) },
                     )
                 }
                 // 구인구직·공간 — 앱 화면을 만드는 동안 지금 쓰던 화면을 연다(개편 계획 3·4단계).
@@ -146,14 +146,10 @@ fun MainScreen(
                 composable(Screen.TabSeek.route) { InterimTabScreen(stringResource(R.string.tab_jobs_seek)) { onOpenWeb("/jobs?tab=seek") } }
                 composable(Screen.TabSubs.route) { InterimTabScreen(stringResource(R.string.tab_subs)) { onOpenWeb("/subs") } }
                 composable(Screen.TabSpaces.route) {
-                    InterimTabScreen(stringResource(R.string.tab_space_rent), header = { TabSectionHeader(spaceTitle(), SPACE_SECTIONS, MainTab.SPACES, viewModel::selectTab) }) {
-                        onNativeAction("openSpaces", emptyMap())
-                    }
+                    SpaceRentTab(header = { actions -> TabSectionHeader(spaceTitle(), SPACE_SECTIONS, MainTab.SPACES, viewModel::selectTab, actions) })
                 }
                 composable(Screen.TabTransfers.route) {
-                    InterimTabScreen(stringResource(R.string.tab_transfer), header = { TabSectionHeader(spaceTitle(), SPACE_SECTIONS, MainTab.TRANSFERS, viewModel::selectTab) }) {
-                        onNativeAction("openStudioTransfers", emptyMap())
-                    }
+                    TransferTab(header = { actions -> TabSectionHeader(spaceTitle(), SPACE_SECTIONS, MainTab.TRANSFERS, viewModel::selectTab, actions) })
                 }
                 composable(Screen.TabMy.route) {
                     MyScreen(

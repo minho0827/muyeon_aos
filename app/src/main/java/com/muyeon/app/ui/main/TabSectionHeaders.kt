@@ -31,6 +31,23 @@ fun TabSectionHeader(
 }
 
 val STAGE_SECTIONS = listOf(MainTab.CASTING, MainTab.PERFORMANCE)
+
+/**
+ * 캐스팅 탭 머리 — 홈과 같은 흰 위 바, 가운데 [캐스팅 | 공연] 토글(사용자 요청 2026-11-08). 밑줄 탭은 없다.
+ *   오른쪽 [actions] — 캐스팅이면 글쓰기·전체 보기.
+ */
+@Composable
+fun StageTopBar(selected: MainTab, onSelect: (MainTab) -> Unit, actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {}) {
+    com.muyeon.app.ui.components.BrandTopBar(
+        center = {
+            com.muyeon.app.ui.components.SegmentToggle(
+                STAGE_SECTIONS.map { ChipOption(it.key, stringResource(it.labelRes)) }, selected.key,
+                { key -> MainTab.fromKey(key)?.let(onSelect) },
+            )
+        },
+        actions = actions,
+    )
+}
 val SPACE_SECTIONS = listOf(MainTab.SPACES, MainTab.TRANSFERS)
 
 @Composable
