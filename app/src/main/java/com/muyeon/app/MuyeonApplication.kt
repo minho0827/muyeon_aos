@@ -1,6 +1,7 @@
 package com.muyeon.app
 
 import android.app.Application
+import org.koin.android.ext.koin.androidContext
 import com.muyeon.app.analytics.Analytics
 import com.muyeon.app.ui.membership.MembershipBilling
 
@@ -14,6 +15,22 @@ import com.muyeon.app.ui.membership.MembershipBilling
 class MuyeonApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        // ★ 2026-11-07 탭 네이티브 전환 — Koin(:network → :data → :domain → :app). docs/ARCHITECTURE.md
+        org.koin.core.context.startKoin {
+            androidContext(this@MuyeonApplication)
+            modules(
+                com.muyeon.network.di.networkModules() + listOf(
+                    com.muyeon.data.di.dataModule,
+                    com.muyeon.domain.di.domainModule,
+                    com.muyeon.app.di.appModule,
+                    com.muyeon.app.di.viewModelModule,
+                ),
+            )
+        }
+        com.muyeon.domain.common.UserFacingError.install(
+            network = { getString(R.string.common_error_network) },
+            server = { getString(R.string.common_error_server) },
+        )
         MembershipBilling.start(this)
         Analytics.start(this)
         // AI 도우미 플로팅 — 모든 화면 위에 버튼을 붙인다(ui/assistant/AssistantOverlay).

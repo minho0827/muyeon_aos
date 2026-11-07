@@ -138,6 +138,10 @@ android {
 }
 
 dependencies {
+    // ★ 2026-11-07 탭 네이티브 전환 계층 모듈(docs/ARCHITECTURE.md)
+    implementation(project(":domain"))
+    implementation(project(":network"))
+    implementation(project(":data"))
     // CameraX
     implementation("androidx.camera:camera-core:1.4.2")
     implementation("androidx.camera:camera-camera2:1.4.2")

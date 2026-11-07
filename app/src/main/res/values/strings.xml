@@ -44,4 +44,7 @@
     <string name="perm_location_desc">내 주변 레슨과 연습실을 찾고 관심 지역을 자동으로 설정할 때 써요.</string>
     <string name="perm_optional_notice">선택 권한은 허용하지 않아도 무용연을 이용할 수 있어요. 다만 그 권한이 필요한 기능은 쓸 수 없어요.</string>
     <string name="option">(선택)</string>
+    <!-- ★ 2026-11-07 공통 오류 문구(:domain UserFacingError) — 새 네이티브 탭 화면 문구 규칙: <기능>_<화면>_<요소> -->
+    <string name="common_error_network">네트워크 연결을 확인해 주세요.</string>
+    <string name="common_error_server">잠시 후 다시 시도해 주세요.</string>
 </resources>

@@ -24,3 +24,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "muyeon_aos"
 include(":app")
+// ★ 2026-11-07 탭 네이티브 전환 — PaceERA 와 같은 계층 모듈(:domain ← :network ← :data ← :app). docs/ARCHITECTURE.md
+include(":domain", ":network", ":data")

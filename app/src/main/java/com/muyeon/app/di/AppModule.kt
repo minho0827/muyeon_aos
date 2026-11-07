@@ -1,0 +1,40 @@
+package com.muyeon.app.di
+
+import android.content.Context
+import com.muyeon.app.chat.socket.ForceLogout
+import com.muyeon.app.utils.TokenManager
+import com.muyeon.app.webview.ActiveRole
+import com.muyeon.domain.common.ActiveTypeStore
+import com.muyeon.domain.common.ForceLogoutTrigger
+import com.muyeon.domain.common.TokenStore
+import org.koin.android.ext.koin.androidContext
+import org.koin.dsl.module
+
+/**
+ * :app 이 하위 모듈에 넘겨 주는 구현 — 기존 저장소(TokenManager·ActiveRole·ForceLogout)를 그대로 쓴다.
+ *   기존 웹뷰·네이티브 화면과 **같은 토큰·같은 활성유형**을 보게 하려는 것(따로 저장하면 어긋난다).
+ *   ViewModel 등록은 기능별 모듈(ui/<feature>/di)이 아니라 여기 [viewModelModule] 한 곳에 모은다.
+ */
+val appModule = module {
+    single<TokenStore> {
+        val ctx: Context = androidContext()
+        object : TokenStore {
+            override fun accessToken(): String? = TokenManager.getAccessToken(ctx)?.takeIf { it.isNotBlank() }
+        }
+    }
+    single<ActiveTypeStore> {
+        val ctx: Context = androidContext()
+        object : ActiveTypeStore {
+            override fun current(): String? = runCatching { ActiveRole.current(ctx) }.getOrNull()
+        }
+    }
+    single<ForceLogoutTrigger> {
+        val ctx: Context = androidContext()
+        object : ForceLogoutTrigger {
+            override fun check(httpCode: Int, body: String?): Boolean = ForceLogout.checkResponse(ctx, httpCode, body)
+        }
+    }
+}
+
+val viewModelModule = module {
+}
