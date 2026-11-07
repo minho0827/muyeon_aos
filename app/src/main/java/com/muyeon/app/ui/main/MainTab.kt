@@ -9,7 +9,7 @@ import com.muyeon.app.ui.main.bar.BarMode
 /**
  * ★ 2026-11-08 앱 탭 — 모든 회원·비회원이 같은 탭을 쓴다(유형별 서버 탭 목록은 쓰지 않는다).
  *   탭바 칸([barItem])과 탭바 모드([mode])는 탭에서 정해진다:
- *     홈 · 커뮤니티(공연·캐스팅) · 공간(대관·양도양수) · MY → MAIN
+ *     홈 · 캐스팅(캐스팅·공연) · 공간(대관·양도양수) · MY → MAIN
  *     구인 · 구직 · 대타                                   → JOBS (채용 2계층)
  *   LESSONS(예전 강사 목록)는 탭바에 없다 — 홈 '강사' 쪽이 대신한다. 웹 /lessons 링크는 이 화면으로 온다.
  */
@@ -22,10 +22,10 @@ enum class MainTab(
     val mode: BarMode,
 ) {
     HOME("home", "/home", R.string.tab_home, Screen.TabHome.route, BarItem.HOME, BarMode.MAIN),
-    COMMUNITY("community", "/community", R.string.tab_community, Screen.TabCommunity.route, BarItem.COMMUNITY, BarMode.MAIN),
-    // 커뮤니티 탭 안 위쪽 탭(공연·캐스팅) — 탭바 칸은 커뮤니티.
-    PERFORMANCE("performance", "/performance", R.string.tab_performance, Screen.TabPerformance.route, BarItem.COMMUNITY, BarMode.MAIN),
-    CASTING("casting", "/casting", R.string.tab_casting, Screen.TabCasting.route, BarItem.COMMUNITY, BarMode.MAIN),
+    // 캐스팅 탭(위 제목 '공연/캐스팅') 안 위쪽 탭 — 캐스팅 · 공연. 탭바 칸은 캐스팅(STAGE).
+    //   커뮤니티는 탭이 아니다 — MY 안 섹션에서 탭 위 화면(Screen.CommunityList)으로 연다(2026-11-08 사용자 결정).
+    CASTING("casting", "/casting", R.string.tab_casting, Screen.TabCasting.route, BarItem.STAGE, BarMode.MAIN),
+    PERFORMANCE("performance", "/performance", R.string.tab_performance, Screen.TabPerformance.route, BarItem.STAGE, BarMode.MAIN),
     // 공간 탭 안 위쪽 탭(대관·양도양수) — 탭바 칸은 공간.
     SPACES("spaces", "/spaces", R.string.tab_space_rent, Screen.TabSpaces.route, BarItem.SPACE, BarMode.MAIN),
     TRANSFERS("transfers", "/studio-transfers", R.string.tab_transfer, Screen.TabTransfers.route, BarItem.SPACE, BarMode.MAIN),
@@ -52,7 +52,7 @@ enum class MainTab(
         /** 탭바 칸 → 그 칸이 여는 탭(부모 칸은 첫 하위 탭). BACK 은 null. */
         fun forBarItem(item: BarItem): MainTab? = when (item) {
             BarItem.HOME -> HOME
-            BarItem.COMMUNITY -> COMMUNITY
+            BarItem.STAGE -> CASTING
             BarItem.SPACE -> SPACES
             BarItem.JOBS -> JOBS
             BarItem.SEEK -> SEEK

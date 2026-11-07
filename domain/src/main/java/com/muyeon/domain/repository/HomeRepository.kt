@@ -19,6 +19,8 @@ import com.muyeon.domain.model.teacher.TeacherCard
 /** 홈 화면들(스와이프·강사·클래식)이 읽는 것 — 웹 Home·TeacherHome·HomeClassic 과 같은 API. */
 interface HomeRepository {
     suspend fun lessonPreview(region: ActiveRegion?): ApiResult<HomeLessonPreview>
+    /** 레슨 목록 한 장(장르 null = 전체 최신). */
+    suspend fun lessonPage(genre: String?, cursor: String?, limit: Int): ApiResult<com.muyeon.domain.common.CursorPage<HomeLesson>>
     suspend fun recruits(kind: HomeRecruit.Kind): ApiResult<List<HomeRecruit>>
     suspend fun spaces(): ApiResult<List<HomeSpace>>
     suspend fun transfers(limit: Int): ApiResult<List<HomeTransfer>>

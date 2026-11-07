@@ -10,7 +10,7 @@ import com.muyeon.app.ui.components.UnderlineTabs
 
 /**
  * ★ 2026-11-08 탭 안 나눔 머리 — 위 바(탭 이름 + 오른쪽 버튼) + 밑줄 글자 탭.
- *   커뮤니티 탭: 커뮤니티 · 공연 · 캐스팅 / 공간 탭: 대관 · 양도양수(2계층 탭바 대신 화면 안에서 나눈다 — 사용자 결정).
+ *   캐스팅 탭(제목 공연/캐스팅): 캐스팅 · 공연 / 공간 탭: 대관 · 양도양수(2계층 탭바 대신 화면 안에서 나눈다 — 사용자 결정).
  */
 @Composable
 fun TabSectionHeader(
@@ -30,11 +30,11 @@ fun TabSectionHeader(
     }
 }
 
-val COMMUNITY_SECTIONS = listOf(MainTab.COMMUNITY, MainTab.PERFORMANCE, MainTab.CASTING)
+val STAGE_SECTIONS = listOf(MainTab.CASTING, MainTab.PERFORMANCE)
 val SPACE_SECTIONS = listOf(MainTab.SPACES, MainTab.TRANSFERS)
 
 @Composable
-fun communityTitle() = stringResource(R.string.tab_community)
+fun stageTitle() = stringResource(R.string.tab_stage_title)
 
 @Composable
 fun spaceTitle() = stringResource(R.string.tab_space)

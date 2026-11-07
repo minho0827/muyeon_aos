@@ -56,6 +56,10 @@ class HomeRepositoryImpl(private val api: HomeApi, private val moshi: Moshi) : H
             )
         }
 
+    override suspend fun lessonPage(genre: String?, cursor: String?, limit: Int): ApiResult<com.muyeon.domain.common.CursorPage<HomeLesson>> =
+        safeApiCall(moshi) { api.lessonPage(genre, cursor, limit) }
+            .map { com.muyeon.domain.common.CursorPage(it.items.orEmpty().mapNotNull { d -> d.toDomain() }, it.next) }
+
     override suspend fun recruits(kind: HomeRecruit.Kind): ApiResult<List<HomeRecruit>> =
         safeApiCall(moshi) { if (kind == HomeRecruit.Kind.JOB) api.jobs() else api.subs() }
             .map { body -> body.listOrItems<HomeRecruitDto>().mapNotNull { it.toDomain(kind) } }

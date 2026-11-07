@@ -1,6 +1,7 @@
 package com.muyeon.app.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -69,6 +70,25 @@ fun AppNavHost(
                 onNativeAction = { action, data ->
                     context.findActivity()?.let { a ->
                         com.muyeon.app.webview.NativeActionRouter.open(a, action, org.json.JSONObject(data as Map<*, *>))
+                    }
+                },
+            )
+        }
+        // 커뮤니티 목록 — MY 섹션·웹 /community 에서 연다(탭이 아니다).
+        composable(Screen.CommunityList.route) {
+            val loggedIn = mainViewModel.state.collectAsState().value.isLoggedIn
+            val write = { onOpenWeb(if (loggedIn) WebPaths.COMMUNITY_WRITE else WebPaths.login(WebPaths.COMMUNITY_WRITE)) }
+            com.muyeon.app.ui.community.CommunityListScreen(
+                onOpenPost = { id -> navController.navigate(Screen.CommunityPost.build(id)) },
+                onWrite = write,
+                header = {
+                    com.muyeon.app.ui.components.MainTopBar(
+                        title = androidx.compose.ui.res.stringResource(com.muyeon.app.R.string.tab_community),
+                        onBack = { navController.popBackStack() },
+                    ) {
+                        com.muyeon.app.ui.components.TopBarIconButton(
+                            com.muyeon.app.R.drawable.ic_web_edit, androidx.compose.ui.res.stringResource(com.muyeon.app.R.string.community_write), onClick = write,
+                        )
                     }
                 },
             )

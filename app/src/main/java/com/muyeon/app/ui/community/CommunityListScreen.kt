@@ -52,7 +52,6 @@ fun CommunityListScreen(
         viewModel.onResume()
         onPauseOrDispose { }
     }
-    TabReselectEffect(MainTab.COMMUNITY) { viewModel.onTabReselect() }
     LaunchedEffect(viewModel) {
         viewModel.events.collect { e -> if (e is CommunityListEvent.ScrollToTop) listState.animateScrollToItem(0) }
     }

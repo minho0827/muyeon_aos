@@ -2,9 +2,9 @@ package com.muyeon.app.ui.main.bar
 
 /**
  * ★ 2026-11-08 탭바 모드 — PaceERA BarMode(토스 증권 방식)와 같은 생각. 채용 칸을 누르면 탭바가 채용 2계층으로 바뀐다.
- *   MAIN : [홈][커뮤니티][공간][채용][MY]
+ *   MAIN : [홈][캐스팅][공간][채용][MY]
  *   JOBS : [←][구인][구직][대타]
- *   커뮤니티(공연·캐스팅)와 공간(대관·양도양수)은 2계층 없이 화면 안 위쪽 탭으로 나눈다(사용자 결정 2026-11-08).
+ *   캐스팅(캐스팅·공연)과 공간(대관·양도양수)은 2계층 없이 화면 안 위쪽 탭으로 나눈다. 커뮤니티는 MY 안 섹션(사용자 결정 2026-11-08).
  *   모드는 따로 들고 있지 않고 **지금 탭에서 계산한다**(MainTab.mode) — 링크·뒤로가기가 와도 화면과 어긋나지 않는다.
  */
 enum class BarMode(val slotCount: Int) { MAIN(5), JOBS(4) }
@@ -15,7 +15,7 @@ enum class BarMode(val slotCount: Int) { MAIN(5), JOBS(4) }
  */
 enum class BarItem(private val slots: Map<BarMode, Int>) {
     HOME(mapOf(BarMode.MAIN to 0)),
-    COMMUNITY(mapOf(BarMode.MAIN to 1)),
+    STAGE(mapOf(BarMode.MAIN to 1)),
     SPACE(mapOf(BarMode.MAIN to 2)),
     JOBS(mapOf(BarMode.MAIN to 3, BarMode.JOBS to 1)),
     MY(mapOf(BarMode.MAIN to 4)),

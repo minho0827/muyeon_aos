@@ -27,7 +27,7 @@ import org.koin.androidx.compose.koinViewModel
  * @param onNativeAction 기존 앱 화면(NativeActionRouter 표)
  * @param onRoleManage 회원유형 화면(탭 셸이 역할 원문을 받아 연다)
  * @param onOpenCasting 공연팀 '일정' 바로가기 — 캐스팅 화면
- * @param onOpenTab 다른 탭(커뮤니티 바로가기)
+ * @param onOpenTab 다른 탭
  * @param onLoggedOut 로그아웃 뒤(탭 셸이 탭 목록·유형을 다시 읽고 홈으로)
  */
 @Composable
@@ -38,6 +38,8 @@ fun MyScreen(
     onRoleManage: () -> Unit,
     onOpenCasting: () -> Unit,
     onOpenTab: (MainTab) -> Unit,
+    /** 커뮤니티(탭이 아니라 MY 안 섹션 — 탭 위 화면으로 연다). */
+    onOpenCommunity: () -> Unit,
     onLoggedOut: () -> Unit,
     viewModel: MyViewModel = koinViewModel(),
 ) {
@@ -54,7 +56,7 @@ fun MyScreen(
     Column(Modifier.fillMaxSize().background(AppColors.Surface)) {
         MainTopBar(title = stringResource(R.string.tab_my))
         if (!isLoggedIn) {
-            GuestMyHome(onLogin = { onOpenWeb(WebPaths.login(MainTab.MY.webPath)) }, onOpenPath = onOpenWeb)
+            GuestMyHome(onLogin = { onOpenWeb(WebPaths.login(MainTab.MY.webPath)) }, onOpenPath = onOpenWeb, onOpenCommunity = onOpenCommunity)
         } else {
             MemberMyHome(
                 state = state,
@@ -68,7 +70,7 @@ fun MyScreen(
                 },
                 onShortcutCalendar = { onNativeAction("openLessonCalendar", emptyMap()) },
                 onShortcutCasting = onOpenCasting,
-                onShortcutCommunity = { onOpenTab(MainTab.COMMUNITY) },
+                onShortcutCommunity = onOpenCommunity,
                 onSettings = { onOpenWeb(WebPaths.SETTINGS) },
                 onLogout = { viewModel.askLogout(true) },
             )

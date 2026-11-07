@@ -155,10 +155,10 @@ fun MorphingTabBar(
     }
 }
 
-/** 칸 — 토스처럼 알약 표시 없이 색으로만 고른 칸을 보인다(고른 칸 주황, 나머지 회색). */
+/** 칸 — 토스처럼 알약 표시 없이 색으로만 고른 칸을 보인다(고른 칸 검정, 나머지 회색 — 2026-11-08 사용자 요청). */
 @Composable
 private fun LabeledTab(icon: Painter, label: String, selected: Boolean, dot: Boolean) {
-    val tint by animateColorAsState(if (selected) AppColors.Primary else AppColors.TextHint, label = "tabTint")
+    val tint by animateColorAsState(if (selected) AppColors.TextHead else AppColors.TextHint, label = "tabTint")
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = tint, modifier = Modifier.size(26.dp))

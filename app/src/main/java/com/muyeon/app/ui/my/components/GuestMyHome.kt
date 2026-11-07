@@ -25,7 +25,7 @@ import com.muyeon.app.ui.theme.Dimensions
  * @param onOpenPath 메뉴의 웹 화면
  */
 @Composable
-fun GuestMyHome(onLogin: () -> Unit, onOpenPath: (String) -> Unit, modifier: Modifier = Modifier) {
+fun GuestMyHome(onLogin: () -> Unit, onOpenPath: (String) -> Unit, onOpenCommunity: () -> Unit, modifier: Modifier = Modifier) {
     val rows = listOf(
         MyMenuRow("/notice", stringResource(R.string.my_menu_notice), R.drawable.ic_menu_notice),
         MyMenuRow("/faq", stringResource(R.string.my_menu_faq), R.drawable.ic_menu_faq),
@@ -40,6 +40,7 @@ fun GuestMyHome(onLogin: () -> Unit, onOpenPath: (String) -> Unit, modifier: Mod
             modifier = Modifier.fillMaxWidth().background(AppColors.Primary).padding(start = Dimensions.gutter, end = Dimensions.gutter, top = Dimensions.spacingL, bottom = Dimensions.spacing3XL),
         )
         PrimaryBottomButton(stringResource(R.string.my_guest_login), onClick = onLogin, modifier = Modifier.padding(top = Dimensions.spacingS), atScreenBottom = false)
+        MyCommunitySection(onOpenCommunity, Modifier.padding(top = Dimensions.spacingL))
         MyMenuList(rows, onClick = { onOpenPath(it.key) })
         MySubMenu(listOf(MySubMenuItem("/setting", stringResource(R.string.my_app_settings), R.drawable.ic_web_gear)), onClick = { onOpenPath(it.key) })
         androidx.compose.foundation.layout.Spacer(Modifier.padding(bottom = Dimensions.spacing3XL))

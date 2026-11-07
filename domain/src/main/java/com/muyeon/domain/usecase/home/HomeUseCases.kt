@@ -1,67 +1,62 @@
 package com.muyeon.domain.usecase.home
 
 import com.muyeon.domain.common.ApiResult
+import com.muyeon.domain.common.CursorPage
 import com.muyeon.domain.model.home.HomeLesson
-import com.muyeon.domain.model.home.HomeRecruit
+import com.muyeon.domain.model.home.HomeLessonPreview
 import com.muyeon.domain.model.region.ActiveRegion
 import com.muyeon.domain.model.teacher.TeacherCard
 import com.muyeon.domain.repository.HomeRepository
 import com.muyeon.domain.repository.TeacherRepository
 
-/** 홈 화면들이 쓰는 저장소 묶음(유스케이스 하나가 화면 하나를 맡는다 — 섹션마다 작은 함수). */
-class HomeSwipeUseCase(private val repo: HomeRepository, private val teachers: TeacherRepository) {
-    /** 회원님이 좋아할 강사 — 대표 지역 · 평점순 · 레슨 여는 강사 20, 사진 있는 강사 먼저(웹 photoFirst). */
-    suspend fun likedTeachers(region: ActiveRegion?): List<TeacherCard> =
-        (teachers.lessonTeachersPage(null, null, region, null, TEACHER_LIMIT, sort = "rating") as? ApiResult.Success)
-            ?.data?.items.orEmpty().photoFirst()
+/**
+ * ★ 2026-11-08 예시(더미) 숨김 — 화면에서만 뺀다(서버 데이터는 그대로, 사용자 결정).
+ *   강사: 프로필 예시 표시(isDemoProfile) 또는 서버가 '운영 예시 강사'로 늘 맨 앞에 두는 두 명
+ *         (profiles.service.ts listProfilePage `CASE WHEN u.id=23 … u.id=6` — 바뀌면 여기도).
+ *   레슨·공고: 제목이 '[예시]' 로 시작.
+ */
+object DemoContent {
+    private val DEMO_TEACHER_IDS = setOf(23L, 6L)
+    fun isDemo(t: TeacherCard) = t.isDemoProfile || t.id in DEMO_TEACHER_IDS
+    fun isDemoTitle(title: String?) = title?.trimStart()?.startsWith("[예시]") == true
+}
 
-    suspend fun lessonPreview(region: ActiveRegion?) = repo.lessonPreview(region)
-
-    /** 장르별 강사 구인 — 채용+대타 합쳐 10(웹 recruitsF). */
-    suspend fun recruits(): List<HomeRecruit> =
-        (repo.recruits(HomeRecruit.Kind.JOB).getOrNull().orEmpty() + repo.recruits(HomeRecruit.Kind.SUB).getOrNull().orEmpty()).take(RECRUIT_LIMIT)
-
-    /** 공지형 목록(강사 채용정보·대타공고) — 최신 5, 3일 안이면 새 글 표시는 화면이. */
-    suspend fun recruitNotice(kind: HomeRecruit.Kind): List<HomeRecruit> =
-        repo.recruits(kind).getOrNull().orEmpty().sortedByDescending { it.createdAt.orEmpty() }.take(NOTICE_LIMIT)
-
-    suspend fun spaces() = repo.spaces().getOrNull().orEmpty().take(MARKET_LIMIT)
-    suspend fun transfers() = repo.transfers(MARKET_LIMIT).getOrNull().orEmpty()
-    suspend fun notices() = repo.notices().getOrNull().orEmpty().take(HOME_NOTICES)
-    suspend fun homeQuotes() = repo.homeQuotes().getOrNull().orEmpty().take(QUOTE_LIMIT)
-    suspend fun blockRecommendation(teacherId: Long) = repo.blockRecommendation(teacherId)
-
-    // 학원 홈
-    suspend fun academyProfile() = repo.academyProfile().getOrNull()
-    suspend fun recommendedTeachers() = repo.recommendedTeachers().getOrNull().orEmpty().take(ACADEMY_REC_LIMIT).photoFirst()
-    suspend fun myActiveLessons() = repo.myLessons().getOrNull().orEmpty().filter { (it.status ?: "ACTIVE") == "ACTIVE" }
-    suspend fun myOpenJobs() = repo.myOpenJobs().getOrNull().orEmpty()
+/** 홈 '강사' — 에이전시형 강사 그리드(커서). 예시 강사는 뺀다. */
+class HomeArtistsUseCase(private val teachers: TeacherRepository) {
+    suspend fun page(genre: String?, region: ActiveRegion?, cursor: String?): ApiResult<CursorPage<TeacherCard>> =
+        teachers.teachersPage(genre?.takeIf { it != ALL }, region, cursor, PAGE).map { p -> p.copy(items = p.items.filterNot(DemoContent::isDemo)) }
 
     companion object {
-        /** 웹 FEATURED_HOME_LESSON_ID — '내 주변 추천 레슨' 맨 앞 고정. */
-        const val FEATURED_LESSON_ID = 18L
-        const val TEACHER_LIMIT = 20
-        const val RECRUIT_LIMIT = 10
-        const val NOTICE_LIMIT = 5
-        const val MARKET_LIMIT = 10
-        const val HOME_NOTICES = 3
-        const val QUOTE_LIMIT = 10
-        const val ACADEMY_REC_LIMIT = 12
-        const val LESSON_LIMIT = 10
-
-        fun List<TeacherCard>.photoFirst() = sortedByDescending { if (it.image != null) 1 else 0 }
-
-        /** 추천 레슨 — 고정 레슨 맨 앞, 10개. */
-        fun featuredFirst(list: List<HomeLesson>) = list.sortedByDescending { if (it.id == FEATURED_LESSON_ID) 1 else 0 }.take(LESSON_LIMIT)
+        const val ALL = "ALL"
+        const val PAGE = 20
     }
 }
 
-class TeacherHomeUseCase(private val repo: HomeRepository) {
-    suspend operator fun invoke(region: ActiveRegion?, today: String) = repo.teacherPreview(region, today)
-}
+/** 홈 '레슨' — 추천 묶음(추천·체험·원데이) · 새로 열린 레슨 · 장르별 목록. 예시 레슨은 뺀다. */
+class HomeLessonsUseCase(private val repo: HomeRepository) {
+    suspend fun preview(region: ActiveRegion?): ApiResult<HomeLessonPreview> = repo.lessonPreview(region).map { p ->
+        HomeLessonPreview(
+            featuredFirst(p.popular.clean()).take(SECTION),
+            p.experience.clean().take(SECTION),
+            p.oneday.clean().take(SECTION),
+        )
+    }
 
-class HomeFeedUseCase(private val repo: HomeRepository) {
-    suspend fun page(region: ActiveRegion?, domain: String, sub: String, cursor: String?) = repo.feedPage(region, domain, sub, cursor)
-    suspend fun appliedJobIds() = repo.myAppliedJobIds()
-    suspend fun viewedJobIds() = repo.myViewedJobIds()
+    suspend fun newest(): List<HomeLesson> = repo.lessonPage(null, null, SECTION).getOrNull()?.items.orEmpty().clean()
+
+    suspend fun page(genre: String, cursor: String?): ApiResult<CursorPage<HomeLesson>> =
+        repo.lessonPage(genre, cursor, PAGE).map { p -> p.copy(items = p.items.clean()) }
+
+    suspend fun notices() = repo.notices().getOrNull().orEmpty().take(NOTICES)
+
+    private fun List<HomeLesson>.clean() = filterNot { DemoContent.isDemoTitle(it.title) }
+
+    companion object {
+        /** 웹 FEATURED_HOME_LESSON_ID — 추천 레슨 맨 앞 고정. */
+        const val FEATURED_LESSON_ID = 18L
+        const val SECTION = 10
+        const val PAGE = 20
+        const val NOTICES = 3
+        fun featuredFirst(list: List<HomeLesson>) = list.sortedByDescending { if (it.id == FEATURED_LESSON_ID) 1 else 0 }
+    }
 }

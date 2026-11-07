@@ -64,6 +64,7 @@
     <string name="tab_space_rent">대관</string>
     <string name="tab_transfer">양도양수</string>
     <string name="tab_back">뒤로</string>
+    <string name="tab_stage_title">공연/캐스팅</string>
     <string name="casting_create">공연 공고 등록</string>
     <string name="casting_all">캐스팅 공고 전체 보기</string>
     <string name="interim_tab_desc">이 화면은 앱 화면으로 옮기는 중이에요.</string>
@@ -515,4 +516,25 @@
     <string name="company_email">muyeon.app@gmail.com</string>
     <string name="company_hosting">Amazon Web Services, Inc.</string>
     <string name="company_marketplace_notice">무용연은 통신판매중개자로서 통신판매의 당사자가 아니며 개별 판매자가 제공하는 서비스에 대한 이행 계약사항 등과 관련한 의무와 책임은 거래당사자에게 있습니다.</string>
+    <!-- ★ 2026-11-08 홈 개편(강사 | 레슨) -->
+    <string name="home_logo">舞踊緣</string>
+    <string name="home_mode_teachers">강사</string>
+    <string name="home_mode_lessons">레슨</string>
+    <string name="home_artists">ARTISTS</string>
+    <string name="home_artists_empty">이 장르의 강사가 아직 없어요.</string>
+    <string name="home_artists_failed">강사를 불러오지 못했어요.</string>
+    <string name="home_lesson_recommend">추천</string>
+    <string name="home_sec_popular_desc">지금 많이 찾는 레슨이에요</string>
+    <string name="home_sec_experience_desc">부담 없이 한 번 들어 보세요</string>
+    <string name="home_sec_oneday_desc">이번 주에 열리는 하루 수업</string>
+    <string name="home_sec_recommend">🔥 추천 레슨</string>
+    <string name="home_sec_newest">✨ 새로 열린 레슨</string>
+    <string name="home_sec_newest_desc">방금 올라온 레슨이에요</string>
+    <string name="home_lessons_empty">아직 열린 레슨이 없어요.</string>
+    <string name="home_lessons_genre_empty">이 장르의 레슨이 아직 없어요.</string>
+    <string name="home_lessons_failed">레슨을 불러오지 못했어요.</string>
+    <string name="home_view_all_arrow">전체보기 ›</string>
+    <string name="home_banner_counter">%1$02d / %2$02d</string>
+    <string name="home_banner_pause">자동 넘김 멈추기</string>
+    <string name="home_banner_play">자동 넘김 다시 시작</string>
 </resources>

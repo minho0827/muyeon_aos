@@ -59,9 +59,7 @@ val viewModelModule = module {
     viewModel { com.muyeon.app.ui.performance.PerformanceListViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { com.muyeon.app.ui.performance.PerformanceDetailViewModel(get(), get(), get(), get()) }
     // 홈
-    viewModel { com.muyeon.app.ui.home.HomeViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
-    viewModel { com.muyeon.app.ui.home.TeacherHomeViewModel(get(), get(), get(), get(), get(), get(), get()) }
-    viewModel { com.muyeon.app.ui.home.HomeClassicViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { com.muyeon.app.ui.home.HomeViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     // MY
     viewModel { com.muyeon.app.ui.my.MyViewModel(get(), get(), get(), get(), get(), get(), get()) }
     // 강사

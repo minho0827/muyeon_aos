@@ -12,7 +12,6 @@ sealed class Screen(val route: String) {
     // === 탭 루트(MainScreen 안쪽 NavHost) ===
     data object TabHome : Screen("tab/home")
     data object TabLessons : Screen("tab/lessons")
-    data object TabCommunity : Screen("tab/community")
     data object TabPerformance : Screen("tab/performance")
     data object TabMy : Screen("tab/my")
     data object TabCasting : Screen("tab/casting")
@@ -24,6 +23,8 @@ sealed class Screen(val route: String) {
     // 캐스팅·무대 상세·목록 경로는 ui/castingstage/StageRoutes.SHELL("stage/…") 한 곳.
 
     // === 탭 위 상세(바깥 NavHost — 탭바가 없다) ===
+    /** 커뮤니티 목록 — MY 안 섹션·웹 /community 링크에서 연다(탭이 아니다, 2026-11-08). */
+    data object CommunityList : Screen("community")
     data object CommunityPost : Screen("community/post/{id}") {
         const val ARG_ID = "id"
         fun build(id: Long) = "community/post/$id"

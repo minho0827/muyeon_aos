@@ -31,7 +31,6 @@ import com.muyeon.app.navigation.Screen
 import com.muyeon.app.navigation.WebPaths
 import com.muyeon.app.ui.performance.PerformanceListScreen
 import com.muyeon.app.ui.my.MyScreen
-import com.muyeon.app.ui.community.CommunityListScreen
 import com.muyeon.app.ui.lessons.LessonTabScreen
 import com.muyeon.app.ui.home.HomeActions
 import com.muyeon.app.ui.home.HomeScreen
@@ -106,7 +105,7 @@ fun MainScreen(
                         onCreate = if (canCreate) ({ onOpenDetail(r.create) }) else null,
                         reloadKey = com.muyeon.app.ui.castingstage.CastingStageSession.reloadKey,
                         header = {
-                            TabSectionHeader(communityTitle(), COMMUNITY_SECTIONS, MainTab.CASTING, viewModel::selectTab) {
+                            TabSectionHeader(stageTitle(), STAGE_SECTIONS, MainTab.CASTING, viewModel::selectTab) {
                                 if (canCreate) com.muyeon.app.ui.components.TopBarIconButton(R.drawable.ic_web_edit, stringResource(R.string.casting_create), onClick = { onOpenDetail(r.create) })
                                 com.muyeon.app.ui.components.TopBarIconButton(R.drawable.ic_web_filter, stringResource(R.string.casting_all), onClick = { onOpenDetail(r.castingList) })
                             }
@@ -115,7 +114,6 @@ fun MainScreen(
                 }
                 composable(Screen.TabHome.route) {
                     HomeScreen(
-                        activeType = state.activeType,
                         isLoggedIn = state.isLoggedIn,
                         actions = HomeActions(
                             openPath = onOpenPath,
@@ -136,25 +134,11 @@ fun MainScreen(
                         onLogin = { onOpenWeb(WebPaths.login(MainTab.LESSONS.webPath)) },
                     )
                 }
-                composable(Screen.TabCommunity.route) {
-                    CommunityListScreen(
-                        onOpenPost = { id -> onOpenDetail(Screen.CommunityPost.build(id)) },
-                        // 글쓰기는 로그인 필요(웹 community.write 게이트) — 비회원은 로그인 뒤 글쓰기로.
-                        onWrite = { onOpenWeb(if (state.isLoggedIn) WebPaths.COMMUNITY_WRITE else WebPaths.login(WebPaths.COMMUNITY_WRITE)) },
-                        header = {
-                            TabSectionHeader(communityTitle(), COMMUNITY_SECTIONS, MainTab.COMMUNITY, viewModel::selectTab) {
-                                com.muyeon.app.ui.components.TopBarIconButton(R.drawable.ic_web_edit, stringResource(R.string.community_write), onClick = {
-                                    onOpenWeb(if (state.isLoggedIn) WebPaths.COMMUNITY_WRITE else WebPaths.login(WebPaths.COMMUNITY_WRITE))
-                                })
-                            }
-                        },
-                    )
-                }
                 composable(Screen.TabPerformance.route) {
                     PerformanceListScreen(
                         onOpenDetail = { id -> onOpenDetail(Screen.PerformanceDetail.build(id)) },
                         onLogin = { onOpenWeb(WebPaths.login(MainTab.PERFORMANCE.webPath)) },
-                        header = { TabSectionHeader(communityTitle(), COMMUNITY_SECTIONS, MainTab.PERFORMANCE, viewModel::selectTab) },
+                        header = { TabSectionHeader(stageTitle(), STAGE_SECTIONS, MainTab.PERFORMANCE, viewModel::selectTab) },
                     )
                 }
                 // 구인구직·공간 — 앱 화면을 만드는 동안 지금 쓰던 화면을 연다(개편 계획 3·4단계).
@@ -178,6 +162,7 @@ fun MainScreen(
                         onNativeAction = onNativeAction,
                         onRoleManage = { viewModel.onTypePicked(MainViewModel.TYPE_MANAGE) },
                         onOpenCasting = { viewModel.selectTab(MainTab.CASTING) },
+                        onOpenCommunity = { onOpenDetail(Screen.CommunityList.route) },
                         onOpenTab = viewModel::selectTab,
                         onLoggedOut = viewModel::onLoggedOut,
                     )
@@ -210,7 +195,7 @@ private fun barLabel(item: BarItem, mode: BarMode, loggedIn: Boolean, activeType
     return stringResource(
         when (item) {
             BarItem.HOME -> R.string.tab_home
-            BarItem.COMMUNITY -> R.string.tab_community
+            BarItem.STAGE -> R.string.tab_casting
             BarItem.SPACE -> R.string.tab_space
             BarItem.JOBS -> if (main) R.string.tab_recruit else R.string.tab_jobs_hire
             BarItem.SEEK -> R.string.tab_jobs_seek
@@ -231,7 +216,7 @@ private fun barLabel(item: BarItem, mode: BarMode, loggedIn: Boolean, activeType
 @Composable
 private fun barIcon(item: BarItem): Painter = when (item) {
     BarItem.HOME, BarItem.BACK -> painterResource(R.drawable.ic_tab_home)
-    BarItem.COMMUNITY -> painterResource(R.drawable.ic_tab_community)
+    BarItem.STAGE -> painterResource(R.drawable.ic_tab_star)
     BarItem.SPACE -> rememberVectorPainter(Icons.Rounded.MeetingRoom)
     BarItem.JOBS -> painterResource(R.drawable.ic_tab_note)
     BarItem.SEEK -> rememberVectorPainter(Icons.Rounded.PersonSearch)

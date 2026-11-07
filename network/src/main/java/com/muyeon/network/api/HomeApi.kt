@@ -25,6 +25,10 @@ interface HomeApi {
     @GET(ApiEndpoints.Home.LESSON_PREVIEW)
     suspend fun lessonPreview(@Query("regionCode") regionCode: String?, @Query("sido") sido: String?): Response<HomeLessonPreviewDto>
 
+    /** 레슨 목록(커서) — 홈 '레슨' 장르 탭 · 새로 열린 레슨. */
+    @GET(ApiEndpoints.Home.LESSON_PAGE)
+    suspend fun lessonPage(@Query("genre") genre: String?, @Query("cursor") cursor: String?, @Query("limit") limit: Int): Response<CursorPageDto<HomeLessonDto>>
+
     /** 배열 또는 { items } — 저장소가 읽는다. */
     @GET(ApiEndpoints.Home.JOBS) suspend fun jobs(): Response<ResponseBody>
     @GET(ApiEndpoints.Home.SUBS) suspend fun subs(): Response<ResponseBody>
