@@ -24,6 +24,8 @@ import com.muyeon.app.ui.performance.PerformanceListScreen
 import com.muyeon.app.ui.my.MyScreen
 import com.muyeon.app.ui.community.CommunityListScreen
 import com.muyeon.app.ui.lessons.LessonTabScreen
+import com.muyeon.app.ui.home.HomeActions
+import com.muyeon.app.ui.home.HomeScreen
 import com.muyeon.app.ui.theme.AppColors
 import com.muyeon.app.ui.theme.AppTypography
 
@@ -40,7 +42,10 @@ fun MainScreen(
     onOpenWeb: (String) -> Unit,
     /** 기존 앱 화면 열기 — 웹 브리지와 같은 액션 이름·데이터(NativeActionRouter 표). */
     onNativeAction: (String, Map<String, String>) -> Unit,
+    /** 웹 주소 열기 — 앱으로 옮긴 주소면 앱 화면, 아니면 웹 창(NativeRoutes). */
+    onOpenPath: (String) -> Unit,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val state by viewModel.state.collectAsStateWithLifecycle()
     val tabNav = rememberNavController()
 
@@ -72,7 +77,18 @@ fun MainScreen(
     ) { inner ->
         CompositionLocalProvider(LocalTabReselect provides viewModel.reselect) {
             NavHost(tabNav, startDestination = Screen.TabHome.route, modifier = Modifier.padding(inner)) {
-                composable(Screen.TabHome.route) { TabPlaceholder(MainTab.HOME) }
+                composable(Screen.TabHome.route) {
+                    HomeScreen(
+                        HomeActions(
+                            openPath = onOpenPath,
+                            native = onNativeAction,
+                            openTab = viewModel::selectTab,
+                            login = { onOpenWeb(WebPaths.login(MainTab.HOME.webPath)) },
+                            dial = { tel -> context.startActivity(android.content.Intent(android.content.Intent.ACTION_DIAL, android.net.Uri.parse("tel:" + tel.replace("-", "")))) },
+                            mail = { mail -> runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_SENDTO, android.net.Uri.parse("mailto:$mail"))) } },
+                        ),
+                    )
+                }
                 composable(Screen.TabLessons.route) {
                     LessonTabScreen(
                         onOpenProfile = { id -> onNativeAction("openPublicProfile", mapOf("userId" to id.toString())) },
@@ -111,10 +127,3 @@ fun MainScreen(
     }
 }
 
-/** 탭 화면 자리 — 2단계(탭별 이식)에서 각 기능 화면으로 바뀐다. */
-@Composable
-private fun TabPlaceholder(tab: MainTab) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(stringResource(tab.labelRes), style = AppTypography.Section16, color = AppColors.TextSub)
-    }
-}

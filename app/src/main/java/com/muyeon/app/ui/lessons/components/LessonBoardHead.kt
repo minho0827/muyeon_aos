@@ -27,10 +27,7 @@ import com.muyeon.app.ui.theme.AppColors
 @Composable
 fun LessonBoardHead(grid: Boolean, filterOn: Boolean, onGrid: (Boolean) -> Unit, onFilter: () -> Unit, modifier: Modifier = Modifier) {
     Row(modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            ToggleIcon(R.drawable.ic_web_square, stringResource(R.string.lesson_view_grid), grid) { onGrid(true) }
-            ToggleIcon(R.drawable.ic_web_menu, stringResource(R.string.lesson_view_list), !grid) { onGrid(false) }
-        }
+        com.muyeon.app.ui.components.ViewModeToggle(grid, onGrid)
         Spacer(Modifier.weight(1f))
         Box(Modifier.size(40.dp).clickable(onClick = onFilter), contentAlignment = Alignment.Center) {
             Icon(painterResource(R.drawable.ic_web_filter), contentDescription = stringResource(R.string.lesson_filter), tint = AppColors.TextSub, modifier = Modifier.size(24.dp))
@@ -39,12 +36,3 @@ fun LessonBoardHead(grid: Boolean, filterOn: Boolean, onGrid: (Boolean) -> Unit,
     }
 }
 
-@Composable
-private fun ToggleIcon(iconRes: Int, desc: String, selected: Boolean, onClick: () -> Unit) {
-    Box(
-        Modifier.size(32.dp).background(if (selected) AppColors.Divider else AppColors.Surface, RoundedCornerShape(8.dp)).clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(painterResource(iconRes), contentDescription = desc, tint = AppColors.TextHead, modifier = Modifier.size(32.dp))
-    }
-}

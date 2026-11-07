@@ -97,6 +97,8 @@ object CategoryColors {
     val CardTag = PillColors(Color(0xFFFDEEE9), Color(0xFFD97A5A))
     /** DM(레슨 문의) 동그라미 — 웹 #FDEBDD 바탕 · #F58232 선. */
     val Dm = PillColors(Color(0xFFFDEBDD), Palette.Primary500)
+    /** 홈 하단 '커뮤니티' 제목 아이콘(웹 $background-ico-blue 근사). */
+    val CommunityIcon: Color = Color(0xFF5A6CD8)
     /** 강사 홈 '신규' 표시. */
     val NewLabel: Color = Palette.Green
 

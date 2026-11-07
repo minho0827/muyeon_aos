@@ -20,6 +20,9 @@ import com.muyeon.domain.usecase.uiflag.ShouldShowGuideUseCase
 import com.muyeon.domain.usecase.my.GetBadgeCountsUseCase
 import com.muyeon.domain.usecase.my.GetMyPageInfoUseCase
 import com.muyeon.domain.usecase.my.LogoutUseCase
+import com.muyeon.domain.usecase.home.HomeFeedUseCase
+import com.muyeon.domain.usecase.home.HomeSwipeUseCase
+import com.muyeon.domain.usecase.home.TeacherHomeUseCase
 import org.koin.dsl.module
 
 /**
@@ -61,4 +64,8 @@ val domainModule = module {
     factory { GetMyPageInfoUseCase(get()) }
     factory { GetBadgeCountsUseCase(get()) }
     factory { LogoutUseCase(get()) }
+    // 홈
+    factory { HomeSwipeUseCase(get(), get()) }
+    factory { TeacherHomeUseCase(get()) }
+    factory { HomeFeedUseCase(get()) }
 }

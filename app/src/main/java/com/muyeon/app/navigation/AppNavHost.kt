@@ -22,6 +22,7 @@ fun AppNavHost(
     mainViewModel: MainViewModel,
     onMyLongPress: () -> Unit,
     onOpenWeb: (String) -> Unit,
+    onOpenPath: (String) -> Unit,
     navController: NavHostController = rememberNavController(),
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -54,6 +55,7 @@ fun AppNavHost(
                 onOpenDetail = { route -> navController.navigate(route) },
                 onMyLongPress = onMyLongPress,
                 onOpenWeb = onOpenWeb,
+                onOpenPath = onOpenPath,
                 onNativeAction = { action, data ->
                     context.findActivity()?.let { a ->
                         com.muyeon.app.webview.NativeActionRouter.open(a, action, org.json.JSONObject(data as Map<*, *>))

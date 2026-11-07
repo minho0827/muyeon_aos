@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.SharedFlow
 val LocalTabReselect = compositionLocalOf<SharedFlow<String>> { MutableSharedFlow() }
 
 @Composable
-fun TabReselectEffect(tab: MainTab, onReselect: () -> Unit) {
+fun TabReselectEffect(tab: MainTab, onReselect: suspend () -> Unit) {
     val flow = LocalTabReselect.current
     val latest = rememberUpdatedState(onReselect)
     LaunchedEffect(flow, tab) {

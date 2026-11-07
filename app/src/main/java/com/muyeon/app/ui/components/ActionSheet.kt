@@ -39,7 +39,7 @@ data class SheetAction(val text: String, val primary: Boolean, val onClick: () -
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ActionSheet(title: String, actions: List<SheetAction>, onDismiss: () -> Unit) {
+fun ActionSheet(title: String, actions: List<SheetAction>, onDismiss: () -> Unit, description: String? = null) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -56,6 +56,7 @@ fun ActionSheet(title: String, actions: List<SheetAction>, onDismiss: () -> Unit
                     modifier = Modifier.size(Dimensions.iconL).clickable(onClick = onDismiss),
                 )
             }
+            if (description != null) Text(description, style = AppTypography.Body14, color = AppColors.TextSub)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimensions.spacingS)) {
                 actions.forEach { a -> SheetButton(a, Modifier.weight(1f)) }
             }

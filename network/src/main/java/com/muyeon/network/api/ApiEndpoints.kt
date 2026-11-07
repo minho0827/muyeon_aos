@@ -18,11 +18,6 @@ object ApiEndpoints {
         const val MINE = "$API/me/roles"
     }
 
-    /** home controller — 회원유형 화면 배경(랜덤 1장). */
-    object Home {
-        const val ROLE_HERO = "$API/home/role-hero"
-    }
-
     /** scraps.controller.ts — 목록은 me/scraps, 토글은 영역별 경로. */
     object Scraps {
         const val MINE = "$API/me/scraps"                     // GET ?targetType=
@@ -68,6 +63,27 @@ object ApiEndpoints {
         const val PENDING_POSTINGS = "$API/me/pending-postings/summary"       // → { total, roles:[{role,status}] }
         const val CASTING_MATERIAL_ACCESS = "$API/casting-materials/access"   // → { allowed }
         const val SUPPORT_CHAT_ELIGIBILITY = "$API/support-chat/eligibility"  // → { eligible, hasRooms }
+    }
+
+    /** 홈(웹 Home·TeacherHome·HomeClassic) — 출처는 줄 끝 주석. */
+    object Home {
+        const val LESSON_PREVIEW = "$API/lesson-products/home-preview"   // lesson-products.controller.ts
+        const val MY_LESSONS = "$API/lesson-products/mine"
+        const val JOBS = "$API/jobs"                                     // jobs.controller.ts
+        const val SUBS = "$API/subs"                                     // subs.controller.ts
+        const val SPACES = "$API/spaces"                                 // spaces.controller.ts
+        const val TRANSFERS = "$API/studio-transfers/page"               // studio-transfers.controller.ts
+        const val NOTICES = "$API/notices"                               // notices.controller.ts
+        const val QUOTES = "$API/quotes/home"                            // quotes.controller.ts
+        const val RECOMMEND_BLOCKS = "$API/quotes/recommend-blocks"      // POST { teacherId }
+        const val ACADEMY_PROFILE = "$API/auth/me/academy"               // auth.controller.ts
+        const val RECOMMENDED_TEACHERS = "$API/teachers/recommended"     // profiles.controller.ts
+        const val MY_POSTINGS = "$API/me/postings"
+        const val TEACHER_PREVIEW = "$API/home/teacher-preview"          // home.controller.ts
+        const val FEED_PAGE = "$API/home/feed/page"
+        const val MY_APPLICATIONS = "$API/me/applications"
+        const val MY_VIEWED_JOBS = "$API/jobs/views/mine"
+        const val ROLE_HERO = "$API/home/role-hero"                      // 회원유형 화면 배경(랜덤 1장)
     }
 
     /** profiles.controller.ts */

@@ -79,7 +79,7 @@ class MainActivity : ComponentActivity(), ResultHost {
         setContent {
             MuyeonTheme(darkTheme = false, dynamicColor = false) {
                 Box(Modifier.fillMaxSize()) {
-                    AppNavHost(mainViewModel = viewModel, onMyLongPress = ::showTypeSheet, onOpenWeb = { path -> WebViewActivity.startPath(this@MainActivity, path) })
+                    AppNavHost(mainViewModel = viewModel, onMyLongPress = ::showTypeSheet, onOpenWeb = { path -> WebViewActivity.startPath(this@MainActivity, path) }, onOpenPath = { path -> openPath(path, viaLink = false) })
                     FloatingOverlay(
                         api = remember { FloatingApi { TokenManager.getAccessToken(this@MainActivity) } },
                         onOpenChatList = { ChatActivity.startList(this@MainActivity, "") },
