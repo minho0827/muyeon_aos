@@ -39,13 +39,13 @@ import com.muyeon.app.ui.components.EmptyView
 import com.muyeon.app.ui.components.UnderlineTabs
 import com.muyeon.app.ui.format.KstDates
 import com.muyeon.app.ui.home.components.ArtistCard
-import com.muyeon.app.ui.home.components.ArtistHero
+import com.muyeon.app.ui.home.components.HomeBanner
+import com.muyeon.app.ui.home.components.HomeBannerPager
 import com.muyeon.app.ui.home.components.ArtistsHeading
 import com.muyeon.app.ui.home.components.HomeLegalFooter
 import com.muyeon.app.ui.home.components.HomeNoticeList
 import com.muyeon.app.ui.home.components.HomeNoticeRow
 import com.muyeon.app.ui.home.components.HomeTopBar
-import com.muyeon.app.ui.home.components.LessonBannerCarousel
 import com.muyeon.app.ui.home.components.LessonCategoryIcons
 import com.muyeon.app.ui.home.components.LessonProductCard
 import com.muyeon.app.ui.home.components.LessonSection
@@ -113,7 +113,13 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
                     val a = s.artists
                     if (s.teacherGenre == HomeArtistsUseCase.ALL) item(key = "hero", span = FULL) {
                         // 띠는 화면 끝까지(그리드 좌우 여백을 넘어선다).
-                        ArtistHero(a.items.filter { it.image != null }.take(2), { t -> openProfile(actions, t.id) }, Modifier.bleed(16.dp))
+                        // 맨 위 넘기는 배너 — 사진 있는 강사(부스트 먼저, 서버 순서) 최대 10명.
+                        HomeBannerPager(
+                            a.items.filter { it.image != null }.take(BANNER_COUNT).map { t ->
+                                HomeBanner(t.id, t.image!!, t.name, t.genres.joinToString(" · ").ifBlank { null }) { openProfile(actions, t.id) }
+                            },
+                            onAll = null, modifier = Modifier.bleed(16.dp),
+                        )
                     }
                     item(key = "heading", span = FULL) { ArtistsHeading() }
                     when {
@@ -134,7 +140,12 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
                 ) {
                     if (s.lessonTab == HomeUiState.LESSON_RECOMMEND) {
                         val p = s.preview
-                        item(key = "banner", span = FULL) { LessonBannerCarousel(p.popular, openLesson, onAll = { lessonList(recommendTitle(context), "popular") }) }
+                        item(key = "banner", span = FULL) {
+                            HomeBannerPager(
+                                p.popular.filter { it.image != null }.map { l -> HomeBanner(l.id, l.image!!, l.title, l.place) { openLesson(l) } },
+                                onAll = { lessonList(recommendTitle(context), "popular") },
+                            )
+                        }
                         item(key = "icons", span = FULL) { LessonCategoryIcons(LessonGenres.ALL, viewModel::selectLessonTab) }
                         item(key = "popular", span = FULL) {
                             LessonSection(stringResource(R.string.home_sec_recommend), stringResource(R.string.home_sec_popular_desc), p.popular, null, s.likedLessons,
@@ -182,6 +193,8 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
         }
     }
 }
+
+private const val BANNER_COUNT = 10
 
 private val FULL: LazyGridItemSpanScope.() -> GridItemSpan = { GridItemSpan(maxLineSpan) }
 

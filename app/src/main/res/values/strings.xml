@@ -535,7 +535,7 @@
     <string name="home_lessons_genre_empty">이 장르의 레슨이 아직 없어요.</string>
     <string name="home_lessons_failed">레슨을 불러오지 못했어요.</string>
     <string name="home_view_all_arrow">전체보기 ›</string>
-    <string name="home_banner_counter">%1$02d / %2$02d</string>
+    <string name="home_banner_counter">%1$02d | %2$02d</string>
     <string name="home_banner_pause">자동 넘김 멈추기</string>
     <string name="home_banner_play">자동 넘김 다시 시작</string>
 </resources>

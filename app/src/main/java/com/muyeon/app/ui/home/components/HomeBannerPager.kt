@@ -38,36 +38,38 @@ import androidx.compose.ui.unit.dp
 import com.muyeon.app.R
 import com.muyeon.app.ui.components.RemoteImage
 import com.muyeon.app.ui.theme.AppTypography
-import com.muyeon.domain.model.home.HomeLesson
 import kotlinx.coroutines.delay
+
+/** 배너 한 장 — 사진 · 흰 글자 제목·부제(사진 아래쪽). */
+data class HomeBanner(val key: Any, val image: String, val title: String, val sub: String?, val onClick: () -> Unit)
 
 private const val AUTO_MS = 4000L
 
 /**
- * 레슨 쪽 맨 위 큰 배너 — 뷰티컬리 첫 띠처럼: 꽉 찬 사진(4:3) · 아래 어둡게 깔고 흰 글자(제목·장소) ·
- *   오른쪽 아래 [⏸][01 / 10 전체보기 >] · 4초마다 넘어간다(멈춤 가능). 사진 있는 추천 레슨으로 채운다.
+ * ★ 2026-11-08 홈 맨 위 넘기는 배너 — 뷰티컬리 첫 띠와 같은 모양(사용자 요청): 꽉 찬 사진(4:3) · 아래 어둡게 + 흰 글자 ·
+ *   오른쪽 아래 [⏸] [01 | 10 전체보기 ›] 표시 · 4초마다 넘어감(멈춤 가능) · 손으로 넘기기(뷰페이저).
+ *   [onAll] 이 없으면 표시는 숫자만.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun LessonBannerCarousel(lessons: List<HomeLesson>, onOpen: (HomeLesson) -> Unit, onAll: () -> Unit, modifier: Modifier = Modifier) {
-    val items = lessons.filter { it.image != null }
-    if (items.isEmpty()) return
-    val pager = rememberPagerState { items.size }
+fun HomeBannerPager(banners: List<HomeBanner>, onAll: (() -> Unit)?, modifier: Modifier = Modifier) {
+    if (banners.isEmpty()) return
+    val pager = rememberPagerState { banners.size }
     var playing by rememberSaveable { mutableStateOf(true) }
-    LaunchedEffect(playing, pager.currentPage, items.size) {
-        if (!playing || items.size < 2) return@LaunchedEffect
+    LaunchedEffect(playing, pager.currentPage, banners.size) {
+        if (!playing || banners.size < 2) return@LaunchedEffect
         delay(AUTO_MS)
-        pager.animateScrollToPage((pager.currentPage + 1) % items.size)
+        pager.animateScrollToPage((pager.currentPage + 1) % banners.size)
     }
     Box(modifier.fillMaxWidth().aspectRatio(4f / 3f)) {
-        HorizontalPager(pager, Modifier.fillMaxSize()) { i ->
-            val l = items[i]
-            Box(Modifier.fillMaxSize().clickable { onOpen(l) }) {
-                RemoteImage(l.image, Modifier.fillMaxSize())
+        HorizontalPager(pager, Modifier.fillMaxSize(), key = { banners[it].key }) { i ->
+            val b = banners[i]
+            Box(Modifier.fillMaxSize().clickable(onClick = b.onClick)) {
+                RemoteImage(b.image, Modifier.fillMaxSize(), alignment = Alignment.TopCenter)
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.55f))))
                 Column(Modifier.align(Alignment.BottomStart).padding(start = 22.dp, end = 22.dp, bottom = 64.dp)) {
-                    Text(l.title, style = AppTypography.Title20.copy(color = Color.White), maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    l.place?.let { Text(it, style = AppTypography.Body14.copy(color = Color.White.copy(alpha = 0.85f)), modifier = Modifier.padding(top = 6.dp), maxLines = 1) }
+                    Text(b.title, style = AppTypography.Title20.copy(color = Color.White), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    b.sub?.let { Text(it, style = AppTypography.Body14.copy(color = Color.White.copy(alpha = 0.85f)), modifier = Modifier.padding(top = 6.dp), maxLines = 1) }
                 }
             }
         }
@@ -76,10 +78,13 @@ fun LessonBannerCarousel(lessons: List<HomeLesson>, onOpen: (HomeLesson) -> Unit
                 Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                     stringResource(if (playing) R.string.home_banner_pause else R.string.home_banner_play), tint = Color.White, modifier = Modifier.size(18.dp))
             }
-            Row(Modifier.clip(RoundedCornerShape(50)).background(PILL).clickable(onClick = onAll).padding(horizontal = 14.dp, vertical = 7.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.home_banner_counter, pager.currentPage + 1, items.size), style = AppTypography.Caption12.copy(color = Color.White))
-                Text(stringResource(R.string.home_view_all_arrow), style = AppTypography.Caption12.copy(color = Color.White), modifier = Modifier.padding(start = 6.dp))
+            Row(
+                Modifier.clip(RoundedCornerShape(50)).background(PILL).then(if (onAll != null) Modifier.clickable(onClick = onAll) else Modifier)
+                    .padding(horizontal = 14.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.home_banner_counter, pager.currentPage + 1, banners.size), style = AppTypography.Caption12.copy(color = Color.White))
+                if (onAll != null) Text(stringResource(R.string.home_view_all_arrow), style = AppTypography.Caption12.copy(color = Color.White), modifier = Modifier.padding(start = 6.dp))
             }
         }
     }
