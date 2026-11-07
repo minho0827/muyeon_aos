@@ -12,6 +12,11 @@ import com.muyeon.domain.usecase.scrap.ToggleScrapUseCase
 import com.muyeon.domain.usecase.community.*
 import com.muyeon.domain.usecase.safety.BlockUserUseCase
 import com.muyeon.domain.usecase.safety.ReportUseCase
+import com.muyeon.domain.usecase.region.DetectRegionUseCase
+import com.muyeon.domain.usecase.region.ObserveActiveRegionUseCase
+import com.muyeon.domain.usecase.teacher.GetLessonTeachersPageUseCase
+import com.muyeon.domain.usecase.uiflag.MarkGuideSeenUseCase
+import com.muyeon.domain.usecase.uiflag.ShouldShowGuideUseCase
 import org.koin.dsl.module
 
 /**
@@ -43,4 +48,10 @@ val domainModule = module {
     // 신고·차단
     factory { ReportUseCase(get()) }
     factory { BlockUserUseCase(get()) }
+    // 강사·지역·안내
+    factory { GetLessonTeachersPageUseCase(get()) }
+    factory { ObserveActiveRegionUseCase(get()) }
+    factory { DetectRegionUseCase(get()) }
+    factory { ShouldShowGuideUseCase(get(), get()) }
+    factory { MarkGuideSeenUseCase(get()) }
 }

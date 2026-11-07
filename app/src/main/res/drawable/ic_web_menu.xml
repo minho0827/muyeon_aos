@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 웹 src/assets/icons/ic-menu.svg 에서 옮김. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp" android:height="32dp"
+    android:viewportWidth="32" android:viewportHeight="32">
+    <path android:pathData="M8 9.33301H24" android:strokeColor="#FF000000" android:strokeWidth="1.6" android:strokeLineCap="round" />
+    <path android:pathData="M8 16H24" android:strokeColor="#FF000000" android:strokeWidth="1.6" android:strokeLineCap="round" />
+    <path android:pathData="M8 22.666H24" android:strokeColor="#FF000000" android:strokeWidth="1.6" android:strokeLineCap="round" />
+</vector>

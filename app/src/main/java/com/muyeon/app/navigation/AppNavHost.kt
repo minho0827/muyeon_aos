@@ -54,6 +54,11 @@ fun AppNavHost(
                 onOpenDetail = { route -> navController.navigate(route) },
                 onMyLongPress = onMyLongPress,
                 onOpenWeb = onOpenWeb,
+                onNativeAction = { action, data ->
+                    context.findActivity()?.let { a ->
+                        com.muyeon.app.webview.NativeActionRouter.open(a, action, org.json.JSONObject(data as Map<*, *>))
+                    }
+                },
             )
         }
         composable(

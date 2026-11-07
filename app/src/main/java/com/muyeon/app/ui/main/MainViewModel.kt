@@ -58,6 +58,7 @@ class MainViewModel(
     private val getMyRoles: GetMyRolesUseCase,
     private val switchActiveType: SwitchActiveTypeUseCase,
     private val getRoleManageLaunch: GetRoleManageLaunchUseCase,
+    private val detectRegion: com.muyeon.domain.usecase.region.DetectRegionUseCase,
     private val tokens: TokenStore,
     private val activeTypeStore: ActiveTypeStore,
 ) : ViewModel() {
@@ -103,6 +104,11 @@ class MainViewModel(
             refreshTabs()
         }
         refreshRoles()
+    }
+
+    /** 대표 지역이 아직 없으면 좌표로 정한다(웹 RegionProvider 첫 실행과 같다). */
+    fun detectRegionIfNeeded(coords: suspend () -> com.muyeon.domain.model.region.Coordinates?) {
+        viewModelScope.launch { detectRegion(coords) }
     }
 
     fun refreshTabs() {

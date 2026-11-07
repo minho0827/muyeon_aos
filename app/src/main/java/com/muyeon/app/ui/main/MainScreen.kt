@@ -23,6 +23,7 @@ import com.muyeon.app.navigation.WebPaths
 import com.muyeon.app.ui.performance.PerformanceListScreen
 import com.muyeon.app.ui.my.MyScreen
 import com.muyeon.app.ui.community.CommunityListScreen
+import com.muyeon.app.ui.lessons.LessonTabScreen
 import com.muyeon.app.ui.theme.AppColors
 import com.muyeon.app.ui.theme.AppTypography
 
@@ -37,6 +38,8 @@ fun MainScreen(
     onMyLongPress: () -> Unit,
     /** 웹 페이지 창(로그인 등). */
     onOpenWeb: (String) -> Unit,
+    /** 기존 앱 화면 열기 — 웹 브리지와 같은 액션 이름·데이터(NativeActionRouter 표). */
+    onNativeAction: (String, Map<String, String>) -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val tabNav = rememberNavController()
@@ -70,7 +73,15 @@ fun MainScreen(
         CompositionLocalProvider(LocalTabReselect provides viewModel.reselect) {
             NavHost(tabNav, startDestination = Screen.TabHome.route, modifier = Modifier.padding(inner)) {
                 composable(Screen.TabHome.route) { TabPlaceholder(MainTab.HOME) }
-                composable(Screen.TabLessons.route) { TabPlaceholder(MainTab.LESSONS) }
+                composable(Screen.TabLessons.route) {
+                    LessonTabScreen(
+                        onOpenProfile = { id -> onNativeAction("openPublicProfile", mapOf("userId" to id.toString())) },
+                        onRequestLesson = { category, teacherId ->
+                            onNativeAction("openQuoteWizard", mapOf("category" to category, "targetTeacherId" to teacherId.toString()))
+                        },
+                        onLogin = { onOpenWeb(WebPaths.login(MainTab.LESSONS.webPath)) },
+                    )
+                }
                 composable(Screen.TabCommunity.route) {
                     CommunityListScreen(
                         onOpenPost = { id -> onOpenDetail(Screen.CommunityPost.build(id)) },

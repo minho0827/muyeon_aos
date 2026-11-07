@@ -56,5 +56,16 @@ object ApiEndpoints {
     /** auth.controller.ts */
     object Auth {
         const val ACTIVE_TYPE = "$API/auth/me/active-type"   // PATCH { type }
+        const val UI_FLAGS = "$API/auth/me/ui-flags"         // GET { flags } · PATCH { key: true }
+    }
+
+    /** profiles.controller.ts */
+    object Teachers {
+        const val PAGE = "$API/teachers/page"                // GET lesson·genre|field·region·regionKind·sort·cursor·limit
+    }
+
+    /** regions.controller.ts */
+    object Regions {
+        const val NEAREST = "$API/regions/nearest"           // GET lat·lng → Region | null
     }
 }

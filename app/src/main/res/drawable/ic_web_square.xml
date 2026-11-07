@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 웹 src/assets/icons/ic-square.svg 에서 옮김. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp" android:height="32dp"
+    android:viewportWidth="32" android:viewportHeight="32">
+    <path android:pathData="M9.0,8.0H13.0A1.0,1.0 0 0 1 14.0,9.0V13.0A1.0,1.0 0 0 1 13.0,14.0H9.0A1.0,1.0 0 0 1 8.0,13.0V9.0A1.0,1.0 0 0 1 9.0,8.0Z" android:strokeColor="#FF000000" android:strokeWidth="1" />
+    <path android:pathData="M18.0,8.0H22.0A1.0,1.0 0 0 1 23.0,9.0V13.0A1.0,1.0 0 0 1 22.0,14.0H18.0A1.0,1.0 0 0 1 17.0,13.0V9.0A1.0,1.0 0 0 1 18.0,8.0Z" android:strokeColor="#FF000000" android:strokeWidth="1" />
+    <path android:pathData="M9.0,17.0H13.0A1.0,1.0 0 0 1 14.0,18.0V22.0A1.0,1.0 0 0 1 13.0,23.0H9.0A1.0,1.0 0 0 1 8.0,22.0V18.0A1.0,1.0 0 0 1 9.0,17.0Z" android:strokeColor="#FF000000" android:strokeWidth="1" />
+    <path android:pathData="M18.0,17.0H22.0A1.0,1.0 0 0 1 23.0,18.0V22.0A1.0,1.0 0 0 1 22.0,23.0H18.0A1.0,1.0 0 0 1 17.0,22.0V18.0A1.0,1.0 0 0 1 18.0,17.0Z" android:strokeColor="#FF000000" android:strokeWidth="1" />
+</vector>

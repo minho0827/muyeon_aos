@@ -136,6 +136,7 @@ class MainActivity : ComponentActivity(), ResultHost {
         super.onResume()
         // 웹 창에서 로그인·로그아웃·유형 전환을 하고 돌아왔을 수 있다.
         viewModel.onResume()
+        viewModel.detectRegionIfNeeded { DeviceLocation.lastKnown(this) }
         FloatingState.requestRefresh()
         ActiveRole.syncFromServer(this)
         if (!FloatingState.currentRoute.startsWith("/community/post") && !FloatingState.currentRoute.startsWith("/performance/"))

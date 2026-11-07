@@ -122,6 +122,7 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
 
     private fun onWebRoute(path: String) {
         lastRoute = path
+        syncRegionFromWeb()
         val tab = com.muyeon.app.ui.main.MainTab.fromWebPath(path)
         webTabKey = tab?.takeIf { it.kind == com.muyeon.app.ui.main.MainTab.Kind.WEB }?.key
         // 앱 탭 주소 또는 앱으로 옮긴 상세(커뮤니티 글·공연) — 이 창을 닫고 앱 화면으로(NativeRoutes 표).
@@ -867,7 +868,17 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
         showDialog = true
     }
 
+    /** ★ 2026-11-07 웹 대표 지역(localStorage muyeonRegions)을 앱으로 — 지역 고르기는 웹 화면이라 창을 떠날 때마다 받아 둔다. */
+    private fun syncRegionFromWeb() {
+        if (!::webView.isInitialized) return
+        webView.evaluateJavascript("(function(){try{return localStorage.getItem('muyeonRegions')||''}catch(e){return ''}})()") { raw ->
+            val json = runCatching { org.json.JSONArray("[$raw]").optString(0) }.getOrNull()?.takeIf { it.isNotBlank() } ?: return@evaluateJavascript
+            runCatching { org.koin.java.KoinJavaComponent.get<com.muyeon.domain.repository.RegionRepository>(com.muyeon.domain.repository.RegionRepository::class.java).syncFromWeb(json) }
+        }
+    }
+
     override fun onPause() {
+        syncRegionFromWeb()
         // 다른 화면(네이티브·카드사 앱)이 덮으면 웹에 '숨김'을 알린다(onResume 의 짝).
         //  애니메이션·위치 등 웹뷰 부가 처리만 멈추고 JS 타이머는 멈추지 않는다(pauseTimers 는 부르지 않는다).
         if (::webView.isInitialized) webView.onPause()
