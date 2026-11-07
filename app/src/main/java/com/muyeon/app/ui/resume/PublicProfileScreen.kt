@@ -496,7 +496,7 @@ private fun ProfileBody(p: PublicProfile, reviews: ReviewList?, isSelf: Boolean,
 @Composable
 private fun ProfileSections(p: PublicProfile, reviews: ReviewList?, isSelf: Boolean, onOpenReviews: () -> Unit) {
     Column(Modifier.fillMaxWidth()) {
-        p.intro?.takeIf { it.isNotEmpty() }?.let {
+        p.intro?.replace("\r", "")?.takeIf { it.isNotEmpty() }?.let {
             ProfileSection("소개글") {
                 Text(it, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 22.sp, color = MuyeonColors.body)
             }
@@ -631,12 +631,39 @@ private fun BodyText(text: String) {
     Text(text, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp, color = MuyeonColors.body)
 }
 
-/** 여러 줄(줄당 1건) 텍스트 — 자격증·수상(iOS lineList). */
+/**
+ * 여러 줄(줄당 1건) 텍스트 — 자격증·수상(iOS lineList).
+ *  ★ 2026-11-08 줄맞춤: 회원이 공백 여러 개로 칸을 맞춰 적은 글(예: "제8회          “     2010.4.25금상")은
+ *   글자 폭이 다른 글꼴에서 어긋난다(웹도 공백을 줄여 같은 문제). 줄마다 [이름 | 날짜·결과] 두 칸으로 나눠
+ *   오른쪽 칸을 세로로 맞춘다 — 나누는 기준: 공백 2칸 이상, 없으면 'YYYY.M.D' 날짜가 시작하는 곳. 못 나누면 한 칸 그대로.
+ */
 @Composable
 private fun LineList(text: String) {
+    val lines = text.replace("\r", "").split("\n").map { it.trim() }.filter { it.isNotEmpty() }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        text.split("\n").filter { it.isNotEmpty() }.forEach { BodyText(it) }
+        lines.forEach { line ->
+            val cells = splitAligned(line)
+            if (cells == null) BodyText(line)
+            else Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                Box(Modifier.weight(1f)) { BodyText(cells.first) }
+                Spacer(Modifier.width(12.dp))
+                Text(cells.second, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp,
+                    color = MuyeonColors.body, maxLines = 1, softWrap = false)
+            }
+        }
     }
+}
+
+private val MULTI_SPACE = Regex("\\s{2,}")
+private val DATE_AT = Regex("(?<!\\d)(19|20)\\d{2}\\.\\s?\\d{1,2}\\.\\s?\\d{1,2}\\.?")
+
+/** 한 줄 → (이름, 날짜·결과). 나눌 곳이 없으면 null. 가운데 칸(“ 같은 반복 표시)은 이름 쪽에 붙인다. */
+private fun splitAligned(line: String): Pair<String, String>? {
+    val parts = line.split(MULTI_SPACE).filter { it.isNotBlank() }
+    if (parts.size >= 2) return parts.dropLast(1).joinToString(" ") to parts.last()
+    val m = DATE_AT.find(line) ?: return null
+    if (m.range.first == 0) return null
+    return line.substring(0, m.range.first).trim() to line.substring(m.range.first).trim()
 }
 
 /** 경력 요약 — 최근 2건 + "외 N건" · "경력 X"(iOS careerSummary). */

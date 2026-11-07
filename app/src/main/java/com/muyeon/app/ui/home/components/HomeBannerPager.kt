@@ -59,13 +59,18 @@ fun HomeBannerPager(banners: List<HomeBanner>, onAll: (() -> Unit)?, modifier: M
     val items = remember(banners.map { it.key }) { banners.shuffled() }
     val pager = rememberPagerState { items.size }
     var playing by rememberSaveable { mutableStateOf(true) }
-    // ⚠️ 다 넘어간 페이지(settledPage)를 기준으로 기다린다 — currentPage 는 넘기는 도중 절반에서 바뀌어,
-    //   그걸 기준으로 하면 타이머가 다시 시작되며 진행 중인 넘김을 취소했다(절반만 움직이고 멈춤, 로그로 확인 2026-11-08).
-    //   손으로 넘기는 중에는 자동 넘김을 하지 않는다.
-    LaunchedEffect(playing, pager.settledPage, items.size) {
+    // 자동 넘김 — 페이지 번호에 묶지 않은 반복 하나(2026-11-08 로그로 확인한 두 번의 끊김 수정).
+    //   ① currentPage 를 열쇠로 쓰면 넘기는 도중 절반에서 열쇠가 바뀌어 넘김이 취소됐다(절반에서 멈춤).
+    //   ② settledPage 를 열쇠로 써도 넘김이 끝나는 순간 다시 시작되며 마무리 중인 넘김을 취소했다.
+    //   손으로 넘기는 중이면 이번 차례를 건너뛰고, 손을 떼 페이지 사이에 걸려 있으면 가까운 페이지로 붙인다.
+    LaunchedEffect(playing, items.size) {
         if (!playing || items.size < 2) return@LaunchedEffect
-        delay(AUTO_MS)
-        if (!pager.isScrollInProgress) pager.animateScrollToPage((pager.settledPage + 1) % items.size)
+        while (true) {
+            delay(AUTO_MS)
+            if (pager.isScrollInProgress) continue
+            val next = if (pager.currentPageOffsetFraction != 0f) pager.currentPage else (pager.currentPage + 1) % items.size
+            pager.animateScrollToPage(next)
+        }
     }
     Box(modifier.fillMaxWidth().aspectRatio(ratio)) {
         HorizontalPager(pager, Modifier.fillMaxSize(), key = { items[it].key }) { i ->
