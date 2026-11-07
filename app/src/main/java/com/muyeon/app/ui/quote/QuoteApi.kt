@@ -27,6 +27,9 @@ class ApiMessageException(
     override val message: String,
     // ★ 2026-11-07 서버 거절 코드(RECRUIT_CHECK·RECRUIT_REDIRECT 등) — 문구만으로는 화면이 갈래를 못 나눠서 같이 싣는다.
     val code: String? = null,
+    // ★ 2026-11-07 RECRUIT_REDIRECT 의 data.paths(SUB·JOB → "/subs/create?prefill=<id>" 등) — 공고 작성 화면을 레슨 요청 답으로 미리 채운다.
+    //  다른 거절에선 null(기존 호출부 그대로).
+    val paths: Map<String, String>? = null,
 ) : Exception(message)
 
 class QuoteApi(private val token: String?) {
@@ -235,7 +238,7 @@ class QuoteApi(private val token: String?) {
                     .build()
                 client.newCall(req).execute().use { res ->
                     val text = res.body?.string().orEmpty()
-                    if (!res.isSuccessful) throw ApiMessageException(serverMessage(text) ?: "요청에 실패했어요.", serverCode(text))
+                    if (!res.isSuccessful) throw ApiMessageException(serverMessage(text) ?: "요청에 실패했어요.", serverCode(text), serverPaths(text))
                     Body(text)
                 }
             }
@@ -254,6 +257,12 @@ class QuoteApi(private val token: String?) {
     private fun serverCode(text: String): String? = runCatching {
         val o = JSONObject(text)
         o.optString("code").ifEmpty { null } ?: o.optJSONObject("data")?.optString("code")?.ifEmpty { null }
+    }.getOrNull()
+
+    /** ★ 2026-11-07 4xx 본문의 data.paths(문자열 값만) — 없거나 비면 null. */
+    private fun serverPaths(text: String): Map<String, String>? = runCatching {
+        val p = JSONObject(text).optJSONObject("data")?.optJSONObject("paths") ?: return@runCatching null
+        p.keys().asSequence().mapNotNull { k -> p.optString(k).ifEmpty { null }?.let { k to it } }.toMap().ifEmpty { null }
     }.getOrNull()
 
     private companion object {

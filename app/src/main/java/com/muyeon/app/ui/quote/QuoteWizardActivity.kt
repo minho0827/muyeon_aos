@@ -130,6 +130,8 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
             var recruitAnswer by remember { mutableStateOf<String?>(null) }
             var recruitAsk by remember { mutableStateOf<String?>(null) }
             var recruitRedirect by remember { mutableStateOf<String?>(null) }
+            // ★ 2026-11-07 서버가 준 공고 작성 경로(SUB·JOB, ?prefill=<id> 포함) — 없으면 고정 경로로.
+            var recruitPaths by remember { mutableStateOf<Map<String, String>?>(null) }
             var lastAnswers by remember { mutableStateOf<Map<String, QuoteAnswer>>(emptyMap()) }
 
             fun startSubmit(answers: Map<String, QuoteAnswer>) {
@@ -148,7 +150,10 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                 if (code == "RECRUIT_CHECK" || code == "RECRUIT_REDIRECT") {
                     val m = r.exceptionOrNull()?.message
                     if (code == "RECRUIT_CHECK") recruitAsk = m?.ifEmpty { null } ?: RECRUIT_QUESTION
-                    else recruitRedirect = m?.ifEmpty { null } ?: RECRUIT_REDIRECT_TEXT
+                    else {
+                        recruitRedirect = m?.ifEmpty { null } ?: RECRUIT_REDIRECT_TEXT
+                        recruitPaths = (r.exceptionOrNull() as? ApiMessageException)?.paths
+                    }
                     phase = "wizard"
                     return@LaunchedEffect
                 }
@@ -263,10 +268,10 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                         message = body,
                         actions = listOf(
                             com.muyeon.app.ui.common.MuyeonDialogAction("채용 공고 쓰기", com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY) {
-                                openWebAndFinish("/jobs/create")
+                                openWebAndFinish(recruitPath(recruitPaths, "JOB", "/jobs/create"))
                             },
                             com.muyeon.app.ui.common.MuyeonDialogAction("대타 공고 쓰기", com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL) {
-                                openWebAndFinish("/subs/create")
+                                openWebAndFinish(recruitPath(recruitPaths, "SUB", "/subs/create"))
                             },
                         ),
                         onDismiss = { recruitRedirect = null },
@@ -275,6 +280,17 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
             }
               }
             }
+    }
+
+    /**
+     * ★ 2026-11-07 공고 작성 경로 — 서버 경로가 기대한 화면(fallback 으로 시작, 뒤는 ?쿼리만)이면 그대로, 아니면 고정 경로.
+     *  NativeWebRoute → WebViewActivity.consumeNativeRoute → __nativeGo(path) → navigate(path) 라 "?prefill=" 은 그대로 살아간다
+     *  (인코딩을 다시 하지 않음). 따옴표·역슬래시가 섞인 값은 JS 문자열을 깨므로 받지 않는다.
+     */
+    private fun recruitPath(paths: Map<String, String>?, key: String, fallback: String): String {
+        val p = paths?.get(key)?.trim().orEmpty()
+        val ok = (p == fallback || p.startsWith("$fallback?")) && p.none { it == '\'' || it == '\\' || it.isWhitespace() }
+        return if (ok) p else fallback
     }
 
     /** 완료 화면 CTA — 웹 화면으로 이동하고 위저드 종료. */
