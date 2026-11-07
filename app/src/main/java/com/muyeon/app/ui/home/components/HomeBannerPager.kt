@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -54,16 +55,21 @@ private const val AUTO_MS = 4000L
 @Composable
 fun HomeBannerPager(banners: List<HomeBanner>, onAll: (() -> Unit)?, modifier: Modifier = Modifier, ratio: Float = 4f / 3f) {
     if (banners.isEmpty()) return
-    val pager = rememberPagerState { banners.size }
+    // 들어올 때마다 순서를 섞는다(사용자 요청) — 같은 배너 묶음이면 화면에 있는 동안은 그 순서를 지킨다.
+    val items = remember(banners.map { it.key }) { banners.shuffled() }
+    val pager = rememberPagerState { items.size }
     var playing by rememberSaveable { mutableStateOf(true) }
-    LaunchedEffect(playing, pager.currentPage, banners.size) {
-        if (!playing || banners.size < 2) return@LaunchedEffect
+    // ⚠️ 다 넘어간 페이지(settledPage)를 기준으로 기다린다 — currentPage 는 넘기는 도중 절반에서 바뀌어,
+    //   그걸 기준으로 하면 타이머가 다시 시작되며 진행 중인 넘김을 취소했다(절반만 움직이고 멈춤, 로그로 확인 2026-11-08).
+    //   손으로 넘기는 중에는 자동 넘김을 하지 않는다.
+    LaunchedEffect(playing, pager.settledPage, items.size) {
+        if (!playing || items.size < 2) return@LaunchedEffect
         delay(AUTO_MS)
-        pager.animateScrollToPage((pager.currentPage + 1) % banners.size)
+        if (!pager.isScrollInProgress) pager.animateScrollToPage((pager.settledPage + 1) % items.size)
     }
     Box(modifier.fillMaxWidth().aspectRatio(ratio)) {
-        HorizontalPager(pager, Modifier.fillMaxSize(), key = { banners[it].key }) { i ->
-            val b = banners[i]
+        HorizontalPager(pager, Modifier.fillMaxSize(), key = { items[it].key }) { i ->
+            val b = items[i]
             Box(Modifier.fillMaxSize().clickable(onClick = b.onClick)) {
                 // 인스타 방식 — 사진 전체가 보이고 양옆은 같은 사진을 흐리게(공개 프로필 히어로와 같다, 사용자 요청).
                 BlurFitImage(b.image, Modifier.fillMaxSize())
@@ -84,7 +90,7 @@ fun HomeBannerPager(banners: List<HomeBanner>, onAll: (() -> Unit)?, modifier: M
                     .padding(horizontal = 14.dp, vertical = 7.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(stringResource(R.string.home_banner_counter, pager.currentPage + 1, banners.size), style = AppTypography.Caption12.copy(color = Color.White))
+                Text(stringResource(R.string.home_banner_counter, pager.currentPage + 1, items.size), style = AppTypography.Caption12.copy(color = Color.White))
                 if (onAll != null) Text(stringResource(R.string.home_view_all_arrow), style = AppTypography.Caption12.copy(color = Color.White), modifier = Modifier.padding(start = 6.dp))
             }
         }
