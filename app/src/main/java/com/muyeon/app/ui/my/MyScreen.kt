@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.animation.togetherWith
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -49,7 +50,11 @@ fun MyScreen(
     // 대표 지역(홈 위 바에서 옮김) — 웹 /myRegions 에서 고르면 웹 창 닫힐 때 앱으로 맞춰진다(WebViewActivity syncRegionFromWeb).
     val region by org.koin.compose.koinInject<com.muyeon.domain.usecase.region.ObserveActiveRegionUseCase>().invoke().collectAsStateWithLifecycle()
     val context = androidx.compose.ui.platform.LocalContext.current
-    LifecycleResumeEffect(isLoggedIn, activeType) {
+    // 탭바 유형이 바뀌면 곧바로 카드를 넘기고(preview), 서버 저장이 끝나면(#번호 바뀜) 메뉴·정보를 다시 읽는다.
+    val shellType = activeType.substringBefore('#')
+    LaunchedEffect(shellType) { viewModel.preview(shellType) }
+    val savedEpoch = activeType.substringAfter('#', "")
+    LifecycleResumeEffect(isLoggedIn, savedEpoch) {
         viewModel.refresh()
         onPauseOrDispose { }
     }
@@ -63,6 +68,24 @@ fun MyScreen(
             GuestMyHome(onLogin = { onOpenWeb(WebPaths.login(MainTab.MY.webPath)) }, onOpenPath = onOpenWeb, onOpenCommunity = onOpenCommunity,
                 regionName = region?.name, onRegion = { onOpenWeb(WebPaths.MY_REGIONS) })
         } else {
+            // ★ 2026-11-08 유형을 바꾸면 MY 가 카드 넘기듯 바뀐다(견적 모아보기 DeckPager 와 같은 느낌 — 사용자 요청):
+            //  새 유형 화면이 오른쪽에서 밀려 들어와 위에 올라오고, 이전 화면은 0.9배로 작아지며 뒤로 흐려진다.
+            //  각 카드는 자기 상태를 그대로 들고 있어(contentKey = 유형) 나가는 카드가 새 유형 글로 바뀌지 않는다.
+            androidx.compose.animation.AnimatedContent(
+                targetState = state,
+                contentKey = { it.activeType },
+                transitionSpec = {
+                    val d = 520
+                    (androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(d, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { it } +
+                        androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(d / 2)))
+                        .togetherWith(
+                            androidx.compose.animation.scaleOut(androidx.compose.animation.core.tween(d), targetScale = 0.9f) +
+                                androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(d)) { -it / 6 } +
+                                androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(d)),
+                        )
+                },
+                label = "myTypeDeck",
+            ) { state ->
             MemberMyHome(
                 state = state,
                 onHeader = onRoleManage,
@@ -81,6 +104,7 @@ fun MyScreen(
                 onSettings = { onOpenWeb(WebPaths.SETTINGS) },
                 onLogout = { viewModel.askLogout(true) },
             )
+            }
         }
     }
 

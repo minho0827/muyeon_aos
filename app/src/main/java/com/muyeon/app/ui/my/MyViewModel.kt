@@ -66,11 +66,19 @@ class MyViewModel(
 
     private fun currentType() = ActiveType.visible(activeTypeStore.current())
 
+    /** 탭바에서 유형을 바꾼 순간(서버 저장 전) — 카드가 바로 넘어가게 유형만 먼저 바꾼다. 메뉴·정보는 저장 뒤 refresh 가 채운다. */
+    fun preview(type: String) {
+        if (!tokens.isLoggedIn || type.isBlank()) return
+        val v = ActiveType.visible(type)
+        _state.update { if (it.activeType != v) it.copy(activeType = v, serverMenus = null) else it }
+    }
+
     /** 화면이 보일 때마다 — 유형이 바뀌었을 수 있다(서버가 유형별로 메뉴를 고른다). */
     fun refresh() {
         if (!tokens.isLoggedIn) return
         val type = currentType()
-        _state.update { it.copy(activeType = type) }
+        // 유형이 바뀌었으면 이전 유형 메뉴·머리 정보를 비운다 — 새 카드가 곧바로 새 유형 기본 메뉴로 그려진다.
+        _state.update { if (it.activeType != type) it.copy(activeType = type, serverMenus = null) else it.copy(activeType = type) }
         viewModelScope.launch {
             val menus = (getMyMenus(type) as? ApiResult.Success)?.data?.takeIf { it.isNotEmpty() }
             _state.update { it.copy(serverMenus = menus) }
