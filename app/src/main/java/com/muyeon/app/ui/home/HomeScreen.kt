@@ -109,7 +109,11 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
         s.genreLessons.cursor.canAutoLoad && !s.genreLessons.isLoadingMore, onLoadMore = viewModel::loadMoreGenreLessons)
 
     Column(Modifier.fillMaxSize().background(AppColors.Surface)) {
-        HomeTopBar(s.mode, viewModel::setMode, s.unread, onBell = { actions.native("openNotifications", emptyMap()) })
+        HomeTopBar(
+            s.mode, viewModel::setMode, s.unread, onBell = { actions.native("openNotifications", emptyMap()) },
+            chatUnread = com.muyeon.app.ui.floating.FloatingState.chatUnread,
+            onChat = if (s.isLoggedIn) ({ actions.native("openChatList", emptyMap()) }) else null,
+        )
         if (s.mode == HomeMode.TEACHERS) UnderlineTabs(teacherTabs, s.teacherGenre, viewModel::selectTeacherGenre, trailing = orderButton)
         else UnderlineTabs(lessonTabs, s.lessonTab, viewModel::selectLessonTab, trailing = orderButton)
 

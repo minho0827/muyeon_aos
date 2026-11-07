@@ -378,7 +378,7 @@ private fun AssistantFab(modifier: Modifier, onWeb: Boolean, onOpen: () -> Unit)
             .testTag("assistant.floating"),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Filled.AutoAwesome, contentDescription = if (AssistantBadges.total > 0) "AI 도우미, 새 소식 있음" else "AI 도우미",
+        Icon(Icons.Filled.Search, contentDescription = if (AssistantBadges.total > 0) "검색, 새 소식 있음" else "검색",
             tint = AppColor.Primary, modifier = Modifier.size(22.dp))
         // 안읽음(알림·채팅·받은 견적)이 있으면 빨간 점 — 소켓으로 실시간(iOS 와 같음).
         if (AssistantBadges.total > 0) {

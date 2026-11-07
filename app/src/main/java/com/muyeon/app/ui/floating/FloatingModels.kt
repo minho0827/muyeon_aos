@@ -38,6 +38,11 @@ object FloatingState {
     var hideChatFloat by mutableStateOf(false)
         private set
 
+    /** 채팅 안 읽음 수 — 홈 위 바 종이비행기 아이콘이 읽는다(오버레이가 채운다). */
+    var chatUnread by mutableIntStateOf(0)
+        private set
+    fun updateChatUnread(n: Int) { chatUnread = n }
+
     /** 상태 재조회를 요청하는 신호(소켓 이벤트·로그인 변경). 값이 바뀌면 오버레이가 다시 읽는다. */
     var refreshTick by mutableIntStateOf(0)
         private set
@@ -79,8 +84,10 @@ object FloatingState {
 
     val isAuthRoute: Boolean get() = normalizedRoute in AUTH_ROUTES
 
+    /** ★ 2026-11-08 채팅은 홈 위 바 알림 옆 종이비행기로 옮겼다(사용자 요청) — 떠 있는 채팅 버튼은 띄우지 않는다. */
+    @Suppress("unused")
     val isChatFloatRoute: Boolean
-        get() = !isAuthRoute && normalizedRoute in CHAT_FLOAT_ROUTES
+        get() = false
 }
 
 /** 인증 상태 요약 — GET /me/roles/verification-status. */

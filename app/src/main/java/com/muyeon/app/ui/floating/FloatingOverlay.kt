@@ -56,6 +56,7 @@ fun FloatingOverlay(
     var status by remember { mutableStateOf("NONE") }
     var acknowledged by remember { mutableStateOf(false) }
     var unread by remember { mutableIntStateOf(0) }
+    LaunchedEffect(unread) { FloatingState.updateChatUnread(unread) }
     var toast by remember { mutableStateOf<String?>(null) }
     var showComplete by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()

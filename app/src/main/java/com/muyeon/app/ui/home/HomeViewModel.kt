@@ -106,6 +106,12 @@ class HomeViewModel(
             regionFlow.drop(1).collect { r -> _state.update { it.copy(region = r) }; refreshArtists(); loadLessonHome() }
         }
         viewModelScope.launch { observeScrap(ScrapTarget.LESSON).collect { c -> setLiked(c.id, c.liked) } }
+        // ★ 2026-11-08 실시간 — 소켓으로 서버 알림이 오면(또는 다시 붙으면) 알림 종 점을 바로 다시 읽는다.
+        viewModelScope.launch {
+            com.muyeon.app.chat.socket.ChatEventBus.events.collect { e ->
+                if (e is com.muyeon.app.chat.socket.ChatEvent.ServerNotification || e is com.muyeon.app.chat.socket.ChatEvent.Reconnected) refreshUnread()
+            }
+        }
         viewModelScope.collectAppResults(ResultKeys.NOTIFICATIONS) { refreshUnread() }
         viewModelScope.collectAppResults(ResultKeys.LESSONS) { loadLessonHome() }
     }
