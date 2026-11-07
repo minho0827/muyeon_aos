@@ -344,7 +344,7 @@ fun ReceivedQuoteDetailScreen(
     if (showWithdrawConfirm) {
         QuoteDialog(
             title = "견적 요청을 철회할까요?",
-            message = "철회하면 강사에게 보낸 요청이 사라져요. 되돌릴 수 없어요.",
+            message = "철회하면 강사에게 보낸 요청이 사라지고, 견적을 보낸 강사님과의 채팅도 종료돼요. 되돌릴 수 없어요.",
             confirmText = "철회하기",
             onConfirm = {
                 showWithdrawConfirm = false

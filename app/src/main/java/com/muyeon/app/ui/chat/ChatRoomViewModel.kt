@@ -112,7 +112,7 @@ class ChatRoomViewModel(
      * 채택 불가 판정. 잠금은 방 전체, 마감(quoteStatus)은 대표 견적 기준이라
      *  사이클([target])에서 누른 채택은 잠금만 본다(같은 방의 다른 새 요청은 열려 있을 수 있다).
      */
-    fun acceptBlockedFor(target: ChatLessonCycle?): Boolean = locked || (target == null && isQuoteExpired)
+    fun acceptBlockedFor(target: ChatLessonCycle?): Boolean = locked || (target == null && (isQuoteExpired || isQuoteCanceled))
 
     /**
      * 채택된 견적의 일반회원이며 아직 일정이 확정되지 않은 경우(상단 '레슨 일정 잡기' 고정 버튼).
@@ -129,6 +129,8 @@ class ChatRoomViewModel(
 
     /** 견적요청이 마감(서버 EXPIRED, 요청 후 30일)됐는지 — 헤더 '견적 마감' 표시. */
     val isQuoteExpired: Boolean get() = quoteContext?.quoteStatus == "EXPIRED"
+    /** 대표 견적의 요청이 취소됨 — 다시 요청해 방이 열려도 이 견적은 채택할 수 없다(11-07 실기기). */
+    val isQuoteCanceled: Boolean get() = quoteContext?.quoteStatus.let { it == "CANCELED" || it == "CLOSED" }
 
     /** 내가 이 방의 강사 측인지. */
     val isTeacherSide: Boolean get() = quoteContext?.isTeacher == true
