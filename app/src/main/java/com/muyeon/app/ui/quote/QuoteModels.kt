@@ -83,7 +83,7 @@ object QuoteQuestions {
             QuoteOption("high", "고등학생"), QuoteOption("20s", "20대"), QuoteOption("30s", "30대"),
             QuoteOption("40s+", "40대 이상"))),
         QuoteQuestion("format", QuoteAnswerType.MULTI, "어떤 레슨 형태를 원하시나요?", listOf(
-            QuoteOption("private", "개인 레슨"), QuoteOption("group", "그룹 레슨"), QuoteOption("academy", "학원"),
+            QuoteOption("private", "개인 레슨"), QuoteOption("group", "그룹 레슨"), QuoteOption("academy", "학원에 다니며 배우기"),
             QuoteOption("any", "무관"), QuoteOption("etc", "기타"))),
         QuoteQuestion("days", QuoteAnswerType.MULTI, "선호하는 레슨 요일을 선택해 주세요.", listOf(
             QuoteOption("mon", "월요일"), QuoteOption("tue", "화요일"), QuoteOption("wed", "수요일"),
@@ -103,18 +103,21 @@ object QuoteQuestions {
             QuoteOption("etc", "기타"))),
         QuoteQuestion("region", QuoteAnswerType.REGION, "레슨받고 싶은 지역이 어디인가요?"),
         QuoteQuestion("method", QuoteAnswerType.SINGLE, "어떻게 진행하기 원하시나요?", listOf(
-            QuoteOption("visitMe", "제가 있는 곳으로 와주세요."), QuoteOption("visitThem", "강사가 있는 곳으로 갈게요."),
+            QuoteOption("visitMe", "제가 있는 곳으로 와주세요. (집·개인 연습실)"), QuoteOption("visitThem", "강사가 있는 곳으로 갈게요."),
             QuoteOption("any", "어떤 방식이든 상관없어요."))),
         QuoteQuestion("inquiry", QuoteAnswerType.SINGLE, "수업 관련 문의사항을 알려주세요!", listOf(
             QuoteOption("later", "강사와 상담 시 논의할게요"), QuoteOption("now", "지금 작성할게요"))),
         QuoteQuestion("detail", QuoteAnswerType.TEXT, "추가 요청사항이 있으면 알려주세요.", required = false),
     )
 
-    /** 카테고리별 첫 질문("어떤 수업") + 공통 문진. */
-    fun forCategory(category: QuoteCategory): List<QuoteQuestion> =
+    /**
+     * 카테고리별 첫 질문("어떤 수업") + 공통 문진.
+     *  ★ 2026-11-07 지정(1:1) 요청은 강사가 이미 정해져 있어 '선호 강사 성별'을 묻지 않는다(웹과 같음).
+     */
+    fun forCategory(category: QuoteCategory, isDirect: Boolean = false): List<QuoteQuestion> =
         listOf(
             QuoteQuestion("class", QuoteAnswerType.MULTI, "어떤 수업을 원하시나요?", category.classOptions)
-        ) + common
+        ) + common.filter { !(isDirect && it.id == "teacherGender") }
 
     /** 문진 짧은 라벨(웹 QUESTION_TITLES 와 동일 — 목록 표시용). */
     private val shortLabels: Map<String, String> = mapOf(

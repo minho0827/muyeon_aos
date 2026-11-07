@@ -23,7 +23,11 @@ import java.net.URLEncoder
  */
 
 /** 서버 거절 사유(HTTP 4xx 의 message)를 그대로 노출하는 예외 — 일반 문구로 뭉개지 않게. */
-class ApiMessageException(override val message: String) : Exception(message)
+class ApiMessageException(
+    override val message: String,
+    // ★ 2026-11-07 서버 거절 코드(RECRUIT_CHECK·RECRUIT_REDIRECT 등) — 문구만으로는 화면이 갈래를 못 나눠서 같이 싣는다.
+    val code: String? = null,
+) : Exception(message)
 
 class QuoteApi(private val token: String?) {
 
@@ -231,7 +235,7 @@ class QuoteApi(private val token: String?) {
                     .build()
                 client.newCall(req).execute().use { res ->
                     val text = res.body?.string().orEmpty()
-                    if (!res.isSuccessful) throw ApiMessageException(serverMessage(text) ?: "요청에 실패했어요.")
+                    if (!res.isSuccessful) throw ApiMessageException(serverMessage(text) ?: "요청에 실패했어요.", serverCode(text))
                     Body(text)
                 }
             }
@@ -244,6 +248,12 @@ class QuoteApi(private val token: String?) {
             ?.let { arr -> (0 until arr.length()).joinToString("\n") { arr.optString(it) } }
             ?.ifEmpty { null }
             ?: o.stringOrNull("message")
+    }.getOrNull()
+
+    /** ★ 2026-11-07 4xx 본문의 code — ChatApi 와 같이 최상위 code, 없으면 data.code. */
+    private fun serverCode(text: String): String? = runCatching {
+        val o = JSONObject(text)
+        o.optString("code").ifEmpty { null } ?: o.optJSONObject("data")?.optString("code")?.ifEmpty { null }
     }.getOrNull()
 
     private companion object {

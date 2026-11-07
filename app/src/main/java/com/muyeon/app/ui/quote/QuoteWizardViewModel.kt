@@ -13,9 +13,11 @@ import androidx.lifecycle.ViewModel
 class QuoteWizardViewModel(
     val category: QuoteCategory,
     seedAnswers: Map<String, QuoteAnswer> = emptyMap(),
+    // ★ 2026-11-07 지정(1:1) 요청 — 질문 목록에서 teacherGender 를 뺀다(진행률·단계도 이 목록 기준이라 같이 맞는다).
+    isDirect: Boolean = false,
 ) : ViewModel() {
 
-    val questions: List<QuoteQuestion> = QuoteQuestions.forCategory(category)
+    val questions: List<QuoteQuestion> = QuoteQuestions.forCategory(category, isDirect)
     val answers = mutableStateMapOf<String, QuoteAnswer>()
 
     var currentIndex by mutableStateOf(0)

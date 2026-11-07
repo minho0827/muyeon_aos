@@ -48,6 +48,8 @@ import org.json.JSONObject
  *  사유 코드는 웹/관리자 신고 관리 화면 라벨과 1:1로 맞춘다(변경 금지).
  */
 private val REPORT_REASONS = listOf(
+    // ★ 2026-11-07 레슨 요청으로 강사를 구하는 학원 신고 — 맨 앞(웹 채팅 신고와 같은 코드·문구).
+    "RECRUIT" to "강사 구인이에요 (레슨 요청이 아니에요)",
     "INAPPROPRIATE" to "욕설·부적절한 대화",
     "SPAM" to "스팸·광고",
     "FAKE_POSTING" to "허위 정보·사기 의심",

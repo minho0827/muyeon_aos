@@ -19,7 +19,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -158,6 +162,11 @@ fun RoleVerificationScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
+    // ★ 2026-11-07 자동 확인 받기 — 국세청 확인이 다 맞으면(바로 승인 대상) 제출 버튼을 누르지 않아도 보낸다(번호 확인만 하고 나가 '미제출'로 남던 사례)
+    //  한 화면에서 한 번만 보낸다(자동·버튼 공통 가드 — 두 번 눌림·자동 직후 버튼 탭 중복 제출 방지).
+    var submitted by remember { mutableStateOf(false) }
+    var academyNameHadFocus by remember { mutableStateOf(false) }
 
     LaunchedEffect(businessNumber, startDate, verifyLater) {
         verifiedBusinessNumber = null
@@ -203,6 +212,36 @@ fun RoleVerificationScreen(
         }
     }
 
+    // 학원 인증은 학원명이 있어야 제출된다 — 비면 프로필·공고·홈 추천에 이름 없이 노출된다.
+    //  ★ 2026-10-22 국세청 확인이 끝난 번호면 사진 없이도 제출된다(서버 자동 승인, 웹 submitDocs 가 번호만 와도 제출).
+    val academy = academyName.trim().takeIf { role == "ACADEMY" && it.isNotEmpty() }
+    val normalizedNumber = businessNumber.filter(Char::isDigit).take(10)
+    val canSubmit = !uploading && !submitted && if (role == "ACADEMY") {
+        academy != null && (verifyLater && allowSkip ||
+            // 국세청 정보와 맞으면 사진 없이, 아니면(불일치·개업일자 비움) 관리자가 볼 사진이 있어야 한다.
+            (verifiedBusinessNumber == normalizedNumber && (ownerMatched == true || images.isNotEmpty())))
+    } else images.isNotEmpty()
+
+    fun submit() {
+        if (!canSubmit) return
+        submitted = true
+        onDone(role, if (verifyLater) emptyList() else images, academy,
+            normalizedNumber.takeIf { role == "ACADEMY" && !verifyLater },
+            startDate.takeIf { role == "ACADEMY" && !verifyLater && it.length == 8 })
+    }
+
+    // ★ 2026-11-07 자동 확인 받기 — 국세청 확인이 다 맞으면(바로 승인 대상) 제출 버튼을 누르지 않아도 보낸다(번호 확인만 하고 나가 '미제출'로 남던 사례)
+    //  조건: 학원 + 번호 진위 확인(verified) + 대표자·개업일자 일치(ownerMatched == true) + 학원명 2자 이상.
+    //  ownerMatched false/null(사진·관리자 확인 필요)·'다음에 인증할게요'(verifyLater)는 보내지 않는다.
+    fun autoSubmitIfReady() {
+        if (role != "ACADEMY" || verifyLater || submitted || uploading || checkingBusinessNumber) return
+        if (verifiedBusinessNumber != normalizedNumber || ownerMatched != true) return
+        if (academyName.trim().length < 2) return
+        submit()
+    }
+    // 확인 결과가 바뀌는 순간 — 학원명이 아직 짧으면 보내지 않고, 학원명 칸을 벗어날 때(포커스 해제·완료 키) 다시 본다.
+    LaunchedEffect(verifiedBusinessNumber, ownerMatched, checkingBusinessNumber) { autoSubmitIfReady() }
+
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         QuoteNavBar(title = "${roleLabel(role)} 인증", onBack = onClose)
 
@@ -232,13 +271,19 @@ fun RoleVerificationScreen(
                     )
                     OutlinedTextField(
                         value = academyName, onValueChange = { academyName = it }, singleLine = true,
+                        // ★ 2026-11-07 자동 확인 받기 — 학원명 입력을 마치면(포커스 해제·완료 키) 조건이 맞을 때 바로 보낸다.
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus(); autoSubmitIfReady() }),
                         placeholder = {
                             Text(
                                 "예: 루체 발레 학원 (사업자등록증 상호)",
                                 fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.secondary,
                             )
                         },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().onFocusChanged { f ->
+                            if (academyNameHadFocus && !f.isFocused) autoSubmitIfReady()
+                            academyNameHadFocus = f.isFocused
+                        },
                     )
 
                     // 대표원장 — 본인확인으로 등록된 실명. 학원명과 함께 공개된다.
@@ -335,15 +380,6 @@ fun RoleVerificationScreen(
             }
         }
 
-        // 학원 인증은 학원명이 있어야 제출된다 — 비면 프로필·공고·홈 추천에 이름 없이 노출된다.
-        //  ★ 2026-10-22 국세청 확인이 끝난 번호면 사진 없이도 제출된다(서버 자동 승인, 웹 submitDocs 가 번호만 와도 제출).
-        val academy = academyName.trim().takeIf { role == "ACADEMY" && it.isNotEmpty() }
-        val normalizedNumber = businessNumber.filter(Char::isDigit).take(10)
-        val canSubmit = !uploading && if (role == "ACADEMY") {
-            academy != null && (verifyLater && allowSkip ||
-                // 국세청 정보와 맞으면 사진 없이, 아니면(불일치·개업일자 비움) 관리자가 볼 사진이 있어야 한다.
-                (verifiedBusinessNumber == normalizedNumber && (ownerMatched == true || images.isNotEmpty())))
-        } else images.isNotEmpty()
         Text(
             if (uploading) "업로드 중…" else if (role == "ACADEMY" && verifyLater) "가입 계속" else "제출하기",
             fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
@@ -352,11 +388,7 @@ fun RoleVerificationScreen(
                 .padding(horizontal = 20.dp).padding(top = 8.dp, bottom = 12.dp)
                 .fillMaxWidth().clip(RoundedCornerShape(12.dp))
                 .background(if (canSubmit) MuyeonColors.primary else Color.Gray.copy(alpha = 0.4f))
-                .clickable(enabled = canSubmit) {
-                    onDone(role, if (verifyLater) emptyList() else images, academy,
-                        normalizedNumber.takeIf { role == "ACADEMY" && !verifyLater },
-                        startDate.takeIf { role == "ACADEMY" && !verifyLater && it.length == 8 })
-                }
+                .clickable(enabled = canSubmit) { submit() }
                 .padding(vertical = 16.dp),
         )
     }

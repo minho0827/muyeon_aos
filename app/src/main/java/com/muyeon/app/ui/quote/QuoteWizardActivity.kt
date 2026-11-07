@@ -117,7 +117,7 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
         targetTeacherId: String,
         seedAnswers: Map<String, QuoteAnswer>,
     ) {
-            val vm = remember(category.id) { QuoteWizardViewModel(category, seedAnswers) }
+            val vm = remember(category.id) { QuoteWizardViewModel(category, seedAnswers, isDirect = targetTeacherId.isNotEmpty()) }
             var showExit by remember { mutableStateOf(false) }
             // 단계: wizard → loading(매칭 로딩) → done(완료 안내). iOS 흐름 동일.
             var phase by remember { mutableStateOf("wizard") }
@@ -125,10 +125,34 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
             //  (예전엔 애니메이션이 먼저 끝나면 결과 미도착(null)을 성공으로 처리해 403 도 완료 화면이 떴다.)
             var submitResult by remember { mutableStateOf<Result<Int>?>(null) }
             var loadingDone by remember { mutableStateOf(false) }
+            // ★ 2026-11-07 강사 구인 확인 — 처음엔 "ASK"(의심되면 서버가 409 RECRUIT_CHECK 로 묻는다), 답한 뒤엔 "NO"/"YES".
+            //  질문·공고 안내 팝업 문구(서버 message)와 다시 보낼 답변을 들고 있는다(웹 QuoteCreate 와 같다).
+            var recruitAnswer by remember { mutableStateOf<String?>(null) }
+            var recruitAsk by remember { mutableStateOf<String?>(null) }
+            var recruitRedirect by remember { mutableStateOf<String?>(null) }
+            var lastAnswers by remember { mutableStateOf<Map<String, QuoteAnswer>>(emptyMap()) }
+
+            fun startSubmit(answers: Map<String, QuoteAnswer>) {
+                lastAnswers = answers
+                submitResult = null
+                loadingDone = false
+                phase = "loading"
+                submit(answers, category.id, targetTeacherId, recruitAnswer ?: "ASK") { r -> submitResult = r }
+            }
 
             LaunchedEffect(phase, loadingDone, submitResult) {
                 val r = submitResult ?: return@LaunchedEffect
-                if (phase != "loading" || !loadingDone) return@LaunchedEffect
+                if (phase != "loading") return@LaunchedEffect
+                // ★ 2026-11-07 강사 구인 확인 응답은 로딩 애니메이션을 기다리지 않고 바로 문진으로 돌아가 팝업을 띄운다.
+                val code = (r.exceptionOrNull() as? ApiMessageException)?.code
+                if (code == "RECRUIT_CHECK" || code == "RECRUIT_REDIRECT") {
+                    val m = r.exceptionOrNull()?.message
+                    if (code == "RECRUIT_CHECK") recruitAsk = m?.ifEmpty { null } ?: RECRUIT_QUESTION
+                    else recruitRedirect = m?.ifEmpty { null } ?: RECRUIT_REDIRECT_TEXT
+                    phase = "wizard"
+                    return@LaunchedEffect
+                }
+                if (!loadingDone) return@LaunchedEffect
                 r.onSuccess {
                     // 웹이 받은견적 목록으로 라우팅한다(iOS notifyWebQuoteSubmitted).
                     WebCallbacks.quoteSubmitted(this@QuoteWizardActivity)
@@ -195,12 +219,7 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                         // 문진 진행 중이면 이탈 방지 시트, 첫 질문이면 바로 닫기(iOS 동일).
                         if (vm.currentIndex > 0) showExit = true else finish()
                     },
-                    onComplete = { answers ->
-                        submitResult = null
-                        loadingDone = false
-                        phase = "loading"
-                        submit(answers, category.id, targetTeacherId) { r -> submitResult = r }
-                    },
+                    onComplete = { answers -> startSubmit(answers) },
                     isDirect = targetTeacherId.isNotEmpty(),
                 )
                 if (showExit) {
@@ -218,6 +237,41 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                         },
                     )
                 }
+                // ★ 2026-11-07 강사 구인 확인 — 의심되는 요청에만 서버가 묻는다. 답해야 보낸다(닫기 없음, 웹과 같음).
+                //  같은 답변으로 다시 보낸다: NO 는 접수, YES 는 서버가 RECRUIT_REDIRECT(공고 안내)로 돌려준다.
+                recruitAsk?.let { title ->
+                    com.muyeon.app.ui.common.MuyeonDialog(
+                        title = title,
+                        message = "레슨 요청은 직접(또는 자녀가) 배우실 분과 강사를 이어 드려요. 학원에서 일할 강사는 공고로 구하실 수 있어요.",
+                        actions = listOf(
+                            com.muyeon.app.ui.common.MuyeonDialogAction("아니요, 제가(자녀가) 배워요", com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY) {
+                                recruitAnswer = "NO"; startSubmit(lastAnswers)
+                            },
+                            com.muyeon.app.ui.common.MuyeonDialogAction("네, 강사를 구해요", com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL) {
+                                recruitAnswer = "YES"; startSubmit(lastAnswers)
+                            },
+                        ),
+                        force = true,
+                        onDismiss = { recruitAsk = null },
+                    )
+                }
+                // ★ 2026-11-07 강사는 공고로 — 보내지 않고 위저드를 닫으며 웹 공고 작성 화면으로 보낸다
+                //  (웹 /jobs/create·/subs/create 가 비회원·미인증 안내까지 맡는다 — 웹 goPosting 과 같은 경로).
+                recruitRedirect?.let { body ->
+                    com.muyeon.app.ui.common.MuyeonDialog(
+                        title = "강사는 공고로 구해 주세요",
+                        message = body,
+                        actions = listOf(
+                            com.muyeon.app.ui.common.MuyeonDialogAction("채용 공고 쓰기", com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY) {
+                                openWebAndFinish("/jobs/create")
+                            },
+                            com.muyeon.app.ui.common.MuyeonDialogAction("대타 공고 쓰기", com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL) {
+                                openWebAndFinish("/subs/create")
+                            },
+                        ),
+                        onDismiss = { recruitRedirect = null },
+                    )
+                }
             }
               }
             }
@@ -231,6 +285,7 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
         answers: Map<String, QuoteAnswer>,
         categoryId: String,
         targetTeacherId: String,
+        recruitCheck: String,
         onDone: (Result<Int>) -> Unit,
     ) {
         val token = TokenManager.getAccessToken(this)
@@ -255,12 +310,18 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                 region?.let { put("region", it) }
                 regionCode?.let { put("regionCode", it) }
                 targetTeacherId.toIntOrNull()?.let { put("targetTeacherId", it) }
+                // ★ 2026-11-07 강사 구인 확인 — "ASK" | "NO" | "YES"(서버 risk/recruit-check).
+                put("recruitCheck", recruitCheck)
             }
 
         // QuoteApi 경유 — X-Active-Type 헤더 부착 + 4xx message(ApiMessageException) 보존.
         lifecycleScope.launch { onDone(QuoteApi(token).createQuote(body)) }
     }
 }
+
+// ★ 2026-11-07 강사 구인 확인 — 서버 문구가 없을 때 쓰는 기본 문구(웹 QuoteCreate·서버 recruit-check 와 같게).
+private const val RECRUIT_QUESTION = "혹시 학원에서 수업할 강사(정규·대타)를 구하시나요?"
+private const val RECRUIT_REDIRECT_TEXT = "강사 채용·대타는 공고로 올려 주세요. 레슨 요청은 직접(또는 자녀가) 배우실 때만 보낼 수 있어요. 공고는 학원·강사 인증 후 올릴 수 있어요."
 
 /**
  * 이탈 방지 바텀시트 — iOS `QuoteWizardExitSheet` 1:1(딜레이/애니메이션 없이 즉시 표시).
