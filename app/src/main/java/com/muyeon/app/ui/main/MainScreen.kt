@@ -21,6 +21,7 @@ import androidx.navigation.compose.rememberNavController
 import com.muyeon.app.navigation.Screen
 import com.muyeon.app.navigation.WebPaths
 import com.muyeon.app.ui.performance.PerformanceListScreen
+import com.muyeon.app.ui.my.MyScreen
 import com.muyeon.app.ui.theme.AppColors
 import com.muyeon.app.ui.theme.AppTypography
 
@@ -76,7 +77,7 @@ fun MainScreen(
                         onLogin = { onOpenWeb(WebPaths.login(MainTab.PERFORMANCE.webPath)) },
                     )
                 }
-                composable(Screen.TabMy.route) { TabPlaceholder(MainTab.MY) }
+                composable(Screen.TabMy.route) { MyScreen(isLoggedIn = state.isLoggedIn, onOpenWeb = onOpenWeb) }
             }
         }
     }

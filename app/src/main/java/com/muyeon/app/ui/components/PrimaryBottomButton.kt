@@ -17,14 +17,20 @@ import com.muyeon.app.ui.theme.Dimensions
 
 /** 화면 아래 주 버튼 — 웹 .btn-group > .btn-md.filled.primary(주황 · 높이 48). */
 @Composable
-fun PrimaryBottomButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun PrimaryBottomButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** 화면 맨 아래에 붙는 버튼이면 내비게이션 바만큼 띄운다. 화면 중간에 쓰면 false. */
+    atScreenBottom: Boolean = true,
+) {
     Button(
         onClick = onClick,
         shape = RoundedCornerShape(Dimensions.spacingS),
         colors = ButtonDefaults.buttonColors(containerColor = AppColors.Primary, contentColor = AppColors.TextOnPrimary),
         modifier = modifier
             .fillMaxWidth()
-            .navigationBarsPadding()
+            .then(if (atScreenBottom) Modifier.navigationBarsPadding() else Modifier)
             .padding(horizontal = Dimensions.gutter, vertical = Dimensions.spacingM)
             .height(48.dp),
     ) {

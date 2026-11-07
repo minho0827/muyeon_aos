@@ -124,4 +124,12 @@
     <string name="performance_detail_source_open">원문 열기 ›</string>
     <string name="performance_detail_source_notice">무용연이 웹에서 모은 공연 정보예요. 일정과 가격은 바뀔 수 있으니 예매 전에 원문을 꼭 확인해 주세요.</string>
     <string name="performance_detail_booking">예매하러 가기</string>
+    <!-- ★ 2026-11-07 MY 탭(웹 GuestMyHome·MyHome 과 같은 말) -->
+    <string name="my_guest_title">로그인하고\n무용연을 시작해 보세요</string>
+    <string name="my_guest_login">로그인 / 회원가입</string>
+    <string name="my_menu_notice">공지사항</string>
+    <string name="my_menu_faq">FAQ</string>
+    <string name="my_menu_terms">이용약관</string>
+    <string name="my_menu_privacy">개인정보처리 방침</string>
+    <string name="my_app_settings">앱 설정</string>
 </resources>
