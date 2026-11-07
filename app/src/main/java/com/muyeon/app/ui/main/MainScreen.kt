@@ -1,6 +1,7 @@
 package com.muyeon.app.ui.main
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -49,8 +50,17 @@ fun MainScreen(
         }
     }
 
+    // 안쪽 NavHost 가 뒤로가기로 탭을 되돌리면(공연 → 홈) 선택 상태도 따라간다 — 화면과 탭바가 어긋나지 않게.
+    LaunchedEffect(tabNav) {
+        tabNav.currentBackStackEntryFlow.collect { entry ->
+            MainTab.fromRoute(entry.destination.route)?.let(viewModel::selectTab)
+        }
+    }
+
     Scaffold(
         containerColor = AppColors.Surface,
+        // 위 여백(상태바)은 각 탭의 위 바가, 아래 여백(내비게이션 바)은 탭바가 칠한다 — 여기서 또 띄우면 두 번 들어간다.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             MainTabBarHost(viewModel, selectedKey = state.selectedKey, onMyLongPress = onMyLongPress)
         },

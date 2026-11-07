@@ -43,6 +43,16 @@ fun MainTopBar(
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     val bg = if (primary) AppColors.Primary else AppColors.Surface
+    // 상태바 아이콘 색 — 주황 바는 흰 아이콘, 흰 바는 검정 아이콘(화면이 다시 보일 때마다 맞춘다).
+    val view = androidx.compose.ui.platform.LocalView.current
+    if (!view.isInEditMode) {
+        androidx.compose.runtime.DisposableEffect(primary) {
+            (view.context as? android.app.Activity)?.window?.let { w ->
+                androidx.core.view.WindowCompat.getInsetsController(w, view).isAppearanceLightStatusBars = !primary
+            }
+            onDispose { }
+        }
+    }
     val fg = if (primary) AppColors.TextOnPrimary else AppColors.TextHead
     Box(modifier.fillMaxWidth().background(bg).statusBarsPadding()) {
         Row(

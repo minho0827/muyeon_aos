@@ -12,6 +12,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -61,7 +63,13 @@ class MainActivity : ComponentActivity(), ResultHost {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         liveCount++
-        enableEdgeToEdge()
+        // 상태바·내비게이션 바까지 앱이 그린다(위 바 주황 · 탭바 흰색이 그 아래까지). 아이콘은 밝은 바탕용이 기본,
+        //  내비게이션 바 회색 막(대비 보정)은 끈다 — 흰 탭바가 그대로 이어지게.
+        enableEdgeToEdge(
+            statusBarStyle = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = androidx.activity.SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+        )
+        if (android.os.Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
         super.onCreate(savedInstanceState)
         ActiveRole.bind(this)
         // 앱이 켜져 있고 토큰이 있으면 네이티브 소켓을 늘 붙여 둔다 — 어느 화면이 떠 있어도 force-logout·배지를 듣는다.
@@ -77,6 +85,18 @@ class MainActivity : ComponentActivity(), ResultHost {
                         onOpenChatList = { ChatActivity.startList(this@MainActivity, "") },
                         // 인증 완료 '시작하기' — 그 유형으로 바꾸고 첫 화면으로(웹 __onRoleApproved: 전문 유형은 /jobs).
                         onRoleApproved = { role -> viewModel.onTypePicked(role) },
+                    )
+                    com.muyeon.app.common_components.dialog.CustomDialog(
+                        title = getString(R.string.main_exit_title),
+                        content = null,
+                        leftButtonText = getString(R.string.common_cancel),
+                        rightButtonText = getString(R.string.main_exit_confirm),
+                        buttonCount = 2,
+                        alignment = com.muyeon.app.common_components.dialog.ContentAlignment.Middle,
+                        onDismiss = { showExit = false },
+                        onLeftButtonClick = { showExit = false },
+                        onRightButtonClick = { showExit = false; finish() },
+                        showPopup = showExit,
                     )
                 }
             }
@@ -183,13 +203,10 @@ class MainActivity : ComponentActivity(), ResultHost {
         ActiveTypeSheet.showNative(this, rows, s.activeType, emptySet(), viewModel::onTypePicked)
     }
 
-    private fun confirmExit() {
-        android.app.AlertDialog.Builder(this)
-            .setTitle(R.string.main_exit_title)
-            .setNegativeButton(R.string.common_cancel, null)
-            .setPositiveButton(R.string.main_exit_confirm) { _, _ -> finish() }
-            .show()
-    }
+    /** 종료 확인 — 웹뷰 시절과 같은 무용연 팝업(CustomDialog). */
+    private var showExit by androidx.compose.runtime.mutableStateOf(false)
+
+    private fun confirmExit() { showExit = true }
 
     companion object {
         const val EXTRA_TAB = "muyeon.main.tab"

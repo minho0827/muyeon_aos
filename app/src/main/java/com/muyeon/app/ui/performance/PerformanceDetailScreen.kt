@@ -3,7 +3,9 @@ package com.muyeon.app.ui.performance
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -56,7 +58,7 @@ fun PerformanceDetailScreen(
         }
     }
 
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().background(AppColors.Surface)) {
         MainTopBar(title = stringResource(R.string.performance_detail_title), primary = false, onBack = onBack)
         val d = state.detail
         when {
@@ -78,6 +80,8 @@ fun PerformanceDetailScreen(
                         PerformanceSourceSection(d, onOpenUrl = openUrl)
                     }
                     Spacer(Modifier.height(Dimensions.spacing3XL))
+                    // 예매 버튼이 없으면 내비게이션 바 아래로 글이 들어가지 않게.
+                    if (d.bookingUrl == null) Spacer(Modifier.navigationBarsPadding())
                 }
                 d.bookingUrl?.let { url -> PrimaryBottomButton(stringResource(R.string.performance_detail_booking), onClick = { openUrl(url) }) }
             }

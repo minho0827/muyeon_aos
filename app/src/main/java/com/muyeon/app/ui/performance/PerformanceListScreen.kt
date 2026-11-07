@@ -1,6 +1,7 @@
 package com.muyeon.app.ui.performance
 
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -63,7 +64,7 @@ fun PerformanceListScreen(
     }
     CursorLoadMoreEffect(listState, canLoad = state.cursor.canAutoLoad && !state.isLoadingMore, onLoadMore = viewModel::loadMore)
 
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.theme.AppColors.Surface)) {
         MainTopBar(title = stringResource(R.string.tab_performance))
         PullToRefreshBox(
             isRefreshing = state.isRefreshing,
