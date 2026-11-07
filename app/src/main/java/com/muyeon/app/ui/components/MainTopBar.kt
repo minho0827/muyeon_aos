@@ -40,6 +40,8 @@ fun MainTopBar(
     modifier: Modifier = Modifier,
     primary: Boolean = true,
     onBack: (() -> Unit)? = null,
+    /** 탭 맨 위 바 — 오른쪽 끝에 채팅 종이비행기(ChatTopBarAction). */
+    chat: Boolean = false,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     val bg = if (primary) AppColors.Primary else AppColors.Surface
@@ -80,6 +82,7 @@ fun MainTopBar(
                 modifier = Modifier.weight(1f),
             )
             actions()
+            if (chat) ChatTopBarAction(fg)
         }
     }
 }

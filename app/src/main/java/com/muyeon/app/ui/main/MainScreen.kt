@@ -108,7 +108,7 @@ fun MainScreen(
                         onCreate = if (canCreate) ({ onOpenDetail(r.create) }) else null,
                         reloadKey = com.muyeon.app.ui.castingstage.CastingStageSession.reloadKey,
                         header = {
-                            com.muyeon.app.ui.components.MainTopBar(stringResource(R.string.tab_casting)) {
+                            com.muyeon.app.ui.components.MainTopBar(stringResource(R.string.tab_casting), chat = true) {
                                 if (canCreate) com.muyeon.app.ui.components.TopBarIconButton(R.drawable.ic_web_edit, stringResource(R.string.casting_create), onClick = { onOpenDetail(r.create) })
                                 com.muyeon.app.ui.components.TopBarIconButton(R.drawable.ic_web_filter, stringResource(R.string.casting_all), onClick = { onOpenDetail(r.castingList) })
                             }
@@ -178,10 +178,16 @@ fun MainScreen(
                 dotOn = { item -> item == BarItem.MY && state.myDot },
                 onItemClick = viewModel::onBarItem,
                 onItemLongClick = { item -> if (item == BarItem.MY && state.isLoggedIn) onMyLongPress() },
-                onItemDoubleClick = if (state.switchableTypes.size == 2) ({ _ -> viewModel.onMyDoubleTap() }) else null,
+                onItemDoubleClick = if (state.switchableTypes.size >= 2) ({ _ -> viewModel.onMyDoubleTap() }) else null,
                 // 로그인 회원의 MY 칸만 길게(유형 시트)·두 번(유형 바꾸기) 누르기를 받는다 — 나머지 칸은 바로 반응.
                 gestureItems = if (state.isLoggedIn) setOf(BarItem.MY) else emptySet(),
                 backDescription = stringResource(R.string.tab_back),
+                // 로그인 회원의 MY 칸 — 가진 유형 동그라미(인스타그램식). 비회원은 기존 아이콘.
+                customIcon = { item, sel ->
+                    if (item == BarItem.MY && state.isLoggedIn) {
+                        com.muyeon.app.ui.main.bar.TypeAvatars(state.switchableTypes, state.activeType, state.typeImages, sel); true
+                    } else false
+                },
             )
         }
     }

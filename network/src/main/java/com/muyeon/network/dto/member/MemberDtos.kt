@@ -9,8 +9,13 @@ import com.squareup.moshi.JsonClass
 data class MyRolesDto(
     val held: List<String>? = null,
     val activeType: String? = null,
+    /** 유형별 동그라미 사진(없으면 null) — 탭바 MY 칸. */
+    val images: Map<String, String?>? = null,
 ) {
-    fun toDomain() = MyRoles(held.orEmpty(), activeType?.takeIf { it.isNotBlank() } ?: ActiveType.GENERAL)
+    fun toDomain() = MyRoles(
+        held.orEmpty(), activeType?.takeIf { it.isNotBlank() } ?: ActiveType.GENERAL,
+        images.orEmpty().mapNotNull { (k, v) -> v?.takeIf { it.isNotBlank() }?.let { k.uppercase() to it } }.toMap(),
+    )
 }
 
 @JsonClass(generateAdapter = true)

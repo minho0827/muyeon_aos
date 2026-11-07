@@ -21,7 +21,7 @@ fun TabSectionHeader(
     actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {},
 ) {
     Column {
-        MainTopBar(title = title, actions = actions)
+        MainTopBar(title = title, chat = true, actions = actions)
         UnderlineTabs(
             options = sections.map { ChipOption(it.key, stringResource(it.labelRes)) },
             selected = selected.key,

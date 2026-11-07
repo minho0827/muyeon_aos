@@ -11,6 +11,11 @@ object NativeRoutes {
         data class Tab(val tab: MainTab) : Target
         /** 탭 위 앱 화면(바깥 NavHost 경로). */
         data class Route(val route: String) : Target
+        /**
+         * ★ 2026-11-08 웹 페이지가 열리자마자 네이티브 화면으로 넘기는 주소(이력서 관리·레슨 일정).
+         *   앱 셸에서 웹 창을 거치면 웹 창 + 네이티브 화면이 두 겹으로 떴다 — 웹 창 없이 바로 네이티브를 연다.
+         */
+        data class Action(val action: String, val data: Map<String, String> = emptyMap()) : Target
     }
 
     private val COMMUNITY_POST = Regex("^/community/post/(\\d+)/?$")
@@ -21,6 +26,11 @@ object NativeRoutes {
     fun resolve(path: String?): Target? {
         val clean = path?.substringBefore('#') ?: return null
         val p = clean.substringBefore('?')
+        val query = clean.substringAfter('?', "").split('&').filter { it.contains('=') }.associate { it.substringBefore('=') to it.substringAfter('=') }
+        when (p.trimEnd('/')) {
+            "/profileResume", "/resume" -> return Target.Action("openResumeList", mapOf("mode" to if (query["as"] == "dancer") "dancer" else "teacher"))
+            "/lessonCalendar" -> return Target.Action("openLessonCalendar", query["lessonId"]?.let { mapOf("lessonId" to it) } ?: emptyMap())
+        }
         COMMUNITY_POST.find(p)?.let { return Target.Route(Screen.CommunityPost.build(it.groupValues[1].toLong())) }
         if (p.trimEnd('/') == "/community" && !clean.contains('?')) return Target.Route(Screen.CommunityList.route)
         // 대타공고 등록 — 설문식 앱 화면(레슨 요청 [네, 강사 구해요]에서 온 ?prefill= 도).

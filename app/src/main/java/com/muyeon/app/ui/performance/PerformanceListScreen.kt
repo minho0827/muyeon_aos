@@ -67,7 +67,7 @@ fun PerformanceListScreen(
     CursorLoadMoreEffect(listState, canLoad = state.cursor.canAutoLoad && !state.isLoadingMore, onLoadMore = viewModel::loadMore)
 
     Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.theme.AppColors.Surface)) {
-        if (header != null) header() else MainTopBar(title = stringResource(R.string.tab_performance))
+        if (header != null) header() else MainTopBar(title = stringResource(R.string.tab_performance), chat = true)
         PullToRefreshBox(
             isRefreshing = state.isRefreshing,
             onRefresh = { viewModel.refresh(pull = true) },

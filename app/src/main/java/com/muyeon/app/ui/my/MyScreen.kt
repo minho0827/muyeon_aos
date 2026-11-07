@@ -56,7 +56,7 @@ fun MyScreen(
     }
 
     Column(Modifier.fillMaxSize().background(AppColors.Surface)) {
-        MainTopBar(title = stringResource(R.string.tab_my))
+        MainTopBar(title = stringResource(R.string.tab_my), chat = true)
         if (!isLoggedIn) {
             GuestMyHome(onLogin = { onOpenWeb(WebPaths.login(MainTab.MY.webPath)) }, onOpenPath = onOpenWeb, onOpenCommunity = onOpenCommunity,
                 regionName = region?.name, onRegion = { onOpenWeb(WebPaths.MY_REGIONS) })

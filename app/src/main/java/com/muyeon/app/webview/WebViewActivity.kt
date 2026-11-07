@@ -123,7 +123,9 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
         lastRoute = path
         syncRegionFromWeb()
         // 앱 탭 주소 또는 앱으로 옮긴 상세(커뮤니티 글·공연) — 이 창을 닫고 앱 화면으로(NativeRoutes 표).
-        if (com.muyeon.app.navigation.NativeRoutes.resolve(path) == null) return
+        // 웹이 스스로 네이티브로 넘기는 주소(Action)는 웹이 이미 열었다 — 여기서 또 열면 두 번 뜬다.
+        val target = com.muyeon.app.navigation.NativeRoutes.resolve(path)
+        if (target == null || target is com.muyeon.app.navigation.NativeRoutes.Target.Action) return
         routeHandler.postDelayed({
             if (lastRoute == path && !isFinishing) com.muyeon.app.ui.main.MainActivity.openPath(this, path)
         }, ROUTE_SETTLE_MS)

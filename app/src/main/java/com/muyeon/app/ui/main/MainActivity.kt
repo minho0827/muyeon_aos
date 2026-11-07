@@ -79,7 +79,7 @@ class MainActivity : ComponentActivity(), ResultHost {
         setContent {
             MuyeonTheme(darkTheme = false, dynamicColor = false) {
                 Box(Modifier.fillMaxSize()) {
-                    AppNavHost(mainViewModel = viewModel, onMyLongPress = ::showTypeSheet, onOpenWeb = { path -> WebViewActivity.startPath(this@MainActivity, path) }, onOpenPath = { path -> openPath(path, viaLink = false) })
+                    AppNavHost(mainViewModel = viewModel, onMyLongPress = ::showTypeSheet, onOpenWeb = ::openWeb, onOpenPath = { path -> openPath(path, viaLink = false) })
                     FloatingOverlay(
                         api = remember { FloatingApi { TokenManager.getAccessToken(this@MainActivity) } },
                         onOpenChatList = { ChatActivity.startList(this@MainActivity, "") },
@@ -198,12 +198,23 @@ class MainActivity : ComponentActivity(), ResultHost {
     }
 
     /** 경로 열기 — 앱 탭 주소면 탭, 아니면 웹 창. 다른 사이트 주소는 웹 창이 그대로 연다. */
+    /** 웹 창 열기 — 단, 웹이 열리자마자 네이티브로 넘기는 주소(이력서 관리·레슨 일정)는 웹 창 없이 바로(두 겹 방지). */
+    private fun openWeb(path: String) {
+        val t = com.muyeon.app.navigation.NativeRoutes.resolve(path)
+        if (t is com.muyeon.app.navigation.NativeRoutes.Target.Action &&
+            com.muyeon.app.webview.NativeActionRouter.open(this, t.action, org.json.JSONObject(t.data))) return
+        WebViewActivity.startPath(this, path)
+    }
+
     private fun openPath(urlOrPath: String, viaLink: Boolean) {
         val base = com.muyeon.app.utils.Constants.getBaseUrl(this).trimEnd('/')
         val path = if (urlOrPath.startsWith(base)) urlOrPath.removePrefix(base).ifEmpty { "/" } else urlOrPath
         when (val target = com.muyeon.app.navigation.NativeRoutes.resolve(path)) {
             is com.muyeon.app.navigation.NativeRoutes.Target.Tab -> { viewModel.selectTab(target.tab); return }
             is com.muyeon.app.navigation.NativeRoutes.Target.Route -> { viewModel.openRoute(target.route); return }
+            is com.muyeon.app.navigation.NativeRoutes.Target.Action -> {
+                if (com.muyeon.app.webview.NativeActionRouter.open(this, target.action, org.json.JSONObject(target.data))) return
+            }
             null -> Unit
         }
         WebViewActivity.startPath(this, path, viaLink = viaLink)

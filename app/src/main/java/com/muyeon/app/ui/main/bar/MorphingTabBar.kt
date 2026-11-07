@@ -89,6 +89,8 @@ fun MorphingTabBar(
      */
     gestureItems: Set<BarItem> = emptySet(),
     backDescription: String,
+    /** 아이콘 대신 직접 그리는 칸(MY — 유형 동그라미). 고른 상태를 받는다. */
+    customIcon: (@Composable (BarItem, Boolean) -> Boolean)? = null,
 ) {
     val anims = remember { BarItem.entries.associateWith { ItemAnim(it, mode) } }
     LaunchedEffect(mode) {
@@ -148,7 +150,9 @@ fun MorphingTabBar(
                         Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, backDescription, tint = AppColors.TextHead, modifier = Modifier.size(24.dp))
                     }
                 } else {
-                    LabeledTab(icon(item), label(item, mode), isSelected, dotOn(item))
+                    LabeledTab(label(item, mode), isSelected, dotOn(item)) { tint ->
+                        if (customIcon?.invoke(item, isSelected) != true) Icon(icon(item), null, tint = tint, modifier = Modifier.size(26.dp))
+                    }
                 }
             }
         }
@@ -157,11 +161,11 @@ fun MorphingTabBar(
 
 /** 칸 — 토스처럼 알약 표시 없이 색으로만 고른 칸을 보인다(고른 칸 검정, 나머지 회색 — 2026-11-08 사용자 요청). */
 @Composable
-private fun LabeledTab(icon: Painter, label: String, selected: Boolean, dot: Boolean) {
+private fun LabeledTab(label: String, selected: Boolean, dot: Boolean, icon: @Composable (androidx.compose.ui.graphics.Color) -> Unit) {
     val tint by animateColorAsState(if (selected) AppColors.TextHead else AppColors.TextHint, label = "tabTint")
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = tint, modifier = Modifier.size(26.dp))
+        Box(Modifier.height(28.dp), contentAlignment = Alignment.Center) {
+            icon(tint)
             if (dot) Box(Modifier.align(Alignment.TopEnd).size(6.dp).clip(CircleShape).background(AppColors.Badge))
         }
         Text(label, style = AppTypography.Caption12, color = tint, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,

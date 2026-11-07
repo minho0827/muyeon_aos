@@ -29,6 +29,8 @@ data class MainUiState(
     val isLoggedIn: Boolean = false,
     /** 고를 수 있는 유형(일반 + 보유). 비회원·조회 전이면 빈 목록. */
     val switchableTypes: List<String> = emptyList(),
+    /** 유형 → 동그라미 사진(탭바 MY 칸 — 인스타그램식). 없는 유형은 아이콘. */
+    val typeImages: Map<String, String> = emptyMap(),
     /** MY 탭 빨간 점(웹 useTypeBadges mine>0). MY 탭 이식 때 채운다. */
     val myDot: Boolean = false,
 )
@@ -109,7 +111,7 @@ class MainViewModel(
                 val type = ActiveType.visible(r.data.activeType)
                 val changed = type != _state.value.activeType
                 if (changed) activeTypeStore.save(type)
-                _state.update { it.copy(switchableTypes = r.data.switchable, activeType = type) }
+                _state.update { it.copy(switchableTypes = r.data.switchable, activeType = type, typeImages = r.data.images) }
             }
         }
     }
@@ -150,11 +152,12 @@ class MainViewModel(
         }
     }
 
-    /** MY 두 번 누르기 — 고를 유형이 딱 둘이면 다른 쪽으로(웹 Footer 와 같은 규칙). */
+    /** MY 두 번 누르기 — 다음 유형으로 하나씩 돌아가며 바꾼다(인스타그램 계정 전환처럼, 2026-11-08 사용자 요청). */
     fun onMyDoubleTap() {
         val types = _state.value.switchableTypes
-        if (types.size != 2) return
-        types.firstOrNull { it != _state.value.activeType }?.let(::switchTo)
+        if (types.size < 2) return
+        val i = types.indexOf(_state.value.activeType)
+        switchTo(types[(i + 1).mod(types.size)])
     }
 
     /** 유형 시트에서 고름. "MANAGE" = 유형 편집. */
