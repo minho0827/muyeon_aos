@@ -37,6 +37,9 @@ interface RecruitApi {
         @Query("scheduleType") scheduleType: String?, @Query("minClassCount") minClassCount: Int?,
     ): Response<List<SubRowDto>>
 
+    @GET(ApiEndpoints.Recruit.RECRUIT_PREFILL)
+    suspend fun recruitPrefill(@retrofit2.http.Path("id") id: String): Response<com.muyeon.network.dto.recruit.RecruitPrefillDto>
+
     @POST(ApiEndpoints.Recruit.SUBS)
     suspend fun createSub(@Body body: SubCreateBody): Response<CreatedIdDto>
 }

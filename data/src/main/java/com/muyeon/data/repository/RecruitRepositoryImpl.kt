@@ -39,10 +39,13 @@ class RecruitRepositoryImpl(private val api: RecruitApi, private val moshi: Mosh
         }.map { list -> list.mapNotNull { d -> d.toDomain(now, ::epochMs) } }
     }
 
+    override suspend fun subPrefill(id: String): ApiResult<com.muyeon.domain.model.recruit.SubPrefill> =
+        safeApiCall(moshi) { api.recruitPrefill(id) }.map { it.sub?.toDomain() ?: com.muyeon.domain.model.recruit.SubPrefill(null, null, null, null, null, null, null, null, emptyList()) }
+
     override suspend fun createSub(draft: com.muyeon.domain.model.recruit.SubDraft): ApiResult<Long> = with(draft) {
         safeApiCall(moshi) {
             api.createSub(com.muyeon.network.dto.recruit.SubCreateBody(title, academy, genre, target, fields, scheduleType, classDate, classTime, classCount,
-                region, regionCode, salary, pay, description))
+                region, regionCode, salary, pay, description, career, image))
         }.map { it.id ?: 0L }
     }
 

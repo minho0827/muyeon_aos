@@ -37,7 +37,10 @@ sealed class Screen(val route: String) {
     }
 
     /** 대타공고 설문 등록(채용 › 대타공고 ＋ · 웹 /subs/create). */
-    data object SubWizard : Screen("subs/create")
+    data object SubWizard : Screen("subs/create?prefill={prefill}") {
+        const val ARG_PREFILL = "prefill"
+        fun build(prefill: String? = null) = if (prefill.isNullOrBlank()) "subs/create" else "subs/create?prefill=$prefill"
+    }
     data object CommunityPost : Screen("community/post/{id}") {
         const val ARG_ID = "id"
         fun build(id: Long) = "community/post/$id"

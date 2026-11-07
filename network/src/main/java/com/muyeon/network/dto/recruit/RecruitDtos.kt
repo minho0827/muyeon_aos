@@ -64,7 +64,21 @@ data class SubCreateBody(
     val title: String, val academy: String?, val genre: String, val target: String, val fields: List<String>,
     val scheduleType: String, val classDate: String, val classTime: String, val classCount: Int,
     val region: String?, val regionCode: String?, val salary: String?, val pay: String?, val description: String?,
+    val career: String? = null, val image: String? = null,
 )
 
 @JsonClass(generateAdapter = true)
 data class CreatedIdDto(val id: Long? = null)
+
+@JsonClass(generateAdapter = true)
+data class RecruitPrefillDto(val sub: SubPrefillPartDto? = null)
+
+@JsonClass(generateAdapter = true)
+data class SubPrefillPartDto(val form: Map<String, String>? = null, val fields: List<String>? = null) {
+    fun toDomain(): com.muyeon.domain.model.recruit.SubPrefill {
+        val f = form.orEmpty()
+        fun v(k: String) = f[k]?.takeIf { it.isNotBlank() }
+        return com.muyeon.domain.model.recruit.SubPrefill(v("title"), v("genre"), v("target"), v("region"), v("regionCode"),
+            v("classDate"), v("classTime"), v("content") ?: v("description"), fields.orEmpty())
+    }
+}

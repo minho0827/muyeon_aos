@@ -62,6 +62,8 @@ import com.muyeon.app.ui.theme.AppColors
 import com.muyeon.app.ui.theme.AppTypography
 import com.muyeon.app.utils.TokenManager
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.ui.draw.clip
 import org.koin.androidx.compose.koinViewModel
 import java.time.Instant
 import java.time.LocalDate
@@ -76,7 +78,12 @@ import java.util.Locale
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SubWizardScreen(onClose: () -> Unit, onCreated: (Long) -> Unit, vm: SubWizardViewModel = koinViewModel()) {
+fun SubWizardScreen(
+    onClose: () -> Unit,
+    onCreated: (Long) -> Unit,
+    prefillId: String? = null,
+    vm: SubWizardViewModel = koinViewModel { org.koin.core.parameter.parametersOf(prefillId) },
+) {
     val context = LocalContext.current
     vm.titleTemplate = stringResource(R.string.subwiz_auto_title)
     val targetText = RecruitLabels.TARGETS.associateWith { t -> RecruitLabels.target(t)?.let { stringResource(it) } ?: t }
@@ -139,6 +146,7 @@ fun SubWizardScreen(onClose: () -> Unit, onCreated: (Long) -> Unit, vm: SubWizar
                             )
                         }
                         SubStepType.TEXT -> TextBox(vm.answer(st.id).text.orEmpty(), stringResource(R.string.subwiz_desc_hint), vm::setText)
+                        SubStepType.IMAGE -> ImageStep(vm)
                         SubStepType.CONFIRM -> ConfirmStep(vm)
                     }
                 }
@@ -177,7 +185,9 @@ private fun question(id: String): String = stringResource(
         SubWizardQuestions.COUNT -> R.string.subwiz_q_count
         SubWizardQuestions.REGION -> R.string.subwiz_q_region
         SubWizardQuestions.SALARY -> R.string.subwiz_q_salary
+        SubWizardQuestions.CAREER -> R.string.subwiz_q_career
         SubWizardQuestions.DESC -> R.string.subwiz_q_desc
+        SubWizardQuestions.IMAGE -> R.string.subwiz_q_image
         else -> R.string.subwiz_q_confirm
     },
 )
@@ -190,6 +200,7 @@ private fun optionLabel(id: String, v: String): String = when (id) {
     SubWizardQuestions.LENGTH -> v.toInt().let { m -> if (m % 60 == 0) stringResource(R.string.subwiz_len_h, m / 60) else if (m < 60) stringResource(R.string.subwiz_len_m, m) else stringResource(R.string.subwiz_len_hm, m / 60, m % 60) }
     SubWizardQuestions.COUNT -> stringResource(R.string.recruit_class_count, v.toInt())
     SubWizardQuestions.SALARY -> HomeLabels.salary(v)?.let { stringResource(it) } ?: v
+    SubWizardQuestions.CAREER -> if (v == "ANY") stringResource(R.string.career_any) else LessonLabels.career(v)?.let { stringResource(it) } ?: v
     else -> v
 }
 
@@ -198,6 +209,7 @@ private fun display(vm: SubWizardViewModel, st: SubStep): String = when (st.type
     SubStepType.DATE -> vm.answer(st.id).values.firstOrNull()?.let { runCatching { LocalDate.parse(it).format(DATE_FMT) }.getOrNull() }.orEmpty()
     SubStepType.REGION -> vm.answer(st.id).values.firstOrNull().orEmpty()
     SubStepType.TEXT -> vm.answer(st.id).text.orEmpty()
+    SubStepType.IMAGE -> if (vm.answer(st.id).text.isNullOrBlank()) "" else stringResource(R.string.subwiz_image_added)
     else -> vm.answer(st.id).values.map { optionLabel(st.id, it) }.joinToString(", ")
 }
 
@@ -250,4 +262,32 @@ private fun Chip(text: String, on: Boolean, onClick: () -> Unit) {
             .border(1.dp, if (on) AppColors.ChipSelectedBg else AppColors.ChipBorder, RoundedCornerShape(50))
             .clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 9.dp),
     )
+}
+
+/** 대표 사진 1장 — 사진 고르기 → 올리기(JobPostingApi.uploadImage, 웹 SubCreate 와 같은 업로드) → 미리보기. */
+@Composable
+private fun ImageStep(vm: SubWizardViewModel) {
+    val context = LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val url = vm.answer(SubWizardQuestions.IMAGE).text
+    val picker = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        vm.uploading = true
+        scope.launch {
+            val bytes = runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
+            val r = bytes?.let { com.muyeon.app.ui.jobposting.JobPostingApi(TokenManager.getAccessToken(context)).uploadImage(it) }
+            r?.onSuccess { vm.setImage(it) }?.onFailure { Toast.makeText(context, it.message ?: context.getString(R.string.subwiz_image_failed), Toast.LENGTH_SHORT).show() }
+            vm.uploading = false
+        }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        url?.takeIf { it.isNotBlank() }?.let {
+            com.muyeon.app.ui.components.RemoteImage(it, Modifier.fillMaxWidth().heightIn(max = 220.dp).clip(RoundedCornerShape(12.dp)))
+        }
+        QuotePrimaryButton(
+            text = stringResource(when { vm.uploading -> R.string.subwiz_image_uploading; url.isNullOrBlank() -> R.string.subwiz_image_pick; else -> R.string.subwiz_image_repick }),
+            modifier = Modifier.fillMaxWidth(), filled = false, enabled = !vm.uploading,
+            onClick = { picker.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+        )
+    }
 }

@@ -64,7 +64,7 @@ val viewModelModule = module {
     viewModel { com.muyeon.app.ui.recruit.HireViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { com.muyeon.app.ui.recruit.SeekViewModel(get(), get(), get(), get(), get()) }
     viewModel { com.muyeon.app.ui.recruit.SubsViewModel(get(), get()) }
-    viewModel { com.muyeon.app.ui.subwizard.SubWizardViewModel(get(), get(), get()) }
+    viewModel { p -> com.muyeon.app.ui.subwizard.SubWizardViewModel(get(), get(), get(), p.getOrNull()) }
     viewModel { com.muyeon.app.ui.home.HomeViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     // MY
     viewModel { com.muyeon.app.ui.my.MyViewModel(get(), get(), get(), get(), get(), get(), get()) }

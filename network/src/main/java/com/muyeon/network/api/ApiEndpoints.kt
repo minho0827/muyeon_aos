@@ -93,6 +93,7 @@ object ApiEndpoints {
         const val JOBS_PAGE = "$API/jobs/page"                    // GET region·career·salary(쉼표)·cursor·limit → { items, hasMore, nextCursor }
         const val JOBS_FOR_ME = "$API/jobs/recommended-for-me"    // GET limit — 강사·무용수 '나에게 맞는 공고'
         const val SEEKERS_PAGE = "$API/seekers/page"              // GET types·fields·targets·careers(쉼표)·cursor·limit
+        const val RECRUIT_PREFILL = "$API/quotes/recruit-prefill/{id}"  // quotes.controller.ts — 본인·1시간
         const val SUBS = "$API/subs"                              // GET region·field·target·salary·scheduleType·minClassCount → 배열(커서 없음)
     }
 

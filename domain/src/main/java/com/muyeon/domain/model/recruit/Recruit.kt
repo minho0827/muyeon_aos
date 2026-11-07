@@ -100,4 +100,12 @@ data class SubDraft(
     val salary: String?,
     val pay: String?,
     val description: String?,
+    val career: String? = null,
+    val image: String? = null,
+)
+
+/** 레슨 요청 [네, 강사 구해요] → 대타 설문 미리 채움(GET /quotes/recruit-prefill/:id 의 sub 몫). 빈 값은 null. */
+data class SubPrefill(
+    val title: String?, val genre: String?, val target: String?, val region: String?, val regionCode: String?,
+    val classDate: String?, val classTime: String?, val content: String?, val fields: List<String>,
 )

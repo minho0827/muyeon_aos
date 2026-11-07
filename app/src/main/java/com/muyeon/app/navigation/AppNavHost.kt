@@ -85,8 +85,9 @@ fun AppNavHost(
             }
         }
         // 대타공고 설문 등록 — 올리면 닫고 대타공고 목록을 다시 받는다.
-        composable(Screen.SubWizard.route) {
+        composable(Screen.SubWizard.route, arguments = listOf(navArgument(Screen.SubWizard.ARG_PREFILL) { type = NavType.StringType; nullable = true; defaultValue = null })) { e ->
             com.muyeon.app.ui.subwizard.SubWizardScreen(
+                prefillId = e.arguments?.getString(Screen.SubWizard.ARG_PREFILL),
                 onClose = { navController.popBackStack() },
                 onCreated = {
                     AppResults.publish(setOf(com.muyeon.app.result.ResultKeys.JOB_POSTINGS))

@@ -39,6 +39,8 @@ class SubWizardViewModel(
     private val createSub: CreateSubUseCase,
     private val info: GetMyPageInfoUseCase,
     private val activeType: ActiveTypeStore,
+    /** 레슨 요청 [네, 강사 구해요]에서 넘어온 미리 채움 번호(?prefill=). */
+    private val prefillId: String?,
 ) : ViewModel() {
     val steps = SubWizardQuestions.steps
     val answers = mutableStateMapOf<String, SubAnswer>()
@@ -55,6 +57,30 @@ class SubWizardViewModel(
 
     init {
         viewModelScope.launch { runCatching { info(ActiveType.visible(activeType.current())).name }.getOrNull()?.let { if (academy.isBlank()) academy = it } }
+        prefillId?.takeIf { it.isNotBlank() }?.let { id -> viewModelScope.launch { (createSub.prefill(id) as? ApiResult.Success)?.data?.let(::applyPrefill) } }
+    }
+
+    /**
+     * 레슨 요청 답으로 채운다(웹 useQuotePrefill — 비어 있는 칸만). 수업 시간 'HH:MM ~ HH:MM' 은 시작·길이 선택지에 있을 때만.
+     *   채운 질문은 건너뛰고 첫 빈 질문부터 묻는다(레슨 견적 위저드 seed 와 같다).
+     */
+    private fun applyPrefill(p: com.muyeon.domain.model.recruit.SubPrefill) {
+        fun put(id: String, v: String?) { if (v != null && answers[id] == null) answers[id] = SubAnswer(listOf(v)) }
+        put(SubWizardQuestions.GENRE, p.genre?.takeIf { it in com.muyeon.domain.model.teacher.LessonGenres.ALL })
+        put(SubWizardQuestions.TARGET, p.target)
+        if (p.fields.isNotEmpty() && answers[SubWizardQuestions.FIELDS] == null) answers[SubWizardQuestions.FIELDS] = SubAnswer(p.fields)
+        put(SubWizardQuestions.DATE, p.classDate?.takeIf { runCatching { LocalDate.parse(it) }.isSuccess })
+        p.classTime?.split("~")?.map { it.trim() }?.takeIf { it.size == 2 }?.let { (a, b) ->
+            if (a in SubWizardQuestions.START_TIMES) {
+                put(SubWizardQuestions.START, a)
+                val len = runCatching { java.time.Duration.between(LocalTime.parse(a), LocalTime.parse(b)).toMinutes().toString() }.getOrNull()
+                put(SubWizardQuestions.LENGTH, len?.takeIf { it in SubWizardQuestions.LENGTHS })
+            }
+        }
+        p.region?.let { if (answers[SubWizardQuestions.REGION] == null) answers[SubWizardQuestions.REGION] = SubAnswer(listOf(it), regionCode = p.regionCode) }
+        p.content?.let { if (answers[SubWizardQuestions.DESC] == null) answers[SubWizardQuestions.DESC] = SubAnswer(text = it) }
+        p.title?.let { if (title.isBlank()) title = it }
+        while (currentIndex < steps.lastIndex && !answer(steps[currentIndex].id).isEmpty) currentIndex++
     }
 
     val current get() = steps[currentIndex]
@@ -65,6 +91,7 @@ class SubWizardViewModel(
 
     val canProceed: Boolean get() = when (current.type) {
         SubStepType.CONFIRM -> title.isNotBlank() && !submitting && timeError() == null
+        SubStepType.IMAGE -> !uploading
         else -> !current.required || !answer(current.id).isEmpty
     }
 
@@ -79,6 +106,8 @@ class SubWizardViewModel(
     fun setDate(iso: String) { answers[SubWizardQuestions.DATE] = SubAnswer(listOf(iso)) }
     fun setRegion(name: String, code: String?) { answers[SubWizardQuestions.REGION] = SubAnswer(listOf(name), regionCode = code) }
     fun setText(t: String) { answers[current.id] = answer(current.id).copy(text = t) }
+    fun setImage(url: String?) { answers[SubWizardQuestions.IMAGE] = SubAnswer(text = url) }
+    var uploading by mutableStateOf(false)
 
     fun next() {
         val back = editReturn
@@ -144,6 +173,8 @@ class SubWizardViewModel(
             salary = one(SubWizardQuestions.SALARY),
             pay = null,
             description = answer(SubWizardQuestions.DESC).text?.trim()?.ifBlank { null },
+            career = one(SubWizardQuestions.CAREER),
+            image = answer(SubWizardQuestions.IMAGE).text?.ifBlank { null },
         )
         viewModelScope.launch {
             when (val r = createSub(draft)) {

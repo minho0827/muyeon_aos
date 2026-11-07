@@ -4,7 +4,7 @@ package com.muyeon.app.ui.subwizard
  * ★ 2026-11-08 대타공고 설문 — 레슨 견적처럼 한 번에 하나씩 묻는다(사용자 요청: 공고 양식은 너무 불편).
  *   값은 웹 constants/subOptions.js · jobOptions.js 와 같은 코드(서버 CreateSubDto 계약). 문구는 화면이 리소스로 단다.
  */
-enum class SubStepType { SINGLE, MULTI, CHIPS, DATE, REGION, TEXT, CONFIRM }
+enum class SubStepType { SINGLE, MULTI, CHIPS, DATE, REGION, TEXT, IMAGE, CONFIRM }
 
 data class SubStep(val id: String, val type: SubStepType, val options: List<String> = emptyList(), val required: Boolean = true)
 
@@ -19,7 +19,9 @@ object SubWizardQuestions {
     const val COUNT = "classCount"
     const val REGION = "region"
     const val SALARY = "salary"
+    const val CAREER = "career"
     const val DESC = "description"
+    const val IMAGE = "image"
     const val CONFIRM = "confirm"
 
     /** 수업 시작 — 06:00~22:30, 30분 간격. */
@@ -38,7 +40,11 @@ object SubWizardQuestions {
         SubStep(COUNT, SubStepType.CHIPS, (1..8).map { it.toString() }),
         SubStep(REGION, SubStepType.REGION),
         SubStep(SALARY, SubStepType.SINGLE, com.muyeon.app.ui.recruit.RecruitLabels.SALARIES),
+        // 경력 — 웹 JOB_CAREER_LEVELS(상관없음 + CAREER_LEVELS). 건너뛸 수 있다.
+        SubStep(CAREER, SubStepType.SINGLE, listOf("ANY") + com.muyeon.app.ui.recruit.RecruitLabels.CAREERS, required = false),
         SubStep(DESC, SubStepType.TEXT, required = false),
+        // 대표 사진 1장(웹 SubCreate image) — 건너뛸 수 있다.
+        SubStep(IMAGE, SubStepType.IMAGE, required = false),
         SubStep(CONFIRM, SubStepType.CONFIRM),
     )
 }

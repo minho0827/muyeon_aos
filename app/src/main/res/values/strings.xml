@@ -597,6 +597,13 @@
     <string name="subwiz_q_desc">강사님께 전할 말이 있나요?(건너뛰어도 돼요)</string>
     <string name="subwiz_q_confirm">마지막으로 확인해 주세요</string>
     <string name="subwiz_skipped">건너뜀</string>
+    <string name="subwiz_q_career">원하는 경력이 있나요?(건너뛰어도 돼요)</string>
+    <string name="subwiz_q_image">학원 사진을 올려 주세요(건너뛰어도 돼요)</string>
+    <string name="subwiz_image_pick">사진 고르기</string>
+    <string name="subwiz_image_repick">사진 다시 고르기</string>
+    <string name="subwiz_image_uploading">올리는 중…</string>
+    <string name="subwiz_image_added">사진 1장</string>
+    <string name="subwiz_image_failed">사진을 올리지 못했어요.</string>
     <string name="subwiz_region_pick">지역 선택하기</string>
     <string name="subwiz_region_repick">지역 다시 선택</string>
     <string name="subwiz_desc_hint">준비물, 수업 분위기, 주차 등</string>
