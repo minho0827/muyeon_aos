@@ -66,7 +66,9 @@ fun ChatReportSheet(
     onDone: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState()
+    // ★ 2026-11-07 처음부터 끝까지 펼치고(반만 열려 맨 아래 '기타'가 하단 내비게이션 바에 가리던 것) 내비게이션 바만큼 띄운다
+    //  — 같은 채팅의 메시지 행동 시트(ChatMessageActions)와 같은 방식.
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var reason by remember { mutableStateOf("INAPPROPRIATE") }
     var detail by remember { mutableStateOf("") }
     var sending by remember { mutableStateOf(false) }
@@ -78,7 +80,7 @@ fun ChatReportSheet(
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp),
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).navigationBarsPadding().padding(horizontal = 20.dp).padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(

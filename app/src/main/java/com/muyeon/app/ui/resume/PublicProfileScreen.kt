@@ -408,6 +408,7 @@ private fun ProfileHero(p: PublicProfile) {
 }
 
 /** 지역·전문분야 회색 칩 + 평점(탭 → 전체 후기) — iOS chipRow. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ChipRow(p: PublicProfile, onOpenReviews: () -> Unit) {
     val region = p.activeRegion?.takeIf { it.isNotEmpty() }
@@ -417,10 +418,11 @@ private fun ChipRow(p: PublicProfile, onOpenReviews: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         return
     }
-    Row(
+    // ★ 2026-11-07 한 줄(Row)이라 지역이 길면 뒤 칩(전문 분야 '기초반, 취미반')이 잘려 보였다 → 넘치면 다음 줄로(FlowRow, 전문 분야 섹션과 같은 부품).
+    FlowRow(
         Modifier.fillMaxWidth().padding(top = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         region?.let { GrayChip(it) }
         fs?.let { GrayChip(it.take(2).joinToString(", ") { f -> ResumeOptions.fieldLabel(f) }) }
