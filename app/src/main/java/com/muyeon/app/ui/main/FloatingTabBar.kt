@@ -40,7 +40,7 @@ private const val FLOAT_BOTTOM = 8f
  */
 @Composable
 fun FloatingTabBar(floating: Boolean, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val anim by animateFloatAsState(if (floating) 1f else 0f, spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow), label = "tabBarFloat")
+    val anim by animateFloatAsState(if (floating) 1f else 0f, spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMedium), label = "tabBarFloat")
     // 스프링이 0·1 을 살짝 넘는다 — 여백·모서리가 음수가 되면 앱이 죽는다(Padding must be non-negative). 0~1 로 자른다.
     val f = anim.coerceIn(0f, 1f)
     val nav = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()

@@ -31,6 +31,6 @@ enum class BarItem(private val slots: Map<BarMode, Int>) {
         return (slots.getValue(m) + 0.5f) / m.slotCount
     }
 
-    /** 나타날 때 차례(ms) — 왼쪽부터 60ms 간격(PaceERA enterDelayMs). 채용 칸은 바로 출발. */
-    fun enterDelayMs(mode: BarMode): Int = if (this == JOBS) 0 else (slots[mode] ?: 0) * 60 + 60
+    /** 나타날 때 차례(ms) — 왼쪽부터 30ms 간격(PaceERA 60ms 를 반으로 — 사용자 요청 '더 빠르게'). 채용 칸은 바로 출발. */
+    fun enterDelayMs(mode: BarMode): Int = if (this == JOBS) 0 else (slots[mode] ?: 0) * 30 + 30
 }

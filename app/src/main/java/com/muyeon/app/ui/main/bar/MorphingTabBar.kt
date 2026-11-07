@@ -54,7 +54,7 @@ import kotlin.math.roundToInt
 private val BAR_HEIGHT = 72.dp
 /** 사라진 칸의 크기 — 나타날 때 여기서 커지며 살짝 튕긴다(PaceERA HIDDEN_SCALE). */
 private const val HIDDEN_SCALE = 0.5f
-private const val FADE_MS = 140
+private const val FADE_MS = 90
 
 /** 칸 하나의 지금 값(가운데 위치 0~1 · 투명도 · 크기). */
 private class ItemAnim(item: BarItem, mode: BarMode) {
@@ -96,14 +96,14 @@ fun MorphingTabBar(
             BarItem.entries.forEach { item ->
                 val a = anims.getValue(item)
                 val show = item.visibleIn(mode)
-                launch { a.center.animateTo(item.centerIn(mode), spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow)) }
+                launch { a.center.animateTo(item.centerIn(mode), spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMedium)) }
                 launch {
                     // 나타나는 칸만 차례를 기다린다. 이미 반쯤 보이면 기다리지 않는다.
                     if (show && a.alpha.value < 0.01f) delay(item.enterDelayMs(mode).toLong())
                     launch { a.alpha.animateTo(if (show) 1f else 0f, tween(FADE_MS, easing = if (show) FastOutSlowInEasing else FastOutLinearInEasing)) }
                     a.scale.animateTo(
                         if (show) 1f else HIDDEN_SCALE,
-                        if (show) spring(dampingRatio = 0.45f, stiffness = 380f) else tween(FADE_MS, easing = FastOutLinearInEasing),
+                        if (show) spring(dampingRatio = 0.55f, stiffness = 900f) else tween(FADE_MS, easing = FastOutLinearInEasing),
                     )
                 }
             }
