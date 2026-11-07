@@ -35,6 +35,18 @@ fun AppNavHost(
             if (topRoute != route) navController.navigate(route)
         }
     }
+    // 플로팅(채팅 버튼) 표시는 웹 주소 기준 — 탭 위 상세에 들어가면 상세 주소를 알려 숨기고, 탭으로 돌아오면 탭 주소.
+    androidx.compose.runtime.LaunchedEffect(navController) {
+        navController.currentBackStackEntryFlow.collect { entry ->
+            val route = entry.destination.route
+            if (route == Screen.Main.route) {
+                com.muyeon.app.ui.main.MainTab.fromKey(mainViewModel.state.value.selectedKey)
+                    ?.let { com.muyeon.app.ui.floating.FloatingState.updateRoute(it.webPath) }
+            } else {
+                com.muyeon.app.ui.floating.FloatingState.updateRoute("/" + (route ?: "detail"))
+            }
+        }
+    }
     NavHost(navController, startDestination = Screen.Main.route) {
         composable(Screen.Main.route) {
             MainScreen(

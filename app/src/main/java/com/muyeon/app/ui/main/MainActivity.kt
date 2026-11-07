@@ -108,7 +108,8 @@ class MainActivity : ComponentActivity(), ResultHost {
                 launch {
                     viewModel.state.collect { s ->
                         // 플로팅(채팅 버튼) 표시 판정은 웹 라우트 기준이다 — 앱 탭도 같은 주소를 알린다.
-                        MainTab.fromKey(s.selectedKey)?.let { FloatingState.updateRoute(it.webPath) }
+                        if (!FloatingState.currentRoute.startsWith("/community/post") && !FloatingState.currentRoute.startsWith("/performance/"))
+                            MainTab.fromKey(s.selectedKey)?.let { FloatingState.updateRoute(it.webPath) }
                     }
                 }
             }
@@ -137,7 +138,8 @@ class MainActivity : ComponentActivity(), ResultHost {
         viewModel.onResume()
         FloatingState.requestRefresh()
         ActiveRole.syncFromServer(this)
-        MainTab.fromKey(viewModel.state.value.selectedKey)?.let { FloatingState.updateRoute(it.webPath) }
+        if (!FloatingState.currentRoute.startsWith("/community/post") && !FloatingState.currentRoute.startsWith("/performance/"))
+            MainTab.fromKey(viewModel.state.value.selectedKey)?.let { FloatingState.updateRoute(it.webPath) }
     }
 
     override fun onDestroy() {
