@@ -63,7 +63,9 @@ class TransferListState {
         api.page(region, filter, cursor)
             .onSuccess { p ->
                 if (gen != generation) return@onSuccess
-                items = if (reset) p.items else (items + p.items).distinctBy { it.id }
+                // 예시 글은 화면에서만 숨긴다(사용자 결정 2026-11-08).
+                val fresh = p.items.filterNot { com.muyeon.domain.usecase.home.DemoContent.isDemoTitle(it.title) }
+                items = if (reset) fresh else (items + fresh).distinctBy { it.id }
                 hasMore = p.hasMore && p.nextCursor != null
                 cursor = p.nextCursor
             }

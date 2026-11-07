@@ -78,7 +78,7 @@ fun SpaceListScreen(
     LaunchedEffect(categoryId, sido, date, headcount, sort) {
         loading = true
         api.list(sido, categoryId.takeIf { it > 0 }, date, headcount, sort)
-            .onSuccess { items = it; error = null }.onFailure { error = it.message }
+            .onSuccess { items = it.filterNot { s -> com.muyeon.domain.usecase.home.DemoContent.isDemoTitle(s.name) }; error = null } // 예시 숨김(사용자 결정 2026-11-08).onFailure { error = it.message }
         scrapped = api.scrappedSpaceIds()
         loading = false
     }
