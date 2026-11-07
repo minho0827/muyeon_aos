@@ -16,9 +16,10 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
-import java.text.SimpleDateFormat
 import java.util.Locale
-import java.util.concurrent.TimeUnit
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 /**
  * 채용 공고 — iOS `JobPosting/JobPostingModels.swift` 1:1.
@@ -49,14 +50,14 @@ data class MyPosting(
     /** kind 가 달라도 id 가 겹칠 수 있어 목록 key 는 조합. */
     val uid: String get() = "$kind-$id"
 
-    /** D-day — OPEN + 마감일이 있을 때만. "-"(미정)은 null. 인증 대기 공고는 아직 모집 전이라 표시하지 않는다. */
+    /**
+     * D-day — OPEN + 마감일이 있을 때만. "-"(미정)은 null. 인증 대기 공고는 아직 모집 전이라 표시하지 않는다.
+     *  마감일(KST) 당일 = 0(오늘 마감), 전날 = 1, 지남 = 음수. 서버는 마감일 KST 하루가 끝난 뒤 마감한다.
+     */
     val dday: Int?
         get() {
             if (status != "OPEN" || pendingVerification) return null
-            val d = deadline ?: return null
-            if (d == "-" || d.length < 10) return null
-            val due = runCatching { ymd.parse(d.take(10))?.time }.getOrNull() ?: return null
-            return TimeUnit.MILLISECONDS.toDays(due - System.currentTimeMillis()).toInt()
+            return ddayOf(deadline)
         }
 
     /** 카드 서브라인 — 모집분야(최대 2) 또는 장르 + 요일. */
@@ -71,7 +72,15 @@ data class MyPosting(
         }
 
     companion object {
-        private val ymd = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        private val KST: ZoneId = ZoneId.of("Asia/Seoul")
+
+        /** 'YYYY-MM-DD' 마감일과 오늘(KST) 사이 달력 일수. 형식이 틀리거나 "-"면 null. */
+        fun ddayOf(deadline: String?, today: LocalDate = LocalDate.now(KST)): Int? {
+            val d = deadline ?: return null
+            if (d == "-" || d.length < 10) return null
+            val due = runCatching { LocalDate.parse(d.take(10)) }.getOrNull() ?: return null
+            return ChronoUnit.DAYS.between(today, due).toInt()
+        }
 
         fun from(o: JSONObject) = MyPosting(
             o.optString("kind").ifEmpty { "JOB" }, o.optInt("id"),

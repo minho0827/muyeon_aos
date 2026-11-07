@@ -183,7 +183,7 @@ private fun primaryCta(step: String, isTeacher: Boolean): String? = when (step) 
     else -> if (isTeacher) null else "채택하기"
 }
 
-/** 견적요청 마감(14일 경과) 배지 — iOS ChatRoomView.quoteExpiredPill. */
+/** 견적요청 마감(30일 경과) 배지 — iOS ChatRoomView.quoteExpiredPill. */
 @Composable
 internal fun QuoteExpiredPill() {
     Text(

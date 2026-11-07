@@ -138,7 +138,7 @@ data class QuoteFull(
     val answers: List<QuoteAnswerRaw>?,
     val targetTeacherId: Int?,
     val targetTeacher: QuotePro?,
-    /** 서버가 정한 만료 시각(10-24~, 요청일+60일). 없으면 예전 서버 → createdAt 으로 계산. */
+    /** 서버가 정한 만료 시각(10-24~, 요청일+30일). 없으면 예전 서버 → createdAt 으로 계산. */
     val expiresAt: String? = null,
     /** 비회원(휴대폰 인증만 한 고객)의 요청 — 강사 화면 '비회원 요청' 표시. 없으면 false. */
     val guestRequest: Boolean = false,

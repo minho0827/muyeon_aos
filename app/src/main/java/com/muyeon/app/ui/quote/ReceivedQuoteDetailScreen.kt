@@ -369,7 +369,7 @@ private fun RequestHeaderCard(quote: QuoteFull?) {
     // 내가 작성한 견적 내용(문진 답변 전체 — 선택형 라벨 포함)
     val details = remember(quote) { QuoteQuestions.describe(quote?.categoryId, quote?.answers ?: emptyList()) }
     val photos = remember(quote) { (quote?.answers ?: emptyList()).flatMap { it.images ?: emptyList() } }
-    val expiryDays = if (quote?.status == "OPEN") QuoteUi.daysUntilExpiry(quote.createdAt, quote.expiresAt) else null
+    val expiryLabel = if (quote?.status == "OPEN") QuoteUi.expiryLabel(quote.createdAt, quote.expiresAt) else null
 
     QuoteCard {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -379,11 +379,11 @@ private fun RequestHeaderCard(quote: QuoteFull?) {
                 lineHeight = 21.sp, color = MuyeonColors.textHead,
             )
             QuotePill(QuoteUi.statusLabel(quote?.status), QuoteUi.statusColor(quote?.status), filled = true)
-            // 견적 만료 D-day — 진행중(OPEN)일 때만. (서버 만료 시각, 요청 생성 +60일)
-            if (expiryDays != null) {
+            // 견적 만료 D-day — 진행중(OPEN)일 때만. (서버 만료 시각, 요청 생성 +30일 · KST 달력 일수)
+            if (expiryLabel != null) {
                 Spacer(Modifier.weight(1f))
                 Text(
-                    if (expiryDays > 0) "${expiryDays}일 후 만료" else "오늘 만료",
+                    expiryLabel,
                     fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp,
                     lineHeight = 16.sp, color = MuyeonColors.primary,
                 )

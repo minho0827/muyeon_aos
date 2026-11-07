@@ -25,10 +25,12 @@ import com.muyeon.app.BuildConfig
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
-import kotlin.math.ceil
 
 /**
  * 받은견적 화면 공용 UI 헬퍼(라벨/시간/이미지) + 소형 컴포넌트(아바타·배지·빈상태)
@@ -114,13 +116,52 @@ object QuoteUi {
         return "협의 가능"
     }
 
+    /** 서버 KST 기준(D-2/D-1 안내와 같은 달력 기준). */
+    val KST: ZoneId = ZoneId.of("Asia/Seoul")
+
+    /** 견적 만료 시각(epoch ms). 서버 expiresAt 우선, 없으면 요청일 + 30×24h(서버 QUOTE_EXPIRY_DAYS). */
+    fun expiryMillis(createdAtISO: String?, expiresAtISO: String? = null, days: Int = 30): Long? {
+        parseDate(expiresAtISO)?.let { return it }
+        val created = parseDate(createdAtISO) ?: return null
+        return created + days * 86_400_000L
+    }
+
     /**
-     * 견적 만료까지 남은 일수. 양수=남음, 0=오늘, 음수=지남.
-     *  서버 만료 시각(expiresAt)을 먼저 쓰고, 없으면 요청일 + 60일(서버 QUOTE_EXPIRY_DAYS 와 같게, 10-24).
+     * 견적 만료까지 남은 일수 — 오늘(KST)과 만료 시각의 KST 날짜 사이 달력 일수.
+     *  양수=남음, 0=오늘 만료일, 음수=지난 날. (서버 D-2/D-1 안내와 같은 계산)
      */
-    fun daysUntilExpiry(createdAtISO: String?, expiresAtISO: String? = null, days: Int = 60): Int? {
-        val expiry = parseDate(expiresAtISO) ?: ((parseDate(createdAtISO) ?: return null) + days * 86_400_000L)
-        return ceil((expiry - System.currentTimeMillis()) / 86_400_000.0).toInt()
+    fun daysUntilExpiry(
+        createdAtISO: String?,
+        expiresAtISO: String? = null,
+        days: Int = 30,
+        nowMillis: Long = System.currentTimeMillis(),
+    ): Int? {
+        val expiry = expiryMillis(createdAtISO, expiresAtISO, days) ?: return null
+        return kstDaysBetween(nowMillis, expiry)
+    }
+
+    /** 두 시각의 KST 날짜 차이(to - from, 일). */
+    fun kstDaysBetween(fromMillis: Long, toMillis: Long): Int {
+        val from = Instant.ofEpochMilli(fromMillis).atZone(KST).toLocalDate()
+        val to = Instant.ofEpochMilli(toMillis).atZone(KST).toLocalDate()
+        return ChronoUnit.DAYS.between(from, to).toInt()
+    }
+
+    /** 만료 표시 문구 — "N일 후 만료" / "내일 만료" / "오늘 만료" / "만료됨". 날짜 정보 없으면 null. */
+    fun expiryLabel(
+        createdAtISO: String?,
+        expiresAtISO: String? = null,
+        days: Int = 30,
+        nowMillis: Long = System.currentTimeMillis(),
+    ): String? {
+        val expiry = expiryMillis(createdAtISO, expiresAtISO, days) ?: return null
+        if (expiry <= nowMillis) return "만료됨"
+        val d = kstDaysBetween(nowMillis, expiry)
+        return when {
+            d >= 2 -> "${d}일 후 만료"
+            d == 1 -> "내일 만료"
+            else -> "오늘 만료"
+        }
     }
 
     private val ISO_PATTERNS = listOf(
