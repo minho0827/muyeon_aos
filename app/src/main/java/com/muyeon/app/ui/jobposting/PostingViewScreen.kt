@@ -75,6 +75,7 @@ fun PostingViewScreen(
     var resumes by remember { mutableStateOf<List<ResumeListItem>?>(null) }
     var picking by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
+    var cancelOpen by remember { mutableStateOf(false) }
     val loggedIn = !token.isNullOrEmpty()
     val webPath = "/${PostingKind.seg(kind)}/$id"
 
@@ -113,12 +114,22 @@ fun PostingViewScreen(
                         Box(Modifier.size(52.dp).border(1.dp, AppColors.ChipBorder, RoundedCornerShape(12.dp)), Alignment.Center) {
                             HeartButton(liked, onToggleLike, size = 24.dp)
                         }
+                        // 대타 — 내 지원 상태(myOffer: 웹 SubDetail 과 같은 분기). 확정 + 수업 전이면 [지원 취소].
+                        val offer = if (kind == "SUB") d.optJSONObject("myOffer") else null
+                        val offerStatus = offer?.optString("status").orEmpty()
+                        val confirmed = offerStatus in setOf("ACCEPTED", "HIRED")
+                        val canceledAfterConfirm = offerStatus == "CANCELED" && offer?.optString("canceledBy") in setOf("TEACHER", "POSTER")
+                        val classStarted = kind == "SUB" && subClassStarted(d)
                         val label = when {
+                            confirmed && !classStarted -> R.string.posting_cancel_apply
+                            confirmed -> R.string.posting_confirmed
+                            canceledAfterConfirm -> R.string.posting_canceled
                             applied -> R.string.posting_applied
                             !open -> R.string.posting_closed
                             else -> R.string.posting_apply
                         }
-                        JobButton(stringResource(label), filled = true, enabled = open && !applied && !busy, modifier = Modifier.weight(1f)) {
+                        if (confirmed && !classStarted) JobButton(stringResource(label), filled = false, enabled = !busy, modifier = Modifier.weight(1f)) { cancelOpen = true }
+                        else JobButton(stringResource(label), filled = true, enabled = open && !applied && !confirmed && !canceledAfterConfirm && !busy, modifier = Modifier.weight(1f)) {
                             if (!loggedIn) { onLogin(); return@JobButton }
                             busy = true
                             scope.launch {
@@ -130,6 +141,15 @@ fun PostingViewScreen(
                     }
                 }
             }
+        }
+    }
+
+    if (cancelOpen) {
+        val appId = detail?.optJSONObject("myOffer")?.optInt("applicationId", 0) ?: 0
+        SubCancelDialog(api, appId, onDismiss = { cancelOpen = false }) { msg ->
+            cancelOpen = false
+            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+            scope.launch { api.loadPosting(kind, id).onSuccess { detail = it } }
         }
     }
 
@@ -174,6 +194,52 @@ private fun ApplySheet(resumes: List<ResumeListItem>, busy: Boolean, onDismiss: 
                 JobButton(stringResource(R.string.common_cancel), filled = false, enabled = !busy, modifier = Modifier.weight(1f)) { onDismiss() }
                 if (resumes.isEmpty()) JobButton(stringResource(R.string.posting_write_resume), filled = true, enabled = true, modifier = Modifier.weight(1f)) { onWriteResume() }
                 else JobButton(stringResource(R.string.posting_apply), filled = true, enabled = !busy && picked != null, modifier = Modifier.weight(1f)) { onApply(picked) }
+            }
+        }
+    }
+}
+
+/** 대타 수업 시작이 지났나(classDate + classTime 시작, KST). 모르면 false. */
+private fun subClassStarted(d: JSONObject): Boolean {
+    val date = d.optString("classDate").takeIf { it.length >= 10 } ?: return false
+    val start = d.optString("classTime").substringBefore("~").trim().takeIf { it.matches(Regex("\\d{1,2}:\\d{2}")) } ?: "00:00"
+    return runCatching {
+        val at = java.time.LocalDateTime.parse("${date.take(10)}T${start.padStart(5, '0')}")
+        at.isBefore(java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Seoul")))
+    }.getOrDefault(false)
+}
+
+/** 확정된 대타 취소 — 쌓일 벌점 안내 · 사유(선택) · [닫기][취소하기]. 웹 SubCancelModal(강사 쪽)과 같은 문구. */
+@Composable
+private fun SubCancelDialog(api: JobPostingApi, applicationId: Int, onDismiss: () -> Unit, onDone: (String) -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var points by remember { mutableStateOf<Int?>(null) }
+    var reason by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    LaunchedEffect(applicationId) { points = api.subCancelPreview(applicationId) }
+    androidx.compose.ui.window.Dialog(onDismiss) {
+        Column(Modifier.fillMaxWidth().background(AppColors.Surface, RoundedCornerShape(16.dp)).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(stringResource(R.string.posting_cancel_title), style = AppTypography.Title18, color = AppColors.TextHead)
+            Text(points?.let { stringResource(R.string.posting_cancel_points, it) } ?: stringResource(R.string.posting_cancel_body),
+                style = AppTypography.Body14, color = AppColors.TextBody)
+            Box(Modifier.fillMaxWidth().border(1.dp, AppColors.ChipBorder, RoundedCornerShape(12.dp)).padding(14.dp)) {
+                if (reason.isEmpty()) Text(stringResource(R.string.posting_cancel_reason), style = AppTypography.Body14, color = AppColors.TextHint)
+                androidx.compose.foundation.text.BasicTextField(reason, { reason = it }, textStyle = AppTypography.Body14.copy(color = AppColors.TextHead), modifier = Modifier.fillMaxWidth())
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                JobButton(stringResource(R.string.common_close), filled = false, enabled = !busy, modifier = Modifier.weight(1f)) { onDismiss() }
+                JobButton(stringResource(R.string.posting_cancel_confirm), filled = true, enabled = !busy && applicationId > 0, modifier = Modifier.weight(1f)) {
+                    busy = true
+                    scope.launch {
+                        api.cancelSubApplication(applicationId, reason)
+                            .onSuccess { r ->
+                                val p = r.optInt("points", 0)
+                                onDone(if (p > 0) context.getString(R.string.posting_cancel_done_points, p) else context.getString(R.string.posting_cancel_done))
+                            }
+                            .onFailure { Toast.makeText(context, it.message ?: context.getString(R.string.posting_apply_failed), Toast.LENGTH_LONG).show(); busy = false }
+                    }
+                }
             }
         }
     }

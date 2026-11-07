@@ -404,6 +404,15 @@ class JobPostingApi(internal val token: String?) {
     suspend fun apply(kind: String, id: Int, resumeId: Int?): Result<Unit> =
         call("/${PostingKind.seg(kind)}/$id/apply", "POST", JSONObject().apply { resumeId?.let { put("resumeId", it) } }).map { }
 
+    /** 확정된 대타 취소 — 쌓일 벌점 미리보기(GET /subs/applications/:id/cancel-preview → { points }). */
+    suspend fun subCancelPreview(applicationId: Int): Int? =
+        call("/subs/applications/$applicationId/cancel-preview").map { runCatching { JSONObject(it).optInt("points", -1).takeIf { p -> p >= 0 } }.getOrNull() }.getOrNull()
+
+    /** 확정된 대타 취소(강사). 결과 { points, restriction{ points90d } }. */
+    suspend fun cancelSubApplication(applicationId: Int, reason: String?): Result<JSONObject> =
+        call("/subs/applications/$applicationId/cancel", "POST", JSONObject().apply { reason?.takeIf { it.isNotBlank() }?.let { put("reason", it) } })
+            .map { runCatching { JSONObject(it) }.getOrDefault(JSONObject()) }
+
     /** 공고 열람 기록(채용 — 목록 '열람함'). 실패해도 무시. */
     suspend fun recordView(id: Int) { call("/jobs/$id/view", "POST") }
 

@@ -634,5 +634,15 @@
     <string name="posting_resume_untitled">이력서</string>
     <string name="posting_resume_default">기본</string>
     <string name="posting_apply_done">지원이 접수됐어요.</string>
+    <string name="posting_cancel_apply">지원 취소</string>
+    <string name="posting_confirmed">확정된 대타예요</string>
+    <string name="posting_canceled">지원이 취소됐어요</string>
+    <string name="posting_cancel_title">확정된 대타 수업을 취소할까요?</string>
+    <string name="posting_cancel_body">확정된 수업을 취소하면 벌점이 쌓일 수 있어요.</string>
+    <string name="posting_cancel_points">수업 참여를 취소하면 %1$d점이 쌓여요.</string>
+    <string name="posting_cancel_reason">취소 사유 (선택)</string>
+    <string name="posting_cancel_confirm">취소하기</string>
+    <string name="posting_cancel_done">대타 수업을 취소했어요.</string>
+    <string name="posting_cancel_done_points">대타 수업을 취소했어요. 이번 취소로 %1$d점이 쌓였어요.</string>
     <string name="posting_apply_failed">지원에 실패했어요. 잠시 후 다시 시도해 주세요.</string>
 </resources>
