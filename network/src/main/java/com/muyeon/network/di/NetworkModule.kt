@@ -29,6 +29,8 @@ val networkModule = module {
             .addInterceptor(SessionHeadersInterceptor(get(), get()))
             // 늦게 꺼낸다 — 트리거 구현(:app)이 Activity 를 띄우므로 앱 시작 순서에 묶이지 않게.
             .addInterceptor(ForceLogoutInterceptor { koin.get() })
+            // 연결 실패·타임아웃 → '다시 시도' 팝업(웹 GlobalNetworkOverlay). 구현(:app)은 늦게 꺼낸다.
+            .addInterceptor(com.muyeon.network.interceptor.NetworkRetryInterceptor { koin.get() })
             .apply {
                 if (BuildConfig.LOG_HTTP) addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC })
             }

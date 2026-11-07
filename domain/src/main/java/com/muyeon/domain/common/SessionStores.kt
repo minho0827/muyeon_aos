@@ -40,3 +40,12 @@ interface KeyValueStore {
     fun getString(key: String): String?
     fun putString(key: String, value: String?)
 }
+
+/**
+ * ★ 2026-11-08 네트워크 실패 '다시 시도' 묻기 — 웹 GlobalNetworkOverlay(presentRetry)와 같은 일. 구현은 :app(화면 팝업).
+ *   연결 실패·30초 타임아웃일 때만 부른다(서버가 답한 오류는 아님). 요청 스레드에서 사용자가 고를 때까지 기다린다.
+ */
+interface NetworkRetryPrompt {
+    /** @return 다시 시도면 true, 닫기면 false. 띄울 화면이 없으면 false. */
+    fun askBlocking(): Boolean
+}

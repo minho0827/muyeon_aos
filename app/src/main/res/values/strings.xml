@@ -64,6 +64,8 @@
     <string name="tab_space_rent">대관</string>
     <string name="tab_transfer">양도양수</string>
     <string name="tab_back">뒤로</string>
+    <string name="net_retry_title">연결이 원활하지 않아요</string>
+    <string name="net_retry_body">네트워크 상태를 확인한 뒤 다시 시도해 주세요.</string>
     <string name="tab_stage_title">공연/캐스팅</string>
     <string name="space_create">공간 등록</string>
     <string name="transfer_create">양도 글 등록</string>

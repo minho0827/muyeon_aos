@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
@@ -85,6 +86,20 @@ class MainActivity : ComponentActivity(), ResultHost {
                         // 인증 완료 '시작하기' — 그 유형으로 바꾸고 첫 화면으로(웹 __onRoleApproved: 전문 유형은 /jobs).
                         onRoleApproved = { role -> viewModel.onTypePicked(role) },
                     )
+                    // 연결 실패·타임아웃 → '다시 시도'(웹 GlobalNetworkOverlay 와 같은 문구·버튼).
+                    val retry by NetworkRetryHost.pending.collectAsStateWithLifecycle()
+                    com.muyeon.app.common_components.dialog.CustomDialog(
+                        title = getString(R.string.net_retry_title),
+                        content = getString(R.string.net_retry_body),
+                        leftButtonText = getString(R.string.common_close),
+                        rightButtonText = getString(R.string.common_retry),
+                        buttonCount = 2,
+                        alignment = com.muyeon.app.common_components.dialog.ContentAlignment.Middle,
+                        onDismiss = { NetworkRetryHost.resolve(false) },
+                        onLeftButtonClick = { NetworkRetryHost.resolve(false) },
+                        onRightButtonClick = { NetworkRetryHost.resolve(true) },
+                        showPopup = retry,
+                    )
                     com.muyeon.app.common_components.dialog.CustomDialog(
                         title = getString(R.string.main_exit_title),
                         content = null,
@@ -132,8 +147,14 @@ class MainActivity : ComponentActivity(), ResultHost {
         handleEntry(intent)
     }
 
+    override fun onPause() {
+        NetworkRetryHost.hostVisible = false
+        super.onPause()
+    }
+
     override fun onResume() {
         super.onResume()
+        NetworkRetryHost.hostVisible = true
         // 웹 창에서 로그인·로그아웃·유형 전환을 하고 돌아왔을 수 있다.
         viewModel.onResume()
         viewModel.detectRegionIfNeeded { DeviceLocation.lastKnown(this) }

@@ -44,6 +44,7 @@ val appModule = module {
             }
         }
     }
+    single<com.muyeon.domain.common.NetworkRetryPrompt> { com.muyeon.app.ui.main.NetworkRetryHost }
     single<ForceLogoutTrigger> {
         val ctx: Context = androidContext()
         object : ForceLogoutTrigger {
