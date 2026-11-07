@@ -396,6 +396,17 @@ class JobPostingApi(internal val token: String?) {
     // ★ 2026-10-05 금액 올려 다시 보내기(raiseDispatch) 폐지 — 금액은 공고 수정으로 바꾼다.
 
     /** 긴급 대타 — 발송 중지(재발송·금액 권유 멈춤). */
+    /** 지원자 화면 — 이미 지원했는지(GET /{jobs|subs}/:id/applied → { applied }). */
+    suspend fun applied(kind: String, id: Int): Boolean =
+        call("/${PostingKind.seg(kind)}/$id/applied").map { runCatching { JSONObject(it).optBoolean("applied", false) }.getOrDefault(false) }.getOrDefault(false)
+
+    /** 지원 — 고른 이력서로(웹 JobDetail·SubDetail 과 같은 본문). */
+    suspend fun apply(kind: String, id: Int, resumeId: Int?): Result<Unit> =
+        call("/${PostingKind.seg(kind)}/$id/apply", "POST", JSONObject().apply { resumeId?.let { put("resumeId", it) } }).map { }
+
+    /** 공고 열람 기록(채용 — 목록 '열람함'). 실패해도 무시. */
+    suspend fun recordView(id: Int) { call("/jobs/$id/view", "POST") }
+
     suspend fun stopDispatch(id: Int): Result<Unit> = call("/subs/$id/dispatch/stop", "POST").map { }
 
     /**

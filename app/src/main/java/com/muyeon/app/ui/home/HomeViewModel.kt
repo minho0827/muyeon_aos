@@ -12,7 +12,6 @@ import com.muyeon.domain.common.fetchCursorPages
 import com.muyeon.domain.common.mergeCursorPage
 import com.muyeon.domain.model.home.HomeLesson
 import com.muyeon.domain.model.home.HomeLessonPreview
-import com.muyeon.domain.model.home.HomeNotice
 import com.muyeon.domain.model.region.ActiveRegion
 import com.muyeon.domain.model.scrap.ScrapTarget
 import com.muyeon.domain.model.teacher.TeacherCard
@@ -56,8 +55,6 @@ data class HomeUiState(
     val previewLoaded: Boolean = false,
     val genreLessons: PagedList<HomeLesson> = PagedList(),
     val likedLessons: Set<Long> = emptySet(),
-    // 맨 아래
-    val notices: List<HomeNotice> = emptyList(),
 ) {
     companion object { const val LESSON_RECOMMEND = "RECOMMEND" }
 }
@@ -102,7 +99,6 @@ class HomeViewModel(
     init {
         refreshArtists()
         loadLessonHome()
-        viewModelScope.launch { _state.update { it.copy(notices = lessons.notices()) } }
         viewModelScope.launch {
             regionFlow.drop(1).collect { r -> _state.update { it.copy(region = r) }; refreshArtists(); loadLessonHome() }
         }

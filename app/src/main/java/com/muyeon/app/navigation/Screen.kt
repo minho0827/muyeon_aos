@@ -26,6 +26,16 @@ sealed class Screen(val route: String) {
     /** 커뮤니티 목록 — MY 안 섹션·웹 /community 링크에서 연다(탭이 아니다, 2026-11-08). */
     data object CommunityList : Screen("community")
 
+    /** 공고 상세(보는 사람) — 채용·대타. 웹 /jobs/:id · /subs/:id 링크도 여기로. */
+    data object JobDetail : Screen("jobs/{id}") {
+        const val ARG_ID = "id"
+        fun build(id: Long) = "jobs/$id"
+    }
+    data object SubDetail : Screen("subs/{id}") {
+        const val ARG_ID = "id"
+        fun build(id: Long) = "subs/$id"
+    }
+
     /** 대타공고 설문 등록(채용 › 대타공고 ＋ · 웹 /subs/create). */
     data object SubWizard : Screen("subs/create")
     data object CommunityPost : Screen("community/post/{id}") {

@@ -202,7 +202,7 @@ fun PostingDetailScreen(
 // MARK: 공통 머리
 
 @Composable
-private fun DetailHeader(kind: String, d: JSONObject, summary: MyPosting?, status: String?, pending: Boolean = false) {
+internal fun DetailHeader(kind: String, d: JSONObject, summary: MyPosting?, status: String?, pending: Boolean = false) {
     // 대표 이미지가 없으면 상세 이미지 첫 장(웹 ImageCarousel 과 동일 폴백). 없으면 자리를 차지하지 않는다.
     val hero = d.stringOrNull("imageUrl") ?: d.stringOrNull("image") ?: d.stringList("images")?.firstOrNull()
     hero?.let {
@@ -309,7 +309,7 @@ private fun ApplicantsCard(count: Int, onClick: () -> Unit) {
 // MARK: 대타(SUB) 본문 — 웹 SubDetail '수업 정보 · 준비/안내' 와 같은 항목
 
 @Composable
-private fun SubBody(s: JSONObject) {
+internal fun SubBody(s: JSONObject) {
     val genre = s.stringOrNull("genre") ?: s.stringOrNull("field")?.let { SubOptions.fieldLabel(it) }
     val careerText = JobFormOptions.careerLevelsLabel(s.stringList("careerLevels")).ifEmpty {
         s.stringOrNull("career")?.let { JobFormOptions.careerLevelLabel(it) }.orEmpty()
@@ -356,7 +356,7 @@ private fun SubBody(s: JSONObject) {
 // MARK: 대타 지금 상태 문장 — 웹 SubDetail(올린 분) 상태 안내와 같은 우선순위. ★ 2026-10-05
 
 @Composable
-private fun SubStatusLine(s: JSONObject, status: String?, confirmedName: String?) {
+internal fun SubStatusLine(s: JSONObject, status: String?, confirmedName: String?) {
     val confirmedId = s.num("confirmedApplicationId")?.takeIf { it > 0 }
     val agreedPay = s.num("agreedPay")?.takeIf { it > 0 }
     val pendingOffers = s.optJSONObject("dispatchStats")?.num("pendingOffers") ?: 0
@@ -386,7 +386,7 @@ private fun SubStatusLine(s: JSONObject, status: String?, confirmedName: String?
 // MARK: 공연(CASTING) 본문 — 웹 CastingDetail 과 같은 항목(등록폼 확장 필드는 details 안)
 
 @Composable
-private fun CastingBody(c: JSONObject) {
+internal fun CastingBody(c: JSONObject) {
     val d = c.optJSONObject("details") ?: JSONObject()
     val req = d.optJSONObject("requirements") ?: JSONObject()
     val reqList = listOfNotNull(

@@ -43,8 +43,6 @@ import com.muyeon.app.ui.home.components.HomeBanner
 import com.muyeon.app.ui.home.components.HomeBannerPager
 import com.muyeon.app.ui.home.components.ArtistsHeading
 import com.muyeon.app.ui.home.components.HomeLegalFooter
-import com.muyeon.app.ui.home.components.HomeNoticeList
-import com.muyeon.app.ui.home.components.HomeNoticeRow
 import com.muyeon.app.ui.home.components.HomeTopBar
 import com.muyeon.app.ui.home.components.LessonCategoryIcons
 import com.muyeon.app.ui.home.components.LessonProductCard
@@ -62,7 +60,7 @@ import org.koin.androidx.compose.koinViewModel
  * ★ 2026-11-08 홈 — 모든 회원·비회원 같은 화면(사용자 결정). 위 바 [舞踊緣][강사 | 레슨][🔔] + 밑줄 탭.
  *   강사: COREO 에이전시형 — 넓은 사진 띠 · ARTISTS · 2열 큰 세로 사진 그리드(끝없이 내려 받기).
  *   레슨: 뷰티컬리 — 추천 탭(배너 · 장르 아이콘 · 섹션) / 장르 탭(그 장르 레슨 2열 그리드).
- *   맨 아래 공지·사업자 정보. 홈 칸 다시 누르기 = 강사 ↔ 레슨.
+ *   맨 아래 사업자 정보. 홈 칸 다시 누르기 = 강사 ↔ 레슨.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -209,17 +207,7 @@ private fun openProfile(actions: HomeActions, id: Long) = actions.native("openPu
 
 private fun recommendTitle(context: android.content.Context) = context.getString(R.string.home_list_popular)
 
-/** 맨 아래 — 공지 3줄 · 사업자 정보(법적 고지, 두 모드 공통). */
+/** 맨 아래 — 사업자 정보(법적 고지, 두 모드 공통). 공지는 홈에서 뺐다(사용자 결정 2026-11-08 — 나중에 MY). */
 private fun LazyGridScope.footer(s: HomeUiState, actions: HomeActions) {
-    item(key = "notices", span = FULL) {
-        Column(Modifier.fillMaxWidth().padding(top = 32.dp, bottom = 32.dp)) {
-            HomeNoticeList(
-                stringResource(R.string.my_menu_notice), R.drawable.ic_web_speaker, AppColors.Primary,
-                s.notices.map { n -> HomeNoticeRow(n.id, n.title, KstDates.dot(n.createdAt), KstDates.isToday(n.createdAt)) { actions.openPath("/notice") } },
-                onMore = { actions.openPath("/notice") },
-                modifier = Modifier.padding(horizontal = 20.dp),
-            )
-        }
-    }
-    item(key = "legal", span = FULL) { HomeLegalFooter(actions.openPath, actions.dial, actions.mail) }
+    item(key = "legal", span = FULL) { Column(Modifier.padding(top = 32.dp)) { HomeLegalFooter(actions.openPath, actions.dial, actions.mail) } }
 }

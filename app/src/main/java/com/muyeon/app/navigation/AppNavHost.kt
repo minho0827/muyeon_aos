@@ -1,6 +1,9 @@
 package com.muyeon.app.navigation
 
 import androidx.compose.runtime.Composable
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -74,6 +77,13 @@ fun AppNavHost(
                 },
             )
         }
+        // 공고 상세(보는 사람) — 채용·대타.
+        listOf(Screen.JobDetail to "JOB", Screen.SubDetail to "SUB").forEach { (screen, kind) ->
+            composable(screen.route, arguments = listOf(navArgument("id") { type = NavType.StringType })) { e ->
+                val id = e.arguments?.getString("id")?.toIntOrNull() ?: 0
+                PostingDetailRoute(kind, id, onBack = { navController.popBackStack() }, onOpenWeb = onOpenWeb)
+            }
+        }
         // 대타공고 설문 등록 — 올리면 닫고 대타공고 목록을 다시 받는다.
         composable(Screen.SubWizard.route) {
             com.muyeon.app.ui.subwizard.SubWizardScreen(
@@ -128,4 +138,37 @@ fun AppNavHost(
             )
         }
     }
+}
+
+/** 공고 상세 + 찜(채용·대타) — 찜 상태는 저장소에서 읽고 바꾼다. */
+@Composable
+private fun PostingDetailRoute(kind: String, id: Int, onBack: () -> Unit, onOpenWeb: (String) -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val target = if (kind == "SUB") com.muyeon.domain.model.scrap.ScrapTarget.SUB else com.muyeon.domain.model.scrap.ScrapTarget.JOB
+    val getLiked = org.koin.compose.koinInject<com.muyeon.domain.usecase.scrap.GetLikedIdsUseCase>()
+    val toggle = org.koin.compose.koinInject<com.muyeon.domain.usecase.scrap.ToggleScrapUseCase>()
+    var liked by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val login = { onOpenWeb(WebPaths.login("/${if (kind == "SUB") "subs" else "jobs"}/$id")) }
+    androidx.compose.runtime.LaunchedEffect(id) { liked = id.toLong() in getLiked(target) }
+    com.muyeon.app.ui.jobposting.PostingViewScreen(
+        kind = kind, id = id, liked = liked,
+        onToggleLike = {
+            val was = liked
+            scope.launch {
+                when (val r = toggle(target, id.toLong(), was)) {
+                    is com.muyeon.domain.usecase.scrap.ToggleScrapResult.Done -> liked = r.liked
+                    com.muyeon.domain.usecase.scrap.ToggleScrapResult.LoginRequired -> login()
+                    is com.muyeon.domain.usecase.scrap.ToggleScrapResult.Failed -> android.widget.Toast.makeText(context, r.message, android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        },
+        onBack = onBack,
+        onLogin = login,
+        onOpenWeb = onOpenWeb,
+        onWriteResume = {
+            val dancer = com.muyeon.app.webview.ActiveRole.current(context) == "DANCER"
+            com.muyeon.app.ui.resume.ResumeActivity.startEdit(context, null, if (dancer) "dancer" else null)
+        },
+    )
 }
