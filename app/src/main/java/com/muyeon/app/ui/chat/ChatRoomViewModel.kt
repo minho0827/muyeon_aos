@@ -71,6 +71,11 @@ class ChatRoomViewModel(
     var locked by mutableStateOf(false)                                    // 대화 종료(요청 취소·다른 강사 채택·만료) — 입력창 대신 안내 띠
     var lockReason by mutableStateOf<String?>(null)                        // CANCELED | MATCHED_OTHER | EXPIRED
     var reRequest by mutableStateOf<ChatReRequest?>(null)                  // 잠긴 방 '이 강사님께 다시 레슨 요청하기'(요청자에게만)
+    var locksAt by mutableStateOf<String?>(null)                           // 이대로면 대화가 끝나는 시각(ISO UTC) — 상단 카운트다운
+
+    /** 상단 'D-N 후 대화 종료' 일수 — 열린 방이고 locksAt 이 있을 때만(잠긴 방은 안내 띠가 대신한다). */
+    fun lockDaysLeft(nowMillis: Long = System.currentTimeMillis()): Int? =
+        if (locked) null else ChatLockCountdown.daysLeft(locksAt, nowMillis)
 
     /** 잠긴 방 안내 띠 문구. */
     val lockNotice: String get() = ChatRoomDetail.lockNotice(lockReason)
@@ -317,6 +322,7 @@ class ChatRoomViewModel(
             locked = d.locked
             lockReason = d.lockReason
             reRequest = d.reRequest
+            locksAt = d.locksAt
         }
     }
 
@@ -843,15 +849,27 @@ class ChatRoomViewModel(
      *  낙관적으로 바꾼 뒤 서버 토글을 차례로 보낸다. 소켓 'message-reaction' 이 오면 반응 묶음을 다시 읽어 맞춘다.
      */
     fun toggleReaction(m: ChatMessage, emoji: String) {
-        if (m.id <= 0) return
+        // 잠긴 방은 반응을 받지 않는다(시트에서 숨기고 칩도 누를 수 없다 — 여기서도 한 번 더 막는다).
+        if (m.id <= 0 || locked) return
         val i = messages.indexOfFirst { it.id == m.id }
         val current = if (i >= 0) messages[i].reactions.orEmpty() else m.reactions.orEmpty()
         val (next, calls) = ChatReactionRules.toggle(current, emoji)
         if (i >= 0) messages[i] = messages[i].copy(reactions = next)
         viewModelScope.launch {
-            var failed = false
-            for (e in calls) if (api.toggleReaction(roomId, m.id, e).isFailure) { failed = true; break }
-            if (failed) refreshReactions()
+            var failure: Throwable? = null
+            for (e in calls) {
+                failure = api.toggleReaction(roomId, m.id, e).exceptionOrNull()
+                if (failure != null) break
+            }
+            when {
+                failure == null -> Unit
+                // 잠긴 방(서버 ROOM_LOCKED) — 안내 후 방(상세·메시지)을 다시 읽어 안내 띠·반응을 서버 기준으로 맞춘다.
+                ChatApi.isRoomLocked(failure) -> {
+                    toast = ROOM_LOCKED_REACTION_TOAST
+                    reloadRoom()
+                }
+                else -> refreshReactions()
+            }
         }
     }
 
@@ -880,6 +898,8 @@ class ChatRoomViewModel(
     companion object {
         /** 접속 중 문구 — 화면이 초록 점 표시 여부를 이 값으로 판정한다. */
         const val PRESENCE_ONLINE = "접속 중"
+        /** 잠긴 방 반응 거절(REST ROOM_LOCKED) 안내. */
+        const val ROOM_LOCKED_REACTION_TOAST = "대화가 종료된 채팅방이에요."
         private const val TAG = "ChatRoomVM"
         private const val INCOMING_BATCH_MS = 50L
         private const val GAP_CHECK_DELAY_MS = 500L

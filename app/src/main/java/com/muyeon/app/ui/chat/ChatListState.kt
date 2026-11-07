@@ -277,3 +277,31 @@ class ChatListState(private val api: ChatApi) {
         const val LEAVE_SETTLE_MS = 5_000L
     }
 }
+
+/**
+ * 목록 구역 — 열린 방(종전 순서 그대로) / 맨 아래 '종료된 대화' 구역(잠긴 방, 같은 순서).
+ *  탭 필터를 거친 목록을 받아 나누기만 한다(순서를 다시 매기지 않는다).
+ */
+data class ChatRoomSections(val open: List<ChatRoomSummary>, val closed: List<ChatRoomSummary>) {
+    companion object {
+        fun split(rooms: List<ChatRoomSummary>): ChatRoomSections {
+            val (closed, open) = rooms.partition { it.locked }
+            return ChatRoomSections(open, closed)
+        }
+
+        fun closedTitle(count: Int): String = "종료된 대화 ($count)"
+    }
+}
+
+/** '종료된 대화' 구역 펼침 상태 — 앱 SharedPreferences(기본 접힘). */
+object ChatClosedSectionPref {
+    private const val PREFS = "chat_list"
+    private const val KEY = "closedSectionExpanded"
+
+    fun isExpanded(ctx: android.content.Context): Boolean =
+        ctx.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).getBoolean(KEY, false)
+
+    fun setExpanded(ctx: android.content.Context, value: Boolean) {
+        ctx.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).edit().putBoolean(KEY, value).apply()
+    }
+}

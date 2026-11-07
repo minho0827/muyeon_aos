@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -78,6 +79,9 @@ fun LessonContextArea(
     val cycles = vm.lessonCycles
     val progress = vm.progress
     Column(Modifier.fillMaxWidth()) {
+        // 대화 종료 예정(서버 locksAt) — 열린 방만. 잠긴 방은 입력창 자리 안내 띠가 대신한다.
+        vm.lockDaysLeft()?.let { LockCountdownLine(it) }
+
         // 양방향 레슨 표시: 2건 이상은 요약 한 줄(카드 여러 장으로 인한 혼란 방지), 1건은 단일 진행 카드.
         if (cycles.size >= 2) {
             Row(
@@ -307,6 +311,33 @@ fun LessonContextArea(
                 }
             }
         }
+    }
+}
+
+/**
+ * 대화 종료 카운트다운 한 줄 — "D-N 후 대화 종료"/"오늘 대화 종료" + 보조 안내.
+ *  평소 보조색, 7일 이내면 포인트색(견적 만료 'N일 후 만료'와 같은 primary).
+ */
+@Composable
+internal fun LockCountdownLine(days: Int) {
+    val warn = ChatLockCountdown.isWarn(days)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(MuyeonColors.groupedBg)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .testTag("chat.lockCountdown"),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(
+            ChatLockCountdown.roomLabel(days),
+            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+            lineHeight = 16.sp, color = if (warn) MuyeonColors.primary else MuyeonColors.secondary,
+        )
+        Text(
+            ChatLockCountdown.SUBTEXT,
+            fontFamily = customFontFamily, fontSize = 11.sp, lineHeight = 14.sp, color = MuyeonColors.secondary,
+        )
     }
 }
 

@@ -36,6 +36,7 @@ data class ChatRoomSummary(
     val lastSeq: Int? = null,     // 방의 마지막 메시지 순번(2026-10-09 서버부터). 구버전 서버는 null
     val locked: Boolean = false,  // 대화 종료(요청 취소·다른 강사 채택·만료) — 구버전 서버는 false
     val lockReason: String? = null,   // CANCELED | MATCHED_OTHER | EXPIRED
+    val locksAt: String? = null,      // 이대로면 대화가 끝나는 시각(ISO UTC, 2026-11 서버부터). null = 예정 없음
 ) {
     val displayTitle: String get() = opponent?.nickname ?: opponent?.name ?: "채팅"
     val isQuoteExpired: Boolean get() = quoteStatus == "EXPIRED"
@@ -47,6 +48,14 @@ data class ChatRoomSummary(
             isQuoteExpired -> "견적 마감"
             else -> null
         }
+
+    /** 열린 방의 대화 종료까지 남은 KST 달력 일수. 잠긴 방·예정 없음은 null. */
+    fun lockDaysLeft(nowMillis: Long = System.currentTimeMillis()): Int? =
+        if (locked) null else ChatLockCountdown.daysLeft(locksAt, nowMillis)
+
+    /** 목록 경고 pill "D-N" — 열린 방이고 7일 이내일 때만. */
+    fun lockWarnPill(nowMillis: Long = System.currentTimeMillis()): String? =
+        lockDaysLeft(nowMillis)?.takeIf { ChatLockCountdown.isWarn(it) }?.let { ChatLockCountdown.pill(it) }
 
     /** 리스트 셀 역할 배지. null = 배지 없음. */
     val roleBadge: String?
@@ -73,8 +82,37 @@ data class ChatRoomSummary(
             lastSeq = o.intOrNull("lastSeq"),
             locked = o.optBoolean("locked", false),
             lockReason = o.stringOrNull("lockReason"),
+            locksAt = o.stringOrNull("locksAt"),
         )
     }
+}
+
+/**
+ * 대화 종료 예정(locksAt) 카운트다운 — 서버와 같은 KST 달력 일수(QuoteUi.kstDaysBetween).
+ *  N = 오늘(KST) ~ locksAt 시각의 KST 날짜. 이미 지났는데 아직 잠기지 않았으면(서버 스케줄 전) 0 = 오늘.
+ */
+object ChatLockCountdown {
+    /** 이 일수 이하면 경고색(포인트색)·목록 pill. */
+    const val WARN_DAYS = 7
+
+    const val SUBTEXT = "레슨 요청 마감(요청 후 30일) 전에 채택하면 대화가 계속돼요."
+
+    /** locksAt(ISO) → epoch ms. 없거나 해석 불가면 null. */
+    fun parse(iso: String?): Long? = com.muyeon.app.ui.quote.QuoteUi.parseDate(iso)
+
+    /** 남은 KST 달력 일수(0 이상). locksAt 이 없거나 해석 불가면 null. */
+    fun daysLeft(locksAtISO: String?, nowMillis: Long = System.currentTimeMillis()): Int? {
+        val at = parse(locksAtISO) ?: return null
+        return com.muyeon.app.ui.quote.QuoteUi.kstDaysBetween(nowMillis, at).coerceAtLeast(0)
+    }
+
+    fun isWarn(days: Int): Boolean = days <= WARN_DAYS
+
+    /** 채팅방 상단 한 줄 — "D-N 후 대화 종료" / "오늘 대화 종료". */
+    fun roomLabel(days: Int): String = if (days <= 0) "오늘 대화 종료" else "D-$days 후 대화 종료"
+
+    /** 목록 pill — "D-N"(당일은 D-0). */
+    fun pill(days: Int): String = "D-$days"
 }
 
 /**
@@ -341,6 +379,7 @@ data class ChatRoomDetail(
     val locked: Boolean = false,               // 대화 종료 — 입력창 대신 안내 띠
     val lockReason: String? = null,            // CANCELED | MATCHED_OTHER | EXPIRED
     val reRequest: ChatReRequest? = null,      // 잠긴 방 + 내가 끝난 요청의 요청자일 때만(강사 탈퇴면 null) — '다시 레슨 요청하기'
+    val locksAt: String? = null,               // 이대로면 대화가 끝나는 시각(ISO UTC) — 상단 'D-N 후 대화 종료'
 ) {
     companion object {
         /** 잠긴 방 안내 띠 문구. */
@@ -368,6 +407,7 @@ data class ChatRoomDetail(
             locked = o.optBoolean("locked", false),
             lockReason = o.stringOrNull("lockReason"),
             reRequest = ChatReRequest.from(o.optJSONObject("reRequest")),
+            locksAt = o.stringOrNull("locksAt"),
         )
     }
 }

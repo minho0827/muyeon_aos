@@ -445,7 +445,8 @@ fun ChatRoomScreen(
                             },
                             token = vm.tokenForCards,
                             onLongPress = { reactionTarget = m },
-                            onToggleReaction = { emoji -> vm.toggleReaction(m, emoji) },
+                            // 잠긴 방은 반응 칩을 눌러도 토글하지 않는다(서버 ROOM_LOCKED — 보기만).
+                            onToggleReaction = if (vm.locked) null else { emoji -> vm.toggleReaction(m, emoji) },
                             onOpenLink = { url -> openChatLink(url) },
                             onProposalChanged = { vm.reloadContext() },
                             onOpenProvider = { id, isAcademy ->
@@ -787,7 +788,7 @@ fun ChatRoomScreen(
     reactionTarget?.let { m ->
         val mine = m.senderId == vm.currentUserId
         ChatMessageActionSheet(
-            actions = ChatMessageRules.actions(m, mine, canBlock = vm.opponentId > 0),
+            actions = ChatMessageRules.actions(m, mine, canBlock = vm.opponentId > 0, locked = vm.locked),
             onDismiss = { reactionTarget = null },
             onReact = { emoji -> vm.toggleReaction(m, emoji); reactionTarget = null },
             onReply = { vm.startReply(m); reactionTarget = null },
@@ -1150,7 +1151,7 @@ private fun MessageBubble(
     onOpenProposalPayment: (Int) -> Unit,
     token: String?,
     onLongPress: () -> Unit,
-    onToggleReaction: (String) -> Unit,
+    onToggleReaction: ((String) -> Unit)?,
     onOpenLink: (String) -> Unit,
     onProposalChanged: () -> Unit,
     onOpenProvider: (Int, Boolean) -> Unit,

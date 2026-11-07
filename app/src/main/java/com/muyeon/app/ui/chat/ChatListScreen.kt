@@ -10,6 +10,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.DoNotDisturbOn
@@ -23,8 +25,10 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -57,6 +61,9 @@ fun ChatListScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     val rooms = state.rooms
     val filtered = rooms.filter { state.filter.matches(it) }
+    // 열린 방은 종전 순서 그대로, 잠긴 방은 맨 아래 '종료된 대화' 구역(기본 접힘, 펼침 상태는 기기에 기억).
+    val sections = ChatRoomSections.split(filtered)
+    var closedExpanded by remember { mutableStateOf(ChatClosedSectionPref.isExpanded(context)) }
     // 스와이프로 [나가기]가 드러난 방 — 한 번에 하나만(다른 방을 밀거나 누르면 닫힌다).
     var openRoomId by remember { mutableStateOf<Int?>(null) }
 
@@ -93,7 +100,8 @@ fun ChatListScreen(
                     if (filtered.isEmpty()) item {
                         Text("현재 불러온 대화 중에는 없어요. 이전 대화를 더 확인해 보세요.", Modifier.padding(20.dp))
                     }
-                    itemsIndexed(filtered, key = { _, r -> r.roomId }) { idx, room ->
+                    // 한 줄(스와이프 나가기 + 방 줄) — 열린 방·종료된 대화 구역이 같이 쓴다.
+                    val roomRow: @Composable (ChatRoomSummary) -> Unit = { room ->
                         // iOS allowsFullSwipe:false — 밀면 [나가기]가 드러나고, 그 버튼을 눌러야 나간다(확인 없음, iOS 와 같다).
                         SwipeToLeaveRow(
                             open = openRoomId == room.roomId,
@@ -112,11 +120,33 @@ fun ChatListScreen(
                                 if (openRoomId != null) openRoomId = null else onOpenRoom(room.roomId, room.displayTitle)
                             }
                         }
-                        if (idx != filtered.lastIndex) {
-                            HorizontalDivider(
-                                Modifier.background(MuyeonColors.surface).padding(start = 76.dp),
-                                color = MuyeonColors.border,
+                    }
+                    val divider: @Composable () -> Unit = {
+                        HorizontalDivider(
+                            Modifier.background(MuyeonColors.surface).padding(start = 76.dp),
+                            color = MuyeonColors.border,
+                        )
+                    }
+                    itemsIndexed(sections.open, key = { _, r -> r.roomId }) { idx, room ->
+                        roomRow(room)
+                        if (idx != sections.open.lastIndex) divider()
+                    }
+                    if (sections.closed.isNotEmpty()) {
+                        item(key = "closedHeader") {
+                            ClosedSectionHeader(
+                                count = sections.closed.size,
+                                expanded = closedExpanded,
+                                onToggle = {
+                                    closedExpanded = !closedExpanded
+                                    ChatClosedSectionPref.setExpanded(context, closedExpanded)
+                                },
                             )
+                        }
+                        if (closedExpanded) {
+                            itemsIndexed(sections.closed, key = { _, r -> r.roomId }) { idx, room ->
+                                roomRow(room)
+                                if (idx != sections.closed.lastIndex) divider()
+                            }
                         }
                     }
                     if (state.hasMore || state.pageFailed) item {
@@ -183,6 +213,8 @@ fun ChatRoomRow(room: ChatRoomSummary, onClick: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .background(MuyeonColors.surface)
+            // 대화 종료 방은 흐리게 — 바탕(불투명 surface)은 그대로 두고 내용만(뒤의 빨간 [나가기]가 비치지 않게).
+            .alpha(if (room.locked) LOCKED_ROW_ALPHA else 1f)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -211,6 +243,19 @@ fun ChatRoomRow(room: ChatRoomSummary, onClick: () -> Unit) {
                             .clip(RoundedCornerShape(50))
                             .background(if (isPro) MuyeonColors.primary.copy(alpha = 0.12f) else Color(0xFFE5E5EA))
                             .padding(horizontal = 6.dp, vertical = 2.dp),
+                    )
+                }
+                // 대화 종료 7일 이내(열린 방) — 'D-N' 경고 pill(역할 배지 '보낸 제안'과 같은 포인트색 pill).
+                room.lockWarnPill()?.let { pill ->
+                    Text(
+                        pill,
+                        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 10.sp,
+                        lineHeight = 12.sp, color = MuyeonColors.primary,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(MuyeonColors.primary.copy(alpha = 0.12f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                            .testTag("chat.row.lockPill"),
                     )
                 }
                 room.statusPill?.let { pill ->
@@ -248,6 +293,34 @@ fun ChatRoomRow(room: ChatRoomSummary, onClick: () -> Unit) {
                     .background(if (room.muted == true) Color.Gray else Color(0xFF007AFF)),
             )
         }
+    }
+}
+
+/** 종료된 대화 줄 투명도. */
+private const val LOCKED_ROW_ALPHA = 0.55f
+
+/** '종료된 대화 (N)' 구역 머리 — 누르면 펼치기/접기. 글자는 목록 보조색(시간·미리보기와 같은 secondary). */
+@Composable
+private fun ClosedSectionHeader(count: Int, expanded: Boolean, onToggle: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(MuyeonColors.groupedBg)
+            .clickable(onClick = onToggle)
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .testTag("chat.closedSection"),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            ChatRoomSections.closedTitle(count),
+            fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+            lineHeight = 16.sp, color = MuyeonColors.secondary, modifier = Modifier.weight(1f),
+        )
+        Icon(
+            if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+            if (expanded) "접기" else "펼치기",
+            tint = MuyeonColors.secondary, modifier = Modifier.size(18.dp),
+        )
     }
 }
 

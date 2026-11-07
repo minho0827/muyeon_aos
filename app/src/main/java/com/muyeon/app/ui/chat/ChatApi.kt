@@ -156,7 +156,12 @@ class ChatApi(private val token: String?) {
                     .build()
                 client.newCall(req).execute().use { res ->
                     val text = res.body?.string().orEmpty()
-                    if (!res.isSuccessful) throw IllegalStateException(serverMessage(text) ?: "요청에 실패했어요.")
+                    if (!res.isSuccessful) {
+                        // 서버 거절 코드(ROOM_LOCKED 등)도 함께 싣는다 — 문구는 종전과 같다.
+                        throw com.muyeon.app.ui.common.ApiMessageError(
+                            serverMessage(text) ?: "요청에 실패했어요.", res.code, errorCode(text),
+                        )
+                    }
                     text
                 }
             }
@@ -169,5 +174,17 @@ class ChatApi(private val token: String?) {
             ?: o.optString("message").ifEmpty { null }
     }.getOrNull()
 
-    private companion object { val JSON = "application/json".toMediaType() }
+    companion object {
+        private val JSON = "application/json".toMediaType()
+
+        /** 서버 거절 코드 — { code } 또는 { data: { code } }. 없으면 null. */
+        fun errorCode(text: String): String? = runCatching {
+            val o = JSONObject(text)
+            o.optString("code").ifEmpty { null } ?: o.optJSONObject("data")?.optString("code")?.ifEmpty { null }
+        }.getOrNull()
+
+        /** 잠긴 방 거절(ROOM_LOCKED)인지 — 반응 등 REST 호출 실패에서 본다. */
+        fun isRoomLocked(e: Throwable?): Boolean =
+            (e as? com.muyeon.app.ui.common.ApiMessageError)?.code == "ROOM_LOCKED"
+    }
 }
