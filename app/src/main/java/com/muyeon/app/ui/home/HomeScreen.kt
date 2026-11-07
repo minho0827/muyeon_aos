@@ -121,7 +121,7 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
                             onAll = null, modifier = Modifier.bleed(16.dp),
                         )
                     }
-                    item(key = "heading", span = FULL) { ArtistsHeading() }
+                    item(key = "heading", span = FULL) { ArtistsHeading(s.teacherGenre.takeIf { it != HomeArtistsUseCase.ALL }) }
                     when {
                         a.items.isEmpty() && a.isInitialLoading -> Unit
                         a.items.isEmpty() -> item(key = "empty", span = FULL) {

@@ -17,11 +17,14 @@ import androidx.compose.ui.unit.sp
 import com.muyeon.app.R
 import com.muyeon.app.ui.theme.AppColors
 
-/** "강사 · 무용수" 제목 + 굵은 밑줄(COREO ARTISTS 자리를 한글로 — 사용자 요청 2026-11-08). */
+/**
+ * 그리드 제목 + 굵은 밑줄(COREO ARTISTS 자리를 한글로 — 사용자 요청 2026-11-08).
+ *   [genre] 전체면 "강사 · 무용수", 장르 탭이면 그 장르 이름(발레·한국무용 …).
+ */
 @Composable
-fun ArtistsHeading(modifier: Modifier = Modifier) {
+fun ArtistsHeading(genre: String?, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxWidth().padding(top = 28.dp, bottom = 10.dp)) {
-        Text(stringResource(R.string.home_artists), style = HEADING, color = AppColors.TextHead)
+        Text(genre ?: stringResource(R.string.home_artists), style = HEADING, color = AppColors.TextHead)
         Box(Modifier.fillMaxWidth().padding(top = 14.dp).height(3.dp).background(AppColors.TextHead))
     }
 }
