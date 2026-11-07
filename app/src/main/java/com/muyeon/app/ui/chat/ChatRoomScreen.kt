@@ -195,7 +195,8 @@ fun ChatRoomScreen(
             "DONE" -> if (isTeacher) teacherReviewInfo = true else startReviewFlow()
             "SCHEDULED" -> prog.lessonId?.let { openLesson(it) }
             "ACCEPTED" -> if (isTeacher) openProgressSchedule(prog) else showProposal = true
-            else -> if (!isTeacher) showAcceptConfirm = true   // 채팅방을 나가지 않고 바로 채택
+            // 채팅방을 나가지 않고 바로 채택 — 대화 종료·요청 마감이면 서버가 거절하므로 열지 않는다.
+            else -> if (!isTeacher && !vm.acceptBlockedFor(vm.acceptTarget)) showAcceptConfirm = true
         }
     }
 
@@ -526,7 +527,7 @@ fun ChatRoomScreen(
 
         // 빠른 답변 칩 — 상대(강사)가 등록해둔 질문을 탭 한 번으로 전송.
         //  내 첫 메시지 전·입력창 비어 있음·답장/수정 중 아님일 때만(iOS 와 같은 조건).
-        if (vm.quickReplies.isNotEmpty() && !vm.hasMyMessage && vm.input.isEmpty() &&
+        if (!vm.locked && vm.quickReplies.isNotEmpty() && !vm.hasMyMessage && vm.input.isEmpty() &&
             vm.editingMessage == null && vm.replyingTo == null
         ) {
             Row(
@@ -552,7 +553,10 @@ fun ChatRoomScreen(
 
         // 수정 중이면 입력바 대신 수정 카드(iOS MessageEditCard), 아니면 답장 배너 + 입력바.
         val editing = vm.editingMessage
-        if (editing != null) {
+        if (vm.locked) {
+            // 대화 종료 방(요청 취소·다른 강사 채택·만료) — 입력창 대신 안내 띠. 서버도 전송을 막는다.
+            ChatLockedBar(vm.lockNotice)
+        } else if (editing != null) {
             MessageEditCard(
                 original = editing.content,
                 text = vm.input,
@@ -614,6 +618,7 @@ fun ChatRoomScreen(
             cycles = vm.lessonCycles,
             opponentImage = vm.opponentImage,
             waitingProposal = vm.proposalWaiting,
+            acceptBlocked = vm.locked,
             onTimeline = { c -> showCyclesSheet = false; timelineCycle = c },
             onPrimary = { c -> showCyclesSheet = false; vm.acceptTarget = c; handleProgressPrimary(c.progress, c.isTeacher) },
             onDismiss = { showCyclesSheet = false },
@@ -627,7 +632,7 @@ fun ChatRoomScreen(
             progress = legacyProgress,
             context = qc,
             category = vm.contextCategory,
-            onQuoteDetail = if (qc?.isTeacher == false) { { showLegacyTimeline = false; vm.acceptTarget = null; showAcceptConfirm = true } } else null,
+            onQuoteDetail = if (qc?.isTeacher == false && !vm.acceptBlocked) { { showLegacyTimeline = false; vm.acceptTarget = null; showAcceptConfirm = true } } else null,
             onSetSchedule = if (qc?.isTeacher == true) {
                 { showLegacyTimeline = false; openProgressSchedule(legacyProgress) }
             } else null,
@@ -648,7 +653,7 @@ fun ChatRoomScreen(
             context = cycle.asContext,
             category = cycle.title,
             isProposal = cycle.isProposal,
-            onQuoteDetail = if (!cycle.isTeacher && !cycle.isProposal) {
+            onQuoteDetail = if (!cycle.isTeacher && !cycle.isProposal && !vm.locked) {
                 { timelineCycle = null; vm.acceptTarget = cycle; showAcceptConfirm = true }
             } else null,
             onSetSchedule = if (cycle.isTeacher && !cycle.isProposal) {
@@ -1031,6 +1036,23 @@ private fun MessageEditCard(
  * 입력바 — PACERA Android `ChatInputBar` 와 같은 모양: [+](무용연 첨부 시트 그대로) · 둥근 입력칸(최소 36, 4줄까지 늘고
  *  그 뒤는 안에서 스크롤, 글자 14) · 36dp 동그란 전송(보낼 수 있으면 주황, 아니면 회색).
  */
+/** 대화 종료 안내 띠 — 입력바와 같은 바탕·여백, 문구는 보조색(입력 불가). */
+@Composable
+private fun ChatLockedBar(text: String) {
+    Box(
+        Modifier.fillMaxWidth().background(MuyeonColors.surface).padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        Text(
+            text,
+            fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 20.sp, color = MuyeonColors.secondary,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
+                .background(MuyeonColors.groupedBg).padding(horizontal = 14.dp, vertical = 8.dp)
+                .testTag("chat.lockedBar"),
+        )
+    }
+}
+
 @Composable
 private fun ChatInputBar(vm: ChatRoomViewModel, onAttach: () -> Unit) {
     Row(

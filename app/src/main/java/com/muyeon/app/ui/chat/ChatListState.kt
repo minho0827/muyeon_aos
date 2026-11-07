@@ -111,6 +111,8 @@ class ChatListState(private val api: ChatApi) {
                     is ChatEvent.RoomUpdated -> applyRoomUpdate(e.update)
                     // 끊겼다 붙는 동안 온 이벤트는 유실된다(replay=0). 붙자마자 전체를 다시 맞춘다.
                     is ChatEvent.Reconnected -> requestReload(immediate = true)
+                    // 방 잠금·번호 공개 등 상태 변경 — locked·미리보기가 바뀌므로 다시 맞춘다.
+                    is ChatEvent.RoomRefresh -> requestReload()
                     // 읽음 처리 — 내 읽음은 서버가 room-updated{unreadCount:0} 으로 따로 알려 준다.
                     //  messages-read 는 join 한 방(=지금 보고 있는 방)에서만 오므로 그 방만 0 으로 둔다.
                     is ChatEvent.MessagesRead -> if (e.roomId == activeRoomId) clearUnread(e.roomId)

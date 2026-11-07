@@ -67,12 +67,15 @@ fun LessonProgressCard(
     personRole: String? = null, // "강사" | "수강생"
     // 방에 응답 대기 중인 약속 제안이 있으면 회원 '일정 잡기'를 숨기고 안내 문구(서버가 방당 대기 제안 1건만 받는다)
     waitingProposal: Boolean = false,
+    // 대화 종료·요청 마감 방 — 서버가 채택을 거절하므로 채택 단계 버튼을 숨긴다.
+    acceptBlocked: Boolean = false,
     modifier: Modifier = Modifier,
     onTimeline: () -> Unit,
     onPrimary: () -> Unit,
 ) {
     val isTeacher = context?.isTeacher ?: false
     val memberWaiting = progress.step == "ACCEPTED" && !isTeacher && waitingProposal
+    val acceptStep = progress.step != "DONE" && progress.step != "SCHEDULED" && progress.step != "ACCEPTED"
 
     Column(
         modifier
@@ -140,7 +143,7 @@ fun LessonProgressCard(
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            primaryCta(progress.step, isTeacher)?.takeIf { !memberWaiting }?.let { label ->
+            primaryCta(progress.step, isTeacher)?.takeIf { !memberWaiting && !(acceptBlocked && acceptStep) }?.let { label ->
                 Text(
                     label,
                     fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 12.sp,

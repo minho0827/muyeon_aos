@@ -51,6 +51,7 @@ object ChatSocketManager {
     private const val EV_ROOM_UPDATED = "room-updated"
     private const val EV_CHAT_ROOM_ADDED = "chat-room-added"
     private const val EV_CHAT_ROOM_REMOVED = "chat-room-removed"
+    private const val EV_ROOM_REFRESH = "room-refresh"
 
     /** 클라 → 서버 (@SubscribeMessage). */
     /** 한 번이라도 연결된 적이 있는지 — 최초 연결과 재연결을 구분한다. */
@@ -185,6 +186,12 @@ object ChatSocketManager {
             val json = asJson(args.firstOrNull()) ?: return@on
             ChatEventBus.emit(ChatEvent.ChatRoomRemoved(json.optInt("roomId")))
         }
+        // 방 상태가 바뀜(대화 종료·일정 확정으로 번호 공개 등) — 상세·메시지를 다시 읽으라는 신호.
+        s.on(EV_ROOM_REFRESH) { args ->
+            val json = asJson(args.firstOrNull()) ?: return@on
+            val roomId = json.optInt("roomId", 0).takeIf { it > 0 } ?: return@on
+            ChatEventBus.emit(ChatEvent.RoomRefresh(roomId))
+        }
         s.on("notification") { ChatEventBus.emit(ChatEvent.ServerNotification) }
         // ★ 2026-10-30 강제 로그아웃 — 서버는 ack 를 받고 소켓을 끊는다(최대 2초). newSessionId 가 내 세션이면
         //  방금 이 기기에서 로그인하며 보낸 신호라 무시한다(iOS FloatingSocketManager·PACERA 와 같은 규칙).
@@ -310,7 +317,7 @@ object ChatSocketManager {
 
         /**
          * 서버 거절 — INVALID_ROOM|INVALID_TYPE|TOO_LONG|EMPTY|RATE_LIMITED|ACCOUNT_RESTRICTED|FORBIDDEN|SEND_FAILED
-         *  |RECRUIT_CHAT_LIMIT(채팅 인원 한도 — message·data{tier,limit,used} 동봉).
+         *  |ROOM_LOCKED(대화 종료된 방)|RECRUIT_CHAT_LIMIT(채팅 인원 한도 — message·data{tier,limit,used} 동봉).
          *  message·data 는 서버가 줄 때만 채운다(기본값 null — 종전 Rejected(code) 호출 그대로 동작).
          */
         data class Rejected(
@@ -392,11 +399,24 @@ object ChatSocketManager {
         socket?.emit(EV_TYPING, JSONObject().put("roomId", roomId).put("isTyping", isTyping))
     }
 
-    fun editMessage(roomId: Int, messageId: Int, content: String) {
-        socket?.emit(
-            EV_EDIT_MESSAGE,
-            JSONObject().put("roomId", roomId).put("messageId", messageId).put("content", content),
-        )
+    /** 메시지 수정 — 서버 ack({ok, code}) 로 결과를 돌려준다(잠긴 방이면 Rejected(ROOM_LOCKED)). */
+    suspend fun editMessage(roomId: Int, messageId: Int, content: String): SendResult {
+        val s = socket
+        if (s?.connected() != true) return SendResult.NotConnected
+        val payload = JSONObject().put("roomId", roomId).put("messageId", messageId).put("content", content)
+        return suspendCancellableCoroutine { cont ->
+            val ack = object : AckWithTimeout(SEND_ACK_TIMEOUT_MS) {
+                override fun onSuccess(vararg args: Any?) {
+                    if (cont.isActive) cont.resume(parseSendAck(args))
+                }
+
+                override fun onTimeout() {
+                    if (cont.isActive) cont.resume(SendResult.TimedOut)
+                }
+            }
+            cont.invokeOnCancellation { ack.cancelTimer() }
+            s.emit(EV_EDIT_MESSAGE, arrayOf<Any>(payload), ack)
+        }
     }
 
     fun deleteMessage(roomId: Int, messageId: Int) {

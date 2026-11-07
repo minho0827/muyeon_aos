@@ -34,9 +34,19 @@ data class ChatRoomSummary(
     val myQuoteRole: String?,     // 견적방에서 내 역할: customer | pro | null
     val opponent: ChatOpponent?,
     val lastSeq: Int? = null,     // 방의 마지막 메시지 순번(2026-10-09 서버부터). 구버전 서버는 null
+    val locked: Boolean = false,  // 대화 종료(요청 취소·다른 강사 채택·만료) — 구버전 서버는 false
+    val lockReason: String? = null,   // CANCELED | MATCHED_OTHER | EXPIRED
 ) {
     val displayTitle: String get() = opponent?.nickname ?: opponent?.name ?: "채팅"
     val isQuoteExpired: Boolean get() = quoteStatus == "EXPIRED"
+
+    /** 목록 상태 pill. 대화 종료가 견적 마감보다 우선. null = pill 없음. */
+    val statusPill: String?
+        get() = when {
+            locked -> "대화 종료"
+            isQuoteExpired -> "견적 마감"
+            else -> null
+        }
 
     /** 리스트 셀 역할 배지. null = 배지 없음. */
     val roleBadge: String?
@@ -61,6 +71,8 @@ data class ChatRoomSummary(
             myQuoteRole = o.stringOrNull("myQuoteRole"),
             opponent = ChatOpponent.from(o.optJSONObject("opponent")),
             lastSeq = o.intOrNull("lastSeq"),
+            locked = o.optBoolean("locked", false),
+            lockReason = o.stringOrNull("lockReason"),
         )
     }
 }
@@ -326,8 +338,18 @@ data class ChatRoomDetail(
     val lastSeq: Int?,                          // 방의 마지막 메시지 순번(구버전 서버는 null)
     val pendingProposal: ChatPendingProposal? = null,   // 재입장으로 카드가 숨겨진 대기 중 약속 제안(상단 고정용)
     val hasPendingProposal: Boolean? = null,   // 방에 응답 대기 중인 약속 제안이 있는지(2026-10-29 서버부터)
+    val locked: Boolean = false,               // 대화 종료 — 입력창 대신 안내 띠
+    val lockReason: String? = null,            // CANCELED | MATCHED_OTHER | EXPIRED
 ) {
     companion object {
+        /** 잠긴 방 안내 띠 문구. */
+        fun lockNotice(reason: String?): String = when (reason) {
+            "CANCELED" -> "레슨 요청이 취소되어 대화가 종료됐어요."
+            "MATCHED_OTHER" -> "다른 강사님으로 레슨이 정해져 대화가 종료됐어요."
+            "EXPIRED" -> "레슨 요청 기간이 끝나 대화가 종료됐어요."
+            else -> "대화가 종료된 채팅방이에요."
+        }
+
         fun from(o: JSONObject) = ChatRoomDetail(
             roomId = o.optInt("roomId"),
             type = o.stringOrNull("type"),
@@ -342,6 +364,8 @@ data class ChatRoomDetail(
             lastSeq = o.intOrNull("lastSeq"),
             pendingProposal = o.optJSONObject("pendingProposal")?.let { ChatPendingProposal.from(it) },
             hasPendingProposal = o.boolOrNull("hasPendingProposal"),
+            locked = o.optBoolean("locked", false),
+            lockReason = o.stringOrNull("lockReason"),
         )
     }
 }

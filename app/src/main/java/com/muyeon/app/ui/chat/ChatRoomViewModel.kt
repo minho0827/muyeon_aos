@@ -68,6 +68,11 @@ class ChatRoomViewModel(
     var progress by mutableStateOf<ChatLessonProgress?>(null)              // 대표 진행(구백엔드 폴백 카드)
     var pendingProposal by mutableStateOf<ChatPendingProposal?>(null)      // 재입장으로 숨겨진 대기 중 약속 제안
     var hasPendingProposal by mutableStateOf(false)                        // 방에 응답 대기 중인 약속 제안(서버 hasPendingProposal)
+    var locked by mutableStateOf(false)                                    // 대화 종료(요청 취소·다른 강사 채택·만료) — 입력창 대신 안내 띠
+    var lockReason by mutableStateOf<String?>(null)                        // CANCELED | MATCHED_OTHER | EXPIRED
+
+    /** 잠긴 방 안내 띠 문구. */
+    val lockNotice: String get() = ChatRoomDetail.lockNotice(lockReason)
 
     /**
      * 응답 대기 중인 약속 제안이 있어 회원 '일정 잡기'를 숨겨야 하는지(서버가 방당 대기 제안 1건만 받는다).
@@ -92,7 +97,16 @@ class ChatRoomViewModel(
     // ── 상단 레슨 컨텍스트 판정 — iOS ChatRoomViewModel 과 같은 조건 ──
 
     /** 고객(강사 아님)이고 아직 미채택이면 '이 강사로 진행하기' 노출. */
-    val canAcceptQuote: Boolean get() = quoteContext?.let { !it.isTeacher && !it.matched } ?: false
+    val canAcceptQuote: Boolean get() = !acceptBlocked && (quoteContext?.let { !it.isTeacher && !it.matched } ?: false)
+
+    /** 채택 불가(대표 견적) — 대화 종료 방이거나 요청 마감(서버가 EXPIRED 채택을 거절한다). */
+    val acceptBlocked: Boolean get() = acceptBlockedFor(null)
+
+    /**
+     * 채택 불가 판정. 잠금은 방 전체, 마감(quoteStatus)은 대표 견적 기준이라
+     *  사이클([target])에서 누른 채택은 잠금만 본다(같은 방의 다른 새 요청은 열려 있을 수 있다).
+     */
+    fun acceptBlockedFor(target: ChatLessonCycle?): Boolean = locked || (target == null && isQuoteExpired)
 
     /**
      * 채택된 견적의 일반회원이며 아직 일정이 확정되지 않은 경우(상단 '레슨 일정 잡기' 고정 버튼).
@@ -141,6 +155,7 @@ class ChatRoomViewModel(
         // 사이클에서 누른 채택이면 그 사이클의 견적(quoteId·responseId), 아니면 대표 견적.
         val target = acceptTarget
         acceptTarget = null
+        if (acceptBlockedFor(target)) return false
         val ids: Pair<Int, Int> = if (target != null) {
             if (target.isTeacher || target.matched || target.isProposal || target.quoteId <= 0 || target.responseId <= 0) return false
             target.quoteId to target.responseId
@@ -298,6 +313,8 @@ class ChatRoomViewModel(
             progress = d.progress
             pendingProposal = d.pendingProposal
             hasPendingProposal = d.hasPendingProposal == true
+            locked = d.locked
+            lockReason = d.lockReason
         }
     }
 
@@ -390,6 +407,8 @@ class ChatRoomViewModel(
                         if (e.roomId == roomId) viewModelScope.launch { refreshReactions() }
                     // 끊긴 동안 온 메시지는 replay=0 이라 통째로 유실된다 — 놓친 순번부터 채운다.
                     is ChatEvent.Reconnected -> viewModelScope.launch { fillGap("reconnect") }
+                    // 방 상태 변경(잠금·번호 공개) — 상세를 다시 읽고 최신 메시지를 다시 받아 교체한다(마스킹 해제 반영).
+                    is ChatEvent.RoomRefresh -> if (e.roomId == roomId) viewModelScope.launch { reloadRoom() }
                     else -> Unit
                 }
             }
@@ -609,9 +628,12 @@ class ChatRoomViewModel(
 
         // 수정 모드면 전송이 아니라 edit-message.
         editingMessage?.let { target ->
-            ChatSocketManager.editMessage(roomId, target.id, text)
             editingMessage = null
             clearInput()
+            viewModelScope.launch {
+                val r = ChatSocketManager.editMessage(roomId, target.id, text)
+                if (r is SendResult.Rejected) onRejected(r.code)
+            }
             return
         }
 
@@ -704,7 +726,7 @@ class ChatRoomViewModel(
                         // 이번 달 새 강사·무용수 채팅 한도 — 말풍선은 실패로 두고 멤버십 안내 팝업(이력서 화면과 같은 것)
                         chatLimit = RecruitChatLimitException.fromAck(result.message, result.data, result.raw)
                     } else {
-                        toast = rejectMessage(result.code)
+                        onRejected(result.code)
                     }
                 }
                 SendResult.TimedOut, SendResult.NotConnected -> markFailed(p.localId)
@@ -724,7 +746,20 @@ class ChatRoomViewModel(
         if (i >= 0) pending[i] = pending[i].copy(failed = true)
     }
 
+    /** 거절 안내 — 잠긴 방이면 상세를 다시 읽어 입력창을 안내 띠로 바꾼다. */
+    private fun onRejected(code: String) {
+        toast = rejectMessage(code)
+        if (code == "ROOM_LOCKED") viewModelScope.launch { loadDetail() }
+    }
+
+    /** room-refresh — 상세(잠금·컨텍스트)와 최신 메시지 묶음을 다시 받는다. 서버 기준 내용으로 교체된다. */
+    private suspend fun reloadRoom() {
+        loadDetail()
+        fetchLatest().onSuccess { res -> merge(res.messages); scheduleGapFillIfNeeded() }
+    }
+
     private fun rejectMessage(code: String): String = when (code) {
+        "ROOM_LOCKED" -> "레슨 요청이 마감되어 대화할 수 없어요."
         "RATE_LIMITED" -> "메시지를 너무 빠르게 보내고 있어요. 잠시 후 다시 보내 주세요."
         "TOO_LONG" -> "메시지가 너무 길어요(최대 5,000자)."
         "EMPTY" -> "빈 메시지는 보낼 수 없어요."

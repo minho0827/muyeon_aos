@@ -130,6 +130,7 @@ fun LessonContextArea(
                 isExpired = false,
                 isProposal = cycle.isProposal,
                 waitingProposal = vm.proposalWaiting,
+                acceptBlocked = vm.locked,
                 onTimeline = { onCycleTimeline(cycle) },
                 onPrimary = { onCyclePrimary(cycle) },
             )
@@ -142,6 +143,7 @@ fun LessonContextArea(
                 category = vm.contextCategory,
                 isExpired = vm.isQuoteExpired,
                 waitingProposal = vm.proposalWaiting,
+                acceptBlocked = vm.acceptBlocked,
                 onTimeline = onLegacyTimeline,
                 onPrimary = { onLegacyPrimary(progress) },
             )
@@ -368,6 +370,7 @@ fun LessonCyclesSheet(
     cycles: List<ChatLessonCycle>,
     opponentImage: String?,
     waitingProposal: Boolean = false,
+    acceptBlocked: Boolean = false,
     onTimeline: (ChatLessonCycle) -> Unit,
     onPrimary: (ChatLessonCycle) -> Unit,
     onDismiss: () -> Unit,
@@ -404,6 +407,7 @@ fun LessonCyclesSheet(
                         personImage = opponentImage,
                         personRole = cycle.opponentRoleLabel,
                         waitingProposal = waitingProposal,
+                        acceptBlocked = acceptBlocked,
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
                             .border(1.dp, MuyeonColors.border, RoundedCornerShape(12.dp)),

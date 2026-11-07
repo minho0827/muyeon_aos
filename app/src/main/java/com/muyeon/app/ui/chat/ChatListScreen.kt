@@ -213,9 +213,9 @@ fun ChatRoomRow(room: ChatRoomSummary, onClick: () -> Unit) {
                             .padding(horizontal = 6.dp, vertical = 2.dp),
                     )
                 }
-                if (room.isQuoteExpired) {
+                room.statusPill?.let { pill ->
                     Text(
-                        "견적 마감",
+                        pill,
                         fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 10.sp,
                         lineHeight = 12.sp, color = MuyeonColors.secondary,
                         modifier = Modifier

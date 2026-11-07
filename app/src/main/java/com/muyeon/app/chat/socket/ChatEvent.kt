@@ -19,6 +19,7 @@ import com.muyeon.app.ui.chat.ChatRoomUpdate
  *  서버 → 클라 9종:
  *   new-message · message-updated · message-deleted · messages-read
  *   · message-reaction · user-typing · room-updated · chat-room-added · chat-room-removed
+ *   · room-refresh(2026-11 서버부터)
  */
 sealed class ChatEvent {
 
@@ -58,6 +59,12 @@ sealed class ChatEvent {
      *  (send-message·mark-read·join-room 모두 이걸 쏜다).
      */
     data class ChatRoomAdded(val room: ChatRoomSummary) : ChatEvent()
+
+    /**
+     * 방 상태 변경(대화 종료·일정 확정으로 번호 공개 등, room-refresh {roomId}).
+     *  보고 있는 방은 상세·메시지를 다시 읽고, 목록은 다시 맞춘다.
+     */
+    data class RoomRefresh(val roomId: Int) : ChatEvent()
 
     /** 방에서 나감(다른 기기·웹 포함) — 목록에서 제거. chat.controller 의 leave 에서 온다. */
     data class ChatRoomRemoved(val roomId: Int) : ChatEvent()
