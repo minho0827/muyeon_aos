@@ -31,6 +31,8 @@ data class MainUiState(
     val switchableTypes: List<String> = emptyList(),
     /** 유형 → 동그라미 사진(탭바 MY 칸 — 인스타그램식). 없는 유형은 아이콘. */
     val typeImages: Map<String, String> = emptyMap(),
+    /** 서버 유형 저장이 끝날 때마다 +1 — MY 가 머리글·메뉴를 다시 읽는 신호. */
+    val typeEpoch: Int = 0,
     /** MY 탭 빨간 점(웹 useTypeBadges mine>0). MY 탭 이식 때 채운다. */
     val myDot: Boolean = false,
 )
@@ -175,14 +177,21 @@ class MainViewModel(
     }
 
     private fun switchTo(type: String) {
-        if (type == _state.value.activeType) return
+        val before = _state.value.activeType
+        if (type == before) return
+        // 탭바 동그라미가 누르는 즉시 움직이게 먼저 바꾸고, 서버가 거절하면 되돌린다.
+        _state.update { it.copy(activeType = ActiveType.visible(type)) }
         viewModelScope.launch {
             when (switchActiveType(type)) {
                 is ApiResult.Success -> {
-                    _state.update { it.copy(activeType = ActiveType.visible(type)) }
+                    // 저장소(헤더용 유형)는 서버 저장 뒤에 바뀐다 — MY 가 이 값을 보고 다시 읽도록 한 번 더 알린다.
+                    _state.update { it.copy(activeType = ActiveType.visible(type), typeEpoch = it.typeEpoch + 1) }
                     _events.tryEmit(MainEvent.TypeSwitched(type))
                 }
-                is ApiResult.Error -> _events.tryEmit(MainEvent.TypeSwitchFailed)
+                is ApiResult.Error -> {
+                    _state.update { it.copy(activeType = before) }
+                    _events.tryEmit(MainEvent.TypeSwitchFailed)
+                }
             }
         }
     }

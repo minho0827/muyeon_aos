@@ -41,13 +41,15 @@ fun MyScreen(
     /** 커뮤니티(탭이 아니라 MY 안 섹션 — 탭 위 화면으로 연다). */
     onOpenCommunity: () -> Unit,
     onLoggedOut: () -> Unit,
+    /** 지금 유형(탭 셸) — 바뀌면(MY 두 번 누르기·유형 시트) 머리글·메뉴를 바로 다시 읽는다. */
+    activeType: String = "",
     viewModel: MyViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     // 대표 지역(홈 위 바에서 옮김) — 웹 /myRegions 에서 고르면 웹 창 닫힐 때 앱으로 맞춰진다(WebViewActivity syncRegionFromWeb).
     val region by org.koin.compose.koinInject<com.muyeon.domain.usecase.region.ObserveActiveRegionUseCase>().invoke().collectAsStateWithLifecycle()
     val context = androidx.compose.ui.platform.LocalContext.current
-    LifecycleResumeEffect(isLoggedIn) {
+    LifecycleResumeEffect(isLoggedIn, activeType) {
         viewModel.refresh()
         onPauseOrDispose { }
     }

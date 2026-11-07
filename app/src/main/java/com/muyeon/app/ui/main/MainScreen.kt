@@ -157,6 +157,7 @@ fun MainScreen(
                 composable(Screen.TabMy.route) {
                     MyScreen(
                         isLoggedIn = state.isLoggedIn,
+                        activeType = "${state.activeType}#${state.typeEpoch}",
                         onOpenWeb = onOpenWeb,
                         onNativeAction = onNativeAction,
                         onRoleManage = { viewModel.onTypePicked(MainViewModel.TYPE_MANAGE) },

@@ -41,31 +41,34 @@ import com.muyeon.app.ui.theme.AppColors
 fun TypeAvatars(types: List<String>, active: String, images: Map<String, String>, selected: Boolean) {
     val list = types.ifEmpty { listOf(active) }
     val n = list.size
-    val base = when (n) { 1 -> 26.dp; 3 -> 17.dp; else -> 20.dp }
-    // 자리 — 1개: 가운데 / 3개: 삼각형(위가 지금 유형) / 2개·4개 이상: 가로로 겹쳐(오른쪽 끝이 지금 유형).
-    //  두 번 누르면 다음 유형이 앞자리로 오고 나머지가 한 칸씩 밀려난다(자리 이동을 스프링으로 — 인스타그램 전환 느낌).
-    val step = when { n == 2 -> 18.dp; n == 4 -> 13.dp; else -> 11.dp }
-    val spots: List<Pair<androidx.compose.ui.unit.Dp, androidx.compose.ui.unit.Dp>> = when (n) {
-        1 -> listOf(0.dp to 0.dp)
-        3 -> listOf(9.dp to 0.dp, 18.dp to 11.dp, 0.dp to 11.dp)   // 위 → 오른쪽 아래 → 왼쪽 아래(시계 방향으로 돈다)
-        else -> List(n) { i -> step * (n - 1 - i) to 0.dp }        // 0 = 맨 오른쪽(앞)
+    // ★ 2026-11-08 촘촘하게 — 지금 유형(앞)만 크게, 나머지는 작게 뒤에서 살짝만 보이게 겹친다(사용자: 너무 길게 늘어졌다).
+    val front = if (n == 1) 26.dp else 24.dp
+    val back = 16.dp
+    val peek = when { n <= 3 -> 8.dp; n == 4 -> 6.dp; else -> 5.dp }   // 뒤 동그라미끼리 보이는 폭
+    // rank 0 = 앞(오른쪽, 크게). rank 1.. = 왼쪽으로 한 칸씩 뒤. 3개면 삼각형(앞 위, 뒤 둘 아래 좌우).
+    fun spot(rank: Int): Pair<androidx.compose.ui.unit.Dp, androidx.compose.ui.unit.Dp> = when {
+        n == 3 -> when (rank) { 0 -> 6.dp to 0.dp; 1 -> 22.dp to 14.dp; else -> 0.dp to 14.dp }
+        rank == 0 -> peek * (n - 1) + 4.dp to 0.dp
+        else -> peek * (n - 1 - rank) to (front - back) / 2
     }
-    val w = spots.maxOf { it.first } + base + 8.dp
-    val h = spots.maxOf { it.second } + base + 8.dp
+    val w = (0 until n).maxOf { spot(it).first + (if (it == 0) front else back) } + 6.dp
+    val h = (0 until n).maxOf { spot(it).second + (if (it == 0) front else back) } + 6.dp
     val activeIdx = list.indexOf(active).coerceAtLeast(0)
+    // 바뀌는 게 눈에 보이게 — 자리 이동은 0.55초(천천히 출발해 부드럽게 멈춤), 크기는 살짝 튀게.
+    val move = androidx.compose.animation.core.tween<androidx.compose.ui.unit.Dp>(550, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+    val pop = androidx.compose.animation.core.spring<androidx.compose.ui.unit.Dp>(dampingRatio = 0.45f, stiffness = 260f)
     Box(Modifier.wrapContentSize(unbounded = true).width(w).height(h)) {
         list.forEachIndexed { i, t ->
-            val rank = (i - activeIdx).mod(n)            // 0 = 지금 유형(앞자리)
+            val rank = (i - activeIdx).mod(n)
             val on = rank == 0
-            val (tx, ty) = spots[rank]
-            val spring = androidx.compose.animation.core.spring<androidx.compose.ui.unit.Dp>(dampingRatio = 0.7f, stiffness = 500f)
-            val x by animateDpAsState(tx, spring, label = "avatarX")
-            val y by animateDpAsState(ty, spring, label = "avatarY")
-            val size by animateDpAsState(if (on && n > 1) base + 4.dp else base, spring, label = "avatarSize")
-            val ring = when { on && selected -> AppColors.TextHead; on -> AppColors.TextHint; else -> AppColors.Surface }
-            val shift = (size - base) / 2
+            val (tx, ty) = spot(rank)
+            val x by animateDpAsState(tx, move, label = "avatarX")
+            val y by animateDpAsState(ty, move, label = "avatarY")
+            val size by animateDpAsState(if (on) front else back, pop, label = "avatarSize")
+            // 뒤 동그라미도 보이게 — 옅은 회색 테두리(흰 바탕에 묻히지 않게).
+            val ring = when { on && selected -> AppColors.TextHead; on -> AppColors.TextHint; else -> AppColors.ChipBorder }
             Box(
-                Modifier.offset(x = x - shift + 2.dp, y = y - shift + 2.dp).zIndex((n - rank).toFloat())
+                Modifier.offset(x = x + 2.dp, y = y + 2.dp).zIndex((n - rank).toFloat())
                     .size(size + 4.dp).clip(CircleShape).background(AppColors.Surface).border(1.5.dp, ring, CircleShape).padding(2.dp)
                     .clip(CircleShape).background(AppColors.SurfaceMuted),
                 contentAlignment = Alignment.Center,
