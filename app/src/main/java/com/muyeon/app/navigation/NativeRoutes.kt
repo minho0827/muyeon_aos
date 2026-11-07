@@ -23,6 +23,6 @@ object NativeRoutes {
         PERFORMANCE.find(p)?.let { return Target.Route(Screen.PerformanceDetail.build(it.groupValues[1].toLong())) }
         // 탭 루트는 쿼리가 없을 때만(쿼리 = 웹 화면 상태 지정 — 웹이 그린다).
         if (clean.contains('?')) return null
-        return MainTab.fromWebPath(p)?.takeIf { it.kind == MainTab.Kind.NATIVE }?.let { Target.Tab(it) }
+        return MainTab.fromWebPath(p)?.takeIf { it.nativeReady }?.let { Target.Tab(it) }
     }
 }

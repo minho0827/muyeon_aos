@@ -32,7 +32,7 @@ fun GuestMyHome(onLogin: () -> Unit, onOpenPath: (String) -> Unit, modifier: Mod
         MyMenuRow("/policy?doc=terms", stringResource(R.string.my_menu_terms), R.drawable.ic_menu_myinfo),
         MyMenuRow("/policy?doc=privacy", stringResource(R.string.my_menu_privacy), R.drawable.ic_menu_myinfo),
     )
-    Column(modifier.fillMaxWidth().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = com.muyeon.app.ui.main.tabBarBottomPadding()), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             stringResource(R.string.my_guest_title),
             style = AppTypography.Title20.copy(fontSize = androidx.compose.ui.unit.TextUnit(24f, androidx.compose.ui.unit.TextUnitType.Sp)),

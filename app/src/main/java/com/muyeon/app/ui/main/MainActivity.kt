@@ -116,7 +116,8 @@ class MainActivity : ComponentActivity(), ResultHost {
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                // 홈이 아니면 홈으로, 홈이면 종료 확인(웹뷰 시절 첫 화면 뒤로가기와 같다).
+                // 2계층(구인구직·커뮤니티·공간)이면 1계층으로, 홈이 아니면 홈으로, 홈이면 종료 확인.
+                if (viewModel.backToMain()) return
                 if (viewModel.state.value.selectedKey != MainTab.HOME.key) viewModel.selectTab(MainTab.HOME)
                 else confirmExit()
             }
@@ -184,13 +185,11 @@ class MainActivity : ComponentActivity(), ResultHost {
             is com.muyeon.app.navigation.NativeRoutes.Target.Route -> { viewModel.openRoute(target.route); return }
             null -> Unit
         }
-        val tab = MainTab.fromWebPath(path)
-        WebViewActivity.startPath(this, path, viaLink = viaLink, tabKey = tab?.takeIf { it.kind == MainTab.Kind.WEB }?.key)
+        WebViewActivity.startPath(this, path, viaLink = viaLink)
     }
 
     private fun onEvent(e: MainEvent) {
         when (e) {
-            is MainEvent.OpenWebTab -> WebViewActivity.startPath(this, e.path, tabKey = e.tab.key)
             is MainEvent.OpenWebPath -> openPath(e.path, viaLink = false)
             is MainEvent.TypeSwitched -> {
                 Toast.makeText(this, getString(R.string.main_type_switched, ActiveRole.label(e.type)), Toast.LENGTH_SHORT).show()
@@ -203,13 +202,12 @@ class MainActivity : ComponentActivity(), ResultHost {
     }
 
     /**
-     * 캐스팅·무대 열기 — 탭 목록에 캐스팅이 있으면 그 탭, 없으면(일반 회원 메뉴 등) 첫 화면을 탭 위 화면으로.
+     * 캐스팅·무대 열기 — 커뮤니티 2계층의 캐스팅 탭(모든 회원에게 있다).
      *  [route] 링크로 열 그 화면(CastingStageActivity.linkRoute 값) — 그 위에 쌓는다.
      */
     private fun openCastingStage(route: String?) {
         val r = com.muyeon.app.ui.castingstage.StageRoutes.SHELL
-        val inTabs = viewModel.state.value.tabs.any { it.tabKey == MainTab.CASTING.key }
-        if (inTabs) viewModel.selectTab(MainTab.CASTING) else if (route == null) viewModel.openRoute(r.home)
+        viewModel.selectTab(MainTab.CASTING)
         route?.let { viewModel.openRoute(r.link(it)) }
     }
 

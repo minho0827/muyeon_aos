@@ -23,6 +23,8 @@ object Dimensions {
 
     // === 탭바(웹 _bottom-tab-bar.scss) ===
     val tabBarHeight = 82.dp
+    /** 떠 있는 탭바 아래 목록 끝 여백 — 마지막 항목이 탭바에 가리지 않게(PaceERA tabBarClearance). 내비게이션 바 높이는 따로 더한다. */
+    val tabBarClearance = 100.dp
     val tabBarPadding = 16.dp
     val tabButtonWidth = 52.dp
     val tabIconSize = 28.dp

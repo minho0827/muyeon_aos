@@ -74,6 +74,8 @@ fun CastingStageScreen(
     onCreate: (() -> Unit)? = null,
     /** 바뀌면 다시 불러온다 — 공고를 새로 올린 뒤. */
     reloadKey: Int = 0,
+    /** 커뮤니티 탭 안 머리(위 바 + 탭). 주면 이 화면 위 바(제목·＋·검색) 대신 그린다 — ＋·검색은 머리가 맡는다. */
+    header: (@Composable () -> Unit)? = null,
 ) {
     var issue by remember { mutableStateOf<StageNewsIssue?>(null) }
     var castings by remember { mutableStateOf<List<StageCasting>>(emptyList()) }
@@ -138,7 +140,7 @@ fun CastingStageScreen(
     }
 
     // 하단 탭으로 열리면 흰 바 위 상태바 아이콘을 검정으로(탭 셸은 주황 바 기준 흰 아이콘이 기본).
-    if (onClose == null) {
+    if (onClose == null && header == null) {
         val view = androidx.compose.ui.platform.LocalView.current
         androidx.compose.runtime.DisposableEffect(Unit) {
             (view.context as? android.app.Activity)?.window?.let { w ->
@@ -147,9 +149,10 @@ fun CastingStageScreen(
             onDispose { }
         }
     }
-    Column(Modifier.fillMaxSize().background(Color.White).statusBarsPadding().then(if (onClose != null) Modifier.navigationBarsPadding() else Modifier)) {
+    Column(Modifier.fillMaxSize().background(Color.White).then(if (header == null) Modifier.statusBarsPadding() else Modifier).then(if (onClose != null) Modifier.navigationBarsPadding() else Modifier)) {
+        if (header != null) header()
         // 상단바
-        Row(Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (header == null) Row(Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             if (onClose != null) Box(Modifier.size(44.dp).clickable(onClick = onClose).semantics { contentDescription = "뒤로" }, Alignment.Center) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = MuyeonColors.textHead)
             } else Spacer(Modifier.width(16.dp))
@@ -165,7 +168,7 @@ fun CastingStageScreen(
             }
         }
         Box(Modifier.fillMaxSize()) {
-            LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 80.dp)) {
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = if (onClose == null) com.muyeon.app.ui.main.tabBarBottomPadding() else 80.dp)) {
                 item(key = "banner") {
                     StageBanner(issue, castings, loading, onTapIssue = { jump(newsSections.firstOrNull()?.first?.code ?: "CASTING") },
                         onTapCasting = { onOpenCasting(it.id) }, onTapNews = { n -> onOpenNews(n, catOf(n)) })

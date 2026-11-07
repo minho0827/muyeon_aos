@@ -53,6 +53,10 @@ object AppColors {
 
     /** 사진 위 덮개(하트 원 92% 흰색). */
     val OverlayWhite: Color = Palette.White.copy(alpha = 0.92f)
+
+    // 탭바(2026-11-08, 토스 방식 — 1계층 붙은 바 · 2계층 떠 있는 캡슐) — 면 · 테두리.
+    val TabBarGlass: Color = Palette.White
+    val TabBarBorder: Color = Palette.Gray150
     val Scrim: Color = Palette.Black.copy(alpha = 0.5f)
 }
 

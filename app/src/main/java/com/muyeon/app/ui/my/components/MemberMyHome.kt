@@ -66,7 +66,7 @@ fun MemberMyHome(
         else -> MyShortcut(stringResource(R.string.shortcut_lesson_schedule), MyIcons.of("filled-note"), onShortcutCalendar)
     }
 
-    Column(modifier.fillMaxWidth().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = com.muyeon.app.ui.main.tabBarBottomPadding()), horizontalAlignment = Alignment.CenterHorizontally) {
         MyProfileHeader(stringResource(R.string.my_header, name, withEuro(typeLabel)), onClick = onHeader)
         MyShortcutsCard(listOf(middle, MyShortcut(stringResource(R.string.tab_community), MyIcons.of("filled-community"), onShortcutCommunity)))
         Column(Modifier.offset(y = (-60).dp)) {

@@ -41,6 +41,8 @@ import org.koin.androidx.compose.koinViewModel
 fun PerformanceListScreen(
     onOpenDetail: (Long) -> Unit,
     onLogin: () -> Unit,
+    /** 커뮤니티 탭 안 머리. 주면 이 화면 위 바 대신 그린다. */
+    header: (@Composable () -> Unit)? = null,
     viewModel: PerformanceListViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -65,13 +67,13 @@ fun PerformanceListScreen(
     CursorLoadMoreEffect(listState, canLoad = state.cursor.canAutoLoad && !state.isLoadingMore, onLoadMore = viewModel::loadMore)
 
     Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.theme.AppColors.Surface)) {
-        MainTopBar(title = stringResource(R.string.tab_performance))
+        if (header != null) header() else MainTopBar(title = stringResource(R.string.tab_performance))
         PullToRefreshBox(
             isRefreshing = state.isRefreshing,
             onRefresh = { viewModel.refresh(pull = true) },
             modifier = Modifier.fillMaxSize(),
         ) {
-            LazyColumn(Modifier.fillMaxSize(), state = listState) {
+            LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = com.muyeon.app.ui.main.tabBarBottomPadding())) {
                 item(key = "chips") {
                     PerformanceFilterChips(
                         genres = viewModel.genreOptions,

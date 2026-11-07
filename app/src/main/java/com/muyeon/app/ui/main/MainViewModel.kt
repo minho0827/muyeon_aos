@@ -8,11 +8,8 @@ import com.muyeon.domain.common.TokenStore
 import com.muyeon.domain.model.member.ActiveType
 import com.muyeon.domain.model.member.RoleManageLaunch
 import com.muyeon.domain.usecase.member.GetRoleManageLaunchUseCase
-import com.muyeon.domain.model.menu.AppMenuItem
 import com.muyeon.domain.usecase.member.GetMyRolesUseCase
 import com.muyeon.domain.usecase.member.SwitchActiveTypeUseCase
-import com.muyeon.domain.usecase.menu.GetTabMenusUseCase
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -23,10 +20,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class MainUiState(
-    /** 서버 탭 목록(또는 유형별 캐시·기본 목록). 비지 않는다. */
-    val tabs: List<AppMenuItem> = emptyList(),
-    /** 지금 보이는 앱 탭(NATIVE 탭만 선택 상태가 된다 — 웹·액티비티 탭은 위에 창을 연다). */
+    /** 지금 보이는 앱 탭. 탭바 모드·칸은 여기서 계산한다(MainTab.mode·barItem). */
     val selectedKey: String = MainTab.HOME.key,
+    /** 2계층(구인구직·커뮤니티·공간)에서 ← 를 누르면 돌아갈 1계층 탭(홈·MY). */
+    val lastMainKey: String = MainTab.HOME.key,
     val activeType: String = ActiveType.GENERAL,
     val isLoggedIn: Boolean = false,
     /** 고를 수 있는 유형(일반 + 보유). 비회원·조회 전이면 빈 목록. */
@@ -37,8 +34,6 @@ data class MainUiState(
 
 /** 화면이 한 번만 처리할 일. */
 sealed interface MainEvent {
-    /** 웹 탭(구인구직·대타) — 웹 창을 탭으로 연다. */
-    data class OpenWebTab(val tab: MainTab, val path: String) : MainEvent
     data class OpenWebPath(val path: String) : MainEvent
     data class TypeSwitched(val type: String) : MainEvent
     data object TypeSwitchFailed : MainEvent
@@ -48,11 +43,10 @@ sealed interface MainEvent {
 }
 
 /**
- * 탭 셸 상태 — 웹 Footer.js·useTabMenus·ActiveTypeSheet 의 일을 맡는다.
- *   탭 목록은 활성유형이 바뀔 때마다 다시 받는다(서버가 X-Active-Type 으로 고른다).
+ * 탭 셸 상태 — 탭 고르기 · 탭바 모드 · 유형 시트(웹 ActiveTypeSheet).
+ *   ★ 2026-11-08 모든 회원·비회원이 같은 탭(MainTab) — 유형별 서버 탭 목록은 쓰지 않는다.
  */
 class MainViewModel(
-    private val getTabMenus: GetTabMenusUseCase,
     private val getMyRoles: GetMyRolesUseCase,
     private val switchActiveType: SwitchActiveTypeUseCase,
     private val getRoleManageLaunch: GetRoleManageLaunchUseCase,
@@ -65,7 +59,6 @@ class MainViewModel(
         MainUiState(
             activeType = currentType(),
             isLoggedIn = tokens.isLoggedIn,
-            tabs = getTabMenus.cachedOrFallback(currentType()),
         ),
     )
     val state: StateFlow<MainUiState> = _state.asStateFlow()
@@ -83,10 +76,7 @@ class MainViewModel(
     private val _reselect = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val reselect: SharedFlow<String> = _reselect.asSharedFlow()
 
-    private var tabsJob: Job? = null
-
     init {
-        refreshTabs()
         refreshRoles()
     }
 
@@ -99,7 +89,6 @@ class MainViewModel(
         val s = _state.value
         if (type != s.activeType || loggedIn != s.isLoggedIn) {
             _state.update { it.copy(activeType = type, isLoggedIn = loggedIn, switchableTypes = if (loggedIn) it.switchableTypes else emptyList()) }
-            refreshTabs()
         }
         refreshRoles()
     }
@@ -107,18 +96,6 @@ class MainViewModel(
     /** 대표 지역이 아직 없으면 좌표로 정한다(웹 RegionProvider 첫 실행과 같다). */
     fun detectRegionIfNeeded(coords: suspend () -> com.muyeon.domain.model.region.Coordinates?) {
         viewModelScope.launch { detectRegion(coords) }
-    }
-
-    fun refreshTabs() {
-        tabsJob?.cancel()
-        tabsJob = viewModelScope.launch {
-            val tabs = getTabMenus(_state.value.activeType)
-            _state.update { s ->
-                val keys = tabs.map { it.tabKey }
-                // 지금 탭이 새 목록에 없으면(유형 전환으로 강사↔구인구직) 홈으로.
-                s.copy(tabs = tabs, selectedKey = if (s.selectedKey in keys) s.selectedKey else MainTab.HOME.key)
-            }
-        }
     }
 
     private fun refreshRoles() {
@@ -130,33 +107,44 @@ class MainViewModel(
                 val changed = type != _state.value.activeType
                 if (changed) activeTypeStore.save(type)
                 _state.update { it.copy(switchableTypes = r.data.switchable, activeType = type) }
-                if (changed) refreshTabs()
             }
         }
     }
 
     /** 탭 누름. 지금 탭이면 다시 누름 신호. */
     fun onTabTap(key: String) {
-        val tab = MainTab.fromKey(key)
-        val item = _state.value.tabs.firstOrNull { it.tabKey == key }
-        when {
-            tab == null -> item?.let { _events.tryEmit(MainEvent.OpenWebPath(it.path)) }
-            tab.kind == MainTab.Kind.NATIVE ->
-                if (_state.value.selectedKey == key) _reselect.tryEmit(key)
-                else _state.update { it.copy(selectedKey = key) }
-            else -> _events.tryEmit(MainEvent.OpenWebTab(tab, item?.path ?: tab.webPath))
-        }
+        val tab = MainTab.fromKey(key) ?: return
+        if (_state.value.selectedKey == key) _reselect.tryEmit(key) else selectTab(tab)
     }
 
-    /** MY 에서 로그아웃 — 비회원 탭 목록으로 바꾸고 홈으로(웹 MyHome: logout → /home). */
+    /** 탭바 칸 누름 — ← 는 1계층의 직전 탭(홈·MY)으로, 나머지는 그 칸의 탭으로. */
+    fun onBarItem(item: com.muyeon.app.ui.main.bar.BarItem) {
+        val current = MainTab.fromKey(_state.value.selectedKey)
+        // 지금 칸을 다시 눌렀다(커뮤니티 안 공연을 보다가 커뮤니티 칸 등) — 그 화면 맨 위로(다시 누름 신호).
+        if (current != null && current.barItem == item && item != com.muyeon.app.ui.main.bar.BarItem.BACK) { _reselect.tryEmit(current.key); return }
+        val tab = MainTab.forBarItem(item)
+        if (tab == null) backToMain() else onTabTap(tab.key)
+    }
+
+    /** 2계층에서 1계층으로. 이미 1계층이면 false(뒤로가기 처리를 넘긴다). */
+    fun backToMain(): Boolean {
+        val s = _state.value
+        val tab = MainTab.fromKey(s.selectedKey) ?: return false
+        if (tab.mode == com.muyeon.app.ui.main.bar.BarMode.MAIN) return false
+        selectTab(MainTab.fromKey(s.lastMainKey) ?: MainTab.HOME)
+        return true
+    }
+
+    /** MY 에서 로그아웃 — 홈으로(웹 MyHome: logout → /home). */
     fun onLoggedOut() {
-        _state.update { it.copy(isLoggedIn = false, activeType = ActiveType.GENERAL, switchableTypes = emptyList(), selectedKey = MainTab.HOME.key) }
-        refreshTabs()
+        _state.update { it.copy(isLoggedIn = false, activeType = ActiveType.GENERAL, switchableTypes = emptyList(), selectedKey = MainTab.HOME.key, lastMainKey = MainTab.HOME.key) }
     }
 
-    /** 다른 화면에서 탭으로 돌아오게 할 때(웹 창에서 /community 로 이동 등). */
+    /** 탭 고르기(다른 화면·링크에서 돌아올 때 포함). 1계층 탭이면 ← 의 돌아갈 곳으로 기억한다. */
     fun selectTab(tab: MainTab) {
-        if (tab.kind == MainTab.Kind.NATIVE) _state.update { it.copy(selectedKey = tab.key) }
+        _state.update {
+            it.copy(selectedKey = tab.key, lastMainKey = if (tab.mode == com.muyeon.app.ui.main.bar.BarMode.MAIN && tab != MainTab.LESSONS) tab.key else it.lastMainKey)
+        }
     }
 
     /** MY 두 번 누르기 — 고를 유형이 딱 둘이면 다른 쪽으로(웹 Footer 와 같은 규칙). */
@@ -187,7 +175,6 @@ class MainViewModel(
                 is ApiResult.Success -> {
                     _state.update { it.copy(activeType = ActiveType.visible(type)) }
                     _events.tryEmit(MainEvent.TypeSwitched(type))
-                    refreshTabs()
                 }
                 is ApiResult.Error -> _events.tryEmit(MainEvent.TypeSwitchFailed)
             }

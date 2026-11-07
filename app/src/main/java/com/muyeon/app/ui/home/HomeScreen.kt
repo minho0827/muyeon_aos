@@ -71,7 +71,7 @@ fun HomeScreen(activeType: String, isLoggedIn: Boolean, actions: HomeActions, vi
                 val listState = rememberLazyListState()
                 TabReselectEffect(MainTab.HOME) { listState.animateScrollToItem(0) }
                 PullToRefreshBox(state.isRefreshing, onRefresh = { viewModel.load(pull = true) }, modifier = Modifier.fillMaxSize()) {
-                    LazyColumn(Modifier.fillMaxSize(), state = listState) {
+                    LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = com.muyeon.app.ui.main.tabBarBottomPadding())) {
                         item(key = "sections") { HomeSwipeContent(state, viewModel, actions, Modifier.padding(top = 24.dp, bottom = 32.dp)) }
                         item(key = "footer") { Footer(state.subNotice, state.notices, actions) }
                     }
@@ -94,7 +94,7 @@ private fun TeacherHomeBody(actions: HomeActions, header: HomeUiState, vm: Teach
     val listState = rememberLazyListState()
     TabReselectEffect(MainTab.HOME) { listState.animateScrollToItem(0) }
     PullToRefreshBox(s.isRefreshing, onRefresh = { vm.load(pull = true) }, modifier = Modifier.fillMaxSize()) {
-        LazyColumn(Modifier.fillMaxSize(), state = listState) {
+        LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = com.muyeon.app.ui.main.tabBarBottomPadding())) {
             item(key = "sections") { TeacherHomeContent(s, vm, actions, Modifier.padding(top = 24.dp)) }
             item(key = "footer") { Footer(s.subNotice, s.notices, actions) }
         }
@@ -113,6 +113,7 @@ private fun ClassicHomeBody(actions: HomeActions, vm: HomeClassicViewModel = koi
     val full: (androidx.compose.foundation.lazy.grid.LazyGridItemSpanScope.() -> GridItemSpan) = { GridItemSpan(maxLineSpan) }
     PullToRefreshBox(s.isRefreshing, onRefresh = { vm.refresh(pull = true) }, modifier = Modifier.fillMaxSize()) {
         LazyVerticalGrid(GridCells.Fixed(if (s.grid) 2 else 1), Modifier.fillMaxSize(), gridState,
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = com.muyeon.app.ui.main.tabBarBottomPadding()),
             horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item(key = "head", span = full) { HomeClassicHead(s, vm::selectDomain, vm::selectSub, vm::setGrid) }
             when {

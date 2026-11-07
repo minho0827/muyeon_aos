@@ -112,19 +112,16 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
 
     /**
      * ★ 2026-11-07 앱 탭 셸(MainActivity) 위의 웹 창.
-     *  · 웹 탭(구인구직·대타) 주소에 있으면 아래에 앱 탭바를 그린다([webTabKey]).
+     *  · ★ 2026-11-08 웹 탭은 없다(모든 탭이 앱 화면) — 이 창 아래에 탭바를 그리지 않는다.
      *  · 앱 탭 주소(/home·/lessons·/community·/performance·/mypage)로 가면 이 창을 닫고 앱 탭으로 돌아간다.
      *    웹의 __nativeGo 가 첫 칸을 /home 으로 바꾼 뒤 목적지를 쌓는 순간이 있어, 주소가 잠깐 머문 뒤에만 돌아간다.
      */
-    private var webTabKey by mutableStateOf<String?>(null)
     private var lastRoute: String = ""
     private val routeHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
     private fun onWebRoute(path: String) {
         lastRoute = path
         syncRegionFromWeb()
-        val tab = com.muyeon.app.ui.main.MainTab.fromWebPath(path)
-        webTabKey = tab?.takeIf { it.kind == com.muyeon.app.ui.main.MainTab.Kind.WEB }?.key
         // 앱 탭 주소 또는 앱으로 옮긴 상세(커뮤니티 글·공연) — 이 창을 닫고 앱 화면으로(NativeRoutes 표).
         if (com.muyeon.app.navigation.NativeRoutes.resolve(path) == null) return
         routeHandler.postDelayed({
@@ -390,7 +387,6 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
             } else if (!intent.getStringExtra(EXTRA_START_PATH).isNullOrEmpty()) {
                 // ★ 2026-11-07 앱 탭 셸이 연 웹 창 — 그 주소를 바로 연다(밑에 홈을 깔지 않는다. 홈은 앱 탭이다).
                 val path = intent.getStringExtra(EXTRA_START_PATH).orEmpty()
-                webTabKey = intent.getStringExtra(EXTRA_TAB_KEY)
                 webView.loadUrl(if (path.startsWith("http")) path else baseUrl.trimEnd('/') + path)
             } else {
                 android.util.Log.d("QR_DEBUG", "🌐 WebView 로드 URL=$baseUrl (홈 새로 로드)")
@@ -421,19 +417,6 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
                         )
                     },
                 )
-                // ★ 2026-11-07 웹 탭(구인구직·대타) — 앱 탭 화면과 같은 탭바(웹 Footer 는 nativeTabBar 표시로 숨는다).
-                webTabKey?.let { key ->
-                    val mainVm: com.muyeon.app.ui.main.MainViewModel = org.koin.androidx.compose.koinViewModel()
-                    androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
-                        com.muyeon.app.ui.main.MainTabBarHost(
-                            viewModel = mainVm,
-                            selectedKey = key,
-                            onMyLongPress = { com.muyeon.app.ui.main.MainActivity.openTab(this@WebViewActivity, com.muyeon.app.ui.main.MainTab.MY) },
-                            modifier = androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.BottomCenter),
-                            onTap = { k -> onWebTabBarTap(k, mainVm) },
-                        )
-                    }
-                }
                 if (showImagePicker) {
                     ImagePickerBottomSheet(
                         images = allowedImages,
@@ -489,22 +472,6 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
         consumeNativeRoute(intent)
         consumeForceLogout(intent)
         com.muyeon.app.ui.assistant.AssistantOverlay.takeDraftPush(intent)
-    }
-
-    /** 웹 창 탭바 누름 — 앱 탭이면 돌아가고, 다른 웹 탭이면 이 창에서 이동, 캐스팅은 그 화면. */
-    private fun onWebTabBarTap(key: String, vm: com.muyeon.app.ui.main.MainViewModel) {
-        val tab = com.muyeon.app.ui.main.MainTab.fromKey(key)
-        val path = vm.state.value.tabs.firstOrNull { it.tabKey == key }?.path ?: tab?.webPath ?: return
-        when (tab?.kind) {
-            com.muyeon.app.ui.main.MainTab.Kind.NATIVE -> com.muyeon.app.ui.main.MainActivity.openTab(this, tab)
-            else -> if (key == webTabKey) {
-                // 지금 탭 다시 누름 — 맨 위로(웹 Footer 와 같다).
-                webView.evaluateJavascript("window.scrollTo({top:0,behavior:'smooth'})", null)
-            } else {
-                val safe = path.replace("'", "\\'")
-                webView.evaluateJavascript("(function(){ if(window.__nativeGo){ window.__nativeGo('$safe'); return 1; } location.href='$safe'; return 0; })()", null)
-            }
-        }
     }
 
     override fun onResume() {

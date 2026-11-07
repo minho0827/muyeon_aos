@@ -56,6 +56,18 @@
     <string name="tab_jobs">구인구직</string>
     <string name="tab_subs">대타공고</string>
     <string name="tab_casting">캐스팅</string>
+    <string name="tab_jobs_hire">구인</string>
+    <string name="tab_jobs_seek">구직</string>
+    <string name="tab_recruit">채용</string>
+    <string name="tab_subs_short">대타</string>
+    <string name="tab_space">공간</string>
+    <string name="tab_space_rent">대관</string>
+    <string name="tab_transfer">양도양수</string>
+    <string name="tab_back">뒤로</string>
+    <string name="casting_create">공연 공고 등록</string>
+    <string name="casting_all">캐스팅 공고 전체 보기</string>
+    <string name="interim_tab_desc">이 화면은 앱 화면으로 옮기는 중이에요.</string>
+    <string name="interim_tab_open">%1$s 열기</string>
     <!-- MY 탭 이름(로그인 후 활성유형) — 웹 ActiveTypeSheet TYPE_TAB_LABEL -->
     <string name="tab_my_general">일반</string>
     <string name="tab_my_teacher">강사</string>
