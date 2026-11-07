@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 웹 src/assets/icons/ic-calendar.svg 에서 옮김. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="18dp" android:height="18dp"
+    android:viewportWidth="18" android:viewportHeight="18">
+    <path android:pathData="M5.0,4.75H13.0A2.25,2.25 0 0 1 15.25,7.0V13.0A2.25,2.25 0 0 1 13.0,15.25H5.0A2.25,2.25 0 0 1 2.75,13.0V7.0A2.25,2.25 0 0 1 5.0,4.75Z" android:strokeColor="#FF000000" android:strokeWidth="1.5" />
+</vector>

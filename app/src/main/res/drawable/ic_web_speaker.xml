@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 웹 src/assets/icons/ic-speaker-filled.svg 에서 옮김. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp" android:height="28dp"
+    android:viewportWidth="28" android:viewportHeight="28">
+    <path android:pathData="M22 21.8293C22 23.3001 20.4659 24.2678 19.1385 23.6343L11.1385 19.8161C10.4429 19.4841 10 18.7819 10 18.0112V10.9888C10 10.2181 10.4429 9.51588 11.1385 9.18388L19.1385 5.36569C20.4659 4.73219 22 5.69989 22 7.17066V14.5V21.8293Z" android:fillColor="#FF000000" />
+    <path android:pathData="M8 10H6C5.44772 10 5 10.4477 5 11V18C5 18.5523 5.44772 19 6 19H8C8.55228 19 9 18.5523 9 18V11C9 10.4477 8.55228 10 8 10Z" android:fillColor="#FF000000" />
+</vector>
