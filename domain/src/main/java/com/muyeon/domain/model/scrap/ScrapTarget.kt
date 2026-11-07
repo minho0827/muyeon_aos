@@ -7,6 +7,7 @@ package com.muyeon.domain.model.scrap
 enum class ScrapTarget(val serverType: String, val pathSegment: String) {
     PERFORMANCE("PERFORMANCE", "performances"),
     TEACHER("TEACHER", "teachers"),
+    DANCER("DANCER", "dancers"),
     LESSON("LESSON", "lesson-products"),
     JOB("JOB", "jobs"),
     SUB("SUB", "subs"),

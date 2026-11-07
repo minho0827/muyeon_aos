@@ -9,8 +9,8 @@ import com.muyeon.app.ui.main.bar.BarMode
 /**
  * ★ 2026-11-08 앱 탭 — 모든 회원·비회원이 같은 탭을 쓴다(유형별 서버 탭 목록은 쓰지 않는다).
  *   탭바 칸([barItem])과 탭바 모드([mode])는 탭에서 정해진다:
- *     홈 · 캐스팅(캐스팅·공연) · 공간(대관·양도양수) · MY → MAIN
- *     구인 · 구직 · 대타                                   → JOBS (채용 2계층)
+ *     홈 · 공연 · 공간(대관·양도양수) · MY      → MAIN
+ *     채용(구인·구직) · 대타공고 · 캐스팅        → JOBS (채용 2계층)
  *   LESSONS(예전 강사 목록)는 탭바에 없다 — 홈 '강사' 쪽이 대신한다. 웹 /lessons 링크는 이 화면으로 온다.
  */
 enum class MainTab(
@@ -22,17 +22,15 @@ enum class MainTab(
     val mode: BarMode,
 ) {
     HOME("home", "/home", R.string.tab_home, Screen.TabHome.route, BarItem.HOME, BarMode.MAIN),
-    // 캐스팅 탭(위 제목 '공연/캐스팅') 안 위쪽 탭 — 캐스팅 · 공연. 탭바 칸은 캐스팅(STAGE).
-    //   커뮤니티는 탭이 아니다 — MY 안 섹션에서 탭 위 화면(Screen.CommunityList)으로 연다(2026-11-08 사용자 결정).
-    CASTING("casting", "/casting", R.string.tab_casting, Screen.TabCasting.route, BarItem.STAGE, BarMode.MAIN),
-    PERFORMANCE("performance", "/performance", R.string.tab_performance, Screen.TabPerformance.route, BarItem.STAGE, BarMode.MAIN),
+    PERFORMANCE("performance", "/performance", R.string.tab_performance, Screen.TabPerformance.route, BarItem.PERFORMANCE, BarMode.MAIN),
     // 공간 탭 안 위쪽 탭(대관·양도양수) — 탭바 칸은 공간.
     SPACES("spaces", "/spaces", R.string.tab_space_rent, Screen.TabSpaces.route, BarItem.SPACE, BarMode.MAIN),
     TRANSFERS("transfers", "/studio-transfers", R.string.tab_transfer, Screen.TabTransfers.route, BarItem.SPACE, BarMode.MAIN),
-    // 채용 2계층 — 구인(웹 /jobs?tab=hire) · 구직(?tab=seek) · 대타(/subs).
+    // 채용 2계층 — 채용(안에 구인·구직 위쪽 탭) · 대타공고 · 캐스팅.
     JOBS("jobs", "/jobs", R.string.tab_jobs_hire, Screen.TabJobs.route, BarItem.JOBS, BarMode.JOBS),
-    SEEK("seek", "/jobs?tab=seek", R.string.tab_jobs_seek, Screen.TabSeek.route, BarItem.SEEK, BarMode.JOBS),
-    SUBS("subs", "/subs", R.string.tab_subs_short, Screen.TabSubs.route, BarItem.SUBS, BarMode.JOBS),
+    SEEK("seek", "/jobs?tab=seek", R.string.tab_jobs_seek, Screen.TabSeek.route, BarItem.JOBS, BarMode.JOBS),
+    SUBS("subs", "/subs", R.string.tab_subs, Screen.TabSubs.route, BarItem.SUBS, BarMode.JOBS),
+    CASTING("casting", "/casting", R.string.tab_casting, Screen.TabCasting.route, BarItem.CASTING, BarMode.JOBS),
     MY("my", "/mypage", R.string.tab_my, Screen.TabMy.route, BarItem.MY, BarMode.MAIN),
     LESSONS("lessons", "/lessons", R.string.tab_lessons, Screen.TabLessons.route, BarItem.HOME, BarMode.MAIN);
 
@@ -44,7 +42,7 @@ enum class MainTab(
 
     companion object {
         /** 앱 화면을 만드는 중인 탭 — 만들면 여기서 뺀다(개편 계획 3·4단계). */
-        private val NOT_READY = setOf(JOBS, SEEK, SUBS)
+        private val NOT_READY = emptySet<MainTab>()
 
         fun fromKey(key: String): MainTab? = entries.firstOrNull { it.key == key }
         fun fromRoute(route: String?): MainTab? = entries.firstOrNull { it.route == route }
@@ -52,11 +50,11 @@ enum class MainTab(
         /** 탭바 칸 → 그 칸이 여는 탭(부모 칸은 첫 하위 탭). BACK 은 null. */
         fun forBarItem(item: BarItem): MainTab? = when (item) {
             BarItem.HOME -> HOME
-            BarItem.STAGE -> CASTING
+            BarItem.PERFORMANCE -> PERFORMANCE
             BarItem.SPACE -> SPACES
             BarItem.JOBS -> JOBS
-            BarItem.SEEK -> SEEK
             BarItem.SUBS -> SUBS
+            BarItem.CASTING -> CASTING
             BarItem.MY -> MY
             BarItem.BACK -> null
         }

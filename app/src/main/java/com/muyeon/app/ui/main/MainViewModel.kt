@@ -120,11 +120,6 @@ class MainViewModel(
     /** 탭바 칸 누름 — ← 는 1계층의 직전 탭(홈·MY)으로, 나머지는 그 칸의 탭으로. */
     fun onBarItem(item: com.muyeon.app.ui.main.bar.BarItem) {
         val current = MainTab.fromKey(_state.value.selectedKey)
-        // 캐스팅 칸을 한 번 더 누르면 캐스팅 ↔ 공연(컬리 홈 칸 두 번 누르기처럼 — 사용자 요청 2026-11-08).
-        if (item == com.muyeon.app.ui.main.bar.BarItem.STAGE && current?.barItem == item) {
-            selectTab(if (current == MainTab.CASTING) MainTab.PERFORMANCE else MainTab.CASTING)
-            return
-        }
         // 지금 칸을 다시 눌렀다(커뮤니티 안 공연을 보다가 커뮤니티 칸 등) — 그 화면 맨 위로(다시 누름 신호).
         if (current != null && current.barItem == item && item != com.muyeon.app.ui.main.bar.BarItem.BACK) { _reselect.tryEmit(current.key); return }
         val tab = MainTab.forBarItem(item)

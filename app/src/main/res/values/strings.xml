@@ -519,7 +519,7 @@
     <string name="company_hosting">Amazon Web Services, Inc.</string>
     <string name="company_marketplace_notice">무용연은 통신판매중개자로서 통신판매의 당사자가 아니며 개별 판매자가 제공하는 서비스에 대한 이행 계약사항 등과 관련한 의무와 책임은 거래당사자에게 있습니다.</string>
     <!-- ★ 2026-11-08 홈 개편(강사 | 레슨) -->
-    <string name="home_logo">舞踊緣</string>
+    <string name="home_logo">무용연</string>
     <string name="my_region">대표 지역</string>
     <string name="home_mode_teachers">강사</string>
     <string name="home_mode_lessons">레슨</string>
@@ -540,4 +540,38 @@
     <string name="home_banner_counter">%1$02d | %2$02d</string>
     <string name="home_banner_pause">자동 넘김 멈추기</string>
     <string name="home_banner_play">자동 넘김 다시 시작</string>
+    <!-- ★ 2026-11-08 채용 탭(구인·구직·대타) — 웹 JobBoard · SubList 와 같은 말 -->
+    <string name="recruit_filter">필터</string>
+    <string name="recruit_filter_on">필터 적용 중</string>
+    <string name="recruit_filter_reset">초기화</string>
+    <string name="recruit_filter_apply">적용</string>
+    <string name="recruit_f_career">경력</string>
+    <string name="recruit_f_salary">급여</string>
+    <string name="recruit_f_type">유형</string>
+    <string name="recruit_f_genre">분야</string>
+    <string name="recruit_f_target">대상</string>
+    <string name="recruit_f_schedule">기간</string>
+    <string name="recruit_f_count">타임 수</string>
+    <string name="recruit_f_field">수업 분야</string>
+    <string name="recruit_type_teacher">강사</string>
+    <string name="recruit_type_dancer">무용수</string>
+    <string name="recruit_for_me">나에게 맞는 공고</string>
+    <string name="recruit_hire_empty">이 지역에는 공고가 없어요.</string>
+    <string name="recruit_seek_empty">조건에 맞는 이력서가 없어요.</string>
+    <string name="recruit_sub_empty">조건에 맞는 대타공고가 없어요.</string>
+    <string name="recruit_create_job">채용공고 등록</string>
+    <string name="recruit_create_resume">이력서 등록</string>
+    <string name="recruit_create_sub">대타공고 등록</string>
+    <string name="recruit_deadline_always">상시 모집</string>
+    <string name="recruit_deadline_today">오늘 마감</string>
+    <string name="recruit_deadline_d">D-%1$d</string>
+    <string name="recruit_pay_negotiable">급여 협의</string>
+    <string name="recruit_pay_up">금액 올림</string>
+    <string name="recruit_pay_down">금액 내림</string>
+    <string name="recruit_tbd">미정</string>
+    <string name="recruit_class_count">%1$d타임</string>
+    <string name="recruit_class_count_plus">%1$d타임+</string>
+    <string name="sub_schedule_one_day">하루</string>
+    <string name="sub_schedule_short">단기</string>
+    <string name="sub_schedule_regular">정기</string>
 </resources>

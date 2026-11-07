@@ -28,5 +28,6 @@ val dataModule = module {
     single<com.muyeon.domain.repository.UiFlagRepository> { com.muyeon.data.repository.UiFlagRepositoryImpl(androidContext(), get(), get(), get()) }
     single<com.muyeon.domain.repository.MyPageRepository> { com.muyeon.data.repository.MyPageRepositoryImpl(get(), get()) }
     single<com.muyeon.domain.repository.HomeRepository> { com.muyeon.data.repository.HomeRepositoryImpl(get(), get()) }
+    single<com.muyeon.domain.repository.RecruitRepository> { com.muyeon.data.repository.RecruitRepositoryImpl(get(), get()) }
     single<com.muyeon.domain.repository.SafetyRepository> { com.muyeon.data.repository.SafetyRepositoryImpl(get(), get()) }
 }

@@ -24,6 +24,7 @@ import com.muyeon.domain.usecase.scrap.GetLikedIdsUseCase
 import com.muyeon.domain.usecase.scrap.ObserveScrapChangesUseCase
 import com.muyeon.domain.usecase.scrap.ToggleScrapResult
 import com.muyeon.domain.usecase.scrap.ToggleScrapUseCase
+import com.muyeon.app.ui.state.PagedList
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -38,16 +39,6 @@ import kotlinx.coroutines.launch
 
 /** 홈 위 토글 — 강사(에이전시형 그리드) | 레슨(뷰티컬리 배치). */
 enum class HomeMode { TEACHERS, LESSONS }
-
-/** 커서 목록 한 덩어리(강사 그리드 · 레슨 장르 목록). */
-data class PagedList<T>(
-    val items: List<T> = emptyList(),
-    val cursor: CursorState = CursorState.Initial,
-    val isInitialLoading: Boolean = true,
-    val isLoadingMore: Boolean = false,
-    val errorMessage: String? = null,
-    val moreError: String? = null,
-)
 
 data class HomeUiState(
     val mode: HomeMode = HomeMode.TEACHERS,

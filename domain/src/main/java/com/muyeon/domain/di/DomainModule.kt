@@ -66,4 +66,7 @@ val domainModule = module {
     // 홈
     factory { HomeArtistsUseCase(get()) }
     factory { HomeLessonsUseCase(get()) }
+    factory { com.muyeon.domain.usecase.recruit.JobListUseCase(get(), get()) }
+    factory { com.muyeon.domain.usecase.recruit.SeekerListUseCase(get()) }
+    factory { com.muyeon.domain.usecase.recruit.SubListUseCase(get()) }
 }
