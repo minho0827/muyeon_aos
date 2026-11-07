@@ -57,6 +57,7 @@ val apiModule = module {
     single<com.muyeon.network.api.CommunityApi> { get<Retrofit>().create(com.muyeon.network.api.CommunityApi::class.java) }
     single<com.muyeon.network.api.TeacherApi> { get<Retrofit>().create(com.muyeon.network.api.TeacherApi::class.java) }
     single<com.muyeon.network.api.RegionApi> { get<Retrofit>().create(com.muyeon.network.api.RegionApi::class.java) }
+    single<com.muyeon.network.api.MyApi> { get<Retrofit>().create(com.muyeon.network.api.MyApi::class.java) }
     single<com.muyeon.network.api.SafetyApi> { get<Retrofit>().create(com.muyeon.network.api.SafetyApi::class.java) }
 }
 

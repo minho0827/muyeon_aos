@@ -95,7 +95,17 @@ fun MainScreen(
                         onLogin = { onOpenWeb(WebPaths.login(MainTab.PERFORMANCE.webPath)) },
                     )
                 }
-                composable(Screen.TabMy.route) { MyScreen(isLoggedIn = state.isLoggedIn, onOpenWeb = onOpenWeb) }
+                composable(Screen.TabMy.route) {
+                    MyScreen(
+                        isLoggedIn = state.isLoggedIn,
+                        onOpenWeb = onOpenWeb,
+                        onNativeAction = onNativeAction,
+                        onRoleManage = { viewModel.onTypePicked(MainViewModel.TYPE_MANAGE) },
+                        onOpenCasting = { viewModel.onTabTap(MainTab.CASTING.key) },
+                        onOpenTab = viewModel::selectTab,
+                        onLoggedOut = viewModel::onLoggedOut,
+                    )
+                }
             }
         }
     }

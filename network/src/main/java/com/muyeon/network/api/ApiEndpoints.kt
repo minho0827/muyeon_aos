@@ -59,6 +59,17 @@ object ApiEndpoints {
         const val UI_FLAGS = "$API/auth/me/ui-flags"         // GET { flags } · PATCH { key: true }
     }
 
+    /** MY 화면이 읽는 것 — 출처 파일은 각 줄 끝 주석. */
+    object My {
+        const val ME = "$API/auth/me"                                         // auth.controller.ts
+        const val NOTI_UNREAD = "$API/notifications/unread-count"             // notifications.controller.ts → number
+        const val QUOTE_UNREAD = "$API/quotes/unread-count"                   // quotes.controller.ts → { count }
+        const val MEMBERSHIP = "$API/monetization/membership/me"              // monetization.controller.ts
+        const val PENDING_POSTINGS = "$API/me/pending-postings/summary"       // → { total, roles:[{role,status}] }
+        const val CASTING_MATERIAL_ACCESS = "$API/casting-materials/access"   // → { allowed }
+        const val SUPPORT_CHAT_ELIGIBILITY = "$API/support-chat/eligibility"  // → { eligible, hasRooms }
+    }
+
     /** profiles.controller.ts */
     object Teachers {
         const val PAGE = "$API/teachers/page"                // GET lesson·genre|field·region·regionKind·sort·cursor·limit

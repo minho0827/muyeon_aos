@@ -17,6 +17,9 @@ import com.muyeon.domain.usecase.region.ObserveActiveRegionUseCase
 import com.muyeon.domain.usecase.teacher.GetLessonTeachersPageUseCase
 import com.muyeon.domain.usecase.uiflag.MarkGuideSeenUseCase
 import com.muyeon.domain.usecase.uiflag.ShouldShowGuideUseCase
+import com.muyeon.domain.usecase.my.GetBadgeCountsUseCase
+import com.muyeon.domain.usecase.my.GetMyPageInfoUseCase
+import com.muyeon.domain.usecase.my.LogoutUseCase
 import org.koin.dsl.module
 
 /**
@@ -54,4 +57,8 @@ val domainModule = module {
     factory { DetectRegionUseCase(get()) }
     factory { ShouldShowGuideUseCase(get(), get()) }
     factory { MarkGuideSeenUseCase(get()) }
+    // MY
+    factory { GetMyPageInfoUseCase(get()) }
+    factory { GetBadgeCountsUseCase(get()) }
+    factory { LogoutUseCase(get()) }
 }

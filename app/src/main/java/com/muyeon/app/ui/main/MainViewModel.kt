@@ -151,6 +151,12 @@ class MainViewModel(
         }
     }
 
+    /** MY 에서 로그아웃 — 비회원 탭 목록으로 바꾸고 홈으로(웹 MyHome: logout → /home). */
+    fun onLoggedOut() {
+        _state.update { it.copy(isLoggedIn = false, activeType = ActiveType.GENERAL, switchableTypes = emptyList(), selectedKey = MainTab.HOME.key) }
+        refreshTabs()
+    }
+
     /** 다른 화면에서 탭으로 돌아오게 할 때(웹 창에서 /community 로 이동 등). */
     fun selectTab(tab: MainTab) {
         if (tab.kind == MainTab.Kind.NATIVE) _state.update { it.copy(selectedKey = tab.key) }

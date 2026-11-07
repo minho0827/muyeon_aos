@@ -27,10 +27,10 @@ import com.muyeon.app.ui.theme.Dimensions
 @Composable
 fun GuestMyHome(onLogin: () -> Unit, onOpenPath: (String) -> Unit, modifier: Modifier = Modifier) {
     val rows = listOf(
-        MyMenuRow("/notice", stringResource(R.string.my_menu_notice), R.drawable.ic_web_notice),
-        MyMenuRow("/faq", stringResource(R.string.my_menu_faq), R.drawable.ic_web_faq),
-        MyMenuRow("/policy?doc=terms", stringResource(R.string.my_menu_terms), R.drawable.ic_web_myinfo),
-        MyMenuRow("/policy?doc=privacy", stringResource(R.string.my_menu_privacy), R.drawable.ic_web_myinfo),
+        MyMenuRow("/notice", stringResource(R.string.my_menu_notice), R.drawable.ic_menu_notice),
+        MyMenuRow("/faq", stringResource(R.string.my_menu_faq), R.drawable.ic_menu_faq),
+        MyMenuRow("/policy?doc=terms", stringResource(R.string.my_menu_terms), R.drawable.ic_menu_myinfo),
+        MyMenuRow("/policy?doc=privacy", stringResource(R.string.my_menu_privacy), R.drawable.ic_menu_myinfo),
     )
     Column(modifier.fillMaxWidth().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(

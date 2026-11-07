@@ -8,6 +8,7 @@ import android.net.Uri
 object WebPaths {
     /** 로그인 — 마치면 [redirect] 로(웹 useLikes 와 같은 규칙). */
     const val COMMUNITY_WRITE = "/community/write"
+    const val SETTINGS = "/setting"
 
     fun login(redirect: String): String = "/login?redirect=" + Uri.encode(redirect)
 }

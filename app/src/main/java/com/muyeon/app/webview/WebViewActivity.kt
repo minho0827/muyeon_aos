@@ -212,6 +212,8 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
         val composeView: ComposeView = findViewById(R.id.compose_view)
 
         setupWebView()
+        // ★ 2026-11-07 앱 MY 에서 로그아웃했으면 웹 저장소의 로그인 정보도 지운다(문서 시작 스크립트, 한 번만).
+        WebLogout.install(this, webView, com.muyeon.app.utils.Constants.getBaseUrl(this).trimEnd('/'))
         attachFloatingScrollListener()
 
         fileInterface = FileWebViewInterface(

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 웹 src/assets/icons/ic-ask.svg 에서 옮김. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="25dp" android:height="24dp"
+    android:viewportWidth="25" android:viewportHeight="24">
+    <path android:pathData="M8.5 17.8125H8C5.51472 17.8125 3.5 15.7978 3.5 13.3125V7.5C3.5 5.01472 5.51472 3 8 3H17C19.4853 3 21.5 5.01513 21.5 7.50041C21.5 9.46867 21.5 11.3438 21.5 13.3121C21.5 15.7974 19.4853 17.8125 17 17.8125H13" android:strokeColor="#FF101116" android:strokeWidth="1.5" android:strokeLineCap="round" />
+    <path android:pathData="M13.5152 18.545C13.8162 18.2605 13.8296 17.7858 13.545 17.4848C13.2605 17.1838 12.7858 17.1704 12.4848 17.455L13 18L13.5152 18.545ZM8.5 18H7.75C7.75 18.8422 7.83414 20.0028 7.9073 20.8573L8.65456 20.7933L9.40183 20.7293C9.32875 19.8758 9.25 18.7718 9.25 18H8.5ZM9.64946 21.167L10.1646 21.7121L13.5152 18.545L13 18L12.4848 17.455L9.13426 20.622L9.64946 21.167ZM8.65456 20.7933L7.9073 20.8573C8.00441 21.9915 9.35737 22.4751 10.1646 21.7121L9.64946 21.167L9.13426 20.622C9.21954 20.5414 9.38947 20.585 9.40183 20.7293L8.65456 20.7933Z" android:fillColor="#FF101116" />
+    <path android:pathData="M8 8H16.5" android:strokeColor="#FF101116" android:strokeWidth="1.5" android:strokeLineCap="round" />
+    <path android:pathData="M8 12H13.5" android:strokeColor="#FF101116" android:strokeWidth="1.5" android:strokeLineCap="round" />
+</vector>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 웹 src/assets/icons/ic-paper-filled.svg 에서 옮김. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="33dp" android:height="32dp"
+    android:viewportWidth="33" android:viewportHeight="32">
+    <path android:pathData="M26.5 6.34722C26.5 5.05556 25.4235 4 24.1062 4H12.3414L5.5 10.7083V26.65C5.5 27.9417 6.57649 28.9972 7.89377 28.9972H24.1062C25.4235 28.9972 26.5 27.9417 26.5 26.65V6.34722Z" android:fillColor="#FF7557F2" />
+    <path android:pathData="M9.94759 10.7083C11.2649 10.7083 12.3414 9.65278 12.3414 8.36111V4L5.5 10.7083H9.94759Z" android:fillColor="#FFA99DF4" />
+    <path android:pathData="M21.4378 23.9136H10.5653C9.93921 23.9136 9.43213 23.4164 9.43213 22.8025C9.43213 22.1886 9.93921 21.6914 10.5653 21.6914H21.4378C22.0639 21.6914 22.5709 22.1886 22.5709 22.8025C22.5709 23.4164 22.0639 23.9136 21.4378 23.9136Z" android:fillColor="#FFBEBBFC" />
+    <path android:pathData="M21.4378 18.7222H10.5653C9.93921 18.7222 9.43213 18.225 9.43213 17.6111C9.43213 16.9972 9.93921 16.5 10.5653 16.5H21.4378C22.0639 16.5 22.5709 16.9972 22.5709 17.6111C22.5709 18.225 22.0639 18.7222 21.4378 18.7222Z" android:fillColor="#FFBEBBFC" />
+</vector>

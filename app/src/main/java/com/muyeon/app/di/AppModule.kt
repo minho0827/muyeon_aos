@@ -32,6 +32,18 @@ val appModule = module {
             override fun save(type: String) = ActiveRole.store(ctx, type)
         }
     }
+    single<com.muyeon.domain.repository.SessionController> {
+        val ctx: Context = androidContext()
+        object : com.muyeon.domain.repository.SessionController {
+            override fun logout() {
+                TokenManager.clearTokens(ctx)
+                ActiveRole.clear(ctx)
+                com.muyeon.app.chat.socket.ChatSocketManager.disconnect()
+                com.muyeon.app.webview.WebLogout.mark(ctx)
+                com.muyeon.app.ui.floating.FloatingState.requestRefresh()
+            }
+        }
+    }
     single<ForceLogoutTrigger> {
         val ctx: Context = androidContext()
         object : ForceLogoutTrigger {
@@ -46,6 +58,8 @@ val viewModelModule = module {
     // 공연
     viewModel { com.muyeon.app.ui.performance.PerformanceListViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { com.muyeon.app.ui.performance.PerformanceDetailViewModel(get(), get(), get(), get()) }
+    // MY
+    viewModel { com.muyeon.app.ui.my.MyViewModel(get(), get(), get(), get(), get(), get(), get()) }
     // 강사
     viewModel { com.muyeon.app.ui.lessons.LessonTabViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     // 커뮤니티

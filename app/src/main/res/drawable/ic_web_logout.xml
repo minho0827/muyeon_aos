@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 웹 src/assets/icons/ic-logout.svg 에서 옮김. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="18dp" android:height="18dp"
+    android:viewportWidth="18" android:viewportHeight="18">
+    <path android:pathData="M10.5469 6.1875V4.78125C10.5469 4.40829 10.3987 4.0506 10.135 3.78688C9.87127 3.52316 9.51359 3.375 9.14062 3.375H4.21875C3.84579 3.375 3.4881 3.52316 3.22438 3.78688C2.96066 4.0506 2.8125 4.40829 2.8125 4.78125V13.2188C2.8125 13.5917 2.96066 13.9494 3.22438 14.2131C3.4881 14.4768 3.84579 14.625 4.21875 14.625H9.14062C9.51359 14.625 9.87127 14.4768 10.135 14.2131C10.3987 13.9494 10.5469 13.5917 10.5469 13.2188V11.8125" android:strokeColor="#FF000000" android:strokeWidth="1.1" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M6.25781 9H14.8359M14.8359 9L12.7266 11.1094M14.8359 9L13.7813 7.94531L12.7266 6.89062" android:strokeColor="#FF000000" android:strokeWidth="1.1" android:strokeLineCap="round" android:strokeLineJoin="round" />
+</vector>
