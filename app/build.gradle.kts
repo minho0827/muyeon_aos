@@ -51,8 +51,8 @@ android {
         applicationId = "com.muyeon.app"
         minSdk = rootProject.extra["minSdkVersion"] as Int
         targetSdk = rootProject.extra["targetSdkVersion"] as Int
-        versionCode = 39
-        versionName = "1.1.13"
+        versionCode = 40
+        versionName = "1.1.14"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Inject BuildConfig fields for service account (use empty defaults if not provided)
