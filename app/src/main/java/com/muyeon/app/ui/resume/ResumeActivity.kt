@@ -222,7 +222,7 @@ class ResumeActivity : ResultActivity() {
                             }
                         },
                         // 지정 견적요청 — 이 강사에게만(iOS presentQuoteWizardDirect targetTeacherId)
-                        onRequestQuote = { QuoteWizardActivity.start(this@ResumeActivity, null, userId.toString()) },
+                        onRequestQuote = { category -> QuoteWizardActivity.start(this@ResumeActivity, category, userId.toString()) },
                         onOpenReviews = { nav.navigate("reviews") },
                         // 이미 요청·응답 존재 → 받은 견적 상세(iOS presentReceivedQuotes)
                         onOpenReceivedQuotes = { qid ->

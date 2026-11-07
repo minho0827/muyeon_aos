@@ -89,7 +89,8 @@ fun PublicProfileScreen(
     initialProfile: PublicProfile? = null,
     onClose: () -> Unit,
     onOpenChat: (Int) -> Unit,
-    onRequestQuote: () -> Unit,
+    /** 레슨 문의 — 강사의 대표 장르(첫 장르)의 견적 종류 id 를 넘긴다(웹 Home·LessonTab 과 같이 종류 고르기를 건너뛴다). */
+    onRequestQuote: (category: String?) -> Unit,
     onOpenReviews: () -> Unit,
     // 이미 이 강사에게 견적요청했고 응답이 있으면 [받은 견적 보기] → 받은 견적(quoteId) (iOS onReceivedQuotes)
     onOpenReceivedQuotes: (Int) -> Unit = {},
@@ -268,7 +269,7 @@ fun PublicProfileScreen(
                             when {
                                 receivedId != null -> onOpenReceivedQuotes(receivedId)
                                 ActiveRole.isDancer(ctx) -> dancerGate = true
-                                else -> onRequestQuote()
+                                else -> onRequestQuote(quoteCategoryOf(p))
                             }
                         }
                     }
@@ -356,7 +357,7 @@ fun PublicProfileScreen(
                     scope.launch {
                         if (ActiveRole.saveOnServer(ctx, "GENERAL")) {
                             ActiveRole.store(ctx, "GENERAL")
-                            onRequestQuote()
+                            onRequestQuote(profile?.let(::quoteCategoryOf))
                         }
                     }
                 },
@@ -606,6 +607,10 @@ private fun BasicInfoSection(p: PublicProfile) {
         }
     }
 }
+
+/** 강사 대표 장르 → 견적 종류 id(ballet·korean …). 모르는 장르면 null(종류 고르기 화면). */
+private fun quoteCategoryOf(p: PublicProfile): String? =
+    p.genres?.firstNotNullOfOrNull { com.muyeon.domain.model.teacher.LessonGenres.QUOTE_CATEGORY[it] }
 
 /** 라벨 · 값 줄들 — 값이 빈 줄은 그리지 않는다(웹 ProfileRow). */
 @Composable
