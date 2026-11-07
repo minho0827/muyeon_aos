@@ -104,28 +104,12 @@ fun NotificationListScreen(
             com.muyeon.app.ui.common.MuyeonHeaderIcon(Icons.Outlined.Settings, "알림 설정") { NotificationSettingsActivity.start(ctx) }
         }
 
-        // 종류 캡슐 탭(고름=검정) + 오른쪽 '모두 읽음'.
+        // 종류 캡슐 탭(고름=검정) + 오른쪽 필터. ★ 2026-11-08 '모두 읽음' 버튼 제거(사용자 요청).
         com.muyeon.app.ui.common.MuyeonPillTabs(
             listOf(com.muyeon.app.ui.common.MuyeonPillTab(NotiCategory.ALL, "전체")) + chips.map { com.muyeon.app.ui.common.MuyeonPillTab(it.key, it.label) },
             category, { category = it }, tagPrefix = "noti.tab",
             leadingPills = filter.appliedPills(notiStatusOptions) { filter = it },
         ) {
-            // 문구는 늘 '모두 읽음'. 종류를 걸러 보고 있으면 **보고 있는 목록의 모두**를 읽는다
-            //  (메일함 관례). 문구를 상황마다 바꾸면 버튼 폭이 흔들리고 읽기만 번거롭다.
-            Text(
-                "모두 읽음",
-                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                lineHeight = 16.sp, color = MuyeonColors.primary,
-                modifier = Modifier.clickable {
-                    // 웹 알림 배지도 같이 내려야 한다(iOS .muyeonNotificationsRead) — 결과 키 NOTIFICATIONS.
-                    scope.launch {
-                        api.markAllRead(category)
-                        markNotificationsChanged(ctx)
-                        reload()
-                        loadChips()
-                    }
-                }.padding(horizontal = 14.dp, vertical = 12.dp),
-            )
             com.muyeon.app.ui.common.ListFilterButton(filter.isActive, { filterSheet = true }, tag = "noti.filter")
         }
 
