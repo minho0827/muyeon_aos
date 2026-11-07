@@ -247,7 +247,7 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                 recruitAsk?.let { title ->
                     com.muyeon.app.ui.common.MuyeonDialog(
                         title = title,
-                        message = "레슨 요청은 직접(또는 자녀가) 배우실 분과 강사를 이어 드려요. 학원에서 일할 강사는 공고로 구하실 수 있어요.",
+                        message = "레슨 요청은 직접 배우고 싶은 분과 강사님을 이어 드리는 기능이에요. 학원 강사님은 공고로 더 빠르게 찾으실 수 있어요.",
                         actions = listOf(
                             com.muyeon.app.ui.common.MuyeonDialogAction("아니요, 배우려고요", com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY) {
                                 recruitAnswer = "NO"; startSubmit(lastAnswers)
@@ -264,7 +264,7 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                 //  (웹 /jobs/create·/subs/create 가 비회원·미인증 안내까지 맡는다 — 웹 goPosting 과 같은 경로).
                 recruitRedirect?.let { body ->
                     com.muyeon.app.ui.common.MuyeonDialog(
-                        title = "강사는 공고로 구해 주세요",
+                        title = "강사님은 공고로 찾아 주세요",
                         message = body,
                         actions = listOf(
                             com.muyeon.app.ui.common.MuyeonDialogAction("채용 공고 쓰기", com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY) {
@@ -336,8 +336,8 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
 }
 
 // ★ 2026-11-07 강사 구인 확인 — 서버 문구가 없을 때 쓰는 기본 문구(웹 QuoteCreate·서버 recruit-check 와 같게).
-private const val RECRUIT_QUESTION = "혹시 학원에서 수업할 강사(정규·대타)를 구하시나요?"
-private const val RECRUIT_REDIRECT_TEXT = "강사 채용·대타는 공고로 올려 주세요. 레슨 요청은 직접(또는 자녀가) 배우실 때만 보낼 수 있어요. 공고는 학원·강사 인증 후 올릴 수 있어요."
+private const val RECRUIT_QUESTION = "혹시 학원에서 함께할 강사님을 찾고 계신가요?"
+private const val RECRUIT_REDIRECT_TEXT = "채용이나 대타 공고를 올리면 조건에 맞는 강사님들께 바로 알려 드려요. 공고는 학원 또는 강사 인증 후에 올릴 수 있어요."
 
 /**
  * 이탈 방지 바텀시트 — iOS `QuoteWizardExitSheet` 1:1(딜레이/애니메이션 없이 즉시 표시).
