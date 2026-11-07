@@ -45,5 +45,5 @@ fun BrandTopBar(modifier: Modifier = Modifier, center: @Composable () -> Unit, a
     }
 }
 
-/** 舞踊緣 — 검은 굵은 명조(기기 명조 글꼴), 19sp. */
-private val LOGO = TextStyle(fontFamily = FontFamily.Serif, fontWeight = FontWeight.Black, fontSize = 19.sp, letterSpacing = (-0.5).sp)
+/** 무용연 — 검은 명조(기기 명조 글꼴) 레귤러, 19sp(사용자 요청 2026-11-08). */
+private val LOGO = TextStyle(fontFamily = FontFamily.Serif, fontWeight = FontWeight.Normal, fontSize = 19.sp, letterSpacing = (-0.5).sp)
