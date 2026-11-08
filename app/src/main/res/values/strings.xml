@@ -459,8 +459,6 @@
     <!-- ★ 2026-11-08 개인정보 수정(웹 ProfileEdit) -->
     <string name="account_title">개인정보 수정</string>
     <string name="account_head">%1$s님의 정보를 수정해 주세요</string>
-    <string name="account_photo_change">사진 바꾸기</string>
-    <string name="account_photo_remove">사진 지우기</string>
     <string name="account_password">비밀번호</string>
     <string name="account_password_change">비밀번호 변경</string>
     <string name="account_email">이메일(아이디)</string>
@@ -547,6 +545,49 @@
     <string name="subtrust_revoked">%1$d점 (취소됨)</string>
     <string name="subtrust_plus">+%1$d점</string>
     <string name="subtrust_expires">%1$s 소멸</string>
+    <!-- ★ 2026-11-08 회원탈퇴(웹 Withdraw) -->
+    <string name="withdraw_load_failed">탈퇴 정보를 불러오지 못했어요.</string>
+    <string name="withdraw_head">%1$s님,\n정말 탈퇴할까요?</string>
+    <string name="withdraw_blockers">먼저 정리해 주세요</string>
+    <string name="withdraw_auto_cancel">탈퇴하면 자동으로 정리돼요</string>
+    <string name="withdraw_warnings">이건 꼭 확인해 주세요</string>
+    <string name="withdraw_effects">탈퇴하면 이렇게 돼요</string>
+    <string name="withdraw_effect_login">로그인과 서비스 이용이 즉시 중단돼요</string>
+    <string name="withdraw_effect_profile">프로필 노출과 알림이 멈춰요</string>
+    <string name="withdraw_effect_delete">%1$s %2$d건이 삭제돼요</string>
+    <string name="withdraw_effect_keep">이미 전달된 게시글·후기·채팅은 남고 작성자만 ‘탈퇴한 회원’으로 바뀌어요</string>
+    <string-array name="withdraw_summary_labels">
+        <item>작성한 게시글</item><item>작성한 댓글</item><item>참여 중인 채팅방</item><item>작성한 후기</item>
+        <item>등록한 이력서</item><item>등록한 공고</item><item>등록한 공간</item>
+    </string-array>
+    <string name="withdraw_retention">내 정보 보관과 파기</string>
+    <string name="withdraw_retention_1">탈퇴 후 %1$d개월간 보관해요 (부정 재가입 방지·분쟁 대응)</string>
+    <string name="withdraw_retention_2">이 기간에는 같은 이메일·휴대폰으로 다시 가입할 수 없어요</string>
+    <string name="withdraw_retention_3">%1$d개월이 지나면 복구할 수 없는 방법으로 파기해요</string>
+    <string name="withdraw_retention_more">법령상 보관 기록 자세히 보기</string>
+    <string name="withdraw_agree_title">아래 내용에 동의해 주세요</string>
+    <string name="withdraw_agree_all">안내 사항을 모두 확인했으며 이에 동의합니다</string>
+    <string name="withdraw_required">(필수) %1$s</string>
+    <string name="withdraw_agree_data">내 정보와 이용기록이 삭제되며 복구할 수 없음을 확인했습니다.</string>
+    <string name="withdraw_agree_retention">법령에 따라 일부 기록이 정해진 기간 보관됨에 동의합니다.</string>
+    <string name="withdraw_agree_rejoin">탈퇴 후 3개월간 같은 이메일·휴대폰으로 재가입할 수 없음을 확인했습니다.</string>
+    <string name="withdraw_agree_auto_cancel">예정된 레슨과 진행 중인 견적이 자동으로 취소됨에 동의합니다.</string>
+    <string name="withdraw_agree_go">동의하고 탈퇴하기</string>
+    <string name="withdraw_reason_head">탈퇴하시는 이유를\n알려 주세요</string>
+    <string name="withdraw_etc_label">어떤 점이 아쉬우셨나요?</string>
+    <string name="withdraw_etc_placeholder">알려주시면 서비스를 고치는 데 쓸게요.</string>
+    <string name="withdraw_etc_missing">기타 사유를 입력해 주세요.</string>
+    <string name="withdraw_prev">이전</string>
+    <string name="withdraw_next">다음</string>
+    <string name="withdraw_confirm_password_head">탈퇴 확인을 위해\n비밀번호를 입력해 주세요</string>
+    <string name="withdraw_confirm_text_head">탈퇴 확인을 위해\n‘%1$s’를 입력해 주세요</string>
+    <string name="withdraw_social_note">%1$s 가입한 계정은 비밀번호가 없어 문구 입력으로 확인해요.</string>
+    <string name="withdraw_confirm_text">확인 문구</string>
+    <string name="withdraw_password_placeholder">비밀번호를 입력해 주세요.</string>
+    <string name="withdraw_do">탈퇴하기</string>
+    <string name="withdraw_busy">처리 중…</string>
+    <string name="withdraw_done">탈퇴가 완료됐어요.</string>
+    <string name="withdraw_rejoin">%1$s부터 다시 가입할 수 있어요.</string>
     <!-- ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 LessonListView) -->
     <string name="lesson_list_title">레슨</string>
     <string name="lesson_list_empty">등록된 레슨이 없어요.</string>

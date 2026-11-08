@@ -67,6 +67,7 @@ val domainModule = module {
     factory { com.muyeon.domain.usecase.account.EditAccountUseCase(get()) }
     factory { com.muyeon.domain.usecase.account.ChangePasswordUseCase(get()) }
     factory { com.muyeon.domain.usecase.account.GetSubTrustUseCase(get()) }
+    factory { com.muyeon.domain.usecase.account.WithdrawUseCase(get()) }
     // 경력·자격 확인
     factory { com.muyeon.domain.usecase.credential.CredentialsUseCase(get()) }
     // 신고·차단

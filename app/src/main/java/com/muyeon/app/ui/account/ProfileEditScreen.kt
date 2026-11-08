@@ -1,9 +1,6 @@
 package com.muyeon.app.ui.account
 
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,18 +12,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -36,7 +30,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.muyeon.app.R
 import com.muyeon.app.common_components.dialog.ContentAlignment
 import com.muyeon.app.common_components.dialog.CustomDialog
-import com.muyeon.app.ui.account.components.AvatarSquare
 import com.muyeon.app.ui.account.components.IdentityWebView
 import com.muyeon.app.ui.common.FormField
 import com.muyeon.app.ui.common.FormReadOnlyBox
@@ -51,11 +44,10 @@ import com.muyeon.app.ui.theme.AppColors
 import com.muyeon.app.ui.theme.AppTypography
 import com.muyeon.app.ui.theme.Dimensions
 import com.muyeon.app.webview.ActiveRole
-import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
 /**
- * 개인정보 수정 — 웹 /profileEdit. 사진 · 비밀번호 변경(웹) · 이메일(읽기) · 회원유형(→ 유형 화면) · 이름(필수, 본인확인이면 고정) ·
+ * 개인정보 수정 — 웹 /profileEdit. 사진(보기만) · 비밀번호 변경(웹) · 이메일(읽기) · 회원유형(→ 유형 화면) · 이름(필수, 본인확인이면 고정) ·
  *   휴대폰(읽기 + [본인인증] → 앱 안 표준창) · 회원탈퇴(웹) · [확인] 저장(RequiredForm).
  */
 @Composable
@@ -67,12 +59,8 @@ fun ProfileEditScreen(
 ) {
     val s by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val form = rememberRequiredForm()
     LaunchedEffect(viewModel) { viewModel.events.collect { if (it == ProfileEditEvent.Close) onClose() } }
-    val pick = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) scope.launch { viewModel.uploadAvatar(AvatarSquare.prepare(context, uri)) }
-    }
     val identityUrl = s.identityUrl
     if (identityUrl != null) {
         IdentityWebView(identityUrl, viewModel::onIdentityResult)
@@ -94,19 +82,8 @@ fun ProfileEditScreen(
                         verticalArrangement = Arrangement.spacedBy(Dimensions.spacingXL),
                     ) {
                         Text(stringResource(R.string.account_head, s.name.ifBlank { stringResource(R.string.blocked_member) }), style = AppTypography.Title20, color = AppColors.TextHead)
-                        // 사진 — 누르면 고르기(가운데 정사각). 채팅·커뮤니티에 보인다.
-                        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Dimensions.spacingS)) {
-                            Box(Modifier.clickable { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, Alignment.Center) {
-                                Avatar(s.image, 96.dp)
-                                if (s.uploading) CircularProgressIndicator(color = AppColors.Primary, strokeWidth = 2.dp, modifier = Modifier.size(28.dp))
-                            }
-                            Row(horizontalArrangement = Arrangement.spacedBy(Dimensions.spacingM)) {
-                                Text(stringResource(R.string.account_photo_change), style = AppTypography.Body14SemiBold, color = AppColors.Primary,
-                                    modifier = Modifier.clickable { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
-                                if (s.image != null) Text(stringResource(R.string.account_photo_remove), style = AppTypography.Body14, color = AppColors.TextSub,
-                                    modifier = Modifier.clickable(onClick = viewModel::removeAvatar))
-                            }
-                        }
+                        // 사진 — 보기만 한다(2026-11-08 사용자 결정: 이 사진은 이력서·강사프로필 사진과 같아서 여기서는 바꾸지 않는다).
+                        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) { Avatar(s.image, 96.dp) }
                         FormField(stringResource(R.string.account_password)) {
                             OutlinedButton(onClick = { onOpenPath("/changePassword") }, shape = CircleShape) {
                                 Text(stringResource(R.string.account_password_change), style = AppTypography.Body14SemiBold, color = AppColors.TextBody)
@@ -146,7 +123,7 @@ fun ProfileEditScreen(
                             modifier = Modifier.clickable { onOpenPath("/withdraw") }.padding(vertical = Dimensions.spacingS))
                     }
                 }
-                MuyeonBottomButton(stringResource(R.string.common_confirm), "account.save", loading = s.saving || s.uploading) {
+                MuyeonBottomButton(stringResource(R.string.common_confirm), "account.save", loading = s.saving) {
                     if (form.validate(context)) viewModel.save()
                 }
             }

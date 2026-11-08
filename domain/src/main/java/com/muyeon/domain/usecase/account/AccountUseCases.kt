@@ -17,10 +17,6 @@ class EditAccountUseCase(private val repo: AccountRepository) {
         return repo.update(if (current.nameLocked) null else n, image.orEmpty())
     }
 
-    suspend fun upload(jpeg: ByteArray): ApiResult<String> = repo.uploadImage(jpeg).let { r ->
-        if (r is ApiResult.Success && r.data.isBlank()) ApiResult.Error(IllegalStateException("url"), "사진을 올리지 못했어요.") else r
-    }
-
     suspend fun startIdentity(): ApiResult<String> = repo.startIdentity(RETURN_TO).let { r ->
         if (r is ApiResult.Success && r.data.isBlank()) ApiResult.Error(IllegalStateException("authUrl"), "본인인증 창 주소를 받지 못했어요.") else r
     }
@@ -56,4 +52,34 @@ class ChangePasswordUseCase(private val repo: AccountRepository) {
 /** 대타 신뢰도(웹 SubTrust). */
 class GetSubTrustUseCase(private val repo: AccountRepository) {
     suspend operator fun invoke() = repo.subTrust()
+}
+
+/**
+ * 회원탈퇴(웹 Withdraw.js) — 동의 key 는 백엔드 WITHDRAW_AGREEMENTS 와 1:1, 자동 취소가 있으면 [AUTO_CANCEL] 도 받는다.
+ *   서버가 WITHDRAW_BLOCKED 로 거절하면(화면을 띄운 뒤 예약·결제가 생김) [WithdrawResult.Blocked].
+ */
+class WithdrawUseCase(private val repo: AccountRepository) {
+    suspend fun info() = repo.withdrawalInfo()
+
+    fun agreementKeys(autoCancel: Boolean) = if (autoCancel) AGREEMENTS + AUTO_CANCEL else AGREEMENTS
+
+    suspend operator fun invoke(
+        info: com.muyeon.domain.model.account.WithdrawalInfo, reasonCode: String, reasonText: String, secret: String,
+    ): ApiResult<com.muyeon.domain.model.account.WithdrawResult> {
+        val r = repo.withdraw(
+            reasonCode, if (reasonCode == ETC) reasonText.trim() else null,
+            agreementKeys(info.autoCancel.isNotEmpty()), info.requiresPassword, secret,
+        )
+        return when {
+            r is ApiResult.Success -> ApiResult.Success(com.muyeon.domain.model.account.WithdrawResult.Done(r.data ?: info.rejoinableFrom))
+            r is ApiResult.Error && r.code == "WITHDRAW_BLOCKED" -> ApiResult.Success(com.muyeon.domain.model.account.WithdrawResult.Blocked)
+            else -> r as ApiResult.Error
+        }
+    }
+
+    companion object {
+        const val ETC = "ETC"
+        val AGREEMENTS = listOf("dataDeleted", "retention", "rejoinBlocked")
+        const val AUTO_CANCEL = "autoCancel"
+    }
 }

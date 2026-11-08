@@ -93,6 +93,7 @@ val viewModelModule = module {
     // ★ 2026-11-08 비밀번호 변경 · 대타 신뢰도
     viewModel { com.muyeon.app.ui.account.ChangePasswordViewModel(get()) }
     viewModel { com.muyeon.app.ui.settings.SubTrustViewModel(get()) }
+    viewModel { com.muyeon.app.ui.account.WithdrawViewModel(get(), get()) }
     // ★ 2026-11-08 홈 '전체보기' 레슨 목록 — 인자: type(popular·experience·oneday)
     viewModel { p -> com.muyeon.app.ui.lessonlist.LessonListViewModel(p.getOrNull(), get(), get(), get(), get(), get(), get(), get()) }
     // MY

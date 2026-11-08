@@ -306,6 +306,17 @@ fun AppNavHost(
         }
         // ★ 2026-11-08 비밀번호 변경 · 대타 신뢰도(웹 /changePassword · /subTrust).
         composable(Screen.ChangePassword.route) { com.muyeon.app.ui.account.ChangePasswordScreen(onClose = { navController.popBackStack() }) }
+        // ★ 2026-11-08 회원탈퇴(웹 /withdraw) — 완료 뒤 로그아웃은 설정과 같은 길(셸 onLoggedOut).
+        composable(Screen.Withdraw.route) {
+            com.muyeon.app.ui.account.WithdrawScreen(
+                onClose = { navController.popBackStack() },
+                onOpenPath = onOpenPath,
+                onLoggedOut = {
+                    navController.popBackStack(Screen.Main.route, inclusive = false)
+                    mainViewModel.onLoggedOut()
+                },
+            )
+        }
         composable(Screen.SubTrust.route) { com.muyeon.app.ui.settings.SubTrustScreen(onBack = { navController.popBackStack() }) }
         // ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 /lessonList).
         composable(

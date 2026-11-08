@@ -34,9 +34,6 @@ data class ReturnToBody(val returnTo: String)
 data class AuthUrlDto(val authUrl: String? = null)
 
 @JsonClass(generateAdapter = true)
-data class UploadUrlDto(val url: String? = null)
-
-@JsonClass(generateAdapter = true)
 data class NewPasswordBody(val newPassword: String)
 
 /** GET /me/sub-trust 내역 한 줄. */

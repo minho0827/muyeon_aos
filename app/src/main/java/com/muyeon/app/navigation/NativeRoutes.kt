@@ -70,6 +70,8 @@ object NativeRoutes {
             "/studio/schedule" -> return Target.Action("openStudioSchedule")
             "/quoteBrowse" -> return Target.Action("openQuoteBrowse")
             "/recommendBlocks" -> return Target.Action("openRecommendBlocks")
+            // 내 공고 관리(채용·대타·캐스팅 — 같은 /me/postings/page) — 앱 공고 관리 화면.
+            "/myPostings" -> return Target.Action("openMyJobPostings")
             "/lessonSlots" -> return Target.Action("openLessonSlotManage", query["lessonProductId"]?.let { mapOf("lessonProductId" to it) } ?: emptyMap())
             "/lessonHub" -> return Target.Action("openLessonQuoteHub")
             "/chat" -> return Target.Action("openChatList")
@@ -84,6 +86,7 @@ object NativeRoutes {
             "/profileEdit" -> if (query.isEmpty()) return Target.Route(Screen.ProfileEdit.route, auth = true)
             "/my/credentials" -> return Target.Route(Screen.Credentials.route, auth = true)
             "/changePassword" -> return Target.Route(Screen.ChangePassword.route, auth = true)
+            "/withdraw" -> return Target.Route(Screen.Withdraw.route, auth = true)
             "/subTrust" -> return Target.Route(Screen.SubTrust.route, auth = true)
             "/setting" -> return Target.Route(Screen.Settings.route)
             "/blockedUsers" -> return Target.Route(Screen.BlockedUsers.route, auth = true)

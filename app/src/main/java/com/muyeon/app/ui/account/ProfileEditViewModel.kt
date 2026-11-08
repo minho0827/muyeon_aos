@@ -23,7 +23,6 @@ data class ProfileEditUiState(
     /** 편집 중 값. */
     val name: String = "",
     val image: String? = null,
-    val uploading: Boolean = false,
     val saving: Boolean = false,
     /** 본인확인 표준창 주소 — 있으면 화면이 앱 안 웹창으로 띄운다. */
     val identityUrl: String? = null,
@@ -42,7 +41,7 @@ sealed interface ProfileEditEvent { data object Close : ProfileEditEvent }
 
 /**
  * 개인정보 수정 — 웹 pages/muyeon/my/ProfileEdit.js.
- *   사진(정사각 → 업로드) · 이름(본인확인 회원은 고정) · 휴대폰(본인확인으로만 등록/변경 — 앱 안 웹창으로 NICE 표준창) · 회원유형(유형 화면) ·
+ *   사진(보기만 — 이력서·강사프로필 사진과 같아 여기서 바꾸지 않는다, 저장 때 지금 사진을 그대로 보낸다) · 이름(본인확인 회원은 고정) · 휴대폰(본인확인으로만 등록/변경 — 앱 안 웹창으로 NICE 표준창) · 회원유형(유형 화면) ·
  *   비밀번호 변경·회원탈퇴(웹). 저장 전 나가면 확인(웹 useUnsavedGuard).
  */
 class ProfileEditViewModel(private val edit: EditAccountUseCase) : ViewModel() {
@@ -67,24 +66,10 @@ class ProfileEditViewModel(private val edit: EditAccountUseCase) : ViewModel() {
 
     fun onName(v: String) { if (_state.value.account?.nameLocked != true) _state.update { it.copy(name = v.take(MAX_NAME)) } }
 
-    /** 고른 사진(정사각으로 다듬은 JPEG)을 올리고 미리보기를 바꾼다 — 저장은 [save] 에서. */
-    fun uploadAvatar(jpeg: ByteArray?) {
-        if (jpeg == null) { _state.update { it.copy(resultMessage = UPLOAD_FAIL) }; return }
-        _state.update { it.copy(uploading = true) }
-        viewModelScope.launch {
-            when (val r = edit.upload(jpeg)) {
-                is ApiResult.Success -> _state.update { it.copy(image = r.data, uploading = false) }
-                is ApiResult.Error -> _state.update { it.copy(uploading = false, resultMessage = r.message) }
-            }
-        }
-    }
-
-    fun removeAvatar() = _state.update { it.copy(image = null) }
-
     fun save() {
         val s = _state.value
         val a = s.account ?: return
-        if (s.saving || s.uploading) return
+        if (s.saving) return
         _state.update { it.copy(saving = true) }
         viewModelScope.launch {
             when (val r = edit.save(a, s.name, s.image)) {
@@ -147,7 +132,6 @@ class ProfileEditViewModel(private val edit: EditAccountUseCase) : ViewModel() {
         // 서버 계약 문구(웹 ProfileEdit·niceIdentity 와 같은 말). 화면 고정 문구는 strings.xml.
         const val SAVED = "정보가 수정됐어요."
         const val IDENTITY_DONE = "휴대폰 본인인증이 완료됐어요."
-        const val UPLOAD_FAIL = "사진을 올리지 못했어요. 다른 사진으로 다시 시도해 주세요."
         val NICE_ERRORS = mapOf(
             "CANCELLED" to "본인인증을 취소했어요. 다시 시도해 주세요.",
             "EXPIRED" to "본인인증 시간이 지났어요. 다시 시도해 주세요.",
