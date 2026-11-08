@@ -1261,4 +1261,6 @@
     <string name="auth_recovery_reset_done">비밀번호가 변경됐어요.\n새 비밀번호로 로그인해 주세요.</string>
     <string name="auth_recovery_go_login">로그인</string>
     <string name="auth_recovery_close">닫기</string>
+    <string name="password_show">비밀번호 보기</string>
+    <string name="password_hide">비밀번호 숨기기</string>
 </resources>
