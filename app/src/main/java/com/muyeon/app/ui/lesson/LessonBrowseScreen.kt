@@ -361,6 +361,11 @@ class LessonBrowseActivity : com.muyeon.app.result.ResultActivity() {
                             p.prefillJson, p.region, p.regionCode,
                         )
                     },
+                    // 리뷰·평점 칸 — 기존 후기 상세 / 강사 후기 목록 / 후기 작성 화면 그대로.
+                    reviewApi = remember { com.muyeon.app.ui.review.ReviewApi(TokenManager.getAccessToken(this)) },
+                    onSelectReview = { rid -> startReview(this, rid) },
+                    onViewAllReviews = { tid -> com.muyeon.app.ui.resume.ResumeActivity.startReviewList(this, tid) },
+                    onWriteReview = { tid, name -> com.muyeon.app.ui.resume.ResumeActivity.startReviewWrite(this, tid, name, null) },
                 )
             } else {
                 LessonBrowseScreen(

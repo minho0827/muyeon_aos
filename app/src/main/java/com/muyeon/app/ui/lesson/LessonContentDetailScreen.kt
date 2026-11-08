@@ -36,6 +36,10 @@ import com.muyeon.app.ui.quote.QuoteNavBar
 import com.muyeon.app.ui.quote.QuoteUi
 import com.muyeon.app.ui.review.LessonQuotePrefill
 import com.muyeon.app.ui.lesson.components.LessonDetailLikeButton
+import com.muyeon.app.ui.lesson.components.LessonDetailRatingBadge
+import com.muyeon.app.ui.lesson.components.LessonDetailReviews
+import com.muyeon.app.ui.review.ReviewApi
+import com.muyeon.app.ui.review.ReviewList
 import com.muyeon.domain.model.scrap.ScrapTarget
 import com.muyeon.domain.usecase.scrap.GetLikedIdsUseCase
 import com.muyeon.domain.usecase.scrap.ToggleScrapResult
@@ -47,7 +51,8 @@ import java.util.Locale
 
 /**
  * 레슨 콘텐츠 상세 — iOS `LessonContentDetailView.swift` 대응.
- *  대표 이미지 캐러셀 · 제목 · 강사 · 레슨 정보(웹 LessonDetail.js 와 같은 칸·순서·용어) · 장소 · 소개 · 상세 이미지 · 비슷한 콘텐츠.
+ *  대표 이미지 캐러셀 · 제목 · 강사 · 레슨 정보(웹 LessonDetail.js 와 같은 칸·순서·용어) · 장소 · 소개 · 상세 이미지 · 리뷰·평점 · 비슷한 콘텐츠.
+ *  ★ 2026-11-08 리뷰·평점 = 웹처럼 개설 강사 후기 재활용(components/LessonDetailReviews, 소개·상세 이미지 다음). 강사 줄 이름 옆 ★평균(개수).
  *  ★ 2026-11-08 아래 버튼 = [lessonDetailCta](어디서 열었는지 [source] × 레슨 상태). 예약은 기존 예약 화면(LessonActivity booking).
  *   레슨 상품 가격은 '수업료'(웹·예약 시트 용어) — '예산'은 견적 요청에서 학생이 적는 희망 금액이라 쓰지 않는다.
  */
@@ -70,12 +75,28 @@ fun LessonContentDetailScreen(
     onManage: () -> Unit = {},
     /** 같은 조건 견적 / 이 강사님께 레슨 요청 → 문진 위저드(프리필). */
     onRequestQuote: (LessonQuotePrefill) -> Unit = {},
+    /** 리뷰·평점 칸(개설 강사 후기, GET /teachers/:id/reviews). 없으면 칸을 그리지 않는다. */
+    reviewApi: ReviewApi? = null,
+    /** 후기 → 기존 후기 상세. */
+    onSelectReview: (Int) -> Unit = {},
+    /** [후기 전체 보기] → 기존 강사 후기 목록(teacherId). */
+    onViewAllReviews: (Int) -> Unit = {},
+    /** [후기 작성하기] → 기존 후기 작성(teacherId, 강사 이름). */
+    onWriteReview: (Int, String?) -> Unit = { _, _ -> },
 ) {
     var detail by remember { mutableStateOf<LessonContentDetail?>(null) }
     var similar by remember { mutableStateOf<List<BrowseFeedItem>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var slotCount by remember { mutableStateOf<Int?>(null) }
     var requesting by remember { mutableStateOf(false) }
+    var reviews by remember { mutableStateOf<ReviewList?>(null) }
+    // 후기 작성·수정 화면에서 돌아오면 후기만 다시 읽는다(첫 진입 resume 은 건너뛴다).
+    var reviewsResume by remember { mutableIntStateOf(0) }
+    var resumedOnce by remember { mutableStateOf(false) }
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+        if (resumedOnce) reviewsResume++ else resumedOnce = true
+        onPauseOrDispose { }
+    }
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val toggleScrap: ToggleScrapUseCase = koinInject()
@@ -92,6 +113,11 @@ fun LessonContentDetailScreen(
         slotCount = api.availableSlotCount(lessonProductId)
         loading = false
         similar = api.similar(lessonProductId)
+    }
+    val creatorId = detail?.creatorId?.takeIf { it > 0 }
+    LaunchedEffect(creatorId, reloadSignal, reviewsResume) {
+        val tid = creatorId ?: return@LaunchedEffect
+        reviewApi?.list(tid)?.onSuccess { reviews = it }
     }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
@@ -177,11 +203,16 @@ fun LessonContentDetailScreen(
                     ) {
                         QuoteAvatar(d.creatorImage, d.creatorName ?: "강사", 44.dp)
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(
-                                d.creatorName ?: "강사",
-                                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
-                                lineHeight = 18.sp, color = MuyeonColors.textHead,
-                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    d.creatorName ?: "강사",
+                                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                                    lineHeight = 18.sp, color = MuyeonColors.textHead,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
+                                )
+                                // 웹 강사 줄과 같다 — 후기가 있으면 이름 옆 ★평균(개수).
+                                LessonDetailRatingBadge(reviews?.avg, reviews?.count)
+                            }
                             Text(
                                 "프로필 보기",
                                 fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 15.sp,
@@ -235,6 +266,17 @@ fun LessonContentDetailScreen(
                             )
                         }
                     }
+                }
+
+                // 리뷰·평점 — 웹 LessonDetail.js 처럼 레슨 본문(소개·상세 이미지) 다음. 후기가 없으면 빈 문구(웹과 같다).
+                val rv = reviews
+                if (creatorId != null && rv != null) {
+                    LessonDetailReviews(
+                        data = rv,
+                        onSelectReview = onSelectReview,
+                        onViewAll = { onViewAllReviews(creatorId) },
+                        onWrite = { onWriteReview(creatorId, d.creatorName) },
+                    )
                 }
 
                 if (similar.isNotEmpty()) {

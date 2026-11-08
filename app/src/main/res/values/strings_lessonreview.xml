@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ★ 2026-11-08 레슨 상세 '리뷰·평점' 칸(개설 강사 후기 재활용). 문구는 웹 components/muyeon/TeacherReviews.js(레슨 상세 기본형)와 같다. -->
+<resources>
+    <string name="lesson_review_title">리뷰·평점</string>
+    <string name="lesson_review_title_count">리뷰·평점 (%1$d)</string>
+    <string name="lesson_review_summary">리뷰 %1$d개 · 평균 %2$s</string>
+    <string name="lesson_review_summary_empty">리뷰 0개</string>
+    <string name="lesson_review_empty">아직 등록된 리뷰가 없어요.</string>
+    <string name="lesson_review_mine">내 리뷰</string>
+    <string name="lesson_review_reviewer_default">회원</string>
+    <string name="lesson_review_view_all">후기 전체 보기</string>
+    <string name="lesson_review_write_prompt">레슨은 어떠셨나요? 후기를 남겨주세요.</string>
+    <string name="lesson_review_write">후기 작성하기</string>
+    <string name="lesson_review_count_paren">(%1$d)</string>
+</resources>
