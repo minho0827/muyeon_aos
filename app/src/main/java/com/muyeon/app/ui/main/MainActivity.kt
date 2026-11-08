@@ -204,7 +204,7 @@ class MainActivity : ComponentActivity(), ResultHost {
         if (t is com.muyeon.app.navigation.NativeRoutes.Target.Action &&
             com.muyeon.app.webview.NativeActionRouter.open(this, t.action, org.json.JSONObject(t.data))) return
         // ★ 2026-11-08 탭 위 앱 화면(공지·FAQ·찜 … MY 메뉴에서 옮긴 화면)도 웹 창 없이 바로.
-        if (t is com.muyeon.app.navigation.NativeRoutes.Target.Route) { viewModel.openRoute(t.route); return }
+        if (t is com.muyeon.app.navigation.NativeRoutes.Target.Route) { openRoute(t, path); return }
         WebViewActivity.startPath(this, path)
     }
 
@@ -213,13 +213,22 @@ class MainActivity : ComponentActivity(), ResultHost {
         val path = if (urlOrPath.startsWith(base)) urlOrPath.removePrefix(base).ifEmpty { "/" } else urlOrPath
         when (val target = com.muyeon.app.navigation.NativeRoutes.resolve(path)) {
             is com.muyeon.app.navigation.NativeRoutes.Target.Tab -> { viewModel.selectTab(target.tab); return }
-            is com.muyeon.app.navigation.NativeRoutes.Target.Route -> { viewModel.openRoute(target.route); return }
+            is com.muyeon.app.navigation.NativeRoutes.Target.Route -> { openRoute(target, path); return }
             is com.muyeon.app.navigation.NativeRoutes.Target.Action -> {
                 if (com.muyeon.app.webview.NativeActionRouter.open(this, target.action, org.json.JSONObject(target.data))) return
             }
             null -> Unit
         }
         WebViewActivity.startPath(this, path, viaLink = viaLink)
+    }
+
+    /** 탭 위 앱 화면 — 로그인해야 보는 화면인데 비회원이면 로그인 창부터(마치면 웹이 [path] 로 보내고, 그 주소가 다시 이 화면을 연다). */
+    private fun openRoute(t: com.muyeon.app.navigation.NativeRoutes.Target.Route, path: String) {
+        if (t.auth && TokenManager.getAccessToken(this).isNullOrBlank()) {
+            WebViewActivity.startPath(this, com.muyeon.app.navigation.WebPaths.login(path))
+            return
+        }
+        viewModel.openRoute(t.route)
     }
 
     private fun onEvent(e: MainEvent) {

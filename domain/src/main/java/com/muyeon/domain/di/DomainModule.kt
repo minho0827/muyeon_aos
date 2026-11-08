@@ -39,6 +39,7 @@ val domainModule = module {
     // 찜
     factory { GetLikedIdsUseCase(get(), get()) }
     factory { ToggleScrapUseCase(get(), get()) }
+    factory { com.muyeon.domain.usecase.scrap.GetLikedItemsUseCase(get()) }
     factory { com.muyeon.domain.usecase.scrap.ObserveScrapChangesUseCase(get()) }
     // 공연
     factory { GetPerformancePageUseCase(get()) }

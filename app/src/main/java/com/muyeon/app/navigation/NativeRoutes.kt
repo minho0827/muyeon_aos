@@ -10,7 +10,11 @@ object NativeRoutes {
     sealed interface Target {
         data class Tab(val tab: MainTab) : Target
         /** 탭 위 앱 화면(바깥 NavHost 경로). */
-        data class Route(val route: String) : Target
+        data class Route(
+            val route: String,
+            /** 로그인해야 보는 화면(웹 meta auth) — 비회원이면 셸이 로그인 창을 먼저 연다(돌아오면 그 주소로). */
+            val auth: Boolean = false,
+        ) : Target
         /**
          * ★ 2026-11-08 웹 페이지가 열리자마자 네이티브 화면으로 넘기는 주소(이력서 관리·레슨 일정).
          *   앱 셸에서 웹 창을 거치면 웹 창 + 네이티브 화면이 두 겹으로 떴다 — 웹 창 없이 바로 네이티브를 연다.
@@ -70,9 +74,10 @@ object NativeRoutes {
             "/notice" -> return Target.Route(Screen.Notices.route)
             "/noticeDetail" -> return Target.Route(query["id"]?.toLongOrNull()?.let { Screen.NoticeDetail.build(it) } ?: Screen.Notices.route)
             "/faq" -> return Target.Route(Screen.Faq.route)
-            "/support/inquiries" -> return Target.Route(Screen.SupportInquiries.route)
-            "/support/inquiry" -> return Target.Route(Screen.SupportCompose.build(Screen.SupportCompose.INQUIRY))
-            "/support/feedback" -> return Target.Route(Screen.SupportCompose.build(Screen.SupportCompose.FEEDBACK))
+            "/likes" -> return Target.Route(Screen.Likes.route, auth = true)
+            "/support/inquiries" -> return Target.Route(Screen.SupportInquiries.route, auth = true)
+            "/support/inquiry" -> return Target.Route(Screen.SupportCompose.build(Screen.SupportCompose.INQUIRY), auth = true)
+            "/support/feedback" -> return Target.Route(Screen.SupportCompose.build(Screen.SupportCompose.FEEDBACK), auth = true)
             // ★ 2026-11-08 홈 '전체보기' 레슨 목록 — 쿼리(title·type)가 있어도 앱 화면.
             "/lessonList" -> return Target.Route(Screen.LessonList.build(query["title"]?.let(android.net.Uri::decode), query["type"]))
         }
@@ -85,7 +90,7 @@ object NativeRoutes {
         }
         TEACHER.find(p)?.let { if (!clean.contains('?')) return Target.Action("openPublicProfile", mapOf("userId" to it.groupValues[1])) }
         // 답변 완료 푸시(SUPPORT_ANSWERED)의 착지점.
-        INQUIRY.find(p)?.let { return Target.Route(Screen.SupportInquiryDetail.build(it.groupValues[1].toLong())) }
+        INQUIRY.find(p)?.let { return Target.Route(Screen.SupportInquiryDetail.build(it.groupValues[1].toLong()), auth = true) }
         MEMBERSHIP.find(p)?.let { return Target.Action("openMembership") }
         CHAT_ROOM.find(p)?.let { return Target.Action("openChatRoom", mapOf("roomId" to it.groupValues[1])) }
         TRANSFER.find(p)?.let { return Target.Action("openStudioTransferDetail", mapOf("id" to it.groupValues[1])) }

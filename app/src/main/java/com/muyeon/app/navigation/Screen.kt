@@ -74,6 +74,9 @@ sealed class Screen(val route: String) {
         fun build(type: String) = "support/compose/$type"
     }
 
+    /** 찜/관심(웹 /likes). */
+    data object Likes : Screen("likes")
+
     /** 홈 '전체보기' 레슨 목록(웹 /lessonList?title=&type=). */
     data object LessonList : Screen("lessonList?title={title}&type={type}") {
         const val ARG_TITLE = "title"

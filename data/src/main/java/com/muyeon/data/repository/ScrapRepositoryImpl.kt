@@ -25,6 +25,9 @@ class ScrapRepositoryImpl(
         safeApiCall(moshi) { api.mine(target.serverType) }
             .map { rows -> rows.filter { it.targetType == null || it.targetType == target.serverType }.mapNotNull { it.targetId }.toSet() }
 
+    override suspend fun likedItems(target: ScrapTarget?): ApiResult<List<com.muyeon.domain.model.scrap.LikedItem>> =
+        safeApiCall(moshi) { api.entries(target?.serverType) }.map { rows -> rows.mapNotNull { it.toDomain() } }
+
     override suspend fun setLiked(target: ScrapTarget, id: Long, liked: Boolean): ApiResult<Unit> =
         safeUnitCall(moshi) { if (liked) api.add(target.pathSegment, id) else api.remove(target.pathSegment, id) }
             .onSuccess { _changes.tryEmit(ScrapChange(target, id, liked)) }

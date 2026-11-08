@@ -14,6 +14,10 @@ interface ScrapApi {
     @GET(ApiEndpoints.Scraps.MINE)
     suspend fun mine(@Query("targetType") targetType: String): Response<List<ScrapItemDto>>
 
+    /** 찜 모아보기 — 카드 요약까지(targetType 없으면 전체). */
+    @GET(ApiEndpoints.Scraps.MINE)
+    suspend fun entries(@Query("targetType") targetType: String?): Response<List<com.muyeon.network.dto.scrap.ScrapEntryDto>>
+
     @POST(ApiEndpoints.Scraps.TOGGLE)
     suspend fun add(@Path("segment", encoded = true) segment: String, @Path("id") id: Long): Response<ResponseBody>
 

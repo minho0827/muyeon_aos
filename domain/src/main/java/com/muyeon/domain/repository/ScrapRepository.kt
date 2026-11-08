@@ -13,6 +13,8 @@ interface ScrapRepository {
 
     /** 내가 찜한 대상 id(그 종류만). */
     suspend fun likedIds(target: ScrapTarget): ApiResult<Set<Long>>
+    /** 찜 모아보기 — [target] null 이면 전체. */
+    suspend fun likedItems(target: ScrapTarget?): ApiResult<List<com.muyeon.domain.model.scrap.LikedItem>>
     suspend fun setLiked(target: ScrapTarget, id: Long, liked: Boolean): ApiResult<Unit>
 
     /** 비회원이 누른 찜 하나(웹 useLikes pendingLike 와 같다 — 마지막 것만). */

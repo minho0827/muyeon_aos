@@ -272,6 +272,18 @@
     <string name="support_feedback_send">의견 보내기</string>
     <string name="support_feedback_done">소중한 의견을 보내 주셔서 감사해요.</string>
     <string name="support_feedback_done_desc">더 나은 서비스를 만드는 데 꼼꼼히 반영할게요.</string>
+    <!-- ★ 2026-11-08 찜/관심(웹 Likes) -->
+    <string name="likes_title">찜/관심</string>
+    <string name="likes_tab_lesson">레슨</string>
+    <string name="likes_tab_teacher">강사</string>
+    <string name="likes_tab_performance">공연</string>
+    <string name="likes_tab_post">커뮤니티</string>
+    <string name="likes_empty">찜한 항목이 없어요.</string>
+    <string name="likes_empty_desc">마음에 드는 레슨·강사·공연에 하트를 눌러 모아 보세요.</string>
+    <string name="likes_browse">둘러보기</string>
+    <string name="likes_closed">마감</string>
+    <string name="likes_deleted_item">(삭제된 항목)</string>
+    <string name="likes_price_hour">%1$s원/시간</string>
     <!-- ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 LessonListView) -->
     <string name="lesson_list_title">레슨</string>
     <string name="lesson_list_empty">등록된 레슨이 없어요.</string>

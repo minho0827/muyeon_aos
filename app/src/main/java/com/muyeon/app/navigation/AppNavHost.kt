@@ -177,6 +177,17 @@ fun AppNavHost(
                 },
             )
         }
+        // ★ 2026-11-08 찜/관심(웹 /likes) — 누르면 그 상세(앱 화면이면 이 위에 쌓여 뒤로 가면 찜으로 돌아온다).
+        composable(Screen.Likes.route) {
+            com.muyeon.app.ui.likes.LikesScreen(
+                onBack = { navController.popBackStack() },
+                onOpenPath = onOpenPath,
+                onBrowse = {
+                    navController.popBackStack(Screen.Main.route, inclusive = false)
+                    onOpenPath("/home")
+                },
+            )
+        }
         // ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 /lessonList).
         composable(
             Screen.LessonList.route,

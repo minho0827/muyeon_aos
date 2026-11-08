@@ -17,6 +17,14 @@ class GetLikedIdsUseCase(private val repo: ScrapRepository, private val tokens: 
     }
 }
 
+/**
+ * ★ 2026-11-08 찜 모아보기(웹 Likes) — 공간 찜은 기능을 쉬는 동안 화면에서 뺀다(데이터는 서버에 남는다 · 웹과 같음).
+ */
+class GetLikedItemsUseCase(private val repo: ScrapRepository) {
+    suspend operator fun invoke(target: ScrapTarget?): ApiResult<List<com.muyeon.domain.model.scrap.LikedItem>> =
+        repo.likedItems(target).map { l -> l.filter { it.targetType != ScrapTarget.SPACE.serverType } }
+}
+
 /** 찜 토글 결과 — 비회원이면 [LoginRequired](화면이 로그인으로 보낸다, 누른 것은 보류에 남는다). */
 sealed interface ToggleScrapResult {
     data class Done(val liked: Boolean) : ToggleScrapResult
