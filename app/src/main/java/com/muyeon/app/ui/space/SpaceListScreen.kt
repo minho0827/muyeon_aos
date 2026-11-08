@@ -46,7 +46,7 @@ import com.muyeon.app.ui.space.components.*
 import kotlinx.coroutines.launch
 
 /**
- * 공간 대관 목록 — 카테고리 칩(GET /spaces/categories, 첫 칩 "전체") + [지역][날짜][인원][정렬] 시트.
+ * 공간 대관 목록 — [필터(이용유형·가격·편의시설)][지역][날짜][인원][정렬] 시트.
  *  카드: 사진 · 이름 · "서울 동작구 · 최대 15명" · "시간당 7,000원~" · 하트. 화면은 상태 연결과 조립만 한다.
  */
 @Composable
@@ -68,6 +68,7 @@ fun SpaceListScreen(
     var date by rememberSaveable { mutableStateOf<String?>(null) }
     var headcount by rememberSaveable { mutableStateOf<Int?>(null) }
     var sort by rememberSaveable { mutableStateOf("recent") }
+    var filter by remember { mutableStateOf(SpaceFilter()) }
     var items by remember { mutableStateOf<List<SpaceListItem>>(emptyList()) }
     var scrapped by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var loading by remember { mutableStateOf(true) }
@@ -75,9 +76,9 @@ fun SpaceListScreen(
     var sheet by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) { api.categories().onSuccess { categories = it } }
-    LaunchedEffect(categoryId, sido, date, headcount, sort) {
+    LaunchedEffect(categoryId, sido, date, headcount, sort, filter) {
         loading = true
-        api.list(sido, categoryId.takeIf { it > 0 }, date, headcount, sort)
+        api.list(sido, categoryId.takeIf { it > 0 }, date, headcount, sort, filter)
             .onSuccess { items = it.filterNot { s -> com.muyeon.domain.usecase.home.DemoContent.isDemoTitle(s.name) }; error = null } // 예시 숨김(사용자 결정 2026-11-08).onFailure { error = it.message }
         scrapped = api.scrappedSpaceIds()
         loading = false
@@ -101,8 +102,8 @@ fun SpaceListScreen(
         if (header != null) header() else MuyeonListHeader("공간 대관", onBack = onBack) {
             if (canCreate) MuyeonHeaderIcon(Icons.Filled.Add, "공간 등록", onClick = onCreate)
         }
-        SpaceCategoryChips(categories, categoryId) { categoryId = it }
-        SpaceFilterBar(sido, date, headcount, sort) { sheet = it }
+        // ★ 2026-11-08 위 카테고리 칩(서버 공간 테마 — 발레·한국무용·매매 …)은 대관에 맞지 않아 뺐다(사용자 요청). 시설 필터로 거른다.
+        SpaceFilterBar(sido, date, headcount, sort, filter.count) { sheet = it }
 
         val phase = when {
             loading && items.isEmpty() -> ListPhase.Loading
@@ -135,5 +136,6 @@ fun SpaceListScreen(
         "date" -> SpaceDateSheet(date, onApply = { date = it }, onDismiss = close)
         "headcount" -> SpaceHeadcountSheet(headcount, onApply = { headcount = it }, onDismiss = close)
         "sort" -> SpaceSortSheet(sort, onApply = { sort = it }, onDismiss = close)
+        "filter" -> SpaceFilterSheet(filter, onApply = { filter = it; close() }, onDismiss = close)
     }
 }

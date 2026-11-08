@@ -54,11 +54,12 @@ fun SpaceCategoryChips(categories: List<SpaceCategory>, selected: Int, onSelect:
 
 /** 필터 줄 — [지역][날짜][인원][정렬] 알약(값이 걸리면 굵게) + 아래 구분선. */
 @Composable
-fun SpaceFilterBar(sido: String?, date: String?, headcount: Int?, sort: String, onOpen: (String) -> Unit) {
+fun SpaceFilterBar(sido: String?, date: String?, headcount: Int?, sort: String, filterCount: Int = 0, onOpen: (String) -> Unit) {
     Row(
         Modifier.fillMaxWidth().background(Color.White).horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        MarketFilterPill(if (filterCount > 0) "필터 $filterCount" else "필터", filterCount > 0, width = 84.dp) { onOpen("filter") }
         MarketFilterPill(TransferLabels.regions.firstOrNull { it.second == sido }?.first?.takeIf { sido != null } ?: "지역", sido != null) { onOpen("region") }
         MarketFilterPill(date?.substring(5)?.replace('-', '/') ?: "날짜", date != null) { onOpen("date") }
         MarketFilterPill(headcount?.let { "${it}명" } ?: "인원", headcount != null) { onOpen("headcount") }

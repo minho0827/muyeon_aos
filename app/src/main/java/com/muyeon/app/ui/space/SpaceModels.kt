@@ -372,6 +372,8 @@ data class SpaceListItem(
     val image: String?,
     val capacityMax: Int?,
     val minPrice: Int?,
+    /** 갖춘 시설 키(SpaceFacility.key) — 필터가 서버 배포 전에도 걸러지게 화면에서도 본다. */
+    val facilities: Set<String> = emptySet(),
 ) {
     /** "서울 동작구 · 최대 15명" */
     val metaLine: String get() = listOfNotNull(region?.takeIf { it.isNotBlank() }, capacityMax?.let { "최대 ${it}명" }).joinToString(" · ")
@@ -388,6 +390,7 @@ data class SpaceListItem(
                 image = imgs?.optString(0)?.takeIf { it.isNotEmpty() },
                 capacityMax = intOrNull("capacityMax"),
                 minPrice = intOrNull("minPrice") ?: intOrNull("pricePerHour"),
+                facilities = o.optJSONObject("facilities")?.let { f -> f.keys().asSequence().filter { f.optBoolean(it) }.toSet() } ?: emptySet(),
             )
         }
     }
@@ -597,15 +600,19 @@ class SpaceApi(context: android.content.Context) {
         }
 
     /** 목록 — sido(시도 코드 2자리)·categoryId·date·headcount·sort(recent|priceAsc|priceDesc). */
-    suspend fun list(sido: String?, categoryId: Int?, date: String?, headcount: Int?, sort: String): Result<List<SpaceListItem>> {
+    suspend fun list(sido: String?, categoryId: Int?, date: String?, headcount: Int?, sort: String, filter: SpaceFilter = SpaceFilter()): Result<List<SpaceListItem>> {
         val q = mutableListOf("sort=$sort")
+        if (filter.facilities.isNotEmpty()) q += "facilities=" + filter.facilities.joinToString(",")
+        filter.bookingType?.let { q += "bookingType=$it" }
+        filter.minWon?.let { q += "minPrice=$it" }
+        filter.maxWon?.let { q += "maxPrice=$it" }
         sido?.let { q += "sido=$it" }
         categoryId?.let { q += "categoryId=$it" }
         date?.let { q += "date=$it" }
         headcount?.let { q += "headcount=$it" }
         return call("/spaces?" + q.joinToString("&")).mapCatching { body ->
             val arr = JSONArray(body.ifBlank { "[]" })
-            (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let(SpaceListItem::from) }
+            (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let(SpaceListItem::from) }.filter(filter::matches)
         }
     }
 
