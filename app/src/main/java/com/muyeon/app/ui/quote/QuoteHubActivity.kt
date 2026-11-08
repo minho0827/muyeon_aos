@@ -48,6 +48,11 @@ class QuoteHubActivity : ResultActivity() {
         private const val EXTRA_TAB = "tab"
         private const val EXTRA_QUOTE_ID = "quoteId"
         private const val EXTRA_RESPONSE_ID = "responseId"
+        private const val EXTRA_START = "start"
+
+        /** ★ 2026-11-08 추천 제외한 강사(웹 /recommendBlocks — MY 메뉴)부터 — 뒤로 가면 화면을 닫는다. */
+        fun startRecommendBlocks(context: Context) =
+            context.launchScreen(intent(context, isPro = false).putExtra(EXTRA_START, "recommendBlocks"))
 
         /**
          * @param quoteId 지정 시 목록을 건너뛰고 그 요청의 상세부터 표시(알림 딥링크).
@@ -84,7 +89,7 @@ class QuoteHubActivity : ResultActivity() {
             var sentDetail by remember { mutableStateOf<SentQuoteItem?>(null) }
 
             // 딥링크(알림)로 quoteId 가 오면 상세부터 — 뒤로가면 허브 목록.
-            val start = if (deepQuoteId > 0) "received/$deepQuoteId" else "hub"
+            val start = if (deepQuoteId > 0) "received/$deepQuoteId" else intent.getStringExtra(EXTRA_START) ?: "hub"
 
             NavHost(nav, startDestination = start, popEnterTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popEnter, popExitTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popExit) {
                 composable("hub") { entry ->

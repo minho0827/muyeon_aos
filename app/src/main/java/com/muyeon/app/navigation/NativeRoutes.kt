@@ -68,6 +68,7 @@ object NativeRoutes {
             "/studio/sales" -> return Target.Action("openStudioSales")
             "/studio/schedule" -> return Target.Action("openStudioSchedule")
             "/quoteBrowse" -> return Target.Action("openQuoteBrowse")
+            "/recommendBlocks" -> return Target.Action("openRecommendBlocks")
             "/lessonSlots" -> return Target.Action("openLessonSlotManage", query["lessonProductId"]?.let { mapOf("lessonProductId" to it) } ?: emptyMap())
             "/lessonHub" -> return Target.Action("openLessonQuoteHub")
             "/chat" -> return Target.Action("openChatList")

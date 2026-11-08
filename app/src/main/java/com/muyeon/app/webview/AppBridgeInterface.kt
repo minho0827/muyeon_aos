@@ -205,6 +205,8 @@ object NativeActionRouter {
                 )
             }
             "openQuoteBrowse" -> com.muyeon.app.ui.quote.QuoteBrowseActivity.start(activity)
+            // ★ 2026-11-08 앱 안 전용 — 추천 제외한 강사(웹 /recommendBlocks, MY 메뉴).
+            "openRecommendBlocks" -> com.muyeon.app.ui.quote.QuoteHubActivity.startRecommendBlocks(activity)
             // 10-26 웹 하단 탭 '캐스팅·무대' → 네이티브 섹션 화면(웹은 nativeCastingStage 표시가 있을 때만 보낸다)
             //  10-27 링크(/casting/12 등)는 payload(castingId·screen·issueNo·category)로 그 화면부터.
             // 11-08 앱 셸 안 화면(캐스팅 탭 · 탭 위 상세)으로 연다 — 웹 창은 닫히고 셸로 돌아간다.
