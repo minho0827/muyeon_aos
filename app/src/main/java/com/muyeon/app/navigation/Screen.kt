@@ -105,6 +105,9 @@ sealed class Screen(val route: String) {
     /** 개인정보 수정(웹 /profileEdit). */
     data object ProfileEdit : Screen("profileEdit")
 
+    /** 경력·자격 확인(웹 /my/credentials). */
+    data object Credentials : Screen("my/credentials")
+
     /** 홈 '전체보기' 레슨 목록(웹 /lessonList?title=&type=). */
     data object LessonList : Screen("lessonList?title={title}&type={type}") {
         const val ARG_TITLE = "title"

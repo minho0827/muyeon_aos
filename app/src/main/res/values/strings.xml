@@ -483,6 +483,28 @@
     <string name="account_leave_q">수정한 내용을 저장하지 않고 나갈까요?</string>
     <string name="account_leave_body">나가면 고친 내용이 사라져요.</string>
     <string name="account_leave">나가기</string>
+    <!-- ★ 2026-11-08 경력·자격 확인(웹 CredentialsManage) -->
+    <string name="credential_title">경력·자격 확인</string>
+    <string name="credential_intro">경력과 자격을 확인받아 프로필의 신뢰도를 높여보세요. 무용연이 제출한 서류를 확인하고, 확인된 항목은 프로필과 지원서에 표시해 드려요. 원하는 항목만 확인받을 수 있어요.</string>
+    <string name="credential_sec_identity">본인인증</string>
+    <string name="credential_identity_done">✓ 휴대폰 본인인증 완료</string>
+    <string name="credential_identity_none">아직 본인인증 전이에요. 개인정보 수정에서 할 수 있어요 ›</string>
+    <string name="credential_sec_items">경력·자격 확인</string>
+    <string name="credential_unsorted">이전에 제출한 서류를 확인하고 있어요. 확인이 끝나면 그 항목에 표시가 붙어요.</string>
+    <string name="credential_status_none">미등록</string>
+    <string name="credential_status_pending">확인 중</string>
+    <string name="credential_status_approved">확인 완료</string>
+    <string name="credential_status_rejected">반려</string>
+    <string name="credential_years">%1$s년</string>
+    <string name="credential_reject_reason">반려 사유: %1$s</string>
+    <string name="credential_submit_docs">서류 등록</string>
+    <string name="credential_resubmit">다시 등록</string>
+    <string name="credential_notice">제출한 서류는 경력·자격 확인에만 사용하며 다른 회원에게 공개하지 않아요. 주민등록번호 뒷자리, 상세 주소 등 확인에 필요하지 않은 개인정보는 가려주세요. 확인이 끝난 서류는 30일 뒤 삭제돼요.</string>
+    <string name="credential_add">+ 추가</string>
+    <string name="credential_submit">등록하기</string>
+    <string name="credential_submitting">등록 중…</string>
+    <string name="credential_load_failed">확인 현황을 불러오지 못했어요.</string>
+    <string name="credential_notice_title">안내</string>
     <!-- ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 LessonListView) -->
     <string name="lesson_list_title">레슨</string>
     <string name="lesson_list_empty">등록된 레슨이 없어요.</string>

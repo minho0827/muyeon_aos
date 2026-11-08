@@ -297,6 +297,13 @@ fun AppNavHost(
                 onMemberType = { mainViewModel.onTypePicked(com.muyeon.app.ui.main.MainViewModel.TYPE_MANAGE) },
             )
         }
+        // ★ 2026-11-08 경력·자격 확인(웹 /my/credentials) — 본인인증 전이면 개인정보 수정(앱 화면)으로.
+        composable(Screen.Credentials.route) {
+            com.muyeon.app.ui.credential.CredentialsScreen(
+                onBack = { navController.popBackStack() },
+                onProfileEdit = { navController.navigate(Screen.ProfileEdit.route) },
+            )
+        }
         // ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 /lessonList).
         composable(
             Screen.LessonList.route,

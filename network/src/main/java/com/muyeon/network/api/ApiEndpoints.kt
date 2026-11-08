@@ -147,6 +147,13 @@ object ApiEndpoints {
         const val UPLOAD_IMAGE = "$API/uploads/image"                   // POST multipart file → { url }
     }
 
+    /** ★ 2026-11-08 경력·자격 확인(웹 CredentialsManage) — credentials.controller.ts · uploads.controller.ts(비공개 서류). */
+    object Credentials {
+        const val MINE = "$API/me/credentials"                 // GET → { identity:{verified}, unsortedPending, items:[…] }
+        const val SUBMIT = "$API/me/credentials/{kind}"        // POST { keys } → 같은 모양
+        const val UPLOAD_DOCUMENT = "$API/uploads/document"    // POST multipart file(이미지·PDF) → { key }
+    }
+
     /** regions.controller.ts */
     object Regions {
         const val NEAREST = "$API/regions/nearest"           // GET lat·lng → Region | null

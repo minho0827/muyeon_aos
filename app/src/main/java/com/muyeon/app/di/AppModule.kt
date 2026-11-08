@@ -88,6 +88,8 @@ val viewModelModule = module {
     viewModel { p -> com.muyeon.app.ui.dancer.DancerDetailViewModel(p.get(), get(), get(), get(), get(), get(), get()) }
     // ★ 2026-11-08 개인정보 수정
     viewModel { com.muyeon.app.ui.account.ProfileEditViewModel(get()) }
+    // ★ 2026-11-08 경력·자격 확인
+    viewModel { com.muyeon.app.ui.credential.CredentialsViewModel(get()) }
     // ★ 2026-11-08 홈 '전체보기' 레슨 목록 — 인자: type(popular·experience·oneday)
     viewModel { p -> com.muyeon.app.ui.lessonlist.LessonListViewModel(p.getOrNull(), get(), get(), get(), get(), get(), get(), get()) }
     // MY
