@@ -14,6 +14,9 @@ interface AccountRepository {
     suspend fun withdrawalInfo(): ApiResult<com.muyeon.domain.model.account.WithdrawalInfo>
     /** [secret] 은 [passwordMode] 면 비밀번호, 아니면 확인 문구. 동의 key 들은 모두 true 로 보낸다. */
     suspend fun withdraw(reasonCode: String, reasonText: String?, agreements: List<String>, passwordMode: Boolean, secret: String): ApiResult<String?>
+    /** 강사프로필 레슨 전공 — 받은 견적요청 매칭에 쓰인다. */
+    suspend fun lessonGenres(): ApiResult<List<String>>
+    suspend fun saveLessonGenres(genres: List<String>): ApiResult<Unit>
     suspend fun changePassword(newPassword: String): ApiResult<Unit>
     suspend fun subTrust(): ApiResult<com.muyeon.domain.model.account.SubTrust>
 }

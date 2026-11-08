@@ -83,3 +83,9 @@ class WithdrawUseCase(private val repo: AccountRepository) {
         const val AUTO_CANCEL = "autoCancel"
     }
 }
+
+/** 레슨 전공 설정(웹 LessonGenreSettings) — 강사프로필 genres 만, 역할 부여 없음. */
+class LessonGenresUseCase(private val repo: AccountRepository) {
+    suspend fun load() = repo.lessonGenres()
+    suspend fun save(genres: List<String>) = repo.saveLessonGenres(genres)
+}

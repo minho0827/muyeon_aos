@@ -146,6 +146,7 @@ object ApiEndpoints {
         const val NICE_LINK_START = "$API/identity/nice/link/start"     // POST { returnTo } → { authUrl } (로그인 회원 본인확인)
         const val WITHDRAWAL_INFO = "$API/auth/me/withdrawal-info"      // GET 탈퇴 안내(사유·정리할 내역·삭제 건수 — 서버가 판정)
         const val WITHDRAW = "$API/auth/me/withdraw"                    // POST { reasonCode, reasonText?, agreements, password|confirmText } · 실패 code WITHDRAW_BLOCKED
+        const val PROFILE = "$API/auth/me/profile"                      // GET 강사프로필(user.profile) · PATCH { genres } (역할 부여 없음)
         const val PASSWORD = "$API/auth/me/password"                    // PATCH { newPassword }
         const val SUB_TRUST = "$API/me/sub-trust"                       // GET 대타 신뢰도 { points90d, cancels90d, restrictedUntil, history }
     }

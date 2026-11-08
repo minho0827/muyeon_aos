@@ -317,6 +317,7 @@ fun AppNavHost(
                 },
             )
         }
+        composable(Screen.LessonGenres.route) { com.muyeon.app.ui.account.LessonGenresScreen(onClose = { navController.popBackStack() }) }
         composable(Screen.SubTrust.route) { com.muyeon.app.ui.settings.SubTrustScreen(onBack = { navController.popBackStack() }) }
         // ★ 2026-11-08 상담 채팅(웹 /support/chat) — 방은 운영자 답장 푸시의 착지점.
         composable(Screen.SupportChatList.route) {

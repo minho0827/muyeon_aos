@@ -111,6 +111,8 @@ sealed class Screen(val route: String) {
     /** 비밀번호 변경(웹 /changePassword) · 대타 신뢰도(웹 /subTrust). */
     data object ChangePassword : Screen("changePassword")
     data object SubTrust : Screen("subTrust")
+    /** 레슨 전공 설정(웹 /lessonGenres). */
+    data object LessonGenres : Screen("lessonGenres")
     /** 회원탈퇴(웹 /withdraw). */
     data object Withdraw : Screen("withdraw")
 

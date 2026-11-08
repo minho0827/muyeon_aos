@@ -61,3 +61,7 @@ data class SubTrustDto(
         },
     )
 }
+
+/** GET·PATCH /auth/me/profile — 레슨 전공(genres)만. */
+@JsonClass(generateAdapter = true)
+data class ProfileGenresDto(val genres: List<String>? = null)

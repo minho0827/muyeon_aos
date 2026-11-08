@@ -92,6 +92,7 @@ object NativeRoutes {
             "/profileEdit" -> if (query.isEmpty()) return Target.Route(Screen.ProfileEdit.route, auth = true)
             "/my/credentials" -> return Target.Route(Screen.Credentials.route, auth = true)
             "/changePassword" -> return Target.Route(Screen.ChangePassword.route, auth = true)
+            "/lessonGenres" -> return Target.Route(Screen.LessonGenres.route, auth = true)
             "/withdraw" -> return Target.Route(Screen.Withdraw.route, auth = true)
             "/subTrust" -> return Target.Route(Screen.SubTrust.route, auth = true)
             "/setting" -> return Target.Route(Screen.Settings.route)

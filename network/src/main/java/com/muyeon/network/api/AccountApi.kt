@@ -18,6 +18,8 @@ interface AccountApi {
     @POST(ApiEndpoints.Account.LINK_IDENTITY) suspend fun linkIdentity(@Body body: IdentityTokenBody): Response<AccountDto>
     @POST(ApiEndpoints.Account.NICE_LINK_START) suspend fun startIdentity(@Body body: ReturnToBody): Response<AuthUrlDto>
 
+    @GET(ApiEndpoints.Account.PROFILE) suspend fun profile(): Response<com.muyeon.network.dto.account.ProfileGenresDto>
+    @PATCH(ApiEndpoints.Account.PROFILE) suspend fun updateGenres(@Body body: com.muyeon.network.dto.account.ProfileGenresDto): Response<okhttp3.ResponseBody>
     @PATCH(ApiEndpoints.Account.PASSWORD) suspend fun changePassword(@Body body: com.muyeon.network.dto.account.NewPasswordBody): Response<okhttp3.ResponseBody>
     @GET(ApiEndpoints.Account.SUB_TRUST) suspend fun subTrust(): Response<com.muyeon.network.dto.account.SubTrustDto>
 

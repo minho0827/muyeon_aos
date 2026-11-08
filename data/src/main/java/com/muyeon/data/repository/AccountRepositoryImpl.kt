@@ -61,6 +61,11 @@ class AccountRepositoryImpl(private val api: AccountApi, private val moshi: Mosh
             api.withdraw(body.toString().toRequestBody("application/json".toMediaType()))
         }.map { b -> org.json.JSONObject(b.string().ifBlank { "{}" }).optString("rejoinableFrom").ifBlank { null } }
 
+    override suspend fun lessonGenres(): ApiResult<List<String>> = safeApiCall(moshi) { api.profile() }.map { it.genres.orEmpty() }
+
+    override suspend fun saveLessonGenres(genres: List<String>): ApiResult<Unit> =
+        com.muyeon.data.common.safeUnitCall(moshi) { api.updateGenres(com.muyeon.network.dto.account.ProfileGenresDto(genres)) }
+
     override suspend fun changePassword(newPassword: String): ApiResult<Unit> =
         com.muyeon.data.common.safeUnitCall(moshi) { api.changePassword(com.muyeon.network.dto.account.NewPasswordBody(newPassword)) }
 

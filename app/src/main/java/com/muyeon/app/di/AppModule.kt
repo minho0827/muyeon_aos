@@ -94,6 +94,7 @@ val viewModelModule = module {
     viewModel { com.muyeon.app.ui.account.ChangePasswordViewModel(get()) }
     viewModel { com.muyeon.app.ui.settings.SubTrustViewModel(get()) }
     viewModel { com.muyeon.app.ui.account.WithdrawViewModel(get(), get()) }
+    viewModel { com.muyeon.app.ui.account.LessonGenresViewModel(get()) }
     // ★ 2026-11-08 상담 채팅 — 방 인자: roomId
     viewModel { com.muyeon.app.ui.support.SupportChatListViewModel(get()) }
     viewModel { p -> com.muyeon.app.ui.support.SupportChatRoomViewModel(p.get(), get()) }
