@@ -96,6 +96,10 @@ class LoginActivity : ComponentActivity() {
                         SignupTermsScreen(onAgree = ::agree, onDecline = decline, onOpenPolicy = ::openPolicy)
                     }
                 }
+                // ★ 2026-11-08 묶음 0 — 웹 /accountRecovery?type= 로 열었으면 로그인 위에 찾기 화면(뒤로 = 로그인).
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    if (savedInstanceState == null) intent.getStringExtra(EXTRA_RECOVERY)?.let { nav.navigate(recoveryRoute(it)) }
+                }
                 notice?.let { (code, message) ->
                     val close = { notice = null }
                     CustomDialog(
@@ -166,6 +170,7 @@ class LoginActivity : ComponentActivity() {
         private const val EXTRA_RETURN_RESULT = "muyeon.login.returnResult"
         private const val EXTRA_NOTICE_CODE = "muyeon.login.noticeCode"
         private const val EXTRA_NOTICE_MESSAGE = "muyeon.login.noticeMessage"
+        private const val EXTRA_RECOVERY = "muyeon.login.recovery"
         private const val ROUTE_LOGIN = "login"
         private const val ROUTE_RECOVERY = "recovery"
         private const val ROUTE_TERMS = "terms"
@@ -206,6 +211,12 @@ class LoginActivity : ComponentActivity() {
         /** 로그인 화면 — 마치면 [redirect](없으면 홈)로. [noticeCode]·[noticeMessage] = 강제 로그아웃 안내. */
         fun start(context: Context, redirect: String?, noticeCode: String? = null, noticeMessage: String? = null) {
             context.startActivity(intent(context, redirect, noticeCode, noticeMessage).apply { if (context !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
+        }
+
+        /** ★ 2026-11-08 묶음 0 — 아이디·비밀번호 찾기(웹 /accountRecovery?type=id|pw). */
+        fun startRecovery(context: Context, type: String?) {
+            val t = if (type == AccountRecoveryViewModel.TYPE_PW) AccountRecoveryViewModel.TYPE_PW else AccountRecoveryViewModel.TYPE_ID
+            context.startActivity(intent(context, null).putExtra(EXTRA_RECOVERY, t).apply { if (context !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
         }
 
         /** 웹 주소 /login?redirect=… 로 열기. */

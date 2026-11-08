@@ -60,6 +60,11 @@ class StudioActivity : com.muyeon.app.result.ResultActivity() {
             Intent(context, StudioActivity::class.java).putExtra(EXTRA_ROUTE, route)
 
         fun start(context: Context, route: String) = context.launchScreen(intent(context, route))
+
+        /** ★ 2026-11-08 묶음 0 — 웹 /studio/members/:id. 회원 목록 위에 그 회원 상세(뒤로 = 목록). */
+        fun startMember(context: Context, memberId: Int) =
+            context.launchScreen(intent(context, "members").putExtra(EXTRA_MEMBER_ID, memberId))
+        private const val EXTRA_MEMBER_ID = "memberId"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -123,6 +128,9 @@ class StudioActivity : com.muyeon.app.result.ResultActivity() {
             composable("sales") { StudioSalesScreen(api, onClose = { back() }) }
             composable("schedule") { StudioScheduleScreen(api, onClose = { back() }) }
         }
+        // ★ 2026-11-08 묶음 0 — 웹 /studio/members/:id 로 열었으면 목록 위에 그 회원 상세를 한 번 쌓는다.
+        val memberId = remember { intent.getIntExtra(EXTRA_MEMBER_ID, 0) }
+        LaunchedEffect(memberId) { if (memberId > 0 && nav.currentBackStackEntry?.destination?.route == "members") nav.navigate("member/$memberId") }
     }
 }
 

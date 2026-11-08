@@ -175,6 +175,8 @@ object NativeActionRouter {
     fun open(activity: Activity, action: String, d: JSONObject): Boolean {
         // AI 빠른 메뉴의 '현재 화면' — 곧 뜰 화면에 이 동작 이름을 붙인다(AssistantOverlay NativeScreens).
         if (action.startsWith("open")) com.muyeon.app.ui.assistant.NativeScreens.opening(action)
+        // ★ 2026-11-08 묶음 0 — 경로표가 쓰는 앱 안 전용 액션(NativeActionRouterB0).
+        if (NativeActionRouterB0.open(activity, action, d)) return true
         when (action) {
             "openQuoteWizard" -> com.muyeon.app.ui.quote.QuoteWizardActivity.start(
                 activity,
