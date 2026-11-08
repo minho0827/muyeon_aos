@@ -209,6 +209,44 @@ fun AppNavHost(
                 },
             )
         }
+        // ★ 2026-11-08 지원 내역 — 내가 지원한 공고(웹 /myApplications) · 받은 지원(웹 /receivedApplications).
+        composable(Screen.MyApplications.route) {
+            com.muyeon.app.ui.application.MyApplicationsScreen(
+                onBack = { navController.popBackStack() },
+                onOpenPath = onOpenPath,
+                onBrowseJobs = {
+                    navController.popBackStack(Screen.Main.route, inclusive = false)
+                    onOpenPath("/jobs")
+                },
+            )
+        }
+        composable(
+            Screen.ReceivedApplications.route,
+            arguments = listOf(
+                navArgument(Screen.ReceivedApplications.ARG_KIND) { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument(Screen.ReceivedApplications.ARG_POSTING) { type = NavType.StringType; nullable = true; defaultValue = null },
+            ),
+        ) { e ->
+            val kind = e.arguments?.getString(Screen.ReceivedApplications.ARG_KIND)?.takeIf { it.isNotBlank() }
+            val postingId = e.arguments?.getString(Screen.ReceivedApplications.ARG_POSTING)?.toLongOrNull()
+            com.muyeon.app.ui.application.ReceivedApplicationsScreen(
+                viewModel = org.koin.androidx.compose.koinViewModel(parameters = { org.koin.core.parameter.parametersOf(kind, postingId) }),
+                onBack = { navController.popBackStack() },
+                onOpenResume = { a ->
+                    val pid = a.postingId ?: return@ReceivedApplicationsScreen
+                    // 채용·대타는 앱 지원자 이력서, 캐스팅 지원자는 아직 웹 화면.
+                    if (a.kind == "CASTING") onOpenPath("/casting/$pid/applicants/${a.id}")
+                    else context.findActivity()?.let { act ->
+                        com.muyeon.app.webview.NativeActionRouter.open(
+                            act, "openApplicantResume",
+                            org.json.JSONObject().put("applicationKind", a.kind).put(if (a.kind == "SUB") "subId" else "jobId", pid.toString())
+                                .put("applicationId", a.id.toString()),
+                        )
+                    }
+                },
+                onManagePostings = { onOpenWeb("/myPostings") },
+            )
+        }
         // ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 /lessonList).
         composable(
             Screen.LessonList.route,

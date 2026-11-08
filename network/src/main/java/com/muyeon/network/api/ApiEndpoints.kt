@@ -118,6 +118,17 @@ object ApiEndpoints {
         const val COMPLETED_PAGE = "$API/lessons/me/completed-lessons/page"   // GET period·cursor·limit — 레슨 완료(후기)
     }
 
+    /** ★ 2026-11-08 지원 내역 — me.controller.ts(내가 지원한 공고 · 받은 지원). kind = JOB|SUB|CASTING. */
+    object Applications {
+        const val MINE_PAGE = "$API/me/applications/page"                                   // GET tab(ALL|PROGRESS|CONFIRMED|REJECTED)·period·cursor·limit → { items, counts, … }
+        const val MINE_WITHDRAW = "$API/me/applications/{kind}/{id}/withdraw"               // POST 지원 취소(확정 전)
+        const val MINE_ARCHIVE = "$API/me/applications/{kind}/{id}"                         // DELETE 내 목록에서만 숨김
+        const val RECEIVED_PAGE = "$API/me/received-applications/page"                      // GET kind·postingId·archived·cursor·limit → { items, archivedCount, … }
+        const val RECEIVED_ARCHIVE = "$API/me/received-applications/{kind}/{id}"            // DELETE 휴지통으로
+        const val RECEIVED_RESTORE = "$API/me/received-applications/{kind}/{id}/restore"    // POST 복원
+        const val RECEIVED_PURGE = "$API/me/received-applications/{kind}/{id}/permanent"    // DELETE 휴지통에서 영구 삭제
+    }
+
     /** regions.controller.ts */
     object Regions {
         const val NEAREST = "$API/regions/nearest"           // GET lat·lng → Region | null

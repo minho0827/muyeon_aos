@@ -31,6 +31,7 @@ object NativeRoutes {
     private val CHAT_ROOM = Regex("^/chat/(\\d+)/?$")
     private val TRANSFER = Regex("^/studio-transfers/(\\d+)/?$")
     private val MEMBERSHIP = Regex("^/membership/[A-Za-z_]+/?$")
+    private val CASTING = Regex("^/casting/(\\d+)/?$")
     private val INQUIRY = Regex("^/support/inquiries/(\\d+)/?$")
     private val RESERVATION = Regex("^/reservations/(\\d+)/?$")
 
@@ -76,6 +77,15 @@ object NativeRoutes {
             "/faq" -> return Target.Route(Screen.Faq.route)
             "/likes" -> return Target.Route(Screen.Likes.route, auth = true)
             "/myReservations" -> return Target.Route(Screen.MyReservations.route, auth = true)
+            "/myApplications" -> return Target.Route(Screen.MyApplications.route, auth = true)
+            // 받은 지원 — ?kind=&postingId=(예전 링크 ?jobId= 는 채용) 로 공고 하나만.
+            "/receivedApplications" -> return Target.Route(
+                Screen.ReceivedApplications.build(
+                    query["kind"] ?: if (query["jobId"] != null) "JOB" else null,
+                    (query["postingId"] ?: query["jobId"])?.toLongOrNull(),
+                ),
+                auth = true,
+            )
             "/support/inquiries" -> return Target.Route(Screen.SupportInquiries.route, auth = true)
             "/support/inquiry" -> return Target.Route(Screen.SupportCompose.build(Screen.SupportCompose.INQUIRY), auth = true)
             "/support/feedback" -> return Target.Route(Screen.SupportCompose.build(Screen.SupportCompose.FEEDBACK), auth = true)
@@ -92,6 +102,8 @@ object NativeRoutes {
         TEACHER.find(p)?.let { if (!clean.contains('?')) return Target.Action("openPublicProfile", mapOf("userId" to it.groupValues[1])) }
         // 답변 완료 푸시(SUPPORT_ANSWERED)의 착지점.
         INQUIRY.find(p)?.let { return Target.Route(Screen.SupportInquiryDetail.build(it.groupValues[1].toLong()), auth = true) }
+        // 캐스팅 공고 상세 — 앱 캐스팅·무대 화면(지원 내역·찜에서 연다).
+        CASTING.find(p)?.let { return Target.Action("openCastingStage", mapOf("castingId" to it.groupValues[1])) }
         MEMBERSHIP.find(p)?.let { return Target.Action("openMembership") }
         CHAT_ROOM.find(p)?.let { return Target.Action("openChatRoom", mapOf("roomId" to it.groupValues[1])) }
         TRANSFER.find(p)?.let { return Target.Action("openStudioTransferDetail", mapOf("id" to it.groupValues[1])) }

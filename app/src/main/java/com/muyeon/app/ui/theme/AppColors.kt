@@ -46,6 +46,8 @@ object AppColors {
     val Danger: Color = Palette.Red
     val Positive: Color = Palette.Green
     val Warning: Color = Palette.Yellow500
+    /** 새 항목 점(받은 지원 '새 지원' — 웹 #0A84FF). */
+    val NewDot: Color = Color(0xFF0A84FF)
 
     /** 칩(선택) — 웹 _tab.scss: 선택 칩은 검정 바탕 흰 글자. */
     val ChipSelectedBg: Color = Palette.Gray900

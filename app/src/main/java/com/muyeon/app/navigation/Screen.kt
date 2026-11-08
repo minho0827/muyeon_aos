@@ -80,6 +80,17 @@ sealed class Screen(val route: String) {
     /** 내가 예약한 내역(웹 /myReservations). */
     data object MyReservations : Screen("myReservations")
 
+    /** 내가 지원한 공고(웹 /myApplications). */
+    data object MyApplications : Screen("myApplications")
+    /** 받은 지원(웹 /receivedApplications?kind=&postingId=) — 인자가 비면 전체. */
+    data object ReceivedApplications : Screen("receivedApplications?kind={kind}&postingId={postingId}") {
+        const val ARG_KIND = "kind"
+        const val ARG_POSTING = "postingId"
+        fun build(kind: String?, postingId: Long?) =
+            if (kind.isNullOrBlank() && postingId == null) "receivedApplications"
+            else "receivedApplications?kind=${kind.orEmpty()}&postingId=${postingId?.toString().orEmpty()}"
+    }
+
     /** 홈 '전체보기' 레슨 목록(웹 /lessonList?title=&type=). */
     data object LessonList : Screen("lessonList?title={title}&type={type}") {
         const val ARG_TITLE = "title"
