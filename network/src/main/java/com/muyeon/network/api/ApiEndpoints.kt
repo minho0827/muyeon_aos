@@ -130,6 +130,15 @@ object ApiEndpoints {
         const val RECEIVED_PURGE = "$API/me/received-applications/{kind}/{id}/permanent"    // DELETE 휴지통에서 영구 삭제
     }
 
+    /** ★ 2026-11-08 무용수 프로필 열람 — profiles.controller.ts · chat(direct room) · me.controller.ts(postings). */
+    object Dancers {
+        const val PAGE = "$API/dancers/page"                 // GET major·gender·hasVideo·hasAward·cursor·limit
+        const val DETAIL = "$API/dancers/{id}"               // GET(공연팀·학원·강사만 — 403)
+        const val OFFER = "$API/dancers/{id}/offer"          // POST { callId? } 캐스팅 제안(공연팀)
+        const val DIRECT_ROOM = "$API/chat/rooms/direct"     // POST { targetUserId, targetType } → { roomId } · 403 RECRUIT_CHAT_LIMIT
+        const val MY_POSTINGS = "$API/me/postings"           // GET → 내 공고(kind=CASTING 만 고른다)
+    }
+
     /** regions.controller.ts */
     object Regions {
         const val NEAREST = "$API/regions/nearest"           // GET lat·lng → Region | null

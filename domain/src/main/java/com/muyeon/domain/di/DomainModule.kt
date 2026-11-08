@@ -61,6 +61,8 @@ val domainModule = module {
     // 지원 내역(내가 지원한 공고 · 받은 지원)
     factory { com.muyeon.domain.usecase.application.MyApplicationsUseCase(get()) }
     factory { com.muyeon.domain.usecase.application.ReceivedApplicationsUseCase(get()) }
+    // 무용수 프로필 열람
+    factory { com.muyeon.domain.usecase.dancer.DancersUseCase(get()) }
     // 신고·차단
     factory { ReportUseCase(get()) }
     factory { BlockUserUseCase(get()) }

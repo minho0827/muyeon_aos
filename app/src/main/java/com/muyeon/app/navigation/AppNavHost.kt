@@ -265,6 +265,30 @@ fun AppNavHost(
         composable(Screen.BlockedUsers.route) {
             com.muyeon.app.ui.settings.BlockedUsersScreen(onBack = { navController.popBackStack() })
         }
+        // ★ 2026-11-08 무용수 프로필 열람(웹 /dancers · /dancers/:id).
+        composable(Screen.Dancers.route) {
+            com.muyeon.app.ui.dancer.DancerListScreen(
+                onBack = { navController.popBackStack() },
+                onOpen = { id -> navController.navigate(Screen.DancerDetail.build(id)) },
+                onLogin = { onOpenWeb(WebPaths.login("/dancers")) },
+            )
+        }
+        composable(Screen.DancerDetail.route, arguments = listOf(navArgument(Screen.DancerDetail.ARG_ID) { type = NavType.StringType })) { e ->
+            val id = e.arguments?.getString(Screen.DancerDetail.ARG_ID)?.toLongOrNull() ?: 0L
+            val native: (String, org.json.JSONObject) -> Unit = { action, data ->
+                context.findActivity()?.let { a -> com.muyeon.app.webview.NativeActionRouter.open(a, action, data) }
+            }
+            com.muyeon.app.ui.dancer.DancerDetailScreen(
+                viewModel = org.koin.androidx.compose.koinViewModel(parameters = { org.koin.core.parameter.parametersOf(id) }),
+                onBack = { navController.popBackStack() },
+                onLogin = { onOpenWeb(WebPaths.login("/dancers/$id")) },
+                onOpenImage = { urls, i -> native("openImageViewer", org.json.JSONObject().put("urls", org.json.JSONArray(urls).toString()).put("index", i.toString())) },
+                onOpenUrl = { url -> runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))) } },
+                onReviews = { native("openReviewList", org.json.JSONObject().put("teacherId", id.toString())) },
+                onOpenChat = { roomId, title -> native("openChatRoom", org.json.JSONObject().put("roomId", roomId.toString()).put("title", title)) },
+                onMembership = { native("openMembership", org.json.JSONObject()) },
+            )
+        }
         // ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 /lessonList).
         composable(
             Screen.LessonList.route,

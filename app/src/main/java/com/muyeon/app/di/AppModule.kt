@@ -83,6 +83,9 @@ val viewModelModule = module {
     // ★ 2026-11-08 설정 · 차단한 사용자
     viewModel { com.muyeon.app.ui.settings.SettingsViewModel(get(), get()) }
     viewModel { com.muyeon.app.ui.settings.BlockedUsersViewModel(get()) }
+    // ★ 2026-11-08 무용수 프로필 열람 — 상세 인자: id
+    viewModel { com.muyeon.app.ui.dancer.DancerListViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { p -> com.muyeon.app.ui.dancer.DancerDetailViewModel(p.get(), get(), get(), get(), get(), get(), get()) }
     // ★ 2026-11-08 홈 '전체보기' 레슨 목록 — 인자: type(popular·experience·oneday)
     viewModel { p -> com.muyeon.app.ui.lessonlist.LessonListViewModel(p.getOrNull(), get(), get(), get(), get(), get(), get(), get()) }
     // MY

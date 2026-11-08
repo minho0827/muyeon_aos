@@ -95,6 +95,13 @@ sealed class Screen(val route: String) {
     data object Settings : Screen("settings")
     data object BlockedUsers : Screen("blockedUsers")
 
+    /** 무용수 프로필 열람 목록·상세(웹 /dancers · /dancers/:id). */
+    data object Dancers : Screen("dancers")
+    data object DancerDetail : Screen("dancers/{id}") {
+        const val ARG_ID = "id"
+        fun build(id: Long) = "dancers/$id"
+    }
+
     /** 홈 '전체보기' 레슨 목록(웹 /lessonList?title=&type=). */
     data object LessonList : Screen("lessonList?title={title}&type={type}") {
         const val ARG_TITLE = "title"
