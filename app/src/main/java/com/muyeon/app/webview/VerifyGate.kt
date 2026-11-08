@@ -107,7 +107,11 @@ object VerifyGate {
         gated = next
         val top = resumed?.get()?.takeIf { !it.isFinishing } ?: return
         if (next) enforceOn(top, notifyWeb = changed)
-        else if (changed) bringWeb(top, closeCurrent = false)   // 풀림 — 웹이 다시 읽고 홈으로 보낸다
+        else {
+            if (changed) bringWeb(top, closeCurrent = false)   // 풀림 — 웹이 다시 읽고 홈으로 보낸다
+            // ★ [b1] 차단이 아닌데 앱 차단 화면이 떠 있으면(링크로 열림 · 방금 풀림) 닫고 홈(웹: !gated && /verify-required → 홈).
+            com.muyeon.app.ui.gate.GateActivity.closeVerifyRequired(top)
+        }
     }
 
     /** 차단 중 이 화면을 계속 둘 수 있나 — 본문·학원 인증(온보딩)·스플래시·로그인. */
