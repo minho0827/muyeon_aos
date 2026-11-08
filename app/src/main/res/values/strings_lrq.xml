@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ★ 2026-11-08 원장·공연팀 레슨 요청 월 횟수(서버 403 LESSON_REQUEST_LIMIT · 409 QUOTE_CHAT_EXISTS · GET /quotes/request-quota). 본문은 서버 문구 우선. -->
+<resources>
+    <string name="lrq_limit_title">이번 달 레슨 요청을 모두 썼어요</string>
+    <string name="lrq_limit_message_default">이번 달 레슨 요청을 모두 사용했어요. 강사를 구하신다면 채용·대타 공고를 올려 보세요. 멤버십에 가입하면 레슨 요청을 제한 없이 보낼 수 있어요.</string>
+    <string name="lrq_action_job">채용 공고 올리기</string>
+    <string name="lrq_action_sub">대타공고 올리기</string>
+    <string name="lrq_action_membership">멤버십 보기</string>
+    <string name="lrq_action_close">닫기</string>
+    <string name="lrq_remaining">이번 달 레슨 요청 %1$d회 남았어요</string>
+    <string name="lrq_chat_exists_default">이미 대화 중인 강사예요. 채팅방에서 이어서 이야기해 주세요.</string>
+</resources>

@@ -30,7 +30,24 @@ class ApiMessageException(
     // ★ 2026-11-07 RECRUIT_REDIRECT 의 data.paths(SUB·JOB → "/subs/create?prefill=<id>" 등) — 공고 작성 화면을 레슨 요청 답으로 미리 채운다.
     //  다른 거절에선 null(기존 호출부 그대로).
     val paths: Map<String, String>? = null,
-) : Exception(message)
+    // ★ 2026-11-08 거절 본문의 data 전체 — QUOTE_CHAT_EXISTS 의 roomId, LESSON_REQUEST_LIMIT 의 limit·used·tier.
+    val data: JSONObject? = null,
+) : Exception(message) {
+    /** 409 QUOTE_CHAT_EXISTS — 이어서 이야기할 채팅방. */
+    val roomId: Int? get() = data?.optInt("roomId")?.takeIf { it > 0 }
+}
+
+/**
+ * ★ 2026-11-08 GET /quotes/request-quota — 원장·공연팀 보유자의 이번 달 레슨 요청 남은 횟수.
+ *  applies=false(학생·무제한 멤버십)면 화면은 줄을 숨긴다. chatRoomId 는 ?teacherId= 를 줬을 때 이어서 이야기할 방.
+ */
+data class LessonRequestQuota(
+    val applies: Boolean,
+    val limit: Int,
+    val used: Int,
+    val remaining: Int,
+    val chatRoomId: Int?,
+)
 
 class QuoteApi(private val token: String?) {
 
@@ -42,6 +59,19 @@ class QuoteApi(private val token: String?) {
     /** 견적요청 생성. POST /quotes → { id } */
     suspend fun createQuote(body: JSONObject): Result<Int> =
         call("/quotes", "POST", body).map { it.asObject().optInt("id") }
+
+    /** ★ 2026-11-08 이번 달 레슨 요청 남은 횟수(+ teacherId 를 주면 그 강사와 이어서 이야기할 방). */
+    suspend fun requestQuota(teacherId: Int? = null): Result<LessonRequestQuota> =
+        call("/quotes/request-quota" + (teacherId?.takeIf { it > 0 }?.let { "?teacherId=$it" } ?: "")).map {
+            val o = it.asObject()
+            LessonRequestQuota(
+                applies = o.optBoolean("applies", false),
+                limit = o.optInt("limit", -1),
+                used = o.optInt("used", 0),
+                remaining = o.optInt("remaining", -1),
+                chatRoomId = if (o.isNull("chatRoomId")) null else o.optInt("chatRoomId").takeIf { id -> id > 0 },
+            )
+        }
 
     // MARK: - 받은견적(고객)
 
@@ -238,7 +268,7 @@ class QuoteApi(private val token: String?) {
                     .build()
                 client.newCall(req).execute().use { res ->
                     val text = res.body?.string().orEmpty()
-                    if (!res.isSuccessful) throw ApiMessageException(serverMessage(text) ?: "요청에 실패했어요.", serverCode(text), serverPaths(text))
+                    if (!res.isSuccessful) throw ApiMessageException(serverMessage(text) ?: "요청에 실패했어요.", serverCode(text), serverPaths(text), serverData(text))
                     Body(text)
                 }
             }
@@ -264,6 +294,9 @@ class QuoteApi(private val token: String?) {
         val p = JSONObject(text).optJSONObject("data")?.optJSONObject("paths") ?: return@runCatching null
         p.keys().asSequence().mapNotNull { k -> p.optString(k).ifEmpty { null }?.let { k to it } }.toMap().ifEmpty { null }
     }.getOrNull()
+
+    /** ★ 2026-11-08 4xx 본문의 data 객체 — 없으면 null. */
+    private fun serverData(text: String): JSONObject? = runCatching { JSONObject(text).optJSONObject("data") }.getOrNull()
 
     private companion object {
         val JSON = "application/json".toMediaType()
