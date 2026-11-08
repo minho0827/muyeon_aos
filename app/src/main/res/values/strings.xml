@@ -1154,4 +1154,13 @@
     <string name="survey_profile_empty">아직 응답한 설문이 없어요.</string>
     <string name="assistant_history_empty">아직 AI로 만든 글이 없어요</string>
     <string name="assistant_history_empty_desc">AI로 만든 글은 여기에 모아 둘게요.</string>
+    <!-- iOS 빈 목록 문구(두 앱 같은 키 — iOS sync-shell-strings 가 지우지 않게) -->
+    <string name="posting_my_empty_desc_dancer">공고는 학원·강사·공연팀 유형에서 올릴 수 있어요.</string>
+    <string name="quote_recommend_teachers_empty">추천할 강사가 아직 없어요</string>
+    <string name="quote_recommend_teachers_empty_desc">조건에 맞는 강사가 등록되면 알려드릴게요.</string>
+    <string name="quote_teacher_lessons_empty">등록된 레슨이 없어요</string>
+    <string name="quote_teacher_lessons_empty_desc">아직 공개된 레슨이 없는 강사님이에요.</string>
+    <string name="survey_picker_empty">등록된 설문지가 없어요.</string>
+    <string name="lesson_partners_empty">아직 레슨을 진행한 수강생이 없어요</string>
+    <string name="lesson_partners_empty_desc">레슨을 진행하면 여기서 바로 다음 약속을 잡을 수 있어요.</string>
 </resources>
