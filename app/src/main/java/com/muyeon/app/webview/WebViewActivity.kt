@@ -106,6 +106,76 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
     }
 
     /**
+     * ★ 2026-11-08 앱 로그인 화면(결과로 연 것) — 성공이면 이 창 저장소에 로그인을 넣고 다시 읽은 뒤 이어서 할 일(LoginResume)을 연다.
+     *  실패·취소면 이어서 할 일을 버린다(웹 /login 에서 뒤로 나온 것과 같다).
+     */
+    private val loginLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode != RESULT_OK) { pendingAfterLogin = null; return@registerForActivityResult }
+        WebLogin.applyNow(this, webView) { webView.reload() }
+        onLoggedIn()
+    }
+
+    /** 소셜 로그인 창(카카오·네이버 웹 OAuth) — [startSocialLogin] 으로 열었을 때만. */
+    private val socialProvider: com.muyeon.app.auth.LoginProvider? by lazy {
+        intent.getStringExtra(EXTRA_SOCIAL)?.let { v -> com.muyeon.app.auth.LoginProvider.entries.firstOrNull { it.name == v } }
+    }
+    /** 소셜 로그인이 아직 안 끝났다 — 뒤로·취소면 창을 닫아 앱 로그인 화면으로 돌아간다. */
+    private var socialPending = false
+    /** 소셜 콜백(/oauth/kakao · /naverAuth)까지 갔다 — 그 뒤 /login 으로 오면 취소·실패다. */
+    private var socialReturned = false
+    private var socialClicked = false
+
+    /**
+     * 웹 로그인 주소 처리. 처리했으면 true.
+     *  · 소셜 창: 첫 /login 은 그대로(버튼을 대신 누른다) · 콜백 뒤 /login = 취소·실패 → 창을 닫는다.
+     *  · 보통 창: 웹이 /login 으로 가면 앱 로그인 화면을 띄우고 이 창은 이전 화면으로(첫 화면이면 닫는다).
+     *    redirect 는 웹 주소창(location.search)에서, 강제 로그아웃 안내는 웹 sessionStorage(muyeon.logoutNotice)에서 읽는다.
+     */
+    private fun handleLoginRoute(path: String): Boolean {
+        if (socialPending) {
+            if (path == "/oauth/kakao" || path == "/naverAuth") socialReturned = true
+            if (com.muyeon.app.ui.auth.LoginActivity.isLoginPath(path)) {
+                if (socialReturned) finish()
+                return true
+            }
+            return false
+        }
+        if (!com.muyeon.app.ui.auth.LoginActivity.isLoginPath(path)) return false
+        val js = "(function(){var n=null;try{n=sessionStorage.getItem('muyeon.logoutNotice');sessionStorage.removeItem('muyeon.logoutNotice')}catch(e){}" +
+            "var i=0;try{i=(history.state&&history.state.idx)||0}catch(e){}return JSON.stringify({s:location.search,n:n,i:i})})()"
+        webView.evaluateJavascript(js) { raw ->
+            if (isFinishing) return@evaluateJavascript
+            val o = runCatching { org.json.JSONObject(org.json.JSONArray("[$raw]").getString(0)) }.getOrNull()
+            val notice = o?.optString("n")?.takeIf { it.isNotBlank() && it != "null" }?.let { runCatching { org.json.JSONObject(it) }.getOrNull() }
+            if (!com.muyeon.app.ui.auth.LoginActivity.isAlive) {
+                com.muyeon.app.ui.auth.LoginActivity.start(
+                    this,
+                    com.muyeon.app.ui.auth.LoginActivity.redirectOf("/login" + (o?.optString("s").orEmpty())),
+                    notice?.optString("code")?.ifBlank { "LOGOUT" }, notice?.optString("message"),
+                )
+            }
+            // SPA 로 들어온 /login 이면 이전 화면으로, 문서째 연 /login(강제 로그아웃·401)이나 첫 화면이면 창을 닫는다.
+            if ((o?.optInt("i") ?: 0) > 0) webView.evaluateJavascript("history.back()", null) else finish()
+        }
+        return true
+    }
+
+    /** 소셜 창 — 웹 로그인 화면의 그 버튼을 대신 누른다(웹이 state·redirect 를 만든다). 문서당 한 번, 버튼이 그려질 때까지 기다린다. */
+    private fun clickSocialButton() {
+        val p = socialProvider ?: return
+        if (socialClicked || !socialPending) return
+        socialClicked = true
+        val label = getString(if (p == com.muyeon.app.auth.LoginProvider.NAVER) R.string.auth_login_naver else R.string.auth_login_kakao)
+        val sel = org.json.JSONObject.quote("button[aria-label=\"$label\"]")
+        webView.evaluateJavascript(
+            "(function(){function f(){var b=document.querySelector($sel);if(b){b.click();return true}return false}" +
+                "if(f())return;var o=new MutationObserver(function(){if(f())o.disconnect()});" +
+                "o.observe(document.documentElement,{childList:true,subtree:true});setTimeout(function(){o.disconnect()},15000)})()",
+            null,
+        )
+    }
+
+    /**
      * 결과 키 → 웹. 키마다 __muyeonResult(없으면 레거시 __onX) 한 번씩(WebCallbacks.resultJs).
      *  채팅·알림이 바뀌었으면 플로팅 배지도 곧바로 다시 읽는다(폴링 대신).
      */
@@ -124,6 +194,7 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
     private fun onWebRoute(path: String) {
         lastRoute = path
         syncRegionFromWeb()
+        if (handleLoginRoute(path)) return
         // 앱 탭 주소 또는 앱으로 옮긴 상세(커뮤니티 글·공연) — 이 창을 닫고 앱 화면으로(NativeRoutes 표).
         // 웹이 스스로 네이티브로 넘기는 주소(Action)는 웹이 이미 열었다 — 여기서 또 열면 두 번 뜬다.
         val target = com.muyeon.app.navigation.NativeRoutes.resolve(path)
@@ -141,6 +212,9 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
 
     /** AndroidToken.saveToken 성공(웹 로그인·가입 완료) 때 UI 스레드에서 불린다. */
     fun onLoggedIn() {
+        // 소셜 로그인 창 — 마지막 로그인 수단을 기억하고(로그인 화면 '최근 로그인'), 이제부터는 보통 웹 창이다.
+        socialProvider?.takeIf { socialPending }?.let { com.muyeon.app.auth.LoginProvider.save(this, it) }
+        socialPending = false
         val r = pendingAfterLogin ?: return
         pendingAfterLogin = null
         appBridge.openAction(r.action, r.paramsJson())
@@ -151,11 +225,8 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
         if (ResultKeys.LOGIN_REQUIRED in keys) {
             pendingAfterLogin = com.muyeon.app.ui.common.market.LoginResume.fromBundle(payload?.getBundle(ResultKeys.LOGIN_REQUIRED))
         }
-        // ★ 2026-11-03 네이티브 화면이 '로그인 필요'로 닫혔다 → 결과를 받은 지금 웹 로그인 화면으로(SPA 이동, 웹 준비 후).
-        if (ResultKeys.LOGIN_REQUIRED in keys) {
-            // consumeNativeRoute 와 같은 규칙 — __nativeGo 가 아직 없으면 0 → 웹 준비(webReady) 때 다시 흘린다.
-            evalWhenReady("(function(){ if(window.__nativeGo){ window.__nativeGo('/login'); return 1; } return 0; })()")
-        }
+        // ★ 2026-11-08 네이티브 화면이 '로그인 필요'로 닫혔다 → 앱 로그인 화면(결과로 받는다 — 성공하면 이 창을 로그인 상태로 다시 읽고 이어서 연다).
+        if (ResultKeys.LOGIN_REQUIRED in keys) loginLauncher.launch(com.muyeon.app.ui.auth.LoginActivity.resultIntent(this))
         keys.filter { it != ResultKeys.LOGIN_REQUIRED }
             .forEach { key -> evalWhenReady(readyGuarded(WebCallbacks.resultJs(key, payload.payloadJsonFor(key)))) }
         if (ResultKeys.CHAT_ROOMS in keys || ResultKeys.CHAT_ROOM in keys || ResultKeys.NOTIFICATIONS in keys) {
@@ -216,6 +287,9 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
         setupWebView()
         // ★ 2026-11-07 앱 MY 에서 로그아웃했으면 웹 저장소의 로그인 정보도 지운다(문서 시작 스크립트, 한 번만).
         WebLogout.install(this, webView, com.muyeon.app.utils.Constants.getBaseUrl(this).trimEnd('/'))
+        // ★ 2026-11-08 앱 로그인 화면에서 로그인했으면 웹 저장소에도 같은 로그인을 넣는다(문서 시작 스크립트, 한 번만).
+        WebLogin.install(this, webView, com.muyeon.app.utils.Constants.getBaseUrl(this).trimEnd('/'))
+        socialPending = socialProvider != null && savedInstanceState == null
         attachFloatingScrollListener()
 
         fileInterface = FileWebViewInterface(
@@ -622,6 +696,11 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
          *  링크 표(웹 nativeLink.js)로 앱 화면을 여는 일은 웹 페이지가 한다.
          */
         fun startPath(context: android.content.Context, path: String, viaLink: Boolean = false, tabKey: String? = null) {
+            // ★ 2026-11-08 로그인은 앱 화면이다 — 웹 창 대신 앱 로그인 화면(redirect 를 들고 간다).
+            if (com.muyeon.app.ui.auth.LoginActivity.isLoginPath(path)) {
+                com.muyeon.app.ui.auth.LoginActivity.startFromPath(context, path)
+                return
+            }
             context.startActivity(
                 Intent(context, WebViewActivity::class.java)
                     .putExtra(EXTRA_START_PATH, path)
@@ -629,6 +708,19 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
             )
         }
         private const val STATE_AFTER_LOGIN = "muyeon.afterLogin"
+        private const val EXTRA_SOCIAL = "muyeon.web.socialLogin"
+
+        /**
+         * ★ 2026-11-08 소셜 로그인(카카오·네이버) — 앱에 SDK 가 없어 웹 OAuth 로 한다.
+         *  웹 로그인 화면(/login?redirect=)을 열어 그 버튼을 대신 누른다 → 카카오·네이버 인증 → 웹 콜백 페이지가 서버와 토큰을 바꾸고
+         *  AndroidToken.saveToken 으로 넘긴다(AuthSession.onWebLogin — 앱 로그인과 같은 후처리) → 웹이 redirect(신규면 /social-signup)로.
+         *  취소·실패(콜백 뒤 /login)·뒤로면 이 창을 닫아 앱 로그인 화면으로 돌아간다.
+         */
+        fun startSocialLogin(context: android.content.Context, provider: com.muyeon.app.auth.LoginProvider, redirect: String) {
+            // 네이버 버튼은 웹도 검수 전엔 ?naver=1 일 때만 그린다.
+            val path = "/login?redirect=" + android.net.Uri.encode(redirect) + if (provider == com.muyeon.app.auth.LoginProvider.NAVER) "&naver=1" else ""
+            context.startActivity(Intent(context, WebViewActivity::class.java).putExtra(EXTRA_START_PATH, path).putExtra(EXTRA_SOCIAL, provider.name))
+        }
 
         /** 떠 있는 본문 화면 수 — 앱이 켜진 채 링크가 오면 스플래시가 새로 만들지 않고 이 화면으로 넘긴다.
          *  개수로 센다: CLEAR_TASK 로 바뀔 때 새 화면 onCreate 가 옛 화면 onDestroy 보다 먼저 온다. */
@@ -743,6 +835,8 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
                 )
                 // webReady 를 안 보내는 옛 웹 안전망. 준비 전이면 가드가 0 을 돌려 그대로 남는다.
                 if (!webReady) flushPendingJs()
+                // 소셜 로그인 창 — 첫 로그인 문서에서 카카오·네이버 버튼을 대신 누른다.
+                if (socialPending && url?.contains("/login") == true) clickSocialButton()
             }
         }
         webView.webChromeClient = object : android.webkit.WebChromeClient() {
@@ -805,6 +899,8 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
     @Deprecated("")
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
+        // 소셜 로그인 중(카카오·네이버 화면 포함) 뒤로 = 취소 — 앱 로그인 화면으로.
+        if (socialPending) { finish(); return }
         // 예전 그대로 canGoBack 이 먼저다. 막혔을 때만 웹(SPA) 기록을 본다.
         //  크롬 웹뷰는 사용자 조작 없이 쌓인 기록(링크·푸시로 들어와 __nativeGo 가 깐 홈)을 canGoBack 에서 건너뛴다
         //  (History Manipulation Intervention — 2026-10-26 실기기: 기록 2칸인데 canGoBack=false 라 종료 팝업).

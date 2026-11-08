@@ -49,22 +49,25 @@ object ForceLogout {
 
     /** 강제 로그아웃 실행(어느 스레드에서 불러도 된다). 이미 처리 중이면 무시. */
     fun trigger(context: Context, code: String, message: String?) {
-        if (!handled.compareAndSet(false, true)) return
         val app = context.applicationContext
+        // ★ 2026-11-08 로그인 전(정지 회원의 로그인 시도 등)은 끊을 세션이 없다 — 로그인 화면이 서버 문구를 그 자리에 보여 준다.
+        if (TokenManager.getAccessToken(app).isNullOrBlank()) return
+        if (!handled.compareAndSet(false, true)) return
         Handler(Looper.getMainLooper()).post {
             Log.i(TAG, "trigger code=$code")
             TokenManager.clearTokens(app)
             ChatSocketManager.disconnect()
-            // ★ 2026-11-07 앱 루트(탭 셸)를 새로 세우고 그 위에 웹 로그인 창 — 웹(common/forceLogout)이 안내 팝업을 띄운다.
             com.muyeon.app.webview.ActiveRole.clear(app)
+            // 웹 창 저장소의 로그인도 다음 창에서 지운다(웹 common/forceLogout 이 하던 localStorage 정리).
+            com.muyeon.app.webview.WebLogout.mark(app)
+            com.muyeon.app.webview.WebLogin.clear(app)
+            // ★ 2026-11-08 앱 루트(탭 셸)를 새로 세우고 그 위에 앱 로그인 화면 — 안내 팝업(웹 ForceLogoutHost 와 같은 제목·문구)을 띄운다.
             runCatching {
                 app.startActivities(
                     arrayOf(
                         Intent(app, com.muyeon.app.ui.main.MainActivity::class.java)
                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
-                        Intent(app, WebViewActivity::class.java)
-                            .putExtra(WebViewActivity.EXTRA_START_PATH, "/login")
-                            .putExtra(EXTRA_CODE, code).putExtra(EXTRA_MESSAGE, message.orEmpty()),
+                        com.muyeon.app.ui.auth.LoginActivity.intent(app, null, code, message.orEmpty()),
                     ),
                 )
             }.onFailure { Log.w(TAG, "본문 열기 실패: ${it.message}") }

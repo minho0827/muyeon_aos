@@ -17,6 +17,8 @@ object AppTypography {
 
     /** 화면 제목(헤더) — 18 bold. */
     val Title18 = s(18.sp, FontWeight.Bold)
+    /** 인사말(웹 t-22-multi fw-b — 로그인 '무용연에 오신 것을 환영해요') — 22 bold, 여러 줄. */
+    val Title22 = s(22.sp, FontWeight.Bold, line = 1.45f)
     /** 큰 안내(홈 '📍 우리 학원 맞춤', MY 이름) — 20 bold. */
     val Title20 = s(20.sp, FontWeight.Bold)
     /** 섹션 제목(웹 .meal-time) — 16 bold. */

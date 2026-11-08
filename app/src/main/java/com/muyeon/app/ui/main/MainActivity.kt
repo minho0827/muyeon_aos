@@ -25,6 +25,7 @@ import com.muyeon.app.navigation.AppResults
 import com.muyeon.app.result.ResultHost
 import com.muyeon.app.result.ResultKeys
 import com.muyeon.app.result.resultKeys
+import com.muyeon.app.result.resultPayload
 import com.muyeon.app.theme.MuyeonTheme
 import com.muyeon.app.ui.chat.ChatActivity
 import com.muyeon.app.ui.floating.FloatingApi
@@ -54,12 +55,24 @@ class MainActivity : ComponentActivity(), ResultHost {
     private val nativeResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val keys = result.data.resultKeys()
         AppResults.publish(keys)
-        // 네이티브 화면이 '로그인 필요'로 닫혔다 → 웹 로그인 창.
-        if (ResultKeys.LOGIN_REQUIRED in keys) WebViewActivity.startPath(this, "/login")
+        // 네이티브 화면이 '로그인 필요'로 닫혔다 → 앱 로그인 화면(마치면 하려던 화면·동작을 이어서 연다 — LoginResume).
+        if (ResultKeys.LOGIN_REQUIRED in keys) {
+            pendingAfterLogin = com.muyeon.app.ui.common.market.LoginResume.fromBundle(result.data.resultPayload()?.getBundle(ResultKeys.LOGIN_REQUIRED))
+            loginLauncher.launch(com.muyeon.app.ui.auth.LoginActivity.resultIntent(this))
+        }
         if (ResultKeys.CHAT_ROOMS in keys || ResultKeys.CHAT_ROOM in keys || ResultKeys.NOTIFICATIONS in keys) FloatingState.requestRefresh()
     }
 
     override fun launchForResult(intent: Intent) = nativeResultLauncher.launch(intent)
+
+    /** 로그인 후 이어서 할 일(LoginResume) — 앱 로그인 화면이 성공으로 닫히면 한 번 연다. */
+    private var pendingAfterLogin: com.muyeon.app.ui.common.market.LoginResume? = null
+    private val loginLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val r = pendingAfterLogin
+        pendingAfterLogin = null
+        viewModel.onResume()
+        if (result.resultCode == RESULT_OK && r != null) com.muyeon.app.webview.NativeActionRouter.open(this, r.action, r.paramsJson())
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         liveCount++
@@ -208,6 +221,8 @@ class MainActivity : ComponentActivity(), ResultHost {
     /** 경로 열기 — 앱 탭 주소면 탭, 아니면 웹 창. 다른 사이트 주소는 웹 창이 그대로 연다. */
     /** 웹 창 열기 — 단, 웹이 열리자마자 네이티브로 넘기는 주소(이력서 관리·레슨 일정)는 웹 창 없이 바로(두 겹 방지). */
     private fun openWeb(path: String) {
+        // ★ 2026-11-08 웹 로그인 주소(/login?redirect=…) — 앱 로그인 화면으로(셸의 login 액션·MY 비회원 [로그인] 이 모두 이 길).
+        if (com.muyeon.app.ui.auth.LoginActivity.isLoginPath(path)) { com.muyeon.app.ui.auth.LoginActivity.startFromPath(this, path); return }
         val t = com.muyeon.app.navigation.NativeRoutes.resolve(path)
         if (t is com.muyeon.app.navigation.NativeRoutes.Target.Action &&
             com.muyeon.app.webview.NativeActionRouter.open(this, t.action, org.json.JSONObject(t.data))) return
@@ -219,6 +234,7 @@ class MainActivity : ComponentActivity(), ResultHost {
     private fun openPath(urlOrPath: String, viaLink: Boolean) {
         val base = com.muyeon.app.utils.Constants.getBaseUrl(this).trimEnd('/')
         val path = if (urlOrPath.startsWith(base)) urlOrPath.removePrefix(base).ifEmpty { "/" } else urlOrPath
+        if (com.muyeon.app.ui.auth.LoginActivity.isLoginPath(path)) { com.muyeon.app.ui.auth.LoginActivity.startFromPath(this, path); return }
         when (val target = com.muyeon.app.navigation.NativeRoutes.resolve(path)) {
             is com.muyeon.app.navigation.NativeRoutes.Target.Tab -> { viewModel.selectTab(target.tab); return }
             is com.muyeon.app.navigation.NativeRoutes.Target.Route -> { openRoute(target, path); return }
@@ -230,10 +246,10 @@ class MainActivity : ComponentActivity(), ResultHost {
         WebViewActivity.startPath(this, path, viaLink = viaLink)
     }
 
-    /** 탭 위 앱 화면 — 로그인해야 보는 화면인데 비회원이면 로그인 창부터(마치면 웹이 [path] 로 보내고, 그 주소가 다시 이 화면을 연다). */
+    /** 탭 위 앱 화면 — 로그인해야 보는 화면인데 비회원이면 앱 로그인 화면부터(마치면 [path] 로 openPath — 그 주소가 다시 이 화면을 연다). */
     private fun openRoute(t: com.muyeon.app.navigation.NativeRoutes.Target.Route, path: String) {
         if (t.auth && TokenManager.getAccessToken(this).isNullOrBlank()) {
-            WebViewActivity.startPath(this, com.muyeon.app.navigation.WebPaths.login(path))
+            com.muyeon.app.ui.auth.LoginActivity.start(this, path)
             return
         }
         viewModel.openRoute(t.route)

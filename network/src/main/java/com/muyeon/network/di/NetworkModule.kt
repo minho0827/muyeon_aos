@@ -70,6 +70,7 @@ val apiModule = module {
     single<com.muyeon.network.api.SupportChatApi> { get<Retrofit>().create(com.muyeon.network.api.SupportChatApi::class.java) }
     single<com.muyeon.network.api.SupportApi> { get<Retrofit>().create(com.muyeon.network.api.SupportApi::class.java) }
     single<com.muyeon.network.api.SafetyApi> { get<Retrofit>().create(com.muyeon.network.api.SafetyApi::class.java) }
+    single<com.muyeon.network.api.AuthApi> { get<Retrofit>().create(com.muyeon.network.api.AuthApi::class.java) }
 }
 
 fun networkModules(): List<Module> = listOf(networkModule, apiModule)

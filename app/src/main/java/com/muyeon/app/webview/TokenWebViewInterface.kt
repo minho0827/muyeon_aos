@@ -85,14 +85,9 @@ class TokenWebViewInterface(private val context: Context, private val webView: W
 
             val response = if (accessToken.isNotEmpty() && refreshToken.isNotEmpty()) {
                 TokenManager.saveTokens(context, accessToken, refreshToken)
-                // ★ 2026-11-04 새 세션 — 강제 로그아웃을 다시 받을 수 있게 하고, 네이티브 소켓을 새 토큰으로 붙인다.
-                com.muyeon.app.chat.socket.ForceLogout.reset()
-                com.muyeon.app.chat.socket.ChatSocketLifecycleObserver.ensureAttached(context)
-                com.muyeon.app.chat.socket.ChatSocketManager.connect(context)
-                // 웹 로그인·가입 — 서버 활성유형으로 X-Active-Type 값 맞춤
-                ActiveRole.syncFromServer(context)
-                // 로그인 직후 — 로그아웃 상태에서 결제했거나 못 보낸 구글 구매를 서버에 보낸다.
-                webView.post { com.muyeon.app.ui.membership.MembershipBilling.flushUnfinished() }
+                // ★ 2026-11-08 로그인 직후 처리는 앱 로그인 화면과 한 곳(AuthSession) — 강제 로그아웃 다시 받기 · 소켓 새 토큰 ·
+                //  서버 활성유형(X-Active-Type) · 못 보낸 구글 구매 · 아래 깔린 앱 로그인 화면 닫기.
+                webView.post { com.muyeon.app.auth.AuthSession.onWebLogin(context) }
                 // ★ 2026-11-03 로그인 완료 이벤트 — 네이티브 화면에서 [로그인]으로 왔으면 그 화면·동작을 이어서 연다.
                 webView.post { (context as? WebViewActivity)?.onLoggedIn() }
                 WebViewResponse.success(emptyList())

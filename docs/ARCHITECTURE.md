@@ -88,3 +88,4 @@ SplashActivity ─▶ MainActivity (앱 루트: 하단 탭바 + 앱 탭 화면)
 | 2026-11-07 | 모듈 분리·Koin·탭 셸(MainActivity)·웹 창 연결 |
 | 2026-11-08 | 모든 회원 같은 탭 [홈][공연][공간][채용][MY] · 토스 방식 탭바(채용 2계층 [←][채용][대타공고][캐스팅]) · 홈 [강사|레슨] · 채용·대타 목록/상세/설문 등록 앱 화면 · '다시 시도' 팝업(NetworkRetryInterceptor) |
 | 2026-11-08 | 웹에만 있던 MY·전체 메뉴 화면을 탭 위 앱 화면(Route)으로 — 공지·FAQ·1:1 문의/의견·찜·예약 내역·지원한 공고·받은 지원·설정·차단한 사용자·홈 '전체보기' 레슨 목록. `NativeRoutes.Target.Route(auth=true)` 는 비회원이면 셸이 웹 로그인부터 연다. `MainActivity.openWeb`(MY 메뉴)도 Route 를 연다 |
+| 2026-11-08 | 로그인 앱 화면(`ui/auth/LoginActivity` — 로그인·아이디 찾기·비밀번호 재설정·약관 게이트). `/login` 주소는 어디서 열든(셸 openWeb·openPath·Route auth·`WebViewActivity.startPath`·웹 창 안 이동·강제 로그아웃) 이 화면으로. 로그인 후처리는 `auth/AuthSession` 한 곳(웹 saveToken 과 공용), 웹 창 저장소는 `WebLogin`(WebLogout 의 짝). 소셜은 SDK 없이 웹 OAuth 창(`WebViewActivity.startSocialLogin`) |

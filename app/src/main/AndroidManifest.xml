@@ -297,6 +297,12 @@
             android:exported="false"
             android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize" />
+        <!-- ★ 2026-11-08 로그인·아이디 찾기·비밀번호 재설정(웹 /login · /accountRecovery 를 앱 화면으로) -->
+        <activity
+            android:name=".ui.auth.LoginActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
         <activity
             android:name=".ui.lesson.LessonActivity"
             android:exported="false"

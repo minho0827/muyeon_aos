@@ -53,6 +53,12 @@ object ApiEndpoints {
     object Auth {
         const val ACTIVE_TYPE = "$API/auth/me/active-type"   // PATCH { type }
         const val UI_FLAGS = "$API/auth/me/ui-flags"         // GET { flags } · PATCH { key: true }
+        // ★ 2026-11-08 로그인·아이디 찾기·비밀번호 재설정(웹 Login.js · AccountRecovery.js) — auth.controller.ts
+        const val LOGIN = "$API/auth/login"                                  // POST { email, password } → { accessToken, sessionId, user }
+        const val FIND_ID = "$API/auth/find-id"                              // POST { name, phone } → { email } · 404 '일치하는 회원 정보가 없습니다.'
+        const val EMAIL_SEND_CODE = "$API/auth/email/send-code"              // POST { email, purpose: RESET } (메일 발송)
+        const val RESET_PASSWORD_EMAIL = "$API/auth/reset-password-email"    // POST { email, code, newPassword } → { ok }
+        const val TERMS_AGREE = "$API/auth/terms/agree"                      // POST { agreements } (약관 게이트 — 로그인 뒤 termsAgreed=false)
     }
 
     /** MY 화면이 읽는 것 — 출처 파일은 각 줄 끝 주석. */

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 웹 muyeon-front assets/icons/ic-naver.svg 그대로(소셜 로그인 원형 버튼). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp" android:height="40dp"
+    android:viewportWidth="40" android:viewportHeight="40">
+    <path android:fillColor="#03C75A" android:pathData="M40 20C40 8.95431 31.0457 0 20 0C8.95431 0 0 8.95431 0 20C0 31.0457 8.95431 40 20 40C31.0457 40 40 31.0457 40 20Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M22.6003 20.5128L17.1908 12.7604H12.7051V27.2366H17.4003V19.4842L22.8098 27.2366H27.2956V12.7604H22.6003V20.5128Z" />
+</vector>

@@ -40,10 +40,12 @@ val appModule = module {
                 ActiveRole.clear(ctx)
                 com.muyeon.app.chat.socket.ChatSocketManager.disconnect()
                 com.muyeon.app.webview.WebLogout.mark(ctx)
+                com.muyeon.app.webview.WebLogin.clear(ctx)
                 com.muyeon.app.ui.floating.FloatingState.requestRefresh()
             }
         }
     }
+    single { com.muyeon.app.auth.LoginRememberStore(androidContext()) }
     single<com.muyeon.domain.common.NetworkRetryPrompt> { com.muyeon.app.ui.main.NetworkRetryHost }
     single<ForceLogoutTrigger> {
         val ctx: Context = androidContext()
@@ -100,6 +102,9 @@ val viewModelModule = module {
     viewModel { p -> com.muyeon.app.ui.support.SupportChatRoomViewModel(p.get(), get()) }
     // ★ 2026-11-08 홈 '전체보기' 레슨 목록 — 인자: type(popular·experience·oneday)
     viewModel { p -> com.muyeon.app.ui.lessonlist.LessonListViewModel(p.getOrNull(), get(), get(), get(), get(), get(), get(), get()) }
+    // ★ 2026-11-08 로그인 · 아이디 찾기/비밀번호 재설정 — 인자: type(id·pw)
+    viewModel { com.muyeon.app.ui.auth.LoginViewModel(get(), get()) }
+    viewModel { p -> com.muyeon.app.ui.auth.AccountRecoveryViewModel(p.get(), get(), get()) }
     // MY
     viewModel { com.muyeon.app.ui.my.MyViewModel(get(), get(), get(), get(), get(), get(), get()) }
     // 강사

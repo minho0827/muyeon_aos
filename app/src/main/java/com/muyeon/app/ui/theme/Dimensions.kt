@@ -33,6 +33,10 @@ object Dimensions {
     // === 헤더(웹 $top-bar 5.6rem) ===
     val topBarHeight = 56.dp
 
+    // === 버튼(웹 .btn-md — 높이 4.8rem · 모서리 $btn-radius 1.2rem) ===
+    val buttonMdHeight = 48.dp
+    val buttonRadius = 12.dp
+
     // === 칩(웹 _tab.scss type-chip) ===
     val chipHeight = 36.dp
     val chipPaddingH = 16.dp

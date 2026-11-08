@@ -35,6 +35,8 @@ object AppColors {
     /** 웹 $divider-dash — 탭바 위 선. */
     val DividerStrong: Color = Palette.Gray150
     val ChipBorder: Color = Palette.Gray200
+    /** 웹 .btn-md.outlined 테두리($btn-outlined-border = gray-500). */
+    val ButtonOutline: Color = Palette.Gray500
 
     // === Icon ===
     /** 탭바 꺼진 아이콘(웹 $background-ico-g300). */
