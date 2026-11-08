@@ -1,5 +1,9 @@
 package com.muyeon.app.ui.jobposting
 
+import com.muyeon.app.R
+import com.muyeon.app.ui.common.requiredField
+import com.muyeon.app.ui.common.RequiredHint
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -109,6 +113,7 @@ fun JobPostingWizardScreen(
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val scroll = rememberScrollState()
+    val required = com.muyeon.app.ui.common.rememberRequiredForm()
 
     LaunchedEffect(jobId) {
         jobId?.let { api.loadJob(it).onSuccess { f -> form = f; baseline = f; existingDetailType = f.detailType } }
@@ -279,22 +284,29 @@ fun JobPostingWizardScreen(
                         )
                     }
                     SectionHead("기본 정보", "공고의 기본 정보를 입력해 주세요.")
-                    JobField("공고 제목", form.title, "예) 성인 발레 강사 모집", required = true) {
-                        form = form.copy(title = it)
+                    Column(Modifier.requiredField(required, "title", "공고 제목", form.title.isNotBlank(), "s0"), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        JobField("공고 제목", form.title, "예) 성인 발레 강사 모집", required = true) { form = form.copy(title = it) }
+                        RequiredHint(required, "title")
                     }
-                    JobChips("장르", JobFormOptions.genres.map { it to it }, setOfNotNull(form.genre)) {
-                        form = form.copy(genre = if (form.genre == it) null else it)
+                    Column(Modifier.requiredField(required, "genre", "장르", !form.genre.isNullOrEmpty(), "s0"), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        JobChips("장르", JobFormOptions.genres.map { it to it }, setOfNotNull(form.genre)) {
+                            form = form.copy(genre = if (form.genre == it) null else it)
+                        }
+                        RequiredHint(required, "genre")
                     }
-                    JobChips("모집 분야", ResumeOptions.teachingFields, (form.fields ?: emptyList()).toSet()) { v ->
-                        val cur = form.fields ?: emptyList()
-                        form = form.copy(fields = (if (cur.contains(v)) cur - v else cur + v).ifEmpty { null })
+                    Column(Modifier.requiredField(required, "fields", "모집 분야", !form.fields.isNullOrEmpty(), "s0"), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        JobChips("모집 분야", ResumeOptions.teachingFields, (form.fields ?: emptyList()).toSet()) { v ->
+                            val cur = form.fields ?: emptyList()
+                            form = form.copy(fields = (if (cur.contains(v)) cur - v else cur + v).ifEmpty { null })
+                        }
+                        RequiredHint(required, "fields")
                     }
                     JobChips("수업 대상", ResumeOptions.classTargets, setOfNotNull(form.target)) {
                         form = form.copy(target = if (form.target == it) null else it)
                     }
                     // ★ 자유 텍스트가 아니라 /regions 코드에서 고른다 — regionCode 가 있어야
                     //   공고 목록의 지역 필터·관심조건 매칭 알림이 걸린다(iOS RegionPickRow).
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(Modifier.requiredField(required, "region", "근무 지역", !form.region.isNullOrEmpty(), "s0"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                             Text(
                                 "근무 지역",
@@ -313,6 +325,7 @@ fun JobPostingWizardScreen(
                         ) { name, code ->
                             form = form.copy(region = name, regionCode = code)
                         }
+                        RequiredHint(required, "region")
                     }
                     CoverUpload(form.imageUrl, uploadingCover) {
                         coverPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
@@ -478,7 +491,11 @@ fun JobPostingWizardScreen(
                 JobButton("이전", filled = false, enabled = true, modifier = Modifier.weight(1f)) { step -= 1 }
             }
             if (step < 3) {
-                JobButton("다음", filled = true, enabled = canNext, modifier = Modifier.weight(1f)) { step += 1 }
+                // 공통 필수값 확인 — 이 단계에서 빠진 칸으로 스크롤·강조·토스트(RequiredForm). 마감일은 단계 2 묶음.
+                JobButton("다음", filled = true, enabled = true, modifier = Modifier.weight(1f)) {
+                    if (required.validate(ctx, "s$step") && canNext) step += 1
+                    else if (step == 1 && !deadlineChosen) android.widget.Toast.makeText(ctx, ctx.getString(R.string.required_missing, "지원 마감일"), android.widget.Toast.LENGTH_SHORT).show()
+                }
             } else {
                 JobButton(
                     if (saving) "등록 중…" else "등록하기",

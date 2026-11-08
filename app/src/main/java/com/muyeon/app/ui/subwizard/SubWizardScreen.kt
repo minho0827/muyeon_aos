@@ -93,6 +93,7 @@ fun SubWizardScreen(
     val targetText = RecruitLabels.TARGETS.associateWith { t -> RecruitLabels.target(t)?.let { stringResource(it) } ?: t }
     vm.targetLabel = { targetText[it] ?: it }
     var regionPicker by remember { mutableStateOf(false) }
+    val required = com.muyeon.app.ui.common.rememberRequiredForm()
     BackHandler(onBack = onClose)
     LaunchedEffect(vm) {
         vm.events.collect { e ->
@@ -107,9 +108,9 @@ fun SubWizardScreen(
         MainTopBar(stringResource(R.string.subwiz_title), primary = false, onBack = onClose)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 28.dp)) {
             Text(stringResource(R.string.subwiz_form_intro), style = AppTypography.Body14, color = AppColors.TextSub, modifier = Modifier.padding(top = 12.dp))
-            vm.fields.forEach { f -> FieldSection(vm, f) { regionPicker = true } }
+            vm.fields.forEach { f -> FieldSection(vm, f, required) { regionPicker = true } }
             // 제목(자동 — 고칠 수 있음) · 학원 이름
-            SubFormSection(stringResource(R.string.subwiz_f_title), required = true) {
+            SubFormSection(stringResource(R.string.subwiz_f_title), required = true, check = required to "title", filled = vm.title.isNotBlank()) {
                 TextBox(vm.title, stringResource(R.string.subwiz_title_hint), onChange = vm::editTitle)
             }
             SubFormSection(stringResource(R.string.subwiz_f_academy), required = false) {
@@ -119,15 +120,14 @@ fun SubWizardScreen(
         }
         Column(Modifier.fillMaxWidth().background(AppColors.Surface)) {
             HorizontalDivider(color = AppColors.Divider)
-            val missing = vm.firstMissing()
-            val missingLabel = missing?.let { sectionLabel(it.id) }
             QuotePrimaryButton(
                 text = stringResource(R.string.subwiz_submit),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), filled = true,
                 enabled = !vm.submitting && !vm.uploading,
                 onClick = {
+                    // 공통 필수값 확인 — 빠진 칸으로 스크롤·강조·토스트(RequiredForm).
                     when {
-                        missingLabel != null -> Toast.makeText(context, context.getString(R.string.subwiz_missing, missingLabel), Toast.LENGTH_SHORT).show()
+                        !required.validate(context) -> Unit
                         vm.timeError() == true -> Toast.makeText(context, R.string.subwiz_past, Toast.LENGTH_SHORT).show()
                         else -> vm.submit()
                     }
@@ -150,8 +150,13 @@ fun SubWizardScreen(
 
 /** 항목 하나 — 종류에 맞는 입력(칩·달력·시간·지역·글·사진). */
 @Composable
-private fun FieldSection(vm: SubWizardViewModel, f: SubField, onPickRegion: () -> Unit) {
-    SubFormSection(sectionLabel(f.id), required = f.required) {
+private fun FieldSection(vm: SubWizardViewModel, f: SubField, required: com.muyeon.app.ui.common.RequiredForm, onPickRegion: () -> Unit) {
+    val filled = when (f.type) {
+        SubFieldType.TIME -> vm.classTime() != null
+        SubFieldType.TEXT, SubFieldType.IMAGE -> true
+        else -> !vm.answer(f.id).isEmpty
+    }
+    SubFormSection(sectionLabel(f.id), required = f.required, check = required to f.id, filled = filled) {
         when (f.type) {
             SubFieldType.CHIPS, SubFieldType.SINGLE, SubFieldType.MULTI ->
                 SubChipGroup(f.options, vm.answer(f.id).values, { optionLabel(f.id, it) }) { vm.toggle(f, it) }
