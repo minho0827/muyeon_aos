@@ -287,14 +287,15 @@ object NativeActionRouter {
             }
             // ★ 2026-11-03 공간 대관 — 목록·등록/수정·내 공간·호스트 예약 관리·내 예약(상세는 위 openSpaceDetail).
             //  웹은 nativeSpaceBooking 표시가 있을 때만 보낸다.
-            "openSpaces" -> com.muyeon.app.ui.space.SpaceHubActivity.startList(activity)
+            // ★ 2026-11-08 공간 대관·양도양수 목록은 앱 탭(공간 탭 안 위쪽 탭) — 따로 뜨는 목록 화면(탭바 없음)으로 가던 것(전체 메뉴 점검).
+            "openSpaces" -> com.muyeon.app.ui.main.MainActivity.openTab(activity, com.muyeon.app.ui.main.MainTab.SPACES)
             "openSpaceEditor" ->
                 com.muyeon.app.ui.space.SpaceHubActivity.startEditor(activity, d.optString("id").toIntOrNull()?.takeIf { it > 0 })
             "openMySpaces" -> com.muyeon.app.ui.space.SpaceHubActivity.startMine(activity)
             "openMySpaceReservations" -> com.muyeon.app.ui.space.SpaceHubActivity.startHosting(activity)
             "openMySpaceBookings" -> com.muyeon.app.ui.space.SpaceHubActivity.startBookings(activity)
             // ★ 2026-11-03 무용센터 양도양수 — 네이티브(목록·상세·등록/수정·내 글). 웹은 nativeStudioTransfers 표시가 있을 때만 보낸다.
-            "openStudioTransfers" -> com.muyeon.app.ui.transfer.TransferActivity.startList(activity)
+            "openStudioTransfers" -> com.muyeon.app.ui.main.MainActivity.openTab(activity, com.muyeon.app.ui.main.MainTab.TRANSFERS)
             "openStudioTransferDetail" -> {
                 val tid = d.optString("id").toIntOrNull() ?: return true
                 com.muyeon.app.ui.transfer.TransferActivity.startDetail(activity, tid, then = d.optString("then").takeIf { it.isNotEmpty() })
@@ -344,13 +345,16 @@ object NativeActionRouter {
             )
             "openFieldVisibility" -> com.muyeon.app.ui.resume.ResumeActivity.startVisibility(activity, d.optString("mode"))
             "openPublicProfile", "openTeacherProfile" -> {
-                val uid = (d.optString("userId").ifEmpty { d.optString("teacherId") }).toIntOrNull() ?: return true
+                // 인자 없이 오면(전체 메뉴 '공개 프로필') 내 프로필 — 예전엔 아무 일도 없었다(2026-11-08 점검).
+                val uid = (d.optString("userId").ifEmpty { d.optString("teacherId") }).toIntOrNull()
+                    ?: com.muyeon.app.ui.common.NativeHttp(activity).myUserId() ?: return true
                 com.muyeon.app.ui.resume.ResumeActivity.startProfile(
                     activity, uid, d.optString("src"), recruit = d.optString("mode") == "recruit",
                 )
             }
             "openReviewList" -> {
-                val tid = d.optString("teacherId").toIntOrNull() ?: return true
+                // 전체 메뉴 '받은 리뷰' 는 인자가 없다 — 내 리뷰(예전엔 무반응).
+                val tid = d.optString("teacherId").toIntOrNull() ?: com.muyeon.app.ui.common.NativeHttp(activity).myUserId() ?: return true
                 com.muyeon.app.ui.resume.ResumeActivity.startReviewList(activity, tid)
             }
             "openReviewWrite" -> {

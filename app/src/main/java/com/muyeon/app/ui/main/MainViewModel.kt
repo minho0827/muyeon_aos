@@ -149,6 +149,11 @@ class MainViewModel(
 
     /** 탭 고르기(다른 화면·링크에서 돌아올 때 포함). 1계층 탭이면 ← 의 돌아갈 곳으로 기억한다. */
     fun selectTab(tab: MainTab) {
+        // ★ 2026-11-08 웹 /lessons(전체 메뉴 '레슨 찾기' 등)는 홈의 레슨 쪽으로 — 예전 강사 목록 탭으로 가던 것.
+        if (tab == MainTab.LESSONS) {
+            com.muyeon.app.ui.home.HomeModeRequests.request(com.muyeon.app.ui.home.HomeMode.LESSONS)
+            return selectTab(MainTab.HOME)
+        }
         _state.update {
             it.copy(selectedKey = tab.key, lastMainKey = if (tab.mode == com.muyeon.app.ui.main.bar.BarMode.MAIN && tab != MainTab.LESSONS) tab.key else it.lastMainKey)
         }

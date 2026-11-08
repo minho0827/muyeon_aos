@@ -112,6 +112,7 @@ class HomeViewModel(
                 if (e is com.muyeon.app.chat.socket.ChatEvent.ServerNotification || e is com.muyeon.app.chat.socket.ChatEvent.Reconnected) refreshUnread()
             }
         }
+        viewModelScope.launch { HomeModeRequests.flow.collect { m -> HomeModeRequests.consumed(); setMode(m) } }
         viewModelScope.collectAppResults(ResultKeys.NOTIFICATIONS) { refreshUnread() }
         viewModelScope.collectAppResults(ResultKeys.LESSONS) { loadLessonHome() }
     }
