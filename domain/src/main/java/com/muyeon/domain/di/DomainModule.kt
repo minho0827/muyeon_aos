@@ -50,6 +50,11 @@ val domainModule = module {
     factory { EditCommunityCommentUseCase(get()) }
     factory { LikeCommunityUseCase(get()) }
     factory { DeleteCommunityPostUseCase(get()) }
+    // 고객센터(공지·FAQ·1:1 문의·의견)
+    factory { com.muyeon.domain.usecase.support.GetNoticesUseCase(get()) }
+    factory { com.muyeon.domain.usecase.support.GetFaqsUseCase(get()) }
+    factory { com.muyeon.domain.usecase.support.MyInquiriesUseCase(get()) }
+    factory { com.muyeon.domain.usecase.support.SendSupportUseCase(get()) }
     // 신고·차단
     factory { ReportUseCase(get()) }
     factory { BlockUserUseCase(get()) }

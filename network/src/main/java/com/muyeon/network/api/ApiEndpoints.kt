@@ -101,6 +101,17 @@ object ApiEndpoints {
         const val PAGE = "$API/teachers/page"                // GET lesson·genre|field·region·regionKind·sort·cursor·limit
     }
 
+    /** ★ 2026-11-08 고객센터 — content.controller.ts(공지·FAQ, 공개) · support-inquiries.controller.ts(1:1 문의·의견, 로그인). */
+    object Support {
+        const val NOTICES = "$API/notices"                            // GET → Notice[](고정 먼저 → 최신)
+        const val NOTICE = "$API/notices/{id}"                        // GET(조회수 +1)
+        const val FAQS = "$API/faqs"                                  // GET ?category= → Faq[]
+        const val FAQ_CATEGORIES = "$API/faqs/categories"             // GET → string[]
+        const val INQUIRIES = "$API/support-inquiries"                // POST { type: INQUIRY|FEEDBACK, content(1~1000) }
+        const val MY_INQUIRIES = "$API/support-inquiries/mine"        // GET → 내 1:1 문의(INQUIRY)만
+        const val INQUIRY = "$API/support-inquiries/{id}"             // GET 상세(본인) · DELETE
+    }
+
     /** regions.controller.ts */
     object Regions {
         const val NEAREST = "$API/regions/nearest"           // GET lat·lng → Region | null

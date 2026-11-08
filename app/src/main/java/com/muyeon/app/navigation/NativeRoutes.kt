@@ -65,6 +65,10 @@ object NativeRoutes {
             "/lessonSlots" -> return Target.Action("openLessonSlotManage", query["lessonProductId"]?.let { mapOf("lessonProductId" to it) } ?: emptyMap())
             "/lessonHub" -> return Target.Action("openLessonQuoteHub")
             "/chat" -> return Target.Action("openChatList")
+            // ★ 2026-11-08 고객센터 — 공지사항(웹 /noticeDetail 은 state 로 id 를 받는다 — 링크는 ?id=)·FAQ.
+            "/notice" -> return Target.Route(Screen.Notices.route)
+            "/noticeDetail" -> return Target.Route(query["id"]?.toLongOrNull()?.let { Screen.NoticeDetail.build(it) } ?: Screen.Notices.route)
+            "/faq" -> return Target.Route(Screen.Faq.route)
             // ★ 2026-11-08 홈 '전체보기' 레슨 목록 — 쿼리(title·type)가 있어도 앱 화면.
             "/lessonList" -> return Target.Route(Screen.LessonList.build(query["title"]?.let(android.net.Uri::decode), query["type"]))
         }

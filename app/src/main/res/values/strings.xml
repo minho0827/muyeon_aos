@@ -231,6 +231,15 @@
     <!-- ★ 2026-11-07 강사 탭(웹 LessonTab 과 같은 말) -->
     <string name="lesson_guide">원하는 전공과 지역의 강사를 찾아\n경력과 레슨 정보를 확인하고 문의해 보세요.</string>
     <string name="lesson_view_grid">그리드 보기</string>
+    <!-- ★ 2026-11-08 고객센터(웹 Notice·NoticeDetail·faq·SupportInquiries·SupportCompose) -->
+    <string name="support_notice_title">공지사항</string>
+    <string name="support_notice_detail_title">공지사항 상세보기</string>
+    <string name="support_notice_important">중요</string>
+    <string name="support_notice_empty">등록된 공지사항이 없어요.</string>
+    <string name="support_notice_not_found">공지를 찾을 수 없어요.</string>
+    <string name="support_faq_title">FAQ</string>
+    <string name="support_faq_empty">등록된 질문사항이 없어요.</string>
+    <string name="support_inquiry_write">문의하기</string>
     <!-- ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 LessonListView) -->
     <string name="lesson_list_title">레슨</string>
     <string name="lesson_list_empty">등록된 레슨이 없어요.</string>

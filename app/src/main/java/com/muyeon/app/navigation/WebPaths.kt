@@ -11,6 +11,8 @@ object WebPaths {
     const val SETTINGS = "/setting"
     /** 대표 지역 고르기(MY 대표 지역 줄). */
     const val MY_REGIONS = "/myRegions"
+    /** 1:1 문의 쓰기(웹 /support/inquiry). */
+    const val SUPPORT_INQUIRY = "/support/inquiry"
 
     fun login(redirect: String): String = "/login?redirect=" + Uri.encode(redirect)
 }

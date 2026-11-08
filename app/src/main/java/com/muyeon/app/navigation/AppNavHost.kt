@@ -129,6 +129,23 @@ fun AppNavHost(
                 },
             )
         }
+        // ★ 2026-11-08 고객센터 — 공지사항·FAQ(웹 /notice · /faq).
+        composable(Screen.Notices.route) {
+            com.muyeon.app.ui.support.NoticeListScreen(
+                onBack = { navController.popBackStack() },
+                onOpen = { id -> navController.navigate(Screen.NoticeDetail.build(id)) },
+            )
+        }
+        composable(Screen.NoticeDetail.route, arguments = listOf(navArgument(Screen.NoticeDetail.ARG_ID) { type = NavType.StringType })) { e ->
+            val id = e.arguments?.getString(Screen.NoticeDetail.ARG_ID)?.toLongOrNull() ?: 0L
+            com.muyeon.app.ui.support.NoticeDetailScreen(
+                viewModel = org.koin.androidx.compose.koinViewModel(parameters = { org.koin.core.parameter.parametersOf(id) }),
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(Screen.Faq.route) {
+            com.muyeon.app.ui.support.FaqScreen(onBack = { navController.popBackStack() }, onInquiry = { onOpenWeb(WebPaths.SUPPORT_INQUIRY) })
+        }
         // ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 /lessonList).
         composable(
             Screen.LessonList.route,

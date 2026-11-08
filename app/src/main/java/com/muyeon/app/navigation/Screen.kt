@@ -52,6 +52,15 @@ sealed class Screen(val route: String) {
     }
 
     // === ★ 2026-11-08 웹에만 있던 메뉴 화면을 앱으로(탭 위 화면 — 뒤로 가면 있던 자리로) ===
+    /** 공지사항 목록·상세(웹 /notice · /noticeDetail). */
+    data object Notices : Screen("notices")
+    data object NoticeDetail : Screen("notices/{id}") {
+        const val ARG_ID = "id"
+        fun build(id: Long) = "notices/$id"
+    }
+    /** FAQ(웹 /faq). */
+    data object Faq : Screen("faq")
+
     /** 홈 '전체보기' 레슨 목록(웹 /lessonList?title=&type=). */
     data object LessonList : Screen("lessonList?title={title}&type={type}") {
         const val ARG_TITLE = "title"
