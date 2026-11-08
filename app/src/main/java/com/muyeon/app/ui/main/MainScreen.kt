@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.main
 
+import com.muyeon.domain.model.member.ActiveType as ActiveTypeK
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
@@ -196,14 +198,22 @@ fun MainScreen(
         if (selectedTab.mode == BarMode.JOBS) {
             val canCastingCreate = com.muyeon.app.ui.castingstage.stageCanCreate()
             val stage = com.muyeon.app.ui.castingstage.StageRoutes.SHELL
-            WriteMenu(
-                items = buildList {
+            // ★ 2026-11-08 유형별 쓸 수 있는 글만(웹 constants/permissions.js 와 같다 — 사용자 지적: 일반 회원에게 강사프로필 등록이 보였다).
+            //   채용공고 = 학원·공연팀 · 구직 프로필 = 강사·무용수 · 대타공고 = 학원·강사·무용수·공연팀 · 공연 공고 = 공연팀(canCastingCreate).
+            val t = state.activeType
+            val loggedIn = state.isLoggedIn
+            val writeItems = buildList {
+                if (loggedIn && t in setOf(ActiveTypeK.ACADEMY, ActiveTypeK.TEAM))
                     add(com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_job), androidx.compose.ui.res.painterResource(R.drawable.ic_tab_note), com.muyeon.app.ui.theme.AppColors.Primary, "job") { onOpenPath("/jobs/create") })
-                    // 원장(학원) 유형은 구직하지 않는다 — 구직 프로필 등록을 빼다(사용자 결정 2026-11-08).
-                    if (state.activeType != com.muyeon.domain.model.member.ActiveType.ACADEMY) add(com.muyeon.app.ui.components.WriteMenuItem(stringResource(if (state.activeType == com.muyeon.domain.model.member.ActiveType.DANCER) R.string.write_seek_dancer else R.string.write_seek), androidx.compose.ui.res.painterResource(R.drawable.ic_tab_my), androidx.compose.ui.graphics.Color(0xFF2E7DFF), "seek") { onOpenPath("/profileManage?seek=1&from=jobs") })
+                if (loggedIn && t in setOf(ActiveTypeK.TEACHER, ActiveTypeK.DANCER))
+                    add(com.muyeon.app.ui.components.WriteMenuItem(stringResource(if (t == ActiveTypeK.DANCER) R.string.write_seek_dancer else R.string.write_seek), androidx.compose.ui.res.painterResource(R.drawable.ic_tab_my), androidx.compose.ui.graphics.Color(0xFF2E7DFF), "seek") { onOpenPath("/profileManage?seek=1&from=jobs") })
+                if (loggedIn && t in setOf(ActiveTypeK.TEACHER, ActiveTypeK.ACADEMY, ActiveTypeK.DANCER, ActiveTypeK.TEAM))
                     add(com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_sub), androidx.compose.ui.res.painterResource(R.drawable.ic_tab_paper), androidx.compose.ui.graphics.Color(0xFFD8564D), "sub") { onOpenPath("/subs/create") })
-                    if (canCastingCreate) add(com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_casting), androidx.compose.ui.graphics.vector.rememberVectorPainter(androidx.compose.material.icons.Icons.Rounded.RecentActors), androidx.compose.ui.graphics.Color(0xFF7B5CC4), "casting") { onOpenDetail(stage.create) })
-                },
+                if (canCastingCreate) add(com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_casting), androidx.compose.ui.graphics.vector.rememberVectorPainter(androidx.compose.material.icons.Icons.Rounded.RecentActors), androidx.compose.ui.graphics.Color(0xFF7B5CC4), "casting") { onOpenDetail(stage.create) })
+            }
+            // 쓸 수 있는 글이 없으면(일반·비회원) 버튼도 없다.
+            if (writeItems.isNotEmpty()) WriteMenu(
+                items = writeItems,
                 bottom = tabBarBottomPadding() - 4.dp,
             )
         }
