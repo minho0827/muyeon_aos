@@ -386,13 +386,15 @@ data class PublicProfile(
 /** 지원 공고 종류 — iOS `ApplicantPostingKind` 1:1. */
 enum class ApplicantPostingKind(val raw: String) {
     JOB("JOB"),   // 구인 공고
-    SUB("SUB");   // 대타 공고
+    SUB("SUB"),   // 대타 공고
+    /** ★ 2026-11-08 캐스팅 공고 지원자 — 열람·채팅만(확정 버튼 없음, 웹 ApplicantResume isCastingApplication 과 같다). */
+    CASTING("CASTING");
 
-    val apiPath: String get() = if (this == SUB) "subs" else "jobs"
-    val confirmTitle: String get() = if (this == SUB) "대타 확정" else "채용 확정"
+    val apiPath: String get() = when (this) { SUB -> "subs"; CASTING -> "casting"; JOB -> "jobs" }
+    val confirmTitle: String get() = when (this) { SUB -> "대타 확정"; CASTING -> "캐스팅 확정"; JOB -> "채용 확정" }
 
     companion object {
-        fun from(s: String?) = if (s == "SUB") SUB else JOB
+        fun from(s: String?) = when (s) { "SUB" -> SUB; "CASTING" -> CASTING; else -> JOB }
     }
 }
 

@@ -32,6 +32,8 @@ object NativeRoutes {
     private val TRANSFER = Regex("^/studio-transfers/(\\d+)/?$")
     private val MEMBERSHIP = Regex("^/membership/[A-Za-z_]+/?$")
     private val DANCER = Regex("^/dancers/(\\d+)/?$")
+    /** 지원자 이력서 — 웹 /jobs·/subs·/casting/:id/applicants/:applicationId. */
+    private val APPLICANT = Regex("^/(jobs|subs|casting)/(\\d+)/applicants/(\\d+)/?$")
     private val CASTING = Regex("^/casting/(\\d+)/?$")
     private val INQUIRY = Regex("^/support/inquiries/(\\d+)/?$")
     private val RESERVATION = Regex("^/reservations/(\\d+)/?$")
@@ -119,6 +121,12 @@ object NativeRoutes {
         TEACHER.find(p)?.let { if (!clean.contains('?')) return Target.Action("openPublicProfile", mapOf("userId" to it.groupValues[1])) }
         // 답변 완료 푸시(SUPPORT_ANSWERED)의 착지점.
         INQUIRY.find(p)?.let { return Target.Route(Screen.SupportInquiryDetail.build(it.groupValues[1].toLong()), auth = true) }
+        APPLICANT.find(p)?.let { m ->
+            val (seg, pid, aid) = m.destructured
+            val kind = when (seg) { "subs" -> "SUB"; "casting" -> "CASTING"; else -> "JOB" }
+            return Target.Action("openApplicantResume", mapOf("applicationKind" to kind,
+                (when (kind) { "SUB" -> "subId"; "CASTING" -> "callId"; else -> "jobId" }) to pid, "applicationId" to aid))
+        }
         DANCER.find(p)?.let { return Target.Route(Screen.DancerDetail.build(it.groupValues[1].toLong()), auth = true) }
         // 캐스팅 공고 상세 — 앱 캐스팅·무대 화면(지원 내역·찜에서 연다).
         CASTING.find(p)?.let { return Target.Action("openCastingStage", mapOf("castingId" to it.groupValues[1])) }

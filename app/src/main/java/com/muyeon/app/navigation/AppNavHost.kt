@@ -234,12 +234,12 @@ fun AppNavHost(
                 onBack = { navController.popBackStack() },
                 onOpenResume = { a ->
                     val pid = a.postingId ?: return@ReceivedApplicationsScreen
-                    // 채용·대타는 앱 지원자 이력서, 캐스팅 지원자는 아직 웹 화면.
-                    if (a.kind == "CASTING") onOpenPath("/casting/$pid/applicants/${a.id}")
-                    else context.findActivity()?.let { act ->
+                    // 채용·대타·캐스팅 모두 앱 지원자 이력서(캐스팅은 열람·채팅만).
+                    context.findActivity()?.let { act ->
                         com.muyeon.app.webview.NativeActionRouter.open(
                             act, "openApplicantResume",
-                            org.json.JSONObject().put("applicationKind", a.kind).put(if (a.kind == "SUB") "subId" else "jobId", pid.toString())
+                            org.json.JSONObject().put("applicationKind", a.kind)
+                                .put(when (a.kind) { "SUB" -> "subId"; "CASTING" -> "callId"; else -> "jobId" }, pid.toString())
                                 .put("applicationId", a.id.toString()),
                         )
                     }

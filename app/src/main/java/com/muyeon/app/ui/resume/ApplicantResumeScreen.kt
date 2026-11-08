@@ -348,6 +348,7 @@ internal object ApplicantState {
     /** 대타: 대기 중 + 공고 OPEN + 다른 확정 없음 + 수업 시작 전. 채용: 대기 중이면. */
     fun canConfirm(a: Applicant, kind: ApplicantPostingKind): Boolean {
         if (!isPending(a.status)) return false
+        if (kind == ApplicantPostingKind.CASTING) return false // 캐스팅 지원자는 열람·채팅만(웹과 같다)
         if (kind != ApplicantPostingKind.SUB) return true
         return (a.postingStatus == null || a.postingStatus == "OPEN") && !otherConfirmed(a) && !classStarted(a)
     }
