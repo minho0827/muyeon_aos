@@ -1,5 +1,6 @@
 package com.muyeon.app.webview
 
+import androidx.lifecycle.lifecycleScope
 import android.app.Activity
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
@@ -241,9 +242,14 @@ object NativeActionRouter {
             }
             "openJobPostingForm" -> com.muyeon.app.ui.jobposting.JobPostingActivity.startForm(activity, null)
             // ★ 2026-11-08 앱 안 전용 — 구직 프로필 등록(웹 /profileManage?seek=1) — 지금 유형이 무용수면 무용수 이력서.
-            "openSeekProfile" -> com.muyeon.app.ui.resume.ResumeActivity.startEdit(
-                activity, null, if (ActiveRole.isDancer(activity)) "dancer" else "", seekProfile = true,
-            )
+            //  2026-11-08 사용자 결정 — 이미 등록한 강사프로필/무용수 이력서가 있으면 이력서 관리, 없으면 등록(SeekProfileEntry).
+            "openSeekProfile" -> {
+                val scope = (activity as? androidx.activity.ComponentActivity)?.lifecycleScope
+                if (scope != null) com.muyeon.app.ui.resume.SeekProfileEntry.open(activity, scope, ActiveRole.isDancer(activity))
+                else com.muyeon.app.ui.resume.ResumeActivity.startEdit(
+                    activity, null, if (ActiveRole.isDancer(activity)) "dancer" else "", seekProfile = true,
+                )
+            }
 
             // 스튜디오 운영 — E 이식 완료
             "openStudioOps" -> com.muyeon.app.ui.studio.StudioActivity.start(activity, "hub")
