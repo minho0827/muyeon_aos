@@ -59,6 +59,9 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * 자동견적 발송 내역 — iOS `AutoQuoteHistoryView.swift` / 웹 `/autoQuoteHistory` 와 같은 구성.
@@ -526,12 +529,7 @@ private fun SentList(state: AutoQuoteHistoryState, listState: LazyListState, onO
             item(key = "loading") { CenterSpinner(Modifier.fillParentMaxSize()) }
         } else if (state.sent.isEmpty()) {
             item(key = "empty") {
-                QuoteEmptyState(
-                    icon = Icons.Outlined.AutoAwesome,
-                    title = "아직 자동견적이 나간 요청이 없어요",
-                    message = "자동견적을 켜두면 조건에 맞는 요청에 견적이 자동으로 나가고, 여기에 쌓여요.",
-                    modifier = Modifier.fillParentMaxSize().wrapContentHeight(Alignment.CenterVertically),
-                )
+                EmptyView(stringResource(R.string.quote_auto_history_sent_empty), content = stringResource(R.string.quote_auto_history_sent_empty_desc))
             }
         } else {
             groups.forEach { (day, rows) ->
@@ -556,12 +554,7 @@ private fun SkippedList(state: AutoQuoteHistoryState, listState: LazyListState) 
             item(key = "loading") { CenterSpinner(Modifier.fillParentMaxSize()) }
         } else if (state.skipped.isEmpty()) {
             item(key = "empty") {
-                QuoteEmptyState(
-                    icon = Icons.Outlined.Inbox,
-                    title = "못 보낸 요청이 없어요",
-                    message = "이번 달 자동견적 횟수가 남아 있으면 모두 자동으로 보내져요.",
-                    modifier = Modifier.fillParentMaxSize().wrapContentHeight(Alignment.CenterVertically),
-                )
+                EmptyView(stringResource(R.string.quote_auto_history_skipped_empty), content = stringResource(R.string.quote_auto_history_skipped_empty_desc))
             }
         } else {
             groups.forEach { (day, rows) ->

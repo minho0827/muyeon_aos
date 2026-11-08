@@ -23,6 +23,9 @@ import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * 추천에서 제외한 강사 목록 + 해제 — 채팅 `BlockedUsersScreen` 과 같은 꼴.
@@ -53,25 +56,8 @@ fun RecommendBlocksScreen(api: QuoteApi, onBack: () -> Unit, onOpenTeacher: (Int
             loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                 CircularProgressIndicator(color = MuyeonColors.primary)
             }
-            teachers.isEmpty() -> Column(
-                Modifier.weight(1f).fillMaxWidth().padding(horizontal = 30.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Icon(
-                    Icons.Outlined.VisibilityOff, null, tint = MuyeonColors.secondary,
-                    modifier = Modifier.size(32.dp),
-                )
-                Text(
-                    "추천에서 제외한 강사가 없어요",
-                    fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
-                    lineHeight = 18.sp, color = MuyeonColors.textHead,
-                )
-                Text(
-                    "추천 강사 카드 ⋮ 에서 '다시는 추천받지 않기'를 고를 수 있어요.",
-                    fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp,
-                    color = MuyeonColors.secondary, textAlign = TextAlign.Center,
-                )
+            teachers.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth()) {
+                EmptyView(stringResource(R.string.quote_recommend_blocks_empty), content = stringResource(R.string.quote_recommend_blocks_empty_desc))
             }
             else -> LazyColumn(Modifier.weight(1f)) {
                 items(teachers.size, key = { i -> teachers[i].teacherId }) { i ->

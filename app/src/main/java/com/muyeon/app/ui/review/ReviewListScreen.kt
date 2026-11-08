@@ -30,10 +30,12 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
-import com.muyeon.app.ui.quote.QuoteEmptyState
 import com.muyeon.app.ui.quote.QuoteUi
 import kotlinx.coroutines.launch
 import java.util.Locale
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * 강사 후기 목록 — iOS `ReviewListView.swift` + `+Components.swift` 1:1.
@@ -91,11 +93,7 @@ fun ReviewListScreen(
                         val items = d?.items ?: emptyList()
                         if (items.isEmpty()) {
                             item {
-                                QuoteEmptyState(
-                                    Icons.Outlined.RateReview, "아직 후기가 없어요",
-                                    "레슨을 받은 회원이 후기를 남기면 여기에 보여요.",
-                                    Modifier.height(200.dp).wrapContentHeight(Alignment.CenterVertically),
-                                )
+                                EmptyView(stringResource(R.string.review_list_empty), content = stringResource(R.string.review_list_empty_desc))
                             }
                         } else {
                             items(items, key = { it.id }) { item ->

@@ -43,6 +43,9 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /*
  * 목록 필터 시트(2026-11-06) — 웹·iOS 와 같은 계약.
@@ -204,8 +207,8 @@ fun ListFilterSheet(
     }
 }
 
-/** 조건을 걸었는데 결과가 없을 때 — 기존 빈 화면 + [필터 초기화]. */
+/** 조건을 걸었는데 결과가 없을 때 — 공용 빈 목록 안내(EmptyView) + [필터 초기화]. 목록 영역 맨 위에 둔다. */
 @Composable
 fun ListFilterEmpty(onReset: () -> Unit, modifier: Modifier = Modifier) {
-    MuyeonEmptyState("조건에 맞는 내역이 없어요", actionTitle = "필터 초기화", onAction = onReset, modifier = modifier)
+    EmptyView(stringResource(R.string.common_filter_empty), modifier, buttonText = stringResource(R.string.common_filter_reset), onButton = onReset)
 }

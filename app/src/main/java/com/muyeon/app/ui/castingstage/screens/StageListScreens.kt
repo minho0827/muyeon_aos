@@ -48,6 +48,9 @@ import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.castingstage.model.*
 import com.muyeon.app.ui.castingstage.data.*
 import com.muyeon.app.ui.castingstage.components.*
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /** 전체 목록 — 캐스팅 공고·소식 칸·지난 호(iOS StageCastingListView·StageNewsListView·StageIssuesView). */
 
@@ -83,11 +86,9 @@ fun StageCastingListScreen(api: CastingStageApi, onBack: () -> Unit, onOpen: (In
                     listOfNotNull(c.team, c.genre).joinToString(" · "), placeholder = com.muyeon.app.R.drawable.stage_noimage_casting) { onOpen(c.id) }
             }
             item {
-                Box(Modifier.fillMaxWidth().padding(32.dp), Alignment.Center) {
-                    when {
-                        loading -> CircularProgressIndicator(color = Brand)
-                        items.isEmpty() -> Text("조건에 맞는 공고가 없어요.", style = Regular, fontSize = 14.sp, color = MuyeonColors.textSub)
-                    }
+                when {
+                    loading -> Box(Modifier.fillMaxWidth().padding(32.dp), Alignment.Center) { CircularProgressIndicator(color = Brand) }
+                    items.isEmpty() -> EmptyView(stringResource(R.string.stage_casting_list_empty))
                 }
             }
         }
@@ -139,7 +140,7 @@ fun StageIssuesScreen(api: CastingStageApi, onBack: () -> Unit, onOpen: (Int) ->
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             val list = rows
             if (list == null) item { Box(Modifier.fillMaxWidth().padding(40.dp), Alignment.Center) { CircularProgressIndicator(color = Brand) } }
-            else if (list.isEmpty()) item { Text("아직 나온 무대 소식이 없어요.", style = Regular, fontSize = 14.sp, color = MuyeonColors.textSub, modifier = Modifier.padding(24.dp)) }
+            else if (list.isEmpty()) item { EmptyView(stringResource(R.string.stage_issues_empty)) }
             else items(list, key = { it.issueNo }) { r ->
                 val w = StageDate.week(r.weekStart)
                 Row(Modifier.fillMaxWidth().height(118.dp).clip(RoundedCornerShape(16.dp)).border(1.dp, Color(0xFFFFE4D2), RoundedCornerShape(16.dp)).clickable { onOpen(r.issueNo) }) {

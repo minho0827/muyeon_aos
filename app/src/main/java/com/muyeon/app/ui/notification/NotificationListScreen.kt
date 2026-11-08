@@ -47,6 +47,9 @@ import com.muyeon.app.ui.quote.QuoteHubActivity
 import com.muyeon.app.utils.TokenManager
 import com.muyeon.app.webview.NativeWebRoute
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * 알림 목록 — iOS `NotificationListView.swift` 이식.
@@ -119,18 +122,17 @@ fun NotificationListScreen(
             loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                 CircularProgressIndicator(color = MuyeonColors.primary)
             }
-            items.isEmpty() && filter.isActive -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
+            items.isEmpty() && filter.isActive -> Box(Modifier.weight(1f).fillMaxWidth()) {
                 com.muyeon.app.ui.common.ListFilterEmpty({ filter = com.muyeon.app.ui.common.ListFilter() })
             }
-            items.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
-                com.muyeon.app.ui.common.MuyeonEmptyState(
+            items.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth()) {
+                EmptyView(
                     when {
                         category != NotiCategory.ALL ->
-                            "${chips.firstOrNull { it.key == category }?.label ?: "이 종류"} 알림이 없어요"
-                        else -> "알림이 없어요"
+                            stringResource(R.string.notification_list_empty_category, chips.firstOrNull { it.key == category }?.label ?: stringResource(R.string.notification_list_empty_kind))
+                        else -> stringResource(R.string.notification_list_empty)
                     },
-                    "새 소식이 오면 여기에 표시돼요.",
-                    icon = Icons.Outlined.NotificationsNone,
+                    content = stringResource(R.string.notification_list_empty_desc),
                 )
             }
             else -> PullToRefreshBox(

@@ -28,10 +28,12 @@ import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonAddLink
 import com.muyeon.app.ui.common.MuyeonColors
-import com.muyeon.app.ui.common.MuyeonEmptyState
 import com.muyeon.app.ui.common.MuyeonGroupSection
 import com.muyeon.app.ui.common.MuyeonList
 import com.muyeon.app.ui.common.MuyeonSectionTitle
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * ★ 2026-11-06 '내 자동응답 메시지' — 묶음 제목 + "＋ 새 메시지" 링크 + 흰 카드 안 라디오 줄.
@@ -52,12 +54,11 @@ fun AutoQuoteTemplateList(
             if (templates.isNotEmpty()) MuyeonAddLink("새 메시지", onAdd)
         }
         if (templates.isEmpty()) {
-            MuyeonEmptyState(
-                title = "저장된 자동응답 메시지가 없어요",
-                message = "메시지와 금액을 만들어 두면 자동 견적에 그대로 쓰여요.",
-                icon = Icons.Outlined.ChatBubbleOutline,
-                actionTitle = "메시지 만들기",
-                onAction = onAdd,
+            EmptyView(
+                stringResource(R.string.quote_auto_templates_empty),
+                content = stringResource(R.string.quote_auto_templates_empty_desc),
+                buttonText = stringResource(R.string.quote_auto_templates_empty_action),
+                onButton = onAdd,
             )
         } else {
             MuyeonGroupSection {

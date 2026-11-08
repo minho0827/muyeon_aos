@@ -43,6 +43,9 @@ import com.muyeon.app.ui.space.booking.DeleteSpaceDialog
 import com.muyeon.app.ui.space.booking.MySpaceRow
 import com.muyeon.app.ui.space.booking.MySpaceListSkeleton
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /** 호스트 — 내 공간 목록([수정][삭제]) + 제목줄 [예약 관리]·＋. */
 @Composable
@@ -80,10 +83,10 @@ fun SpaceMineScreen(
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {
                 loading -> MySpaceListSkeleton()  // 실제 카드 높이의 자리
-                items.isEmpty() && error != null -> MuyeonEmptyState(error ?: "", icon = Icons.Outlined.MeetingRoom, modifier = Modifier.align(Alignment.Center))
-                items.isEmpty() -> MuyeonEmptyState(
-                    "아직 등록한 공간이 없어요.", icon = Icons.Outlined.MeetingRoom,
-                    actionTitle = "공간 등록하기", onAction = onCreate, modifier = Modifier.align(Alignment.Center),
+                items.isEmpty() && error != null -> EmptyView(error ?: "")
+                items.isEmpty() -> EmptyView(
+                    stringResource(R.string.space_my_empty),
+                    buttonText = stringResource(R.string.space_my_empty_action), onButton = onCreate,
                 )
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(items, key = { it.id }) { s ->

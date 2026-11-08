@@ -51,7 +51,6 @@ import androidx.navigation.compose.rememberNavController
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteDialog
-import com.muyeon.app.ui.quote.QuoteEmptyState
 import com.muyeon.app.ui.quote.QuoteNavBar
 import com.muyeon.app.ui.resume.ResumeActivity
 import com.muyeon.app.ui.resume.ResumeOptions
@@ -59,6 +58,9 @@ import com.muyeon.app.utils.TokenManager
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * 내 공고 관리 + 공고 등록 — iOS `JobPosting/MyJobPostingsView` · `JobPostingWizardView` 이식.
@@ -178,10 +180,10 @@ fun MyPostingsScreen(
                     if (filtered.isEmpty() && pages.error == null && listFilter.isActive) item(key = "empty-postings") {
                         com.muyeon.app.ui.common.ListFilterEmpty({ listFilter = com.muyeon.app.ui.common.ListFilter() })
                     } else if (filtered.isEmpty() && pages.error == null) item(key = "empty-postings") {
-                        com.muyeon.app.ui.common.MuyeonEmptyState(
-                            if (tab == JobPostingOptions.tabs.first().first) "아직 등록한 공고가 없어요" else "이 상태의 공고가 없어요",
-                            "새 공고를 올리면 지원자를 여기서 관리할 수 있어요.",
-                            icon = Icons.Outlined.WorkOutline, actionTitle = "공고 등록하기", onAction = onCreate,
+                        EmptyView(
+                            stringResource(if (tab == JobPostingOptions.tabs.first().first) R.string.posting_my_empty else R.string.posting_my_empty_tab),
+                            content = stringResource(R.string.posting_my_empty_desc),
+                            buttonText = stringResource(R.string.posting_my_empty_action), onButton = onCreate,
                         )
                     }
                     items(filtered, key = { it.uid }) { p ->

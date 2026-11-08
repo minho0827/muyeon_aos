@@ -46,6 +46,9 @@ import com.muyeon.app.ui.common.ListStatusOption
 import com.muyeon.app.ui.common.MuyeonRemovablePill
 import com.muyeon.app.ui.common.appliedPills
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * 견적 허브 화면 — iOS `QuoteHubView.swift` + `MyQuotesListView.swift` + `SentQuotesView.swift` 1:1.
@@ -203,14 +206,9 @@ fun RequestedQuotesList(
     }
 
     if (quotes.isEmpty() && !isLoading && filter.isActive) {
-        ListFilterEmpty(onResetFilter, Modifier.fillMaxSize().wrapContentHeight(Alignment.CenterVertically))
+        ListFilterEmpty(onResetFilter)
     } else if (quotes.isEmpty() && !isLoading) {
-        QuoteEmptyState(
-            icon = Icons.Outlined.Inbox,
-            title = "받은 제안이 없어요",
-            message = "견적을 요청하면 강사들의 견적이 여기에 쌓여요.",
-            modifier = Modifier.fillMaxSize().wrapContentHeight(Alignment.CenterVertically),
-        )
+        EmptyView(stringResource(R.string.quote_hub_received_empty), content = stringResource(R.string.quote_hub_received_empty_desc))
     } else {
         PullToRefreshBox(
             isRefreshing = refreshing,
@@ -375,14 +373,9 @@ fun SentQuotesList(
     LaunchedEffect(reloadSignal, filter) { isLoading = items.isEmpty(); load(); isLoading = false }
 
     if (items.isEmpty() && !isLoading && filter.isActive) {
-        ListFilterEmpty(onResetFilter, Modifier.fillMaxSize().wrapContentHeight(Alignment.CenterVertically))
+        ListFilterEmpty(onResetFilter)
     } else if (items.isEmpty() && !isLoading) {
-        QuoteEmptyState(
-            icon = Icons.Outlined.Send,
-            title = "보낸 제안이 없어요",
-            message = "수강생 요청에 제안을 보내면 여기에 쌓여요.",
-            modifier = Modifier.fillMaxSize().wrapContentHeight(Alignment.CenterVertically),
-        )
+        EmptyView(stringResource(R.string.quote_hub_sent_empty), content = stringResource(R.string.quote_hub_sent_empty_desc))
     } else {
         PullToRefreshBox(
             isRefreshing = refreshing,

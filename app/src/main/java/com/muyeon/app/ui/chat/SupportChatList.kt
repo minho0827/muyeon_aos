@@ -31,6 +31,9 @@ import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * ★ 2026-11-07 채팅 목록 '상담' 칩 — 무용연 고객센터 상담방 목록(iOS SupportChatListSection.swift 와 같다).
@@ -141,22 +144,16 @@ fun SupportChatList(state: SupportChatState, onOpenWebPath: (String) -> Unit) {
                     Box(Modifier.fillMaxWidth().padding(32.dp), Alignment.Center) { CircularProgressIndicator() }
                 }
                 state.loadFailed && state.rooms.isEmpty() -> item {
-                    Box(Modifier.fillMaxWidth().heightIn(min = 360.dp), Alignment.Center) {
-                        com.muyeon.app.ui.common.MuyeonEmptyState(
-                            "상담 목록을 불러오지 못했어요.", "잠시 후 다시 시도해 주세요.",
-                            icon = Icons.Outlined.WifiOff, actionTitle = "다시 시도",
-                            onAction = { scope.launch { state.loadRooms() } },
-                        )
-                    }
+                    EmptyView(
+                        stringResource(R.string.chat_support_list_failed), content = stringResource(R.string.common_try_later),
+                        buttonText = stringResource(R.string.common_retry), onButton = { scope.launch { state.loadRooms() } },
+                    )
                 }
                 state.rooms.isEmpty() -> item {
-                    Box(Modifier.fillMaxWidth().heightIn(min = 360.dp), Alignment.Center) {
-                        com.muyeon.app.ui.common.MuyeonEmptyState(
-                            "상담 내역이 없어요",
-                            if (state.access.eligible) "궁금한 점이 있으면 [새 상담]으로 물어 보세요." else null,
-                            icon = Icons.Outlined.ChatBubbleOutline,
-                        )
-                    }
+                    EmptyView(
+                        stringResource(R.string.chat_support_list_empty),
+                        content = if (state.access.eligible) stringResource(R.string.chat_support_list_empty_desc) else null,
+                    )
                 }
             }
             items(state.rooms, key = { it.id }) { room ->

@@ -241,11 +241,3 @@ fun QuotePill(text: String, color: Color = MuyeonColors.primary, filled: Boolean
     )
 }
 
-/** 빈 상태 — 10-27 공용 빈 화면(MuyeonEmptyState)으로 모양을 맞췄다. 부르는 곳은 그대로. iOS QuoteEmptyState. */
-@Composable
-fun QuoteEmptyState(
-    icon: ImageVector, title: String, message: String, modifier: Modifier = Modifier,
-    actionTitle: String? = null, onAction: (() -> Unit)? = null,
-) {
-    com.muyeon.app.ui.common.MuyeonEmptyState(title, message, icon = icon, actionTitle = actionTitle, onAction = onAction, modifier = modifier)
-}

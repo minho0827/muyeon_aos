@@ -47,6 +47,9 @@ import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteNavBar
 import com.muyeon.app.ui.quote.QuoteUi
 import com.muyeon.app.utils.TokenManager
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * 강사 콘텐츠 둘러보기 — iOS `LessonBrowseView.swift` 1:1.
@@ -128,11 +131,8 @@ fun LessonBrowseScreen(
             loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                 CircularProgressIndicator(color = MuyeonColors.primary)
             }
-            items.isEmpty() && loadError == null && !hasMore -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
-                Text(
-                    "조건에 맞는 콘텐츠가 없어요.",
-                    fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.textSub,
-                )
+            items.isEmpty() && loadError == null && !hasMore -> Box(Modifier.weight(1f).fillMaxWidth()) {
+                EmptyView(stringResource(R.string.lesson_browse_empty))
             }
             else -> LazyVerticalGrid(
                 columns = GridCells.Fixed(2),

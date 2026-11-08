@@ -25,6 +25,9 @@ import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteAvatar
 import com.muyeon.app.ui.quote.QuoteNavBar
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * 차단한 사용자 목록 + 해제 — iOS `BlockedUsersView.swift` 1:1.
@@ -52,25 +55,8 @@ fun BlockedUsersScreen(api: ChatApi, onBack: () -> Unit) {
             loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                 CircularProgressIndicator(color = MuyeonColors.primary)
             }
-            users.isEmpty() -> Column(
-                Modifier.weight(1f).fillMaxWidth().padding(horizontal = 30.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Icon(
-                    Icons.Outlined.DoNotDisturbOn, null, tint = MuyeonColors.secondary,
-                    modifier = Modifier.size(32.dp),
-                )
-                Text(
-                    "차단한 사용자가 없어요",
-                    fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
-                    lineHeight = 18.sp, color = MuyeonColors.textHead,
-                )
-                Text(
-                    "채팅방 우측 상단 ⋮ 에서 상대를 차단할 수 있어요.",
-                    fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp,
-                    color = MuyeonColors.secondary, textAlign = TextAlign.Center,
-                )
+            users.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth()) {
+                EmptyView(stringResource(R.string.blocked_empty), content = stringResource(R.string.chat_blocked_empty_desc))
             }
             else -> LazyColumn(Modifier.weight(1f)) {
                 items(users.size, key = { i -> users[i].userId }) { i ->

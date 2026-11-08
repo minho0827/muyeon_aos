@@ -44,6 +44,9 @@ import com.muyeon.app.ui.transfer.components.MyTransferRowSkeleton
 import com.muyeon.app.ui.transfer.components.TransferDeleteDialog
 import com.muyeon.app.ui.transfer.components.TransferStatusDialog
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /** 내 양도 글 — 카드 + 각 행 [수정] [상태 변경] [삭제(확인)]. */
 @Composable
@@ -84,10 +87,10 @@ fun MyTransfersScreen(
                     ListPhase.Loading -> Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         repeat(5) { MyTransferRowSkeleton() }
                     }
-                    ListPhase.Error -> MuyeonEmptyState(error ?: "", icon = Icons.Outlined.Storefront, modifier = Modifier.align(Alignment.Center))
-                    ListPhase.Empty -> MuyeonEmptyState(
-                        "아직 올린 양도 글이 없어요.", icon = Icons.Outlined.Storefront,
-                        actionTitle = "양도 글 등록하기", onAction = onCreate, modifier = Modifier.align(Alignment.Center),
+                    ListPhase.Error -> EmptyView(error ?: "")
+                    ListPhase.Empty -> EmptyView(
+                        stringResource(R.string.transfer_my_empty),
+                        buttonText = stringResource(R.string.transfer_my_empty_action), onButton = onCreate,
                     )
                     ListPhase.Items -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(items, key = { it.id }) { c ->

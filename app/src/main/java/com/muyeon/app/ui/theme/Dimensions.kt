@@ -55,6 +55,14 @@ object Dimensions {
     val dmButton = 36.dp
     val heartCircle = 32.dp
 
+    // === 빈 목록 안내(EmptyView — 웹 .list-none) ===
+    /** 목록 영역(칩·탭 줄 아래) 맨 위에서 안내 그림까지. 모든 화면이 같은 값 — 세로 가운데 정렬하지 않는다. */
+    val emptyTop = 64.dp
+    /** 안내 아래 여백(다음 쪽 표시·탭바와 떨어지게). */
+    val emptyBottom = 64.dp
+    /** 안내 그림(문서 그림) 크기. */
+    val emptyIcon = 48.dp
+
     // === 플로팅(웹 floating-wrap) ===
     val floatingSize = 48.dp
     val floatingMargin = 20.dp

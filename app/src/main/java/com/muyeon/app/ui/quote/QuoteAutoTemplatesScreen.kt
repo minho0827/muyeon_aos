@@ -41,7 +41,6 @@ import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.common.MuyeonDialog
 import com.muyeon.app.ui.common.MuyeonDialogAction
 import com.muyeon.app.ui.common.MuyeonDialogKind
-import com.muyeon.app.ui.common.MuyeonEmptyState
 import com.muyeon.app.ui.common.MuyeonHeaderIcon
 import com.muyeon.app.ui.common.MuyeonList
 import com.muyeon.app.ui.common.MuyeonListHeader
@@ -50,6 +49,9 @@ import com.muyeon.app.ui.resume.ResumeActivity
 import com.muyeon.app.utils.TokenManager
 import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.webview.NativeWebRoute
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * 견적 자동응답 — iOS `QuoteAutoTemplatesView.swift`·웹 quoteAuto 와 같은 구성(★ 2026-11-06 개편).
@@ -174,13 +176,12 @@ fun QuoteAutoTemplatesScreen(
             AutoQuoteLoad.Loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                 CircularProgressIndicator(color = MuyeonColors.primary)
             }
-            AutoQuoteLoad.Failed -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
-                MuyeonEmptyState(
-                    title = "불러오지 못했어요",
-                    message = "네트워크 상태를 확인하고 다시 시도해 주세요.",
-                    icon = Icons.Outlined.ErrorOutline,
-                    actionTitle = "다시 시도",
-                    onAction = { vm.reload(showSpinner = true) },
+            AutoQuoteLoad.Failed -> Box(Modifier.weight(1f).fillMaxWidth()) {
+                EmptyView(
+                    stringResource(R.string.common_load_failed_short),
+                    content = stringResource(R.string.common_load_failed_network),
+                    buttonText = stringResource(R.string.common_retry),
+                    onButton = { vm.reload(showSpinner = true) },
                 )
             }
             is AutoQuoteLoad.Ready -> Column(

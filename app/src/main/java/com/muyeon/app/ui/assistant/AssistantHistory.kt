@@ -31,6 +31,9 @@ import com.muyeon.app.theme.customFontFamily
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * 'AI로 쓴 글' — 내가 AI 로 쓴 초안 목록(최신순, 20개씩). 누르면 결과 화면으로 다시 열어 등록하거나 복사한다.
@@ -84,11 +87,7 @@ fun AssistantHistoryPage(onBack: () -> Unit, onOpenDraft: (String) -> Unit) {
                 color = Color(0xFF101116), modifier = Modifier.align(Alignment.Center))
         }
         if (!loading && rows.isEmpty()) {
-            Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("아직 AI로 만든 글이 없어요", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color(0xFF101116))
-                Spacer(Modifier.height(8.dp))
-                Text("AI로 만든 글은 여기에 모아 둘게요.", fontFamily = customFontFamily, fontSize = 15.sp, color = Color(0xFF6D6E71))
-            }
+            EmptyView(stringResource(R.string.assistant_history_empty), content = stringResource(R.string.assistant_history_empty_desc))
             return@Column
         }
         LazyColumn(state = listState, contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp),

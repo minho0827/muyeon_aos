@@ -53,6 +53,9 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * 견적 모아보기(강사) — iOS `QuoteBrowseView.swift` 1:1.
@@ -241,11 +244,7 @@ fun QuoteBrowseScreen(
                     CircularProgressIndicator(color = MuyeonColors.primary)
                 }
                 state.needsGenre -> NeedsGenre(onGoGenreSettings)
-                state.filtered.isEmpty() -> QuoteEmptyState(
-                    Icons.Outlined.Inbox, "지금 응답할 수 있는 요청이 없어요",
-                    "새 견적요청이 오면 알림으로 알려드릴게요.",
-                    Modifier.fillMaxSize().wrapContentHeight(Alignment.CenterVertically),
-                )
+                state.filtered.isEmpty() -> EmptyView(stringResource(R.string.quote_browse_empty), content = stringResource(R.string.quote_browse_empty_desc))
                 else -> PullToRefreshBox(
                     isRefreshing = refreshing,
                     onRefresh = { scope.launch { refreshing = true; state.load(); refreshing = false } },
@@ -500,29 +499,10 @@ private fun BrowseChip(
 
 @Composable
 private fun NeedsGenre(onGo: (() -> Unit)?) {
-    Column(
-        Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        QuoteEmptyState(
-            Icons.Outlined.Badge, "전공을 먼저 등록해 주세요",
-            "레슨 전공 설정에서 장르를 등록하면 맞는 요청이 보여요.",
-        )
-        if (onGo != null) {
-            Text(
-                "전공 등록하러 가기",
-                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
-                lineHeight = 18.sp, color = Color.White,
-                modifier = Modifier
-                    .padding(top = 14.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(MuyeonColors.primary)
-                    .clickable(onClick = onGo)
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
-            )
-        }
-    }
+    EmptyView(
+        stringResource(R.string.quote_browse_needs_genre), content = stringResource(R.string.quote_browse_needs_genre_desc),
+        buttonText = onGo?.let { stringResource(R.string.quote_browse_needs_genre_action) }, onButton = onGo,
+    )
 }
 
 /** 그리드 셀 — 카테고리·시간 / 문진 첫 답 요약 / 지역 (+첨부 썸네일, N 배지). */

@@ -24,6 +24,9 @@ import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * 「개인레슨 관리 > 수강생 상담」 — iOS `StudentConsultView.swift` 이식.
@@ -157,15 +160,13 @@ fun StudentConsultScreen(
                 loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                     CircularProgressIndicator(color = MuyeonColors.primary)
                 }
-                shown.isEmpty() && listFilter.isActive -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
+                shown.isEmpty() && listFilter.isActive -> Box(Modifier.weight(1f).fillMaxWidth()) {
                     com.muyeon.app.ui.common.ListFilterEmpty({ listFilter = com.muyeon.app.ui.common.ListFilter() })
                 }
-                shown.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
-                    QuoteEmptyState(
-                        Icons.Outlined.ChatBubbleOutline,
-                        if (items.isEmpty()) "아직 상담이 없어요" else "이 상태의 상담이 없어요",
-                        if (items.isEmpty()) "수강생 찾기에서 조건이 맞는 요청에 제안을 보내면 여기에 쌓여요."
-                        else "다른 칩을 눌러 확인해 보세요.",
+                shown.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth()) {
+                    EmptyView(
+                        stringResource(if (items.isEmpty()) R.string.quote_consult_empty else R.string.quote_consult_empty_tab),
+                        content = stringResource(if (items.isEmpty()) R.string.quote_consult_empty_desc else R.string.quote_consult_empty_tab_desc),
                     )
                 }
                 else -> LazyColumn(

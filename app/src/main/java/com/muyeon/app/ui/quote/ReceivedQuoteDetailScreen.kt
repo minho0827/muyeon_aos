@@ -40,6 +40,9 @@ import com.muyeon.app.ui.common.MuyeonColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * 받은견적 상세 — iOS `ReceivedQuotesDetailView.swift` + `QuoteRecommendationSection.swift` 1:1.
@@ -144,12 +147,7 @@ fun ReceivedQuoteDetailScreen(
             QuoteNavBar(title = "받은 제안", onBack = onBack)
 
             if (notFound) {
-                QuoteEmptyState(
-                    icon = Icons.Filled.HelpOutline,
-                    title = "요청을 찾을 수 없어요",
-                    message = "이미 취소됐거나 삭제된 견적 요청이에요.",
-                    modifier = Modifier.fillMaxSize().wrapContentHeight(Alignment.CenterVertically),
-                )
+                EmptyView(stringResource(R.string.quote_received_not_found), content = stringResource(R.string.quote_received_not_found_desc))
                 return@Column
             }
 
@@ -192,19 +190,11 @@ fun ReceivedQuoteDetailScreen(
                     if (quote?.isDirect == true) {
                         // 지정 요청: 그 강사의 응답만 기다림 — 브로드캐스트 추천 미노출.
                         item {
-                            QuoteEmptyState(
-                                Icons.Filled.HourglassEmpty, "응답을 기다리고 있어요",
-                                "지정한 강사가 확인 후 견적을 보내드려요.",
-                                Modifier.height(140.dp).wrapContentHeight(Alignment.CenterVertically),
-                            )
+                            EmptyView(stringResource(R.string.quote_received_direct_waiting), content = stringResource(R.string.quote_received_direct_waiting_desc))
                         }
                     } else {
                         item {
-                            QuoteEmptyState(
-                                Icons.Filled.HourglassEmpty, "아직 받은 제안이 없어요",
-                                "강사의 견적을 기다려 주세요.",
-                                Modifier.height(140.dp).wrapContentHeight(Alignment.CenterVertically),
-                            )
+                            EmptyView(stringResource(R.string.quote_received_responses_empty), content = stringResource(R.string.quote_received_responses_empty_desc))
                         }
                         // 무한 대기 방지 — 요청 조건과 비슷한 강사 추천(원터치 재요청)
                         if (recommendations.isNotEmpty()) {

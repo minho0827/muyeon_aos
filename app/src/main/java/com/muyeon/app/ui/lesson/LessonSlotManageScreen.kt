@@ -35,6 +35,9 @@ import com.muyeon.app.ui.quote.QuoteNavBar
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Date
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * 예약 가능 시간 관리 — iOS `LessonSlotManageView.swift` 1:1.
@@ -94,12 +97,8 @@ fun LessonSlotManageScreen(
             return@Column
         }
         if (products.isEmpty()) {
-            Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
-                Text(
-                    "개설한 레슨이 없어요.\n레슨을 먼저 개설해 주세요.",
-                    fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
-                    color = MuyeonColors.textSub, textAlign = TextAlign.Center,
-                )
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                EmptyView(stringResource(R.string.lesson_manage_empty), content = stringResource(R.string.lesson_slot_no_product_desc))
             }
             return@Column
         }

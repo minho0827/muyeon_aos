@@ -33,7 +33,6 @@ import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.ui.quote.QuoteDialog
-import com.muyeon.app.ui.quote.QuoteEmptyState
 import com.muyeon.app.ui.quote.QuoteNavBar
 import com.muyeon.app.ui.quote.QuoteUi
 import com.muyeon.app.ui.quote.intOrNull
@@ -52,6 +51,9 @@ import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * 내 레슨 관리 — iOS `LessonManageView.swift` 1:1.
@@ -184,11 +186,8 @@ fun LessonManageScreen(
             list == null -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                 CircularProgressIndicator(color = MuyeonColors.primary)
             }
-            list.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
-                QuoteEmptyState(
-                    Icons.Outlined.Inbox, "개설한 레슨이 없어요",
-                    "레슨을 개설하면 예약 시간이 자동으로 만들어져요.",
-                )
+            list.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth()) {
+                EmptyView(stringResource(R.string.lesson_manage_empty), content = stringResource(R.string.lesson_manage_empty_desc))
             }
             else -> PullToRefreshBox(
                 isRefreshing = refreshing,

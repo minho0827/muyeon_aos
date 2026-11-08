@@ -40,6 +40,9 @@ import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.*
 import com.muyeon.app.ui.common.market.*
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /** 첫 로딩 — 실제 카드와 같은 높이의 카드 자리 N장(작은 스피너가 커지며 바뀌지 않게). */
 @Composable
@@ -51,14 +54,14 @@ fun TransferListLoading(count: Int = 6) {
 
 /** 첫 쪽을 못 읽음 — 서버 문구 + [다시 시도]. */
 @Composable
-fun BoxScope.TransferListError(message: String, onRetry: () -> Unit) {
-    MuyeonEmptyState(message, actionTitle = "다시 시도", onAction = onRetry, modifier = Modifier.align(Alignment.Center))
+fun TransferListError(message: String, onRetry: () -> Unit) {
+    EmptyView(message, buttonText = stringResource(R.string.common_retry), onButton = onRetry)
 }
 
 /** 빈 목록. */
 @Composable
-fun BoxScope.TransferListEmpty() {
-    MuyeonEmptyState("아직 올라온 양도 글이 없어요.", icon = Icons.Outlined.Storefront, modifier = Modifier.align(Alignment.Center))
+fun TransferListEmpty() {
+    EmptyView(stringResource(R.string.transfer_list_empty))
 }
 
 /** 카드 목록 + 다음 쪽이 있으면 아래 고정 높이 자리(읽는 중일 때만 스피너). card 는 카드 한 장을 그리는 쪽이 고른다. */

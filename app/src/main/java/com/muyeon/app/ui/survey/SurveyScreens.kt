@@ -44,6 +44,9 @@ import com.muyeon.app.ui.quote.QuoteNavBar
 import com.muyeon.app.ui.quote.QuoteUi
 import com.muyeon.app.utils.TokenManager
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * 설문 응답/열람 — iOS `Survey/SurveyResponseView.swift` 이식.
@@ -460,11 +463,8 @@ fun SurveyProfileScreen(
             loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                 CircularProgressIndicator(color = MuyeonColors.primary)
             }
-            items.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
-                Text(
-                    "아직 응답한 설문이 없어요.",
-                    fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.textSub,
-                )
+            items.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth()) {
+                EmptyView(stringResource(R.string.survey_profile_empty))
             }
             else -> Column(
                 Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),

@@ -44,6 +44,9 @@ import com.muyeon.app.ui.common.*
 import com.muyeon.app.ui.common.market.*
 import com.muyeon.app.ui.space.components.*
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * 공간 대관 목록 — [필터(이용유형·가격·편의시설)][지역][날짜][인원][정렬] 시트.
@@ -116,9 +119,7 @@ fun SpaceListScreen(
                     ListPhase.Loading -> Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         repeat(3) { SpaceCardSkeleton() }
                     }
-                    ListPhase.Empty, ListPhase.Error -> MuyeonEmptyState(
-                        error ?: "조건에 맞는 공간이 없어요.", icon = Icons.Outlined.MeetingRoom, modifier = Modifier.align(Alignment.Center),
-                    )
+                    ListPhase.Empty, ListPhase.Error -> EmptyView(error ?: stringResource(R.string.space_list_empty))
                     ListPhase.Items -> LazyColumn(Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = if (onBack == null) com.muyeon.app.ui.main.tabBarBottomPadding() else 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(items, key = { it.id }) { s ->

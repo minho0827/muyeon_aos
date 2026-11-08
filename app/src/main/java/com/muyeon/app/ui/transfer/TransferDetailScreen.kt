@@ -42,6 +42,8 @@ import com.muyeon.app.ui.common.*
 import com.muyeon.app.ui.common.market.*
 import com.muyeon.app.ui.transfer.components.*
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * 상세 화면이 그릴 섹션 — 없는 섹션은 null. 이 매핑 한 곳에서만 "보일지"를 정한다.
@@ -161,9 +163,8 @@ fun TransferDetailScreen(
         StableSwap(phase, Modifier.weight(1f).fillMaxWidth()) { p ->
             when (p) {
                 DetailPhase.Loading -> TransferDetailSkeleton()
-                DetailPhase.Error -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    MuyeonEmptyState(error ?: "양도 글을 찾을 수 없어요.", actionTitle = "다시 시도", onAction = { loading = true; scope.launch { load() } })
-                }
+                DetailPhase.Error -> EmptyView(error ?: stringResource(R.string.transfer_detail_not_found),
+                    buttonText = stringResource(R.string.common_retry), onButton = { loading = true; scope.launch { load() } })
                 DetailPhase.Content -> detail?.let { dd ->
                     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                         MarketGallery(dd.images, placeholderRes = R.drawable.transfer_noimage)

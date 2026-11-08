@@ -46,6 +46,9 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 private fun nowKst(): String = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.KOREA).apply { timeZone = TimeZone.getTimeZone("Asia/Seoul") }.format(Date())
 
@@ -112,8 +115,8 @@ fun SpaceMyBookingsScreen(
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {
                 loading -> ReservationListSkeleton()  // 실제 카드 높이의 자리(스피너가 커지며 바뀌지 않게)
-                shown.isEmpty() && error == null && listFilter.isActive -> ListFilterEmpty({ listFilter = ListFilter() }, Modifier.align(Alignment.Center))
-                shown.isEmpty() -> MuyeonEmptyState(error ?: "예약 내역이 없어요.", icon = Icons.Outlined.EventNote, modifier = Modifier.align(Alignment.Center))
+                shown.isEmpty() && error == null && listFilter.isActive -> ListFilterEmpty({ listFilter = ListFilter() })
+                shown.isEmpty() -> EmptyView(error ?: stringResource(R.string.space_bookings_empty))
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(shown, key = { it.id }) { r ->
                         // 결제 대기만 [결제하기][예약 취소] 줄이 붙는다.

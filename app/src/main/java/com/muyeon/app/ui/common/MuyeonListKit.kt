@@ -434,36 +434,4 @@ fun MuyeonAddLink(title: String, onClick: () -> Unit) {
 }
 
 // ───────── C 빈 화면 ─────────
-
-/** 가운데 작은 회색 선 아이콘 + 제목 + 회색 설명 + 주황 둥근 사각 버튼(선택). iOS MuyeonEmptyState. */
-@Composable
-fun MuyeonEmptyState(
-    title: String,
-    message: String? = null,
-    icon: ImageVector = Icons.AutoMirrored.Filled.FormatListBulleted,
-    actionTitle: String? = null,
-    onAction: (() -> Unit)? = null,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 40.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Icon(icon, null, tint = MuyeonList.ink300, modifier = Modifier.size(44.dp))
-        Spacer(Modifier.height(18.dp))
-        Text(title, style = pt(FontWeight.Medium, 17), color = MuyeonColors.textHead, textAlign = TextAlign.Center)
-        message?.let {
-            Spacer(Modifier.height(4.dp))
-            Text(it, style = pt(FontWeight.Normal, 14), color = MuyeonColors.textSub, textAlign = TextAlign.Center)
-        }
-        if (actionTitle != null && onAction != null) {
-            Spacer(Modifier.height(18.dp))
-            Box(
-                Modifier.height(46.dp).clip(RoundedCornerShape(12.dp)).background(MuyeonColors.primary)
-                    .clickable(onClick = onAction).testTag("empty.action").semantics { contentDescription = "empty.action" }
-                    .padding(horizontal = 22.dp),
-                Alignment.Center,
-            ) { Text(actionTitle, style = pt(FontWeight.SemiBold, 16), color = Color.White) }
-        }
-    }
-}
+// 빈 목록 안내는 ui/components/EmptyView 하나만 쓴다(2026-11-08 — 화면마다 높이가 달랐던 것 통일).

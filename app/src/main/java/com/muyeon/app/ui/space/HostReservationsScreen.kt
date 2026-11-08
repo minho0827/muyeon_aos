@@ -46,6 +46,9 @@ import com.muyeon.app.ui.space.booking.ReservationListSkeleton
 import com.muyeon.app.ui.space.booking.HostPaidReservationRow
 import com.muyeon.app.ui.space.booking.HostReservationRow
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /** 호스트 — 예약 관리(날짜순, 상태 배지, 결제 완료 행 [취소(전액 환불)]). */
 @Composable
@@ -92,7 +95,7 @@ fun SpaceHostReservationsScreen(
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {
                 loading -> ReservationListSkeleton()  // 실제 카드 높이의 자리
-                rows.isEmpty() -> MuyeonEmptyState(error ?: "들어온 예약이 없어요.", icon = Icons.Outlined.EventNote, modifier = Modifier.align(Alignment.Center))
+                rows.isEmpty() -> EmptyView(error ?: stringResource(R.string.space_host_reservations_empty))
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(rows, key = { it.id }) { r ->
                         // 결제 완료만 [취소(전액 환불)] 줄이 붙는다.

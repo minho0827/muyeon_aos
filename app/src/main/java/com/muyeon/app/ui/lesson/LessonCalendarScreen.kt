@@ -47,6 +47,9 @@ import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteAvatar
 import com.muyeon.app.ui.quote.QuoteNavBar
 import java.util.Date
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * 레슨 캘린더 — iOS `LessonCalendarView.swift` 이식.
@@ -529,7 +532,7 @@ private fun ListBody(
                 }
             }
             if (groups.isEmpty() && state.pending.isEmpty() && state.didLoad) {
-                ListEmpty("예정된 일정이 없어요.")
+                ListEmpty(stringResource(R.string.lesson_calendar_empty_all))
             }
             groups.forEach { (ymd, lessons) ->
                 SectionHeader(listDateTitle(ymd))
@@ -537,14 +540,14 @@ private fun ListBody(
             }
         }
         StatusTab.UPCOMING -> {
-            if (groups.isEmpty() && state.didLoad) ListEmpty("예정된 레슨이 없어요.")
+            if (groups.isEmpty() && state.didLoad) ListEmpty(stringResource(R.string.lesson_calendar_empty_upcoming))
             groups.forEach { (ymd, lessons) ->
                 SectionHeader(listDateTitle(ymd))
                 lessons.forEach { LessonCard(it, state, false, onOpenLesson, onOpenChat) }
             }
         }
         StatusTab.PENDING -> {
-            if (state.pending.isEmpty() && state.didLoad) ListEmpty("조율 중인 레슨이 없어요.")
+            if (state.pending.isEmpty() && state.didLoad) ListEmpty(stringResource(R.string.lesson_calendar_empty_pending))
             else {
                 SectionHeader("일정 조율 중 ${state.pending.size}건")
                 state.pending.forEach { LessonCard(it, state, true, onOpenLesson, onOpenChat) }
@@ -552,7 +555,7 @@ private fun ListBody(
         }
         StatusTab.CANCELED -> {
             val items = state.canceledLessons
-            if (items.isEmpty() && state.didLoad) ListEmpty("취소된 레슨이 없어요.")
+            if (items.isEmpty() && state.didLoad) ListEmpty(stringResource(R.string.lesson_calendar_empty_canceled))
             else {
                 SectionHeader("취소된 레슨 ${items.size}건")
                 items.forEach { LessonCard(it, state, false, onOpenLesson, onOpenChat) }
@@ -563,8 +566,8 @@ private fun ListBody(
 
 @Composable
 private fun ListEmpty(t: String) {
-    // 10-27 공용 빈 화면(작은 회색 아이콘 + 제목).
-    com.muyeon.app.ui.common.MuyeonEmptyState(t.removeSuffix("."), icon = androidx.compose.material.icons.Icons.Default.DateRange)
+    // 공용 빈 목록 안내 — 칩 줄 아래 목록 맨 위(모든 화면 같은 위치).
+    EmptyView(t)
 }
 
 /** "2026-08-12" → "2026년 8월 12일 (화)" — iOS `listDateTitle`. */

@@ -38,6 +38,9 @@ import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteAvatar
 import com.muyeon.app.ui.quote.QuoteUi
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * 채팅방 리스트 — iOS `ChatListView.swift` 1:1.
@@ -89,8 +92,8 @@ fun ChatListScreen(
             support != null && showSupport && state.filter == ChatRoomFilter.SUPPORT -> SupportChatList(support, onOpenWebPath)
             state.isLoading && rooms.isEmpty() -> ChatListSkeleton()
             state.loadFailed && rooms.isEmpty() -> LoadFailed { scope.launch { state.retry() } }
-            rooms.isEmpty() && !state.hasMore -> EmptyMessage(Icons.Outlined.ChatBubbleOutline, "진행 중인 채팅이 없어요", "견적·공고·레슨으로 대화를 시작하면 여기에 모여요.")
-            filtered.isEmpty() && !state.hasMore -> EmptyMessage(Icons.Outlined.FilterList, "이 탭에는 채팅이 없어요", "다른 탭을 눌러 보세요.")
+            rooms.isEmpty() && !state.hasMore -> EmptyView(stringResource(R.string.chat_list_empty), content = stringResource(R.string.chat_list_empty_desc))
+            filtered.isEmpty() && !state.hasMore -> EmptyView(stringResource(R.string.chat_list_empty_tab), content = stringResource(R.string.chat_list_empty_tab_desc))
             else -> PullToRefreshBox(
                 isRefreshing = state.refreshing,
                 onRefresh = { scope.launch { state.pullToRefresh() } },
@@ -98,7 +101,7 @@ fun ChatListScreen(
             ) {
                 LazyColumn(Modifier.fillMaxSize()) {
                     if (filtered.isEmpty()) item {
-                        Text("현재 불러온 대화 중에는 없어요. 이전 대화를 더 확인해 보세요.", Modifier.padding(20.dp))
+                        EmptyView(stringResource(R.string.chat_list_empty_loaded))
                     }
                     // 한 줄(스와이프 나가기 + 방 줄) — 열린 방·종료된 대화 구역이 같이 쓴다.
                     val roomRow: @Composable (ChatRoomSummary) -> Unit = { room ->
@@ -359,19 +362,11 @@ private fun ChatListSkeleton() {
 
 @Composable
 private fun LoadFailed(onRetry: () -> Unit) {
-    // 10-27 공용 빈 화면 + 다시 시도 버튼(iOS 와 같다).
-    Box(Modifier.fillMaxSize(), Alignment.Center) {
-        com.muyeon.app.ui.common.MuyeonEmptyState(
-            "채팅 목록을 불러오지 못했어요.", "잠시 후 다시 시도해 주세요.",
-            icon = Icons.Outlined.WifiOff, actionTitle = "다시 시도", onAction = onRetry,
-        )
-    }
+    // 공용 빈 목록 안내 + 다시 시도 — 탭 줄 아래 목록 맨 위.
+    EmptyView(
+        stringResource(R.string.chat_list_failed), content = stringResource(R.string.common_try_later),
+        buttonText = stringResource(R.string.common_retry), onButton = onRetry,
+    )
 }
 
-// 10-27 공용 빈 화면(작은 회색 아이콘 + 제목 + 설명) — iOS ChatRoomListSection.emptyState 와 같다.
-@Composable
-private fun EmptyMessage(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, message: String) {
-    Box(Modifier.fillMaxSize(), Alignment.Center) {
-        com.muyeon.app.ui.common.MuyeonEmptyState(title, message, icon = icon)
-    }
-}
+

@@ -36,7 +36,6 @@ import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.lesson.LessonTimeFmt
 import com.muyeon.app.ui.quote.QuoteAvatar
-import com.muyeon.app.ui.quote.QuoteEmptyState
 import com.muyeon.app.ui.quote.QuoteNavBar
 import com.muyeon.app.ui.quote.QuoteUi
 import kotlinx.coroutines.currentCoroutineContext
@@ -45,6 +44,9 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Date
 import org.json.JSONObject
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * 스튜디오 운영 — iOS `Studio/StudioMembersView` · `StudioSalesView` · `StudioScheduleView` ·
@@ -144,8 +146,8 @@ fun StudioMembersScreen(api: StudioApi, onClose: () -> Unit, onOpenMember: (Int)
             page.loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                 CircularProgressIndicator(color = MuyeonColors.primary)
             }
-            members.isEmpty() && page.error == null && !page.hasMore -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
-                QuoteEmptyState(Icons.Outlined.Groups, "회원이 없어요", "수강권을 발급하면 여기에 모여요.")
+            members.isEmpty() && page.error == null && !page.hasMore -> Box(Modifier.weight(1f).fillMaxWidth()) {
+                EmptyView(stringResource(R.string.studio_members_empty), content = stringResource(R.string.studio_members_empty_desc))
             }
             else -> PullToRefreshBox(
                 isRefreshing = refreshing,

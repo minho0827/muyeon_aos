@@ -35,6 +35,9 @@ import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteDialog
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import com.muyeon.app.R
+import com.muyeon.app.ui.components.EmptyView
 
 /**
  * 이력서 관리 — iOS `ResumeListView.swift` 1:1.
@@ -115,10 +118,7 @@ fun ResumeListScreen(
                         )
                     }
                     if (items.isEmpty()) {
-                        com.muyeon.app.ui.common.MuyeonEmptyState(
-                            "아직 작성한 이력서가 없어요", "위의 [직접 작성하기]로 첫 이력서를 작성해 보세요.",
-                            icon = androidx.compose.material.icons.Icons.Outlined.Description,
-                        )
+                        EmptyView(stringResource(R.string.resume_list_empty), content = stringResource(R.string.resume_list_empty_desc))
                     }
                     NoticeBox(mode.isDancer, Modifier.padding(top = 8.dp))
                 }
