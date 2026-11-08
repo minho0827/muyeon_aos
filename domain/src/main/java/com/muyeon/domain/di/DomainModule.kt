@@ -103,4 +103,7 @@ val domainModule = module {
     factory { com.muyeon.domain.usecase.region.AddRegionOptionsUseCase(get()) }
     factory { com.muyeon.domain.usecase.alert.AlertPrefsUseCase(get(), get(), get()) }
     factory { com.muyeon.domain.usecase.policy.GetPolicyUseCase(get()) }
+    // ★ 2026-11-08 묶음 2 — 학원 정보 관리 · 캐스팅·공연 자료 업로드
+    factory { com.muyeon.domain.usecase.academy.AcademyProfileUseCase(get()) }
+    factory { com.muyeon.domain.usecase.castingmaterial.CastingMaterialUseCase(get()) }
 }

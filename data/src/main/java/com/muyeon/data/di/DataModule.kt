@@ -41,4 +41,7 @@ val dataModule = module {
     // ★ 2026-11-08 (b4) 관심 조건 알림 · 약관
     single<com.muyeon.domain.repository.AlertPrefsRepository> { com.muyeon.data.repository.AlertPrefsRepositoryImpl(get(), get()) }
     single<com.muyeon.domain.repository.PolicyRepository> { com.muyeon.data.repository.PolicyRepositoryImpl(androidContext(), get(), get()) }
+    // ★ 2026-11-08 묶음 2 — 학원 정보 관리 · 캐스팅·공연 자료 업로드
+    single<com.muyeon.domain.repository.AcademyProfileRepository> { com.muyeon.data.repository.AcademyProfileRepositoryImpl(get(), get()) }
+    single<com.muyeon.domain.repository.CastingMaterialRepository> { com.muyeon.data.repository.CastingMaterialRepositoryImpl(get(), get()) }
 }

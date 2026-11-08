@@ -129,6 +129,10 @@ object NativeRoutes {
             "/myRegions" -> return Target.Route(Screen.MyRegions.route)
             "/addRegion" -> return Target.Route(Screen.AddRegion.route)
             "/alerts" -> return Target.Route(Screen.Alerts.route, auth = true)
+            // ★ 2026-11-08 묶음 2 — 학원 정보 관리(AI 도우미 초안 ?aiDraft= 도) · 캐스팅·공연 자료 업로드.
+            "/academyProfile" -> return Target.Route(Screen.AcademyEdit.build(query["aiDraft"]?.let(android.net.Uri::decode)), auth = true)
+            "/my/castingMaterials" -> return Target.Route(Screen.CastingMaterials.build("CASTING"), auth = true)
+            "/my/performanceMaterials" -> return Target.Route(Screen.CastingMaterials.build("PERFORMANCE"), auth = true)
         }
         // ★ 2026-11-08 묶음 0 — 앱 화면이 이미 있는데 웹 창으로 가던 주소(NativeRoutesB0).
         NativeRoutesB0.resolve(p.trimEnd('/'), query, clean.contains('?'))?.let { return it }

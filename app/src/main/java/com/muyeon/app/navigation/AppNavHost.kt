@@ -413,6 +413,26 @@ fun AppNavHost(
                 onLogin = { onOpenWeb(WebPaths.login("/performance")) },
             )
         }
+        // ★ 2026-11-08 묶음 2 — 학원 정보 관리(저장 뒤 웹처럼 MY) · 캐스팅·공연 자료 업로드(등록된 글은 앱 경로표로).
+        composable(
+            Screen.AcademyEdit.route,
+            arguments = listOf(navArgument(Screen.AcademyEdit.ARG_AI_DRAFT) { type = NavType.StringType; nullable = true; defaultValue = null }),
+        ) { e ->
+            com.muyeon.app.ui.academyedit.AcademyEditScreen(
+                aiDraftId = e.arguments?.getString(Screen.AcademyEdit.ARG_AI_DRAFT)?.takeIf { it.isNotBlank() },
+                onBack = { navController.popBackStack() },
+                onMy = { navController.popBackStack(Screen.Main.route, inclusive = false); onOpenPath("/mypage") },
+            )
+        }
+        composable(Screen.CastingMaterials.route, arguments = listOf(navArgument(Screen.CastingMaterials.ARG_KIND) { type = NavType.StringType })) { e ->
+            val kind = if (e.arguments?.getString(Screen.CastingMaterials.ARG_KIND) == "PERFORMANCE")
+                com.muyeon.domain.model.castingmaterial.CastingMaterialKind.PERFORMANCE else com.muyeon.domain.model.castingmaterial.CastingMaterialKind.CASTING
+            com.muyeon.app.ui.castingmaterial.CastingMaterialsScreen(
+                viewModel = org.koin.androidx.compose.koinViewModel(key = kind.code, parameters = { org.koin.core.parameter.parametersOf(kind) }),
+                onBack = { navController.popBackStack() },
+                onOpenPath = onOpenPath,
+            )
+        }
     }
 }
 
