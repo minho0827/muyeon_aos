@@ -140,7 +140,12 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
             }
             return false
         }
-        if (!com.muyeon.app.ui.auth.LoginActivity.isLoginPath(path)) return false
+        if (!com.muyeon.app.ui.auth.LoginActivity.isLoginPath(path)) {
+            webView.alpha = 1f
+            return false
+        }
+        // ★ 2026-11-08 웹 로그인 화면이 비치지 않게 곧바로 가린다 — 앱 로그인 화면이 뜨고 이 창은 이전 화면으로(그때 다시 보인다)·닫힌다.
+        webView.alpha = 0f
         val js = "(function(){var n=null;try{n=sessionStorage.getItem('muyeon.logoutNotice');sessionStorage.removeItem('muyeon.logoutNotice')}catch(e){}" +
             "var i=0;try{i=(history.state&&history.state.idx)||0}catch(e){}return JSON.stringify({s:location.search,n:n,i:i})})()"
         webView.evaluateJavascript(js) { raw ->

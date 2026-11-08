@@ -350,10 +350,8 @@ class LessonBrowseActivity : com.muyeon.app.result.ResultActivity() {
                     reloadSignal = reviewsReload,
                     source = source,
                     myUserId = myUserId,
-                    // 비회원 → 로그인(돌아오면 이 레슨). 웹 /login?redirect= 와 같은 길.
-                    onLogin = {
-                        com.muyeon.app.webview.WebViewActivity.startPath(this, com.muyeon.app.navigation.WebPaths.login("/lessons/$id"))
-                    },
+                    // 비회원 → 앱 로그인 화면 하나만(돌아오면 이 레슨). 웹 창을 거치지 않는다(거치면 웹 /login 이 잠깐 비쳤다 닫힌다).
+                    onLogin = { com.muyeon.app.ui.auth.LoginActivity.start(this, "/lessons/$id") },
                     // 기존 예약 화면 그대로(회차·인원·예약금 결제) — 웹 상세 [레슨 예약하기] = 네이티브 예약 시트와 같다.
                     onBook = { pid -> com.muyeon.app.ui.lesson.LessonActivity.startBooking(this, pid) },
                     onManage = { com.muyeon.app.ui.lesson.LessonActivity.startManage(this) },
