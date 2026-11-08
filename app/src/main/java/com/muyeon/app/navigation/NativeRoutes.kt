@@ -30,6 +30,9 @@ object NativeRoutes {
         when (p.trimEnd('/')) {
             "/profileResume", "/resume" -> return Target.Action("openResumeList", mapOf("mode" to if (query["as"] == "dancer") "dancer" else "teacher"))
             "/lessonCalendar" -> return Target.Action("openLessonCalendar", query["lessonId"]?.let { mapOf("lessonId" to it) } ?: emptyMap())
+            // ★ 2026-11-08 채용공고 작성 · 구직 프로필 등록 — 앱 화면이 있다(웹 창 대신).
+            "/jobs/create" -> return Target.Action("openJobPostingForm")
+            "/profileManage" -> if (query["seek"] == "1") return Target.Action("openSeekProfile")
         }
         COMMUNITY_POST.find(p)?.let { return Target.Route(Screen.CommunityPost.build(it.groupValues[1].toLong())) }
         if (p.trimEnd('/') == "/community" && !clean.contains('?')) return Target.Route(Screen.CommunityList.route)

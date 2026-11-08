@@ -224,6 +224,12 @@ object NativeActionRouter {
             "openChatList" -> com.muyeon.app.ui.chat.ChatActivity.startList(activity, d.optString("filter"))
             // 채용 — E 이식 완료
             "openMyJobPostings" -> com.muyeon.app.ui.jobposting.JobPostingActivity.startList(activity)
+            // ★ 2026-11-08 앱 안 전용(웹 계약 아님) — 채용 [+ 글쓰기] · 웹 /jobs/create 링크를 앱 채용공고 작성으로.
+            "openJobPostingForm" -> com.muyeon.app.ui.jobposting.JobPostingActivity.startForm(activity, null)
+            // ★ 2026-11-08 앱 안 전용 — 구직 프로필 등록(웹 /profileManage?seek=1) — 지금 유형이 무용수면 무용수 이력서.
+            "openSeekProfile" -> com.muyeon.app.ui.resume.ResumeActivity.startEdit(
+                activity, null, if (ActiveRole.isDancer(activity)) "dancer" else "", seekProfile = true,
+            )
 
             // 스튜디오 운영 — E 이식 완료
             "openStudioOps" -> com.muyeon.app.ui.studio.StudioActivity.start(activity, "hub")
