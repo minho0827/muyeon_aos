@@ -242,8 +242,8 @@ enum class LessonDetailCta { SAME_QUOTE, MANAGE, BOOK, REQUEST, NONE }
  *  1) 견적 추천에서 열었으면 같은 조건 견적(내 레슨이면 관리).
  *  2) 내 레슨 → 관리(웹: 자기 레슨 예약 방지).
  *  3) bookable=false → 없음(웹과 같다).
- *  4) 수업료가 정해졌고 예약할 회차가 있으면(회차 수를 못 읽으면 웹처럼 예약) → 레슨 예약하기(기존 예약 화면).
- *  5) 수업료나 회차가 아직 없으면 → 이 강사님께 레슨 요청하기(지정 요청).
+ *  4) 그 밖은 모두 레슨 예약하기(기존 예약 화면) — 웹과 같다. ★ 2026-11-08 사용자 결정: 수업료·회차가 없는 레슨은
+ *     임시로 만든 것이라 별도 버튼(레슨 요청)을 두지 않는다. REQUEST 는 쓰지 않지만 enum 은 남긴다.
  */
 fun lessonDetailCta(source: LessonDetailSource, d: LessonContentDetail, myUserId: Int?, slotCount: Int?): LessonDetailCta {
     val mine = myUserId != null && d.creatorId != null && d.creatorId == myUserId
@@ -251,7 +251,6 @@ fun lessonDetailCta(source: LessonDetailSource, d: LessonContentDetail, myUserId
         mine -> LessonDetailCta.MANAGE
         source == LessonDetailSource.QUOTE_RECOMMEND -> LessonDetailCta.SAME_QUOTE
         !d.bookable -> LessonDetailCta.NONE
-        d.price != null && (slotCount == null || slotCount > 0) -> LessonDetailCta.BOOK
-        else -> LessonDetailCta.REQUEST
+        else -> LessonDetailCta.BOOK
     }
 }
