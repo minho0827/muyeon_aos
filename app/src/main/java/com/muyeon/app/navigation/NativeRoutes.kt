@@ -22,6 +22,8 @@ object NativeRoutes {
     private val PERFORMANCE = Regex("^/performance/(\\d+)/?$")
     private val JOB = Regex("^/jobs/(\\d+)/?$")
     private val SUB = Regex("^/subs/(\\d+)/?$")
+    private val TEACHER = Regex("^/teachers/(\\d+)/?$")
+    private val LESSON = Regex("^/lessons/(\\d+)/?$")
 
     fun resolve(path: String?): Target? {
         val clean = path?.substringBefore('#') ?: return null
@@ -33,6 +35,12 @@ object NativeRoutes {
             // ★ 2026-11-08 채용공고 작성 · 구직 프로필 등록 — 앱 화면이 있다(웹 창 대신).
             "/jobs/create" -> return Target.Action("openJobPostingForm")
             "/profileManage" -> if (query["seek"] == "1") return Target.Action("openSeekProfile")
+            // ★ 2026-11-08 전체 메뉴 점검 — 앱 화면이 이미 있는데 웹으로 가던 주소.
+            "/myLessons" -> return Target.Action("openLessonManage")
+            "/casting/create" -> return Target.Action("openCastingStage", mapOf("screen" to "create"))
+            "/casting/all" -> return Target.Action("openCastingStage", mapOf("screen" to "castingList"))
+            "/teachers" -> return Target.Action("openHomeTeachers")
+            "/lessons/create" -> return Target.Action("openLessonCreate")
         }
         COMMUNITY_POST.find(p)?.let { return Target.Route(Screen.CommunityPost.build(it.groupValues[1].toLong())) }
         if (p.trimEnd('/') == "/community" && !clean.contains('?')) return Target.Route(Screen.CommunityList.route)
@@ -41,6 +49,8 @@ object NativeRoutes {
             val prefill = clean.substringAfter('?', "").split('&').firstOrNull { it.startsWith("prefill=") }?.substringAfter('=')
             return Target.Route(Screen.SubWizard.build(prefill))
         }
+        TEACHER.find(p)?.let { if (!clean.contains('?')) return Target.Action("openPublicProfile", mapOf("userId" to it.groupValues[1])) }
+        LESSON.find(p)?.let { return Target.Action("openLessonDetail", mapOf("lessonId" to it.groupValues[1])) }
         JOB.find(p)?.let { return Target.Route(Screen.JobDetail.build(it.groupValues[1].toLong())) }
         SUB.find(p)?.let { return Target.Route(Screen.SubDetail.build(it.groupValues[1].toLong())) }
         PERFORMANCE.find(p)?.let { return Target.Route(Screen.PerformanceDetail.build(it.groupValues[1].toLong())) }

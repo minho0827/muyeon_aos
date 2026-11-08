@@ -38,6 +38,7 @@ class CastingStageActivity : ResultActivity() {
             when (screen) {
                 "castingList" -> return "castingList"
                 "issues" -> return "issues"
+                "create" -> return "create"
             }
             val no = issueNo?.toIntOrNull()?.takeIf { it > 0 } ?: return null
             return if (category != null && StageCategory.NEWS.any { it.code == category }) "newsList/$no/$category" else "issue/$no"

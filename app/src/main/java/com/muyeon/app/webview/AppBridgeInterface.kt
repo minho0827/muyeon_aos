@@ -225,6 +225,17 @@ object NativeActionRouter {
             // 채용 — E 이식 완료
             "openMyJobPostings" -> com.muyeon.app.ui.jobposting.JobPostingActivity.startList(activity)
             // ★ 2026-11-08 앱 안 전용(웹 계약 아님) — 채용 [+ 글쓰기] · 웹 /jobs/create 링크를 앱 채용공고 작성으로.
+            // ★ 2026-11-08 앱 안 전용 — 웹 /myLessons(내 레슨 관리) · /lessons/:id(레슨 상세)를 앱 화면으로.
+            // 웹 /teachers(강사 찾기) — 홈 [강사] 그리드가 같은 목록이다.
+            "openHomeTeachers" -> {
+                com.muyeon.app.ui.home.HomeModeRequests.request(com.muyeon.app.ui.home.HomeMode.TEACHERS)
+                com.muyeon.app.ui.main.MainActivity.openTab(activity, com.muyeon.app.ui.main.MainTab.HOME)
+            }
+            "openLessonManage" -> com.muyeon.app.ui.lesson.LessonActivity.startManage(activity)
+            "openLessonDetail" -> {
+                val lid = d.optString("lessonId").toIntOrNull() ?: return true
+                com.muyeon.app.ui.lesson.LessonBrowseActivity.startDetail(activity, lid)
+            }
             "openJobPostingForm" -> com.muyeon.app.ui.jobposting.JobPostingActivity.startForm(activity, null)
             // ★ 2026-11-08 앱 안 전용 — 구직 프로필 등록(웹 /profileManage?seek=1) — 지금 유형이 무용수면 무용수 이력서.
             "openSeekProfile" -> com.muyeon.app.ui.resume.ResumeActivity.startEdit(
