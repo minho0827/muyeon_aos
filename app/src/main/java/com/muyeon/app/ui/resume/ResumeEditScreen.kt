@@ -431,7 +431,7 @@ fun ResumeEditScreen(
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         QuoteNavBar(
-            title = if (isSeekProfile) (if (seekPublished) "강사프로필 수정" else "강사프로필 등록") else mode.navTitle,
+            title = if (isSeekProfile) (if (mode.isDancer) "무용수 프로필 등록/수정" else "강사프로필 등록/수정") else mode.navTitle, // iOS ResumeEditView 머리글과 같다
             onBack = onClose,
             trailing = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
