@@ -188,6 +188,27 @@ fun AppNavHost(
                 },
             )
         }
+        // ★ 2026-11-08 내가 예약한 내역(웹 /myReservations) — 예약 상세·후기는 기존 앱 화면, 돌려준 결과로 다시 읽는다.
+        composable(Screen.MyReservations.route) {
+            val native: (String, org.json.JSONObject) -> Unit = { action, data ->
+                context.findActivity()?.let { a -> com.muyeon.app.webview.NativeActionRouter.open(a, action, data) }
+            }
+            com.muyeon.app.ui.reservation.MyReservationsScreen(
+                onBack = { navController.popBackStack() },
+                onOpenReservation = { id -> native("openLessonReservationDetail", org.json.JSONObject().put("reservationId", id.toString())) },
+                onReview = { r ->
+                    val tid = r.teacherId?.toString() ?: return@MyReservationsScreen
+                    // 후기를 썼으면 내 후기(전체 후기 화면), 아니면 후기 쓰기(웹과 같다).
+                    if (r.reviewed) native("openReviewList", org.json.JSONObject().put("teacherId", tid))
+                    else native("openReviewWrite", org.json.JSONObject().put("teacherId", tid).put("teacherName", r.teacherName))
+                },
+                onBrowseLessons = {
+                    navController.popBackStack(Screen.Main.route, inclusive = false)
+                    com.muyeon.app.ui.home.HomeModeRequests.request(com.muyeon.app.ui.home.HomeMode.LESSONS)
+                    onOpenPath("/home")
+                },
+            )
+        }
         // ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 /lessonList).
         composable(
             Screen.LessonList.route,

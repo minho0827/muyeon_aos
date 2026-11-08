@@ -75,6 +75,7 @@ object NativeRoutes {
             "/noticeDetail" -> return Target.Route(query["id"]?.toLongOrNull()?.let { Screen.NoticeDetail.build(it) } ?: Screen.Notices.route)
             "/faq" -> return Target.Route(Screen.Faq.route)
             "/likes" -> return Target.Route(Screen.Likes.route, auth = true)
+            "/myReservations" -> return Target.Route(Screen.MyReservations.route, auth = true)
             "/support/inquiries" -> return Target.Route(Screen.SupportInquiries.route, auth = true)
             "/support/inquiry" -> return Target.Route(Screen.SupportCompose.build(Screen.SupportCompose.INQUIRY), auth = true)
             "/support/feedback" -> return Target.Route(Screen.SupportCompose.build(Screen.SupportCompose.FEEDBACK), auth = true)

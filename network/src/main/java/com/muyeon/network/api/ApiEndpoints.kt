@@ -112,6 +112,12 @@ object ApiEndpoints {
         const val INQUIRY = "$API/support-inquiries/{id}"             // GET 상세(본인) · DELETE
     }
 
+    /** ★ 2026-11-08 내가 예약한 내역(웹 MyReservations) — lesson-booking.controller.ts · lessons.controller.ts. */
+    object Reservations {
+        const val HISTORY_PAGE = "$API/me/lesson-reservations/history/page"   // GET category(PERSONAL|ACADEMY|CANCELED)·period·cursor·limit
+        const val COMPLETED_PAGE = "$API/lessons/me/completed-lessons/page"   // GET period·cursor·limit — 레슨 완료(후기)
+    }
+
     /** regions.controller.ts */
     object Regions {
         const val NEAREST = "$API/regions/nearest"           // GET lat·lng → Region | null

@@ -75,6 +75,8 @@ val viewModelModule = module {
     viewModel { p -> com.muyeon.app.ui.support.SupportComposeViewModel(p.get(), get()) }
     // ★ 2026-11-08 찜/관심
     viewModel { com.muyeon.app.ui.likes.LikesViewModel(get(), get(), get()) }
+    // ★ 2026-11-08 내가 예약한 내역
+    viewModel { com.muyeon.app.ui.reservation.MyReservationsViewModel(get()) }
     // ★ 2026-11-08 홈 '전체보기' 레슨 목록 — 인자: type(popular·experience·oneday)
     viewModel { p -> com.muyeon.app.ui.lessonlist.LessonListViewModel(p.getOrNull(), get(), get(), get(), get(), get(), get(), get()) }
     // MY

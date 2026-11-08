@@ -77,6 +77,9 @@ sealed class Screen(val route: String) {
     /** 찜/관심(웹 /likes). */
     data object Likes : Screen("likes")
 
+    /** 내가 예약한 내역(웹 /myReservations). */
+    data object MyReservations : Screen("myReservations")
+
     /** 홈 '전체보기' 레슨 목록(웹 /lessonList?title=&type=). */
     data object LessonList : Screen("lessonList?title={title}&type={type}") {
         const val ARG_TITLE = "title"
