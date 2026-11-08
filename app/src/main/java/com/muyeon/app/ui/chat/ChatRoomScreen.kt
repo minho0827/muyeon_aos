@@ -90,6 +90,17 @@ fun ChatRoomScreen(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    // ★ 2026-11-08 묶음 0 — 레슨 제안 예약금 결제는 결제 전용 창(iOS LessonPaymentWebView 와 같다). 채팅은 닫지 않는다.
+    val proposalPay = androidx.activity.compose.rememberLauncherForActivityResult(com.muyeon.app.ui.lesson.LessonPaymentActivity.PathContract()) { paid ->
+        if (paid) vm.reloadContext()
+    }
+    val openProposalPayment: (Int) -> Unit = { pid ->
+        proposalPay.launch(
+            com.muyeon.app.ui.lesson.LessonPaymentActivity.PaymentPage(
+                "/lesson-proposals/$pid/payment", context.getString(com.muyeon.app.R.string.b0_lesson_payment_title),
+            ),
+        )
+    }
     var showAttach by remember { mutableStateOf(false) }
     var showProposal by remember { mutableStateOf(false) }
     var showSurveyPicker by remember { mutableStateOf(false) }
@@ -354,9 +365,7 @@ fun ChatRoomScreen(
             onLegacyTimeline = { showLegacyTimeline = true },
             onLegacyPrimary = { vm.acceptTarget = null; handleProgressPrimary(it, vm.quoteContext?.isTeacher == true) },
             onProposalChanged = { vm.reloadContext() },
-            onOpenProposalPayment = { pid ->
-                (context as? Activity)?.let { NativeWebRoute.openWebAndFinish(it, "/lesson-proposals/$pid/payment") }
-            },
+            onOpenProposalPayment = openProposalPayment,
             onMemberSchedule = { showProposal = true },
             onQuoteHeader = { onQuoteHeader() },
             onOpenLesson = { openLesson(it) },
@@ -438,11 +447,7 @@ fun ChatRoomScreen(
                             read = isReadByOpponent(m, vm.opponentLastReadAt),
                             currentUserId = vm.currentUserId,
                             // 예약금 결제는 웹 결제 화면(iOS LessonPaymentWebView 와 같은 경로)으로 넘긴다.
-                            onOpenProposalPayment = { pid ->
-                                (context as? Activity)?.let {
-                                    NativeWebRoute.openWebAndFinish(it, "/lesson-proposals/$pid/payment")
-                                }
-                            },
+                            onOpenProposalPayment = openProposalPayment,
                             token = vm.tokenForCards,
                             onLongPress = { reactionTarget = m },
                             // 잠긴 방은 반응 칩을 눌러도 토글하지 않는다(서버 ROOM_LOCKED — 보기만).

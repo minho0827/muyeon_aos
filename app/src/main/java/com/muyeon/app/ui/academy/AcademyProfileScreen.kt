@@ -310,7 +310,7 @@ class AcademyProfileActivity : com.muyeon.app.result.ResultActivity() {
                 onClose = { finish() },
                 // 공고 상세는 아직 웹 — 네이티브 승격 전까지 웹 경로 폴백.
                 onOpenJob = { jobId ->
-                    com.muyeon.app.webview.NativeWebRoute.openWebAndFinish(this, "/job/$jobId")
+                    com.muyeon.app.webview.NativeWebRoute.openWebAndFinish(this, "/jobs/$jobId")
                 },
             )
         }

@@ -120,6 +120,11 @@ class CommunityListViewModel(
     companion object {
         const val ALL = "ALL"
         private const val KEY = "community.category"
+
+        /** ★ 2026-11-08 묶음 0 — 웹 /community/:category 로 열 때 그 칩을 먼저 골라 둔다(목록이 열리며 읽는다). */
+        fun preselect(prefs: KeyValueStore, category: String) {
+            if (category in CommunityCategory.ALL_CODES) prefs.putString(KEY, category)
+        }
         /** 앱 안 결과 키 — 글을 지우거나 새로 썼다(웹 창 포함). */
         const val RESULT_COMMUNITY = "COMMUNITY"
     }

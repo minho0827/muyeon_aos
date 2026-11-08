@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ★ 2026-11-08 묶음 0(경로표 정리) 전용 문구 — strings.xml 에 넣지 않는다(묶음끼리 충돌 방지). -->
+<resources>
+    <!-- 채팅 레슨 제안 예약금 결제 창 제목줄(iOS LessonPaymentWebView 기본 제목과 같다). -->
+    <string name="b0_lesson_payment_title">예약금 결제</string>
+</resources>
