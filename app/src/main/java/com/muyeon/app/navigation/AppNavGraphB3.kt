@@ -9,7 +9,7 @@ import com.muyeon.app.result.ResultKeys
 
 /**
  * ★ 2026-11-08 묶음 3 — 탭 위 앱 화면: 대타공고 수정 · 커뮤니티 글쓰기/수정. AppNavHost 가 한 줄로 붙인다.
- *   저장 뒤 이동은 웹과 같다 — 대타 수정: 그 공고 상세(/subs/:id), 글쓰기·글 수정: 커뮤니티 목록(/community, 작성 화면은 기록에 남기지 않는다).
+ *   저장 뒤 이동 — 대타 수정: 그 공고 상세(웹 /subs/:id), 새 글: 커뮤니티 목록(웹 /community, 작성 화면은 기록에 남기지 않는다), 글 수정: 그 글 상세.
  */
 internal fun NavGraphBuilder.b3Graph(navController: NavHostController) {
     composable(Screen.SubEdit.route, arguments = listOf(navArgument(Screen.SubEdit.ARG_ID) { type = NavType.StringType })) { e ->
@@ -32,8 +32,10 @@ internal fun NavGraphBuilder.b3Graph(navController: NavHostController) {
             editId = editId,
             onBack = { navController.popBackStack() },
             onDone = {
-                // 웹: navigate("/community", { replace: true }) — 아래에 커뮤니티 목록이 있으면 거기까지 돌아가고(목록은 결과 키로 새로 받는다), 없으면 목록으로 바꾼다.
-                if (!navController.popBackStack(Screen.CommunityList.route, inclusive = false)) {
+                // 글 수정 — 고친 글 상세로 돌아간다(상세는 다시 보일 때 새로 읽는다). 웹은 목록(/community)으로 가지만 iOS 와 같게 상세로.
+                // 새 글 — 웹 navigate("/community", { replace: true }): 아래에 커뮤니티 목록이 있으면 거기로(결과 키로 새로 받는다), 없으면 목록으로 바꾼다.
+                if (editId != null) navController.popBackStack()
+                else if (!navController.popBackStack(Screen.CommunityList.route, inclusive = false)) {
                     navController.navigate(Screen.CommunityList.route) { popUpTo(Screen.CommunityWrite.route) { inclusive = true } }
                 }
             },
