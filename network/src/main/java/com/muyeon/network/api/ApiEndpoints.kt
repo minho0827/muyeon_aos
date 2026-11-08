@@ -145,6 +145,8 @@ object ApiEndpoints {
         const val LINK_IDENTITY = "$API/auth/me/identity"               // POST { identityToken } → 갱신된 내 정보
         const val NICE_LINK_START = "$API/identity/nice/link/start"     // POST { returnTo } → { authUrl } (로그인 회원 본인확인)
         const val UPLOAD_IMAGE = "$API/uploads/image"                   // POST multipart file → { url }
+        const val PASSWORD = "$API/auth/me/password"                    // PATCH { newPassword }
+        const val SUB_TRUST = "$API/me/sub-trust"                       // GET 대타 신뢰도 { points90d, cancels90d, restrictedUntil, history }
     }
 
     /** ★ 2026-11-08 경력·자격 확인(웹 CredentialsManage) — credentials.controller.ts · uploads.controller.ts(비공개 서류). */

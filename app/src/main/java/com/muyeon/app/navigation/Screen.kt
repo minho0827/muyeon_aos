@@ -108,6 +108,10 @@ sealed class Screen(val route: String) {
     /** 경력·자격 확인(웹 /my/credentials). */
     data object Credentials : Screen("my/credentials")
 
+    /** 비밀번호 변경(웹 /changePassword) · 대타 신뢰도(웹 /subTrust). */
+    data object ChangePassword : Screen("changePassword")
+    data object SubTrust : Screen("subTrust")
+
     /** 홈 '전체보기' 레슨 목록(웹 /lessonList?title=&type=). */
     data object LessonList : Screen("lessonList?title={title}&type={type}") {
         const val ARG_TITLE = "title"

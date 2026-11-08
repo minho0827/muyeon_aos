@@ -35,3 +35,32 @@ data class AuthUrlDto(val authUrl: String? = null)
 
 @JsonClass(generateAdapter = true)
 data class UploadUrlDto(val url: String? = null)
+
+@JsonClass(generateAdapter = true)
+data class NewPasswordBody(val newPassword: String)
+
+/** GET /me/sub-trust 내역 한 줄. */
+@JsonClass(generateAdapter = true)
+data class SubTrustHistoryDto(
+    val id: Long? = null, val createdAt: String? = null, val postingTitle: String? = null, val side: String? = null,
+    val reason: String? = null, val points: Double? = null, val revokedAt: String? = null, val expiresAt: String? = null,
+)
+
+@JsonClass(generateAdapter = true)
+data class SubTrustDto(
+    val points90d: Double? = null, val cancels90d: Double? = null, val restrictedUntil: String? = null,
+    val history: List<SubTrustHistoryDto>? = null,
+) {
+    fun toDomain() = com.muyeon.domain.model.account.SubTrust(
+        points90d?.toInt() ?: 0, cancels90d?.toInt() ?: 0, restrictedUntil?.takeIf { it.isNotBlank() },
+        history.orEmpty().mapNotNull { h ->
+            h.id?.let {
+                com.muyeon.domain.model.account.SubTrustEntry(
+                    it, h.createdAt, h.postingTitle?.takeIf { t -> t.isNotBlank() }, h.side,
+                    h.reason?.contains(Regex("NO_?SHOW", RegexOption.IGNORE_CASE)) == true,
+                    h.points?.toInt() ?: 0, h.revokedAt != null, h.expiresAt,
+                )
+            }
+        },
+    )
+}

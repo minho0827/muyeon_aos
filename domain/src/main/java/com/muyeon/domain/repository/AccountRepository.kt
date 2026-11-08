@@ -12,4 +12,6 @@ interface AccountRepository {
     /** 표준창 주소 — 인증이 끝나면 [returnTo]?niceToken=… 또는 ?niceError=… 로 돌아온다. */
     suspend fun startIdentity(returnTo: String): ApiResult<String>
     suspend fun linkIdentity(token: String): ApiResult<MyAccount>
+    suspend fun changePassword(newPassword: String): ApiResult<Unit>
+    suspend fun subTrust(): ApiResult<com.muyeon.domain.model.account.SubTrust>
 }

@@ -83,6 +83,8 @@ object NativeRoutes {
             // 본인확인 표준창 복귀(?niceToken=)는 웹 화면이 읽는 주소라 앱 화면으로 바꾸지 않는다(앱은 자기 웹창에서 가로챈다).
             "/profileEdit" -> if (query.isEmpty()) return Target.Route(Screen.ProfileEdit.route, auth = true)
             "/my/credentials" -> return Target.Route(Screen.Credentials.route, auth = true)
+            "/changePassword" -> return Target.Route(Screen.ChangePassword.route, auth = true)
+            "/subTrust" -> return Target.Route(Screen.SubTrust.route, auth = true)
             "/setting" -> return Target.Route(Screen.Settings.route)
             "/blockedUsers" -> return Target.Route(Screen.BlockedUsers.route, auth = true)
             "/myApplications" -> return Target.Route(Screen.MyApplications.route, auth = true)

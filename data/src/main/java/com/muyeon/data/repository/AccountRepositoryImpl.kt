@@ -26,6 +26,11 @@ class AccountRepositoryImpl(private val api: AccountApi, private val moshi: Mosh
     override suspend fun startIdentity(returnTo: String): ApiResult<String> =
         safeApiCall(moshi) { api.startIdentity(ReturnToBody(returnTo)) }.map { it.authUrl.orEmpty() }
 
+    override suspend fun changePassword(newPassword: String): ApiResult<Unit> =
+        com.muyeon.data.common.safeUnitCall(moshi) { api.changePassword(com.muyeon.network.dto.account.NewPasswordBody(newPassword)) }
+
+    override suspend fun subTrust(): ApiResult<com.muyeon.domain.model.account.SubTrust> = safeApiCall(moshi) { api.subTrust() }.map { it.toDomain() }
+
     override suspend fun linkIdentity(token: String): ApiResult<MyAccount> =
         safeApiCall(moshi) { api.linkIdentity(IdentityTokenBody(token)) }.map { it.toDomain() }
 }

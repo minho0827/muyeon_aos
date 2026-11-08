@@ -505,6 +505,48 @@
     <string name="credential_submitting">등록 중…</string>
     <string name="credential_load_failed">확인 현황을 불러오지 못했어요.</string>
     <string name="credential_notice_title">안내</string>
+    <!-- ★ 2026-11-08 비밀번호 변경(웹 ChangePassword) · 대타 신뢰도(웹 SubTrust) -->
+    <string name="password_title">비밀번호 변경</string>
+    <string name="password_new">비밀번호</string>
+    <string name="password_new_placeholder">새 비밀번호 입력</string>
+    <string name="password_confirm">비밀번호 확인</string>
+    <string name="password_confirm_placeholder">비밀번호 재입력</string>
+    <string name="password_policy">영문, 숫자, 특수문자를 넣어 8~20자로 입력</string>
+    <string name="password_mismatch">비밀번호가 일치하지 않아요.</string>
+    <string name="password_policy_check">비밀번호 정책을 확인해 주세요</string>
+    <string name="password_mismatch_check">비밀번호 확인이 일치하지 않아요</string>
+    <string name="password_change_q">비밀번호를 변경할까요?</string>
+    <string name="password_changed">비밀번호가 변경됐어요.</string>
+    <string name="password_change_failed">비밀번호 변경 중 오류가 발생했어요.</string>
+    <string name="subtrust_failed">대타 신뢰도를 불러오지 못했어요.</string>
+    <string name="subtrust_sec_90d">최근 90일</string>
+    <string name="subtrust_points">누적 점수</string>
+    <string name="subtrust_points_value">%1$d점</string>
+    <string name="subtrust_cancels">확정 취소</string>
+    <string name="subtrust_cancels_value">%1$d회</string>
+    <string name="subtrust_dispatch">긴급 대타 이용</string>
+    <string name="subtrust_restricted">%1$s까지 정지</string>
+    <string name="subtrust_normal">정상 이용 중</string>
+    <string name="subtrust_visible_note">확정 취소 횟수는 공고를 올린 분이 지원자 화면에서 볼 수 있어요.</string>
+    <string name="subtrust_sec_rules">점수 기준</string>
+    <string-array name="subtrust_rules">
+        <item>수업 48시간 전보다 이전에 취소: 1점</item>
+        <item>수업 24~48시간 전 취소: 2점</item>
+        <item>수업 24시간 내 취소: 3점</item>
+        <item>노쇼(수업에 오지 않음): 5점</item>
+        <item>"최근 90일 누적 3점이면 7일, 5점이면 30일 동안 긴급 대타를 이용할 수 없어요."</item>
+        <item>확정 전 지원 취소는 점수가 쌓이지 않아요. 점수는 90일이 지나면 사라지고, 노쇼 신고에 이의가 있으면 고객센터로 알려 주세요.</item>
+    </string-array>
+    <string name="subtrust_sec_history">내역</string>
+    <string name="subtrust_history_empty">최근 90일 동안 쌓인 점수가 없어요.</string>
+    <string name="subtrust_side_teacher">강사로</string>
+    <string name="subtrust_side_poster">공고 올린 사람으로</string>
+    <string name="subtrust_noshow">노쇼 신고</string>
+    <string name="subtrust_cancel">확정 취소</string>
+    <string name="subtrust_posting">대타 공고</string>
+    <string name="subtrust_revoked">%1$d점 (취소됨)</string>
+    <string name="subtrust_plus">+%1$d점</string>
+    <string name="subtrust_expires">%1$s 소멸</string>
     <!-- ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 LessonListView) -->
     <string name="lesson_list_title">레슨</string>
     <string name="lesson_list_empty">등록된 레슨이 없어요.</string>

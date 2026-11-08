@@ -34,3 +34,26 @@ class EditAccountUseCase(private val repo: AccountRepository) {
         const val ERROR_PARAM = "niceError"
     }
 }
+
+/** 비밀번호 변경(웹 ChangePassword) — 영문·숫자·특수문자 8~20자, 확인 칸과 같아야 한다. */
+class ChangePasswordUseCase(private val repo: AccountRepository) {
+    enum class Invalid { POLICY, MISMATCH }
+
+    fun check(password: String, confirm: String): Invalid? = when {
+        !POLICY.matches(password) -> Invalid.POLICY
+        confirm.isEmpty() || password != confirm -> Invalid.MISMATCH
+        else -> null
+    }
+
+    suspend operator fun invoke(password: String) = repo.changePassword(password)
+
+    companion object {
+        /** 웹 passwordRegex 와 같다. */
+        val POLICY = Regex("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-={}\\[\\]|\\\\:;\"'<>,.?/]).{8,20}$")
+    }
+}
+
+/** 대타 신뢰도(웹 SubTrust). */
+class GetSubTrustUseCase(private val repo: AccountRepository) {
+    suspend operator fun invoke() = repo.subTrust()
+}

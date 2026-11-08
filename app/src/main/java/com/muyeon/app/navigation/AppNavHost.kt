@@ -304,6 +304,9 @@ fun AppNavHost(
                 onProfileEdit = { navController.navigate(Screen.ProfileEdit.route) },
             )
         }
+        // ★ 2026-11-08 비밀번호 변경 · 대타 신뢰도(웹 /changePassword · /subTrust).
+        composable(Screen.ChangePassword.route) { com.muyeon.app.ui.account.ChangePasswordScreen(onClose = { navController.popBackStack() }) }
+        composable(Screen.SubTrust.route) { com.muyeon.app.ui.settings.SubTrustScreen(onBack = { navController.popBackStack() }) }
         // ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 /lessonList).
         composable(
             Screen.LessonList.route,
