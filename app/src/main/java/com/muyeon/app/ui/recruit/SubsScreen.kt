@@ -37,6 +37,7 @@ import com.muyeon.app.ui.recruit.components.SubRowView
 import com.muyeon.app.ui.theme.AppColors
 import com.muyeon.domain.model.recruit.SubFilter
 import com.muyeon.domain.model.teacher.LessonGenres
+import com.muyeon.app.ui.theme.Dimensions
 import org.koin.androidx.compose.koinViewModel
 
 /** 대타공고 목록 — 웹 SubList. 장르 칩 + 필터 시트. 줄을 누르면 상세(지금은 웹 /subs/:id). ＋ 는 등록(설문식 등록이 생기면 앱 화면). */
@@ -62,7 +63,7 @@ fun SubsScreen(actions: RecruitActions, vm: SubsViewModel = koinViewModel()) {
                 when {
                     s.items.isEmpty() && s.loading -> Unit
                     s.items.isEmpty() -> item(key = "empty") {
-                        EmptyView(s.errorMessage ?: stringResource(R.string.recruit_sub_empty),
+                        EmptyView(s.errorMessage ?: stringResource(R.string.recruit_sub_empty), Modifier.padding(top = Dimensions.emptyNoTabsOffset),
                             buttonText = s.errorMessage?.let { stringResource(R.string.common_retry) }, onButton = { vm.refresh() })
                     }
                     else -> items(s.items, key = { it.id }) { row -> SubRowView(row) { actions.openPath("/subs/${row.id}") } }
