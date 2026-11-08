@@ -106,7 +106,23 @@ data class LessonContentDetail(
     val creatorId: Int?,
     val creatorName: String?,
     val creatorImage: String?,
+    // ★ 2026-11-08 웹 LessonDetail.js 와 같은 '레슨 정보'(레슨 상품 = lesson_products 그대로).
+    val level: String? = null,
+    val lessonKind: String? = null,      // REGULAR | ONEDAY | EXPERIENCE
+    val scheduleText: String? = null,
+    val duration: Int? = null,           // 분
+    val maxParticipants: Int? = null,
+    val priceUnit: String? = null,       // PER_PERSON | PER_BOOKING
+    val place: String? = null,
+    val purposes: List<String>? = null,  // 견적 문진 옵션과 같은 id(견적 추천에서 연 경우에만 보여 준다)
+    val formats: List<String>? = null,
+    val ageGroups: List<String>? = null,
+    /** 서버 bookable — 개설자가 지금 레슨을 제공할 수 있는 사람인가(false 면 웹처럼 예약·요청 버튼 없음). */
+    val bookable: Boolean = true,
 ) {
+    /** 웹 상세의 진행 일정/시간대 라벨 기준 — 원데이·체험은 날짜형. */
+    val isDatedKind: Boolean get() = lessonKind == "ONEDAY" || lessonKind == "EXPERIENCE"
+
     companion object {
         fun from(o: JSONObject): LessonContentDetail {
             fun strings(k: String) = o.optJSONArray(k)?.let { a ->
@@ -126,6 +142,17 @@ data class LessonContentDetail(
                 creatorId = c?.optInt("id"),
                 creatorName = c?.optString("name")?.ifEmpty { null },
                 creatorImage = c?.optString("image")?.ifEmpty { null },
+                level = o.optString("level").ifEmpty { null }.takeIf { !o.isNull("level") },
+                lessonKind = o.optString("lessonKind").ifEmpty { null }.takeIf { !o.isNull("lessonKind") },
+                scheduleText = o.optString("scheduleText").ifEmpty { null }.takeIf { !o.isNull("scheduleText") },
+                duration = if (o.has("duration") && !o.isNull("duration")) o.optInt("duration") else null,
+                maxParticipants = if (o.has("maxParticipants") && !o.isNull("maxParticipants")) o.optInt("maxParticipants") else null,
+                priceUnit = o.optString("priceUnit").ifEmpty { null }.takeIf { !o.isNull("priceUnit") },
+                place = o.optString("place").ifEmpty { null }.takeIf { !o.isNull("place") },
+                purposes = strings("purposes"),
+                formats = strings("formats"),
+                ageGroups = strings("ageGroups"),
+                bookable = !(o.has("bookable") && !o.optBoolean("bookable", true)),
             )
         }
     }
@@ -166,6 +193,21 @@ class LessonBrowseApi(private val token: String?) {
         (0 until arr.length()).mapNotNull { arr.optJSONObject(it)?.let(BrowseFeedItem::from) }
     }.getOrDefault(emptyList())
 
+    /**
+     * 지금 예약할 수 있는 회차 수 — GET /lesson-products/:id/available-slots(공개, OPEN·FULL 미래 회차).
+     *  웹·앱 예약 시트가 쓰는 것과 같은 API. 읽지 못하면 null(버튼은 웹처럼 예약으로 둔다).
+     */
+    suspend fun availableSlotCount(id: Int): Int? {
+        val body = get("/lesson-products/$id/available-slots") ?: return null
+        return runCatching { JSONArray(body.ifBlank { "[]" }).length() }.getOrNull()
+    }
+
+    /** '같은 조건으로 견적 요청' · '이 강사님께 레슨 요청' 프리필 — GET /lesson-products/:id/quote-prefill. */
+    suspend fun quotePrefill(id: Int): com.muyeon.app.ui.review.LessonQuotePrefill? {
+        val body = get("/lesson-products/$id/quote-prefill") ?: return null
+        return runCatching { com.muyeon.app.ui.review.LessonQuotePrefill.from(JSONObject(body.ifBlank { "{}" })) }.getOrNull()
+    }
+
     private suspend fun get(path: String): String? = withContext(Dispatchers.IO) {
         runCatching {
             val req = Request.Builder().url(apiBase + path)
@@ -176,5 +218,40 @@ class LessonBrowseApi(private val token: String?) {
                 res.body?.string()
             }
         }.getOrNull()
+    }
+}
+
+/**
+ * ★ 2026-11-08 레슨 상세를 어디서 열었는지 — 아래 버튼이 달라진다(사용자 결정).
+ *  QUOTE_RECOMMEND = 견적(레슨 요청)을 그만둘 때 띄우는 추천 레슨에서 연 경우 → [같은 조건으로 견적 요청하기].
+ *  BROWSE = 그 밖의 모든 진입(홈 레슨 탭·전체보기·목록·둘러보기·찜·링크/푸시 /lessons/:id) → 웹 LessonDetail 과 같은 예약 버튼.
+ */
+enum class LessonDetailSource(val key: String) {
+    BROWSE("browse"), QUOTE_RECOMMEND("quoteRecommend");
+
+    companion object {
+        fun from(key: String?) = entries.firstOrNull { it.key == key } ?: BROWSE
+    }
+}
+
+/** 레슨 상세 아래 버튼. NONE = 버튼 없음(웹: 개설자가 지금 레슨을 받을 수 없는 회원 → bookable=false). */
+enum class LessonDetailCta { SAME_QUOTE, MANAGE, BOOK, REQUEST, NONE }
+
+/**
+ * 버튼 고르기 — iOS LessonDetailCta.decide 와 같은 규칙.
+ *  1) 견적 추천에서 열었으면 같은 조건 견적(내 레슨이면 관리).
+ *  2) 내 레슨 → 관리(웹: 자기 레슨 예약 방지).
+ *  3) bookable=false → 없음(웹과 같다).
+ *  4) 수업료가 정해졌고 예약할 회차가 있으면(회차 수를 못 읽으면 웹처럼 예약) → 레슨 예약하기(기존 예약 화면).
+ *  5) 수업료나 회차가 아직 없으면 → 이 강사님께 레슨 요청하기(지정 요청).
+ */
+fun lessonDetailCta(source: LessonDetailSource, d: LessonContentDetail, myUserId: Int?, slotCount: Int?): LessonDetailCta {
+    val mine = myUserId != null && d.creatorId != null && d.creatorId == myUserId
+    return when {
+        mine -> LessonDetailCta.MANAGE
+        source == LessonDetailSource.QUOTE_RECOMMEND -> LessonDetailCta.SAME_QUOTE
+        !d.bookable -> LessonDetailCta.NONE
+        d.price != null && (slotCount == null || slotCount > 0) -> LessonDetailCta.BOOK
+        else -> LessonDetailCta.REQUEST
     }
 }

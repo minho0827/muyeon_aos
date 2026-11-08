@@ -240,7 +240,10 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                             com.muyeon.app.ui.lesson.LessonBrowseActivity.startBrowse(this@QuoteWizardActivity)
                         },
                         onSelectLesson = { id ->
-                            com.muyeon.app.ui.lesson.LessonBrowseActivity.startDetail(this@QuoteWizardActivity, id)
+                            // 견적을 그만둘 때 띄운 추천 레슨 → 상세 아래 버튼은 [같은 조건으로 견적 요청하기].
+                            com.muyeon.app.ui.lesson.LessonBrowseActivity.startDetail(
+                                this@QuoteWizardActivity, id, com.muyeon.app.ui.lesson.LessonDetailSource.QUOTE_RECOMMEND,
+                            )
                         },
                     )
                 }

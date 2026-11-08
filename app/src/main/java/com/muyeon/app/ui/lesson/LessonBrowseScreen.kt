@@ -284,16 +284,18 @@ class LessonBrowseActivity : com.muyeon.app.result.ResultActivity() {
     companion object {
         private const val EXTRA_ROUTE = "route"
         private const val EXTRA_ID = "id"
+        private const val EXTRA_SOURCE = "source"
 
         fun browseIntent(context: Context) = intent(context, "browse")
-        fun detailIntent(context: Context, lessonProductId: Int) =
-            intent(context, "detail").putExtra(EXTRA_ID, lessonProductId)
+        /** [source] = 어디서 열었는지(아래 버튼이 달라진다 — LessonDetailSource). 기본은 일반 진입. */
+        fun detailIntent(context: Context, lessonProductId: Int, source: LessonDetailSource = LessonDetailSource.BROWSE) =
+            intent(context, "detail").putExtra(EXTRA_ID, lessonProductId).putExtra(EXTRA_SOURCE, source.key)
         fun reviewIntent(context: Context, reviewId: Int) = intent(context, "review").putExtra(EXTRA_ID, reviewId)
 
         fun startBrowse(context: Context) = context.launchScreen(browseIntent(context))
 
-        fun startDetail(context: Context, lessonProductId: Int) =
-            context.launchScreen(detailIntent(context, lessonProductId))
+        fun startDetail(context: Context, lessonProductId: Int, source: LessonDetailSource = LessonDetailSource.BROWSE) =
+            context.launchScreen(detailIntent(context, lessonProductId, source))
 
         /** 리뷰 카드 → 리뷰 상세. */
         fun startReview(context: Context, reviewId: Int) = context.launchScreen(reviewIntent(context, reviewId))
@@ -331,12 +333,36 @@ class LessonBrowseActivity : com.muyeon.app.result.ResultActivity() {
                     },
                 )
             } else if (route == "detail" && id > 0) {
+                val source = LessonDetailSource.from(intent.getStringExtra(EXTRA_SOURCE))
+                // 로그인하고 돌아오면(웹 로그인 창) 다시 읽는다 — 비회원 → 회원이 되면 예약 버튼이 바로 예약으로.
+                val http = remember { com.muyeon.app.ui.common.NativeHttp(this) }
+                var myUserId by remember { mutableStateOf(http.myUserId()) }
+                androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+                    myUserId = http.myUserId()
+                    onPauseOrDispose { }
+                }
                 LessonContentDetailScreen(
                     api = api, lessonProductId = id,
                     onClose = { finish() },
+                    // 비슷한 콘텐츠에서 고른 레슨은 일반 진입(견적 추천 목록이 아니다).
                     onSelectLesson = { lid -> startDetail(this, lid) },
                     onSelectTeacher = { tid -> openTeacher(tid, "lessonContent") },
                     reloadSignal = reviewsReload,
+                    source = source,
+                    myUserId = myUserId,
+                    // 비회원 → 로그인(돌아오면 이 레슨). 웹 /login?redirect= 와 같은 길.
+                    onLogin = {
+                        com.muyeon.app.webview.WebViewActivity.startPath(this, com.muyeon.app.navigation.WebPaths.login("/lessons/$id"))
+                    },
+                    // 기존 예약 화면 그대로(회차·인원·예약금 결제) — 웹 상세 [레슨 예약하기] = 네이티브 예약 시트와 같다.
+                    onBook = { pid -> com.muyeon.app.ui.lesson.LessonActivity.startBooking(this, pid) },
+                    onManage = { com.muyeon.app.ui.lesson.LessonActivity.startManage(this) },
+                    onRequestQuote = { p ->
+                        com.muyeon.app.ui.quote.QuoteWizardActivity.start(
+                            this, p.categoryId, p.targetTeacherId.takeIf { it > 0 }?.toString(),
+                            p.prefillJson, p.region, p.regionCode,
+                        )
+                    },
                 )
             } else {
                 LessonBrowseScreen(
