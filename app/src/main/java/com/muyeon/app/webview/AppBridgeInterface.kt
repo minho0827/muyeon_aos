@@ -219,7 +219,10 @@ object NativeActionRouter {
             "openAutoQuoteHistory" -> com.muyeon.app.ui.quote.AutoQuoteHistoryActivity.start(
                 activity, d.optString("month").ifEmpty { null },
             )
-            "openLessonQuoteHub" -> com.muyeon.app.ui.quote.QuoteDashboardActivity.start(activity, d.optString("role"))
+            // 주소(/lessonHub)로 오면 role 이 없다 — 지금 유형으로(MY 메뉴는 activeType 을 실어 보낸다).
+            "openLessonQuoteHub" -> com.muyeon.app.ui.quote.QuoteDashboardActivity.start(
+                activity, d.optString("role").ifEmpty { ActiveRole.current(activity) },
+            )
             // 채팅 — 웹 대체 화면이 없어 유일하게 토스트로 막혀 있던 동선.
             "openChatList" -> com.muyeon.app.ui.chat.ChatActivity.startList(activity, d.optString("filter"))
             // 채용 — E 이식 완료

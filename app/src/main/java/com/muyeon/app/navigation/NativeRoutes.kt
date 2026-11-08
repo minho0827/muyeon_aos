@@ -24,6 +24,10 @@ object NativeRoutes {
     private val SUB = Regex("^/subs/(\\d+)/?$")
     private val TEACHER = Regex("^/teachers/(\\d+)/?$")
     private val LESSON = Regex("^/lessons/(\\d+)/?$")
+    private val CHAT_ROOM = Regex("^/chat/(\\d+)/?$")
+    private val TRANSFER = Regex("^/studio-transfers/(\\d+)/?$")
+    private val MEMBERSHIP = Regex("^/membership/[A-Za-z_]+/?$")
+    private val RESERVATION = Regex("^/reservations/(\\d+)/?$")
 
     fun resolve(path: String?): Target? {
         val clean = path?.substringBefore('#') ?: return null
@@ -41,6 +45,26 @@ object NativeRoutes {
             "/casting/all" -> return Target.Action("openCastingStage", mapOf("screen" to "castingList"))
             "/teachers" -> return Target.Action("openHomeTeachers")
             "/lessons/create" -> return Target.Action("openLessonCreate")
+            // ★ 2026-11-08 받은/보낸 견적 — 앱 화면(openMyQuotes)이 있는데 웹으로 가던 주소(견적 요청 완료 '견적 보기' 등).
+            "/myQuotes" -> return Target.Action("openMyQuotes", query["tab"]?.let { mapOf("tab" to it) } ?: emptyMap())
+            // ★ 2026-11-08 앱 화면(NativeActionRouter 표)이 이미 있는데 웹으로 가던 주소 — 전체 메뉴·링크·푸시.
+            "/notifications" -> return Target.Action("openNotifications")
+            "/notificationSettings" -> return Target.Action("openNotificationSettings")
+            "/myMembership" -> return Target.Action("openMembership")
+            "/myMembership/performance" -> return Target.Action("openMembershipPerformance")
+            "/my/academyTeachers" -> return Target.Action("openAcademyTeachers")
+            "/my/academyInvites" -> return Target.Action("openAcademyInvites")
+            "/mySpaces" -> return Target.Action("openMySpaces")
+            "/mySpaceBookings" -> return Target.Action("openMySpaceBookings")
+            "/myStudioTransfers" -> return Target.Action("openMyStudioTransfers")
+            "/studio" -> return Target.Action("openStudioOps")
+            "/studio/members" -> return Target.Action("openStudioMembers")
+            "/studio/sales" -> return Target.Action("openStudioSales")
+            "/studio/schedule" -> return Target.Action("openStudioSchedule")
+            "/quoteBrowse" -> return Target.Action("openQuoteBrowse")
+            "/lessonSlots" -> return Target.Action("openLessonSlotManage", query["lessonProductId"]?.let { mapOf("lessonProductId" to it) } ?: emptyMap())
+            "/lessonHub" -> return Target.Action("openLessonQuoteHub")
+            "/chat" -> return Target.Action("openChatList")
             // ★ 2026-11-08 홈 '전체보기' 레슨 목록 — 쿼리(title·type)가 있어도 앱 화면.
             "/lessonList" -> return Target.Route(Screen.LessonList.build(query["title"]?.let(android.net.Uri::decode), query["type"]))
         }
@@ -52,6 +76,11 @@ object NativeRoutes {
             return Target.Route(Screen.SubWizard.build(prefill))
         }
         TEACHER.find(p)?.let { if (!clean.contains('?')) return Target.Action("openPublicProfile", mapOf("userId" to it.groupValues[1])) }
+        MEMBERSHIP.find(p)?.let { return Target.Action("openMembership") }
+        CHAT_ROOM.find(p)?.let { return Target.Action("openChatRoom", mapOf("roomId" to it.groupValues[1])) }
+        TRANSFER.find(p)?.let { return Target.Action("openStudioTransferDetail", mapOf("id" to it.groupValues[1])) }
+        // ★ 2026-11-08 레슨 예약 상세 — 앱 화면(openLessonReservationDetail)이 있다(결제 완료 뒤 이동 등).
+        RESERVATION.find(p)?.let { return Target.Action("openLessonReservationDetail", mapOf("reservationId" to it.groupValues[1])) }
         LESSON.find(p)?.let { return Target.Action("openLessonDetail", mapOf("lessonId" to it.groupValues[1])) }
         JOB.find(p)?.let { return Target.Route(Screen.JobDetail.build(it.groupValues[1].toLong())) }
         SUB.find(p)?.let { return Target.Route(Screen.SubDetail.build(it.groupValues[1].toLong())) }
