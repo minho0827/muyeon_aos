@@ -114,6 +114,13 @@ sealed class Screen(val route: String) {
     /** 회원탈퇴(웹 /withdraw). */
     data object Withdraw : Screen("withdraw")
 
+    /** 상담 채팅 목록·방(웹 /support/chat · /support/chat?room=N). */
+    data object SupportChatList : Screen("support/chat")
+    data object SupportChatRoom : Screen("support/chat/{room}") {
+        const val ARG_ROOM = "room"
+        fun build(id: Long) = "support/chat/$id"
+    }
+
     /** 홈 '전체보기' 레슨 목록(웹 /lessonList?title=&type=). */
     data object LessonList : Screen("lessonList?title={title}&type={type}") {
         const val ARG_TITLE = "title"

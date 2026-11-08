@@ -38,3 +38,23 @@ class SendSupportUseCase(private val repo: SupportRepository) {
 
     companion object { const val MAX = 1000 }
 }
+
+/** 상담 채팅(웹 supportChat/SupportChat.js) — 목록·새 문의·방(글·버튼·상담원 연결·종료·읽음). 글은 [MAX_LEN]자까지. */
+class SupportChatUseCase(private val repo: com.muyeon.domain.repository.SupportChatRepository) {
+    suspend fun access() = repo.access()
+    suspend fun summary() = repo.summary()
+    suspend fun notices() = repo.notices()
+    suspend fun readAllNotices() = repo.readAllNotices()
+    suspend fun rooms() = repo.rooms()
+    suspend fun createRoom() = repo.createRoom()
+    suspend fun messages(roomId: Long, after: Long) = repo.messages(roomId, after)
+    suspend fun send(roomId: Long, content: String, after: Long) = repo.send(roomId, content.trim().take(MAX_LEN), after)
+    suspend fun choose(roomId: Long, nodeId: Long, after: Long) = repo.choose(roomId, nodeId, null, after)
+    suspend fun back(roomId: Long, after: Long) = repo.choose(roomId, null, "BACK", after)
+    suspend fun home(roomId: Long, after: Long) = repo.choose(roomId, null, "HOME", after)
+    suspend fun handoff(roomId: Long, after: Long) = repo.handoff(roomId, after)
+    suspend fun close(roomId: Long, after: Long) = repo.close(roomId, after)
+    suspend fun read(roomId: Long) = repo.read(roomId)
+
+    companion object { const val MAX_LEN = 2000 }
+}

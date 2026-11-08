@@ -157,6 +157,20 @@ object ApiEndpoints {
         const val UPLOAD_DOCUMENT = "$API/uploads/document"    // POST multipart file(이미지·PDF) → { key }
     }
 
+    /** ★ 2026-11-08 상담 채팅(웹 supportChat/SupportChat.js) — support-chat.controller.ts. 응답 모양이 넓어 저장소가 직접 읽는다. */
+    object SupportChat {
+        const val ELIGIBILITY = "$API/support-chat/eligibility"           // GET { eligible, hasRooms }
+        const val SUMMARY = "$API/support-chat/summary"                   // GET { delayNoticeOn, delayNoticeText }
+        const val NOTICES = "$API/support-chat/notices"                   // GET 알림 배열
+        const val NOTICES_READ_ALL = "$API/support-chat/notices/read-all" // POST
+        const val ROOMS = "$API/support-chat/rooms"                       // GET 내 상담 목록 · POST 새 문의 → { room }
+        const val MESSAGES = "$API/support-chat/rooms/{id}/messages"      // GET ?after= · POST { content, after } → view { room, menu, messages }
+        const val CHOOSE = "$API/support-chat/rooms/{id}/choose"          // POST { nodeId } | { action: BACK|HOME }, after
+        const val HANDOFF = "$API/support-chat/rooms/{id}/handoff"        // POST { after }
+        const val CLOSE = "$API/support-chat/rooms/{id}/close"            // POST { after }
+        const val READ = "$API/support-chat/rooms/{id}/read"              // POST
+    }
+
     /** regions.controller.ts */
     object Regions {
         const val NEAREST = "$API/regions/nearest"           // GET lat·lng → Region | null

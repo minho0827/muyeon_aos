@@ -34,6 +34,7 @@ val dataModule = module {
     single<com.muyeon.domain.repository.DancerRepository> { com.muyeon.data.repository.DancerRepositoryImpl(get(), get()) }
     single<com.muyeon.domain.repository.AccountRepository> { com.muyeon.data.repository.AccountRepositoryImpl(get(), get()) }
     single<com.muyeon.domain.repository.CredentialRepository> { com.muyeon.data.repository.CredentialRepositoryImpl(get(), get()) }
+    single<com.muyeon.domain.repository.SupportChatRepository> { com.muyeon.data.repository.SupportChatRepositoryImpl(get(), get()) }
     single<com.muyeon.domain.repository.SupportRepository> { com.muyeon.data.repository.SupportRepositoryImpl(get(), get()) }
     single<com.muyeon.domain.repository.SafetyRepository> { com.muyeon.data.repository.SafetyRepositoryImpl(get(), get()) }
 }

@@ -318,6 +318,23 @@ fun AppNavHost(
             )
         }
         composable(Screen.SubTrust.route) { com.muyeon.app.ui.settings.SubTrustScreen(onBack = { navController.popBackStack() }) }
+        // ★ 2026-11-08 상담 채팅(웹 /support/chat) — 방은 운영자 답장 푸시의 착지점.
+        composable(Screen.SupportChatList.route) {
+            com.muyeon.app.ui.support.SupportChatListScreen(
+                onBack = { navController.popBackStack() },
+                onOpenRoom = { id -> navController.navigate(Screen.SupportChatRoom.build(id)) },
+                onOpenPath = onOpenPath,
+            )
+        }
+        composable(Screen.SupportChatRoom.route, arguments = listOf(navArgument(Screen.SupportChatRoom.ARG_ROOM) { type = NavType.StringType })) { e ->
+            val id = e.arguments?.getString(Screen.SupportChatRoom.ARG_ROOM)?.toLongOrNull() ?: 0L
+            com.muyeon.app.ui.support.SupportChatRoomScreen(
+                viewModel = org.koin.androidx.compose.koinViewModel(parameters = { org.koin.core.parameter.parametersOf(id) }),
+                onBack = { navController.popBackStack() },
+                onOpenPath = onOpenPath,
+                onMy = { navController.popBackStack(Screen.Main.route, inclusive = false); onOpenPath("/mypage") },
+            )
+        }
         // ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 /lessonList).
         composable(
             Screen.LessonList.route,

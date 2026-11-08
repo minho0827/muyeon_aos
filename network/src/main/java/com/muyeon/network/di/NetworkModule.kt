@@ -67,6 +67,7 @@ val apiModule = module {
     single<com.muyeon.network.api.DancerApi> { get<Retrofit>().create(com.muyeon.network.api.DancerApi::class.java) }
     single<com.muyeon.network.api.AccountApi> { get<Retrofit>().create(com.muyeon.network.api.AccountApi::class.java) }
     single<com.muyeon.network.api.CredentialApi> { get<Retrofit>().create(com.muyeon.network.api.CredentialApi::class.java) }
+    single<com.muyeon.network.api.SupportChatApi> { get<Retrofit>().create(com.muyeon.network.api.SupportChatApi::class.java) }
     single<com.muyeon.network.api.SupportApi> { get<Retrofit>().create(com.muyeon.network.api.SupportApi::class.java) }
     single<com.muyeon.network.api.SafetyApi> { get<Retrofit>().create(com.muyeon.network.api.SafetyApi::class.java) }
 }

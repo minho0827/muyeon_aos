@@ -56,6 +56,7 @@ val domainModule = module {
     factory { com.muyeon.domain.usecase.support.GetFaqsUseCase(get()) }
     factory { com.muyeon.domain.usecase.support.MyInquiriesUseCase(get()) }
     factory { com.muyeon.domain.usecase.support.SendSupportUseCase(get()) }
+    factory { com.muyeon.domain.usecase.support.SupportChatUseCase(get()) }
     // 내가 예약한 내역
     factory { com.muyeon.domain.usecase.reservation.GetMyReservationsPageUseCase(get()) }
     // 지원 내역(내가 지원한 공고 · 받은 지원)

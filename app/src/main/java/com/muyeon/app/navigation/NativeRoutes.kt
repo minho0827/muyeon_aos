@@ -79,6 +79,10 @@ object NativeRoutes {
             "/notice" -> return Target.Route(Screen.Notices.route)
             "/noticeDetail" -> return Target.Route(query["id"]?.toLongOrNull()?.let { Screen.NoticeDetail.build(it) } ?: Screen.Notices.route)
             "/faq" -> return Target.Route(Screen.Faq.route)
+            // 상담 채팅 — ?room=N 이면 그 방(운영자 답장 푸시·알림함), 아니면 목록.
+            "/support/chat" -> return Target.Route(
+                query["room"]?.toLongOrNull()?.let { Screen.SupportChatRoom.build(it) } ?: Screen.SupportChatList.route, auth = true,
+            )
             "/likes" -> return Target.Route(Screen.Likes.route, auth = true)
             "/myReservations" -> return Target.Route(Screen.MyReservations.route, auth = true)
             "/dancers" -> return Target.Route(Screen.Dancers.route)

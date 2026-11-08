@@ -30,3 +30,29 @@ data class SupportInquiry(
 
 /** 보내는 글 종류 — 서버 SupportInquiryType. */
 enum class SupportComposeType(val serverType: String) { INQUIRY("INQUIRY"), FEEDBACK("FEEDBACK") }
+
+// ── ★ 2026-11-08 상담 채팅(웹 supportChat/SupportChat.js) ──
+
+data class SupportChatAccessInfo(val eligible: Boolean, val hasRooms: Boolean)
+
+/** 상담방 — [status] WAITING(답변 대기)·OPEN(진행 중)·CLOSED(종료). */
+data class SupportChatRoomInfo(
+    val id: Long, val title: String?, val status: String, val lastMessage: String?, val lastMessageAt: String?,
+    val createdAt: String?, val unread: Int,
+) { val closed: Boolean get() = status == "CLOSED" }
+
+/** 글 — [senderType] BOT(도우미)·ADMIN(고객센터)·USER(나). */
+data class SupportChatMessage(val id: Long, val senderType: String, val content: String, val createdAt: String?)
+
+/** 챗봇 버튼 묶음. */
+data class SupportChatMenu(val nodes: List<Pair<Long, String>>, val canBack: Boolean, val canHome: Boolean, val canHandoff: Boolean)
+
+/** 방 화면 응답 — after 이후 글만 실려 온다. */
+data class SupportChatView(val room: SupportChatRoomInfo?, val menu: SupportChatMenu?, val messages: List<SupportChatMessage>)
+
+data class SupportChatNotice(
+    val id: Long, val title: String, val body: String?, val imageUrl: String?, val buttonUrl: String?, val buttonLabel: String?,
+    val createdAt: String?, val isRead: Boolean,
+)
+
+data class SupportChatSummary(val delayNotice: String?)
