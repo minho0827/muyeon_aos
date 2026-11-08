@@ -105,18 +105,23 @@ private fun PriceRange(f: SpaceFilter, onMin: (String) -> Unit, onMax: (String) 
         Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(MuyeonList.ink100).padding(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("최소", style = ts(FontWeight.SemiBold, 15), color = MuyeonColors.textHead)
-            PriceBox(f.minK, onMin, Modifier.weight(1f))
-            Text(",000원 ~ 최대", style = ts(FontWeight.SemiBold, 15), color = MuyeonColors.textHead)
-            PriceBox(f.maxK, onMax, Modifier.weight(1f))
-            Text(",000원", style = ts(FontWeight.SemiBold, 15), color = MuyeonColors.textHead)
-        }
+        // 폰 폭에서 한 줄이면 입력칸이 너무 좁아져(2026-11-08 기기 확인) 최소·최대를 두 줄로.
+        PriceLine("최소", f.minK, onMin, trailing = ",000원 ~")
+        PriceLine("최대", f.maxK, onMax, trailing = ",000원")
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Icon(Icons.Filled.Info, null, tint = if (f.priceError != null) MuyeonColors.danger else MuyeonColors.textSub, modifier = Modifier.size(16.dp))
             Text(f.priceError ?: "시간당 최저가 기준이에요. 천원 단위로 적어 주세요.", style = ts(FontWeight.Normal, 13),
                 color = if (f.priceError != null) MuyeonColors.danger else MuyeonColors.textSub)
         }
+    }
+}
+
+@Composable
+private fun PriceLine(label: String, value: String, onChange: (String) -> Unit, trailing: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(label, style = ts(FontWeight.SemiBold, 15), color = MuyeonColors.textHead)
+        PriceBox(value, onChange, Modifier.width(120.dp))
+        Text(trailing, style = ts(FontWeight.SemiBold, 15), color = MuyeonColors.textHead)
     }
 }
 
@@ -137,11 +142,11 @@ private fun PriceBox(value: String, onChange: (String) -> Unit, modifier: Modifi
 @Composable
 private fun FacilityGrid(selected: Set<String>, onToggle: (String) -> Unit) {
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(MuyeonList.ink100).padding(horizontal = 14.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(MuyeonList.ink100).padding(horizontal = 10.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
         SpaceFacility.ALL.chunked(3).forEach { row ->
-            Row(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 row.forEach { fac -> FacilityCheck(fac.label, fac.key in selected, Modifier.weight(1f)) { onToggle(fac.key) } }
                 repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
             }
@@ -151,13 +156,14 @@ private fun FacilityGrid(selected: Set<String>, onToggle: (String) -> Unit) {
 
 @Composable
 private fun FacilityCheck(label: String, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    Row(modifier.clickable(onClick = onClick).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Row(modifier.clickable(onClick = onClick).padding(vertical = 9.dp, horizontal = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
         Box(
-            Modifier.size(22.dp).clip(RoundedCornerShape(5.dp)).background(if (on) MuyeonColors.textHead else Color.White)
+            Modifier.size(20.dp).clip(RoundedCornerShape(5.dp)).background(if (on) MuyeonColors.textHead else Color.White)
                 .border(1.dp, if (on) MuyeonColors.textHead else MuyeonList.ink200, RoundedCornerShape(5.dp)),
             Alignment.Center,
-        ) { if (on) Icon(Icons.Filled.Check, null, tint = Color.White, modifier = Modifier.size(16.dp)) }
-        Text(label, style = ts(FontWeight.Normal, 14), color = MuyeonColors.textHead, maxLines = 1)
+        ) { if (on) Icon(Icons.Filled.Check, null, tint = Color.White, modifier = Modifier.size(15.dp)) }
+        // 긴 이름(남/여 화장실 구분·음식물 반입가능)은 잘리지 않고 두 줄로.
+        Text(label, style = ts(FontWeight.Normal, 13).copy(lineHeight = 17.sp), color = MuyeonColors.textHead, maxLines = 2)
     }
 }
 
