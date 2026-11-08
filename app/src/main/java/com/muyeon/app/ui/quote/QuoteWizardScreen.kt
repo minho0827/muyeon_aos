@@ -46,6 +46,8 @@ fun QuoteWizardScreen(
     onClose: () -> Unit,
     onComplete: (Map<String, QuoteAnswer>) -> Unit,
     isDirect: Boolean = false,   // 지정 견적 — '평균 4개 이상' 대신 전달 문구(iOS QuoteWizardView.isDirect)
+    /** ★ 2026-11-08 마지막 질문의 [보내기] 위 한 줄(원장·공연팀 '이번 달 레슨 요청 N회 남았어요'). null 이면 없음. */
+    submitNote: String? = null,
 ) {
     var showTyping by remember { mutableStateOf(true) }
     var showRegionPicker by remember { mutableStateOf(false) }
@@ -103,6 +105,17 @@ fun QuoteWizardScreen(
             )
         }
 
+        if (vm.isLastQuestion && !submitNote.isNullOrEmpty()) {
+            Text(
+                text = submitNote,
+                fontFamily = customFontFamily,
+                fontWeight = FontWeight.Medium,
+                fontSize = 13.sp,
+                color = QuoteColors.c6D6E71,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().background(QuoteColors.white).padding(start = 20.dp, end = 20.dp, top = 8.dp),
+            )
+        }
         BottomBar(
             text = if (vm.isLastQuestion) "무료견적 받기" else "다음",
             enabled = vm.canProceed,

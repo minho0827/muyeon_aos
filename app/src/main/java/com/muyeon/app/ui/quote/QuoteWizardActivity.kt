@@ -135,6 +135,16 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
             // ★ 2026-11-07 서버가 준 공고 작성 경로(SUB·JOB, ?prefill=<id> 포함) — 없으면 고정 경로로.
             var recruitPaths by remember { mutableStateOf<Map<String, String>?>(null) }
             var lastAnswers by remember { mutableStateOf<Map<String, QuoteAnswer>>(emptyMap()) }
+            // ★ 2026-11-08 원장·공연팀 레슨 요청 월 횟수 — 다 썼으면 팝업(서버 문구·공고 경로), 남은 횟수는 [보내기] 위 한 줄.
+            var lessonLimit by remember { mutableStateOf<ApiMessageException?>(null) }
+            var quotaRemaining by remember { mutableStateOf<Int?>(null) }
+            LaunchedEffect(Unit) {
+                val token = TokenManager.getAccessToken(this@QuoteWizardActivity)
+                if (!token.isNullOrEmpty()) {
+                    // 실패하면 숨김(줄이 없어도 보내기는 된다 — 서버가 판정한다).
+                    quotaRemaining = QuoteApi(token).requestQuota().getOrNull()?.takeIf { it.applies }?.remaining?.coerceAtLeast(0)
+                }
+            }
 
             fun startSubmit(answers: Map<String, QuoteAnswer>) {
                 lastAnswers = answers
@@ -148,7 +158,23 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                 val r = submitResult ?: return@LaunchedEffect
                 if (phase != "loading") return@LaunchedEffect
                 // ★ 2026-11-07 강사 구인 확인 응답은 로딩 애니메이션을 기다리지 않고 바로 문진으로 돌아가 팝업을 띄운다.
-                val code = (r.exceptionOrNull() as? ApiMessageException)?.code
+                val apiErr = r.exceptionOrNull() as? ApiMessageException
+                val code = apiErr?.code
+                // ★ 2026-11-08 이미 대화 중인 강사 — 위저드를 닫고 그 채팅방으로(서버 문구는 토스트로 짧게).
+                val chatRoomId = apiErr?.roomId
+                if (code == QUOTE_CHAT_EXISTS_CODE && chatRoomId != null) {
+                    Toast.makeText(this@QuoteWizardActivity, apiErr.message.ifEmpty { getString(com.muyeon.app.R.string.lrq_chat_exists_default) }, Toast.LENGTH_SHORT).show()
+                    com.muyeon.app.ui.chat.ChatActivity.startRoom(this@QuoteWizardActivity, chatRoomId)
+                    finish()
+                    return@LaunchedEffect
+                }
+                // ★ 2026-11-08 이번 달 레슨 요청을 다 씀 — 로딩을 기다리지 않고 문진으로 돌아가 팝업.
+                if (code == LESSON_REQUEST_LIMIT_CODE) {
+                    lessonLimit = apiErr
+                    quotaRemaining = 0
+                    phase = "wizard"
+                    return@LaunchedEffect
+                }
                 if (code == "RECRUIT_CHECK" || code == "RECRUIT_REDIRECT") {
                     val m = r.exceptionOrNull()?.message
                     if (code == "RECRUIT_CHECK") recruitAsk = m?.ifEmpty { null } ?: RECRUIT_QUESTION
@@ -228,6 +254,7 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                     },
                     onComplete = { answers -> startSubmit(answers) },
                     isDirect = targetTeacherId.isNotEmpty(),
+                    submitNote = quotaRemaining?.let { androidx.compose.ui.res.stringResource(com.muyeon.app.R.string.lrq_remaining, it) },
                 )
                 if (showExit) {
                     QuoteExitSheet(
@@ -263,6 +290,19 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                         ),
                         force = true,
                         onDismiss = { recruitAsk = null },
+                    )
+                }
+                // ★ 2026-11-08 레슨 요청 월 횟수 소진 — 공고 경로(요청 내용 미리 채움)는 앱 화면으로(MainActivity.openPath → 앱 공고 등록).
+                lessonLimit?.let { e ->
+                    LessonRequestLimitDialog(
+                        message = e.message,
+                        onJob = { openWebAndFinish(recruitPath(e.paths, "JOB", "/jobs/create")) },
+                        onSub = { openWebAndFinish(recruitPath(e.paths, "SUB", "/subs/create")) },
+                        onMembership = {
+                            lessonLimit = null
+                            com.muyeon.app.ui.membership.MembershipActivity.start(this@QuoteWizardActivity)
+                        },
+                        onDismiss = { lessonLimit = null },
                     )
                 }
                 // ★ 2026-11-07 강사는 공고로 — 보내지 않고 위저드를 닫으며 웹 공고 작성 화면으로 보낸다
