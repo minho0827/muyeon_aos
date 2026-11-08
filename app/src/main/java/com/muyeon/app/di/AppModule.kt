@@ -112,4 +112,7 @@ val viewModelModule = module {
     // 커뮤니티
     viewModel { com.muyeon.app.ui.community.CommunityListViewModel(get(), get(), get()) }
     viewModel { com.muyeon.app.ui.community.CommunityPostViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    // ★ 2026-11-08 묶음 2 — 학원 정보 관리 · 캐스팅·공연 자료 업로드(인자: kind)
+    viewModel { com.muyeon.app.ui.academyedit.AcademyEditViewModel(get()) }
+    viewModel { p -> com.muyeon.app.ui.castingmaterial.CastingMaterialsViewModel(p.get(), get()) }
 }

@@ -815,6 +815,8 @@ internal fun DetailImages(
     title: String = "상세 이미지",
     hint: String = "공고 상세에서 좌우로 넘겨보는 이미지예요.",
     membershipBadge: Boolean = false,
+    // ★ 2026-11-08 묶음 2 — 학원 사진(8장)·캐스팅 자료(20장)도 같은 칸을 쓴다.
+    max: Int = IMAGES_MAX,
 ) {
     val side = 96.dp
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -826,7 +828,7 @@ internal fun DetailImages(
             )
             if (membershipBadge) MembershipBadge()
             Text(
-                "${images.size}/$IMAGES_MAX",
+                "${images.size}/$max",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp,
                 lineHeight = 15.sp, color = MuyeonColors.chevron,
             )
@@ -835,7 +837,7 @@ internal fun DetailImages(
             Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (images.size < IMAGES_MAX) {
+            if (images.size < max) {
                 Column(
                     Modifier.size(side).clip(RoundedCornerShape(10.dp)).background(Color(0xFFF7F7F7))
                         .border(1.dp, MuyeonColors.border, RoundedCornerShape(10.dp))
@@ -848,7 +850,7 @@ internal fun DetailImages(
                     } else {
                         Icon(Icons.Filled.AddPhotoAlternate, null, tint = MuyeonColors.textSub, modifier = Modifier.size(20.dp))
                         Text(
-                            "${images.size}/$IMAGES_MAX",
+                            "${images.size}/$max",
                             fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 11.sp,
                             lineHeight = 14.sp, color = MuyeonColors.textSub,
                         )

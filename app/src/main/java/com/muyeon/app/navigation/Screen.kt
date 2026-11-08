@@ -130,4 +130,14 @@ sealed class Screen(val route: String) {
         fun build(title: String?, type: String?) =
             "lessonList?title=${android.net.Uri.encode(title.orEmpty())}&type=${android.net.Uri.encode(type.orEmpty())}"
     }
+
+    // ★ 2026-11-08 묶음 2 — 학원 정보 관리(웹 /academyProfile?aiDraft=) · 캐스팅·공연 자료 업로드(웹 /my/castingMaterials · /my/performanceMaterials).
+    data object AcademyEdit : Screen("academyProfile?aiDraft={aiDraft}") {
+        const val ARG_AI_DRAFT = "aiDraft"
+        fun build(aiDraft: String?) = if (aiDraft.isNullOrBlank()) "academyProfile" else "academyProfile?aiDraft=${android.net.Uri.encode(aiDraft)}"
+    }
+    data object CastingMaterials : Screen("castingMaterials/{kind}") {
+        const val ARG_KIND = "kind"
+        fun build(kind: String) = "castingMaterials/$kind"
+    }
 }

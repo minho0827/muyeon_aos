@@ -121,6 +121,10 @@ object NativeRoutes {
             "/support/feedback" -> return Target.Route(Screen.SupportCompose.build(Screen.SupportCompose.FEEDBACK), auth = true)
             // ★ 2026-11-08 홈 '전체보기' 레슨 목록 — 쿼리(title·type)가 있어도 앱 화면.
             "/lessonList" -> return Target.Route(Screen.LessonList.build(query["title"]?.let(android.net.Uri::decode), query["type"]))
+            // ★ 2026-11-08 묶음 2 — 학원 정보 관리(AI 도우미 초안 ?aiDraft= 도) · 캐스팅·공연 자료 업로드.
+            "/academyProfile" -> return Target.Route(Screen.AcademyEdit.build(query["aiDraft"]?.let(android.net.Uri::decode)), auth = true)
+            "/my/castingMaterials" -> return Target.Route(Screen.CastingMaterials.build("CASTING"), auth = true)
+            "/my/performanceMaterials" -> return Target.Route(Screen.CastingMaterials.build("PERFORMANCE"), auth = true)
         }
         COMMUNITY_POST.find(p)?.let { return Target.Route(Screen.CommunityPost.build(it.groupValues[1].toLong())) }
         if (p.trimEnd('/') == "/community" && !clean.contains('?')) return Target.Route(Screen.CommunityList.route)

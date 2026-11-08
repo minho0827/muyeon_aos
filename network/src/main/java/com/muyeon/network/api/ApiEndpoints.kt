@@ -182,4 +182,16 @@ object ApiEndpoints {
     object Regions {
         const val NEAREST = "$API/regions/nearest"           // GET lat·lng → Region | null
     }
+
+    /** ★ 2026-11-08 묶음 2 — 학원 정보 관리(웹 my/AcademyProfile.js). auth.controller.ts(me/academy) · profiles.controller.ts(academies/:id). */
+    object AcademyProfile {
+        const val ME = "$API/auth/me/academy"              // GET 학원 정보 · PATCH(ACADEMY 활성 유형) 전체 칸
+        const val OWNER = "$API/auth/me"                    // GET { id, name } — 대표원장(본인확인 실명) · 내 학원 번호
+        const val PUBLIC = "$API/academies/{id}"            // GET 공개 프로필 — 미리보기의 '수업 안내'(lessons)
+    }
+
+    /** ★ 2026-11-08 묶음 2 — 캐스팅·공연 자료 업로드(웹 my/CastingMaterials.js) — casting-materials.controller.ts. */
+    object CastingMaterial {
+        const val LIST = "$API/casting-materials"           // GET ?kind=CASTING|PERFORMANCE → { items } · POST { kind, imageUrls, instagramUrl?, linkUrl? }
+    }
 }

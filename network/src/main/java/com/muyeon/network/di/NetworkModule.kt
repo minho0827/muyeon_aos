@@ -71,6 +71,9 @@ val apiModule = module {
     single<com.muyeon.network.api.SupportApi> { get<Retrofit>().create(com.muyeon.network.api.SupportApi::class.java) }
     single<com.muyeon.network.api.SafetyApi> { get<Retrofit>().create(com.muyeon.network.api.SafetyApi::class.java) }
     single<com.muyeon.network.api.AuthApi> { get<Retrofit>().create(com.muyeon.network.api.AuthApi::class.java) }
+    // ★ 2026-11-08 묶음 2 — 학원 정보 관리 · 캐스팅·공연 자료 업로드
+    single<com.muyeon.network.api.AcademyProfileApi> { get<Retrofit>().create(com.muyeon.network.api.AcademyProfileApi::class.java) }
+    single<com.muyeon.network.api.CastingMaterialApi> { get<Retrofit>().create(com.muyeon.network.api.CastingMaterialApi::class.java) }
 }
 
 fun networkModules(): List<Module> = listOf(networkModule, apiModule)
