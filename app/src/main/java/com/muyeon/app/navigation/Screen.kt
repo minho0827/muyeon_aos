@@ -91,6 +91,10 @@ sealed class Screen(val route: String) {
             else "receivedApplications?kind=${kind.orEmpty()}&postingId=${postingId?.toString().orEmpty()}"
     }
 
+    /** 설정(웹 /setting) · 차단한 사용자(웹 /blockedUsers). */
+    data object Settings : Screen("settings")
+    data object BlockedUsers : Screen("blockedUsers")
+
     /** 홈 '전체보기' 레슨 목록(웹 /lessonList?title=&type=). */
     data object LessonList : Screen("lessonList?title={title}&type={type}") {
         const val ARG_TITLE = "title"

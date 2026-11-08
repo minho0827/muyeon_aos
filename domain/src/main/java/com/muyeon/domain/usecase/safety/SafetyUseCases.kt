@@ -8,6 +8,12 @@ class ReportUseCase(private val repo: SafetyRepository) {
         repo.report(targetType, targetId, reason, detail?.trim()?.ifEmpty { null })
 }
 
+/** 차단한 사용자 목록·해제(웹 BlockedUsers). */
+class BlockedUsersUseCase(private val repo: SafetyRepository) {
+    suspend fun list() = repo.blockedUsers()
+    suspend fun unblock(userId: Long) = repo.unblock(userId)
+}
+
 class BlockUserUseCase(private val repo: SafetyRepository) {
     suspend operator fun invoke(userId: Long): ApiResult<Unit> = repo.block(userId)
 }

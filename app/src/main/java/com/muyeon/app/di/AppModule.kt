@@ -80,6 +80,9 @@ val viewModelModule = module {
     // ★ 2026-11-08 지원 내역 — 받은 지원 인자: kind, postingId(둘 다 선택)
     viewModel { com.muyeon.app.ui.application.MyApplicationsViewModel(get()) }
     viewModel { p -> com.muyeon.app.ui.application.ReceivedApplicationsViewModel(p.getOrNull(), p.getOrNull(), get()) }
+    // ★ 2026-11-08 설정 · 차단한 사용자
+    viewModel { com.muyeon.app.ui.settings.SettingsViewModel(get(), get()) }
+    viewModel { com.muyeon.app.ui.settings.BlockedUsersViewModel(get()) }
     // ★ 2026-11-08 홈 '전체보기' 레슨 목록 — 인자: type(popular·experience·oneday)
     viewModel { p -> com.muyeon.app.ui.lessonlist.LessonListViewModel(p.getOrNull(), get(), get(), get(), get(), get(), get(), get()) }
     // MY

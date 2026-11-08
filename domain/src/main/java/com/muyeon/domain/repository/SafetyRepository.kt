@@ -8,4 +8,8 @@ interface SafetyRepository {
     suspend fun report(targetType: String, targetId: Long, reason: String, detail: String?): ApiResult<Unit>
     /** POST /users/:id/block */
     suspend fun block(userId: Long): ApiResult<Unit>
+    /** DELETE /users/:id/block — 차단 해제(Apple 1.2: 되돌릴 수 있어야 한다). */
+    suspend fun unblock(userId: Long): ApiResult<Unit>
+    /** GET /me/blocks */
+    suspend fun blockedUsers(): ApiResult<List<com.muyeon.domain.model.safety.BlockedUser>>
 }

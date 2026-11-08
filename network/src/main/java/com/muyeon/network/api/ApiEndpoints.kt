@@ -45,7 +45,8 @@ object ApiEndpoints {
     /** reports.controller.ts · blocks.controller.ts */
     object Safety {
         const val REPORTS = "$API/reports"                                        // POST { targetType, targetId, reason, detail? }
-        const val BLOCK = "$API/users/{id}/block"                                 // POST 차단
+        const val BLOCK = "$API/users/{id}/block"                                 // POST 차단 · DELETE 해제
+        const val MY_BLOCKS = "$API/me/blocks"                                    // GET → [{ id, name, image, blockedAt }]
     }
 
     /** auth.controller.ts */

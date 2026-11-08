@@ -247,6 +247,24 @@ fun AppNavHost(
                 onManagePostings = { onOpenWeb("/myPostings") },
             )
         }
+        // ★ 2026-11-08 설정(웹 /setting) — 로그아웃은 MY 와 같은 길(LogoutUseCase → 셸 onLoggedOut), 차단한 사용자는 앱 화면.
+        composable(Screen.Settings.route) {
+            com.muyeon.app.ui.settings.SettingsScreen(
+                onBack = { navController.popBackStack() },
+                onOpenPath = onOpenPath,
+                onNotificationSettings = {
+                    context.findActivity()?.let { a -> com.muyeon.app.webview.NativeActionRouter.open(a, "openNotificationSettings", org.json.JSONObject()) }
+                },
+                onBlockedUsers = { navController.navigate(Screen.BlockedUsers.route) },
+                onLoggedOut = {
+                    navController.popBackStack(Screen.Main.route, inclusive = false)
+                    mainViewModel.onLoggedOut()
+                },
+            )
+        }
+        composable(Screen.BlockedUsers.route) {
+            com.muyeon.app.ui.settings.BlockedUsersScreen(onBack = { navController.popBackStack() })
+        }
         // ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 /lessonList).
         composable(
             Screen.LessonList.route,

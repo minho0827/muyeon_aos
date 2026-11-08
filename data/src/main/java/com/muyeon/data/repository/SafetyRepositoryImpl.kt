@@ -12,4 +12,9 @@ class SafetyRepositoryImpl(private val api: SafetyApi, private val moshi: Moshi)
         safeUnitCall(moshi) { api.report(ReportBody(targetType, targetId, reason, detail)) }
 
     override suspend fun block(userId: Long): ApiResult<Unit> = safeUnitCall(moshi) { api.block(userId) }
+
+    override suspend fun unblock(userId: Long): ApiResult<Unit> = safeUnitCall(moshi) { api.unblock(userId) }
+
+    override suspend fun blockedUsers(): ApiResult<List<com.muyeon.domain.model.safety.BlockedUser>> =
+        com.muyeon.data.common.safeApiCall(moshi) { api.myBlocks() }.map { l -> l.mapNotNull { it.toDomain() } }
 }

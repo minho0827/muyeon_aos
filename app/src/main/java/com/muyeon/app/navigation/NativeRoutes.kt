@@ -77,6 +77,8 @@ object NativeRoutes {
             "/faq" -> return Target.Route(Screen.Faq.route)
             "/likes" -> return Target.Route(Screen.Likes.route, auth = true)
             "/myReservations" -> return Target.Route(Screen.MyReservations.route, auth = true)
+            "/setting" -> return Target.Route(Screen.Settings.route)
+            "/blockedUsers" -> return Target.Route(Screen.BlockedUsers.route, auth = true)
             "/myApplications" -> return Target.Route(Screen.MyApplications.route, auth = true)
             // 받은 지원 — ?kind=&postingId=(예전 링크 ?jobId= 는 채용) 로 공고 하나만.
             "/receivedApplications" -> return Target.Route(

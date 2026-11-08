@@ -64,6 +64,7 @@ val domainModule = module {
     // 신고·차단
     factory { ReportUseCase(get()) }
     factory { BlockUserUseCase(get()) }
+    factory { com.muyeon.domain.usecase.safety.BlockedUsersUseCase(get()) }
     // 강사·지역·안내
     factory { GetLessonTeachersPageUseCase(get()) }
     factory { ObserveActiveRegionUseCase(get()) }
