@@ -1285,4 +1285,6 @@
     <string name="auth_recovery_send_failed">인증번호 발송에 실패했어요.</string>
     <string name="auth_recovery_reset_failed">비밀번호 재설정에 실패했어요.</string>
     <string name="auth_recovery_not_found">일치하는 회원 정보가 없어요.</string>
+    <string name="lesson_detail_like">찜하기</string>
+    <string name="lesson_detail_unlike">찜 해제</string>
 </resources>

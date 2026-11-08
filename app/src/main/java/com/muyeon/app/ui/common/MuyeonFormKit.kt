@@ -222,11 +222,20 @@ fun FormDateRow(text: String?, placeholder: String, modifier: Modifier = Modifie
 
 /** 화면 아래 고정 주 버튼 — PACERA BottomPrimaryButton(높이 52·캡슐, 로딩은 스피너만). */
 @Composable
-fun MuyeonBottomButton(label: String, tag: String, enabled: Boolean = true, loading: Boolean = false, onClick: () -> Unit) {
+fun MuyeonBottomButton(
+    label: String, tag: String, enabled: Boolean = true, loading: Boolean = false,
+    /** ★ 2026-11-08 버튼 왼쪽에 붙일 작은 칸(예: 레슨 상세 찜 — iOS 와 같다). 없으면 예전과 같다. */
+    leading: (@Composable () -> Unit)? = null,
+    onClick: () -> Unit,
+) {
     val canTap = enabled && !loading
-    Box(Modifier.fillMaxWidth().background(Color.White).navigationBarsPadding().padding(horizontal = 24.dp, vertical = 12.dp)) {
+    Row(
+        Modifier.fillMaxWidth().background(Color.White).navigationBarsPadding().padding(horizontal = 24.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically,
+    ) {
+        leading?.invoke()
         Box(
-            Modifier.fillMaxWidth().height(52.dp).clip(CircleShape)
+            Modifier.weight(1f).height(52.dp).clip(CircleShape)
                 .background(if (canTap) MuyeonColors.primary else MuyeonColors.textHead.copy(alpha = 0.12f))
                 .clickable(enabled = canTap, onClick = onClick)
                 .testTag(tag),

@@ -13,6 +13,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,7 +35,13 @@ import com.muyeon.app.ui.quote.QuoteAvatar
 import com.muyeon.app.ui.quote.QuoteNavBar
 import com.muyeon.app.ui.quote.QuoteUi
 import com.muyeon.app.ui.review.LessonQuotePrefill
+import com.muyeon.app.ui.lesson.components.LessonDetailLikeButton
+import com.muyeon.domain.model.scrap.ScrapTarget
+import com.muyeon.domain.usecase.scrap.GetLikedIdsUseCase
+import com.muyeon.domain.usecase.scrap.ToggleScrapResult
+import com.muyeon.domain.usecase.scrap.ToggleScrapUseCase
 import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 import org.json.JSONArray
 import java.util.Locale
 
@@ -71,6 +78,11 @@ fun LessonContentDetailScreen(
     var requesting by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
+    val toggleScrap: ToggleScrapUseCase = koinInject()
+    val getLikedIds: GetLikedIdsUseCase = koinInject()
+    var liked by remember { mutableStateOf(false) }
+    var likeBusy by remember { mutableStateOf(false) }
+    LaunchedEffect(lessonProductId) { liked = lessonProductId.toLong() in getLikedIds(ScrapTarget.LESSON) }
 
     LaunchedEffect(lessonProductId, reloadSignal) {
         loading = detail == null
@@ -285,20 +297,37 @@ fun LessonContentDetailScreen(
                 LessonDetailCta.REQUEST -> CtaHint(stringResource(R.string.lesson_detail_request_hint))
                 else -> Unit
             }
+            // 찜 — 웹 LessonDetail(useLikes LESSON)·iOS 와 같다. 비회원이면 로그인.
+            val heart: @Composable () -> Unit = {
+                LessonDetailLikeButton(liked) {
+                    if (likeBusy) return@LessonDetailLikeButton
+                    if (myUserId == null) { onLogin(); return@LessonDetailLikeButton }
+                    val was = liked
+                    liked = !was; likeBusy = true
+                    scope.launch {
+                        when (val r = toggleScrap(ScrapTarget.LESSON, lessonProductId.toLong(), was)) {
+                            is ToggleScrapResult.Done -> liked = r.liked
+                            is ToggleScrapResult.Failed -> { liked = was; android.widget.Toast.makeText(ctx, r.message, android.widget.Toast.LENGTH_SHORT).show() }
+                            ToggleScrapResult.LoginRequired -> { liked = was; onLogin() }
+                        }
+                        likeBusy = false
+                    }
+                }
+            }
             when (cta) {
                 LessonDetailCta.BOOK -> MuyeonBottomButton(
-                    stringResource(R.string.lesson_detail_cta_book), "lessonDetail.book",
+                    stringResource(R.string.lesson_detail_cta_book), "lessonDetail.book", leading = heart,
                 ) { if (myUserId == null) onLogin() else onBook(lessonProductId) }
                 LessonDetailCta.MANAGE -> MuyeonBottomButton(
-                    stringResource(R.string.lesson_detail_cta_manage), "lessonDetail.manage", onClick = onManage,
+                    stringResource(R.string.lesson_detail_cta_manage), "lessonDetail.manage", leading = heart, onClick = onManage,
                 )
                 LessonDetailCta.SAME_QUOTE -> MuyeonBottomButton(
                     stringResource(if (requesting) R.string.lesson_detail_cta_loading else R.string.lesson_detail_cta_same_quote),
-                    "lessonDetail.sameQuote", loading = requesting, onClick = ::request,
+                    "lessonDetail.sameQuote", loading = requesting, leading = heart, onClick = ::request,
                 )
                 LessonDetailCta.REQUEST -> MuyeonBottomButton(
                     stringResource(R.string.lesson_detail_cta_request),
-                    "lessonDetail.request", loading = requesting, onClick = ::request,
+                    "lessonDetail.request", loading = requesting, leading = heart, onClick = ::request,
                 )
                 LessonDetailCta.NONE -> Spacer(Modifier.navigationBarsPadding())
             }
