@@ -67,7 +67,7 @@ val viewModelModule = module {
     viewModel { com.muyeon.app.ui.recruit.SeekViewModel(get(), get(), get(), get(), get()) }
     viewModel { com.muyeon.app.ui.recruit.SubsViewModel(get(), get()) }
     viewModel { p -> com.muyeon.app.ui.subwizard.SubWizardViewModel(get(), get(), get(), p.getOrNull()) }
-    viewModel { com.muyeon.app.ui.home.HomeViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { com.muyeon.app.ui.home.HomeViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     // ★ 2026-11-08 고객센터(공지·FAQ)
     viewModel { com.muyeon.app.ui.support.NoticeListViewModel(get()) }
     viewModel { p -> com.muyeon.app.ui.support.NoticeDetailViewModel(p.get(), get()) }
@@ -102,6 +102,8 @@ val viewModelModule = module {
     viewModel { p -> com.muyeon.app.ui.support.SupportChatRoomViewModel(p.get(), get()) }
     // ★ 2026-11-08 홈 '전체보기' 레슨 목록 — 인자: type(popular·experience·oneday)
     viewModel { p -> com.muyeon.app.ui.lessonlist.LessonListViewModel(p.getOrNull(), get(), get(), get(), get(), get(), get(), get()) }
+    // ★ 2026-11-08 홈 [레슨] 레슨을 찾는 회원들 전체보기
+    viewModel { com.muyeon.app.ui.quotefeed.QuoteFeedViewModel(get(), get()) }
     // ★ 2026-11-08 로그인 · 아이디 찾기/비밀번호 재설정 — 인자: type(id·pw)
     viewModel { com.muyeon.app.ui.auth.LoginViewModel(get(), get()) }
     viewModel { p -> com.muyeon.app.ui.auth.AccountRecoveryViewModel(p.get(), get(), get()) }

@@ -225,4 +225,13 @@ object ApiEndpoints {
         const val POSTS = "$API/community/posts"                  // POST { category, title, body, images? }
         const val POST = "$API/community/posts/{id}"              // PATCH { category, title, body, images }
     }
+
+    /**
+     * ★ 2026-11-08 홈 [레슨] '레슨을 찾는 회원들' — quotes.controller.ts(로그인 필요, 비회원 공개 목록 API 는 없다).
+     *   HOME 은 모든 유형(최근 OPEN 10건 · 1:1 지정 요청 제외), AVAILABLE 은 강사·학원 활동 유형만(20건 페이지).
+     */
+    object QuoteFeed {
+        const val HOME = "$API/quotes/home"                   // GET → [{ id, categoryId, region, answers(days·time·format), createdAt, isDemo, isMine, canRespond }]
+        const val AVAILABLE = "$API/quotes/available"         // GET categoryId·page → { items(Quote), hasMore, page, total }
+    }
 }

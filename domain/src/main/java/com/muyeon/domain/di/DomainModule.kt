@@ -114,4 +114,6 @@ val domainModule = module {
     // ★ 2026-11-08 묶음 3 — 대타공고 수정 · 커뮤니티 글쓰기/수정
     factory { com.muyeon.domain.usecase.write.EditSubUseCase(get()) }
     factory { com.muyeon.domain.usecase.write.WriteCommunityPostUseCase(get()) }
+    // ★ 2026-11-08 홈 [레슨] 레슨을 찾는 회원들
+    factory { com.muyeon.domain.usecase.quotefeed.QuoteFeedUseCase(get(), get(), get()) }
 }

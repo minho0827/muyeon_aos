@@ -52,6 +52,8 @@ import com.muyeon.app.ui.home.components.LessonCategoryIcons
 import com.muyeon.app.ui.home.components.LessonProductCard
 import com.muyeon.app.ui.home.components.LessonSection
 import com.muyeon.app.ui.main.MainTab
+import com.muyeon.app.ui.quotefeed.QuoteFeedLabels
+import com.muyeon.app.ui.quotefeed.components.QuoteFeedSection
 import com.muyeon.app.ui.main.TabReselectEffect
 import com.muyeon.app.ui.main.tabBarBottomPadding
 import com.muyeon.app.ui.theme.AppColors
@@ -164,6 +166,15 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
                         item(key = "popular", span = FULL) {
                             LessonSection(stringResource(R.string.home_sec_recommend), stringResource(R.string.home_sec_popular_desc), p.popular, null, s.likedLessons,
                                 openLesson, viewModel::toggleLessonLike, onAll = { lessonList(recommendTitle(context), "popular") })
+                        }
+                        // ★ 2026-11-08 회원이 올린 레슨 요청 — 추천 레슨 바로 아래(같은 섹션 틀). 비면 그리지 않는다.
+                        item(key = "quoteFeed", span = FULL) {
+                            QuoteFeedSection(
+                                s.quoteFeed,
+                                sentOf = { q -> s.quoteFeedPro && !q.isMine && !q.canRespond },
+                                onOpen = { q -> actions.openPath(QuoteFeedLabels.path(q, s.quoteFeedPro && !q.isMine && !q.canRespond)) },
+                                onAll = { actions.openPath("/quoteFeed") },
+                            )
                         }
                         item(key = "experience", span = FULL) {
                             val t = stringResource(R.string.home_list_experience)
