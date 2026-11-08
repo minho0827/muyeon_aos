@@ -59,6 +59,15 @@ object ApiEndpoints {
         const val EMAIL_SEND_CODE = "$API/auth/email/send-code"              // POST { email, purpose: RESET } (메일 발송)
         const val RESET_PASSWORD_EMAIL = "$API/auth/reset-password-email"    // POST { email, code, newPassword } → { ok }
         const val TERMS_AGREE = "$API/auth/terms/agree"                      // POST { agreements } (약관 게이트 — 로그인 뒤 termsAgreed=false)
+        // ★ 2026-11-08 [b1] 가입·소셜 추가정보(웹 Register.js · SocialSignup.js) — auth.controller.ts · identity.controller.ts · roles.controller.ts
+        const val EMAIL_VERIFY_CODE = "$API/auth/email/verify-code"          // POST { email, code, purpose: SIGNUP }
+        const val REGISTER = "$API/auth/register"                            // POST { email, password, name, phone?, identityToken?, agreements } → { accessToken, sessionId, user }
+        const val SOCIAL_COMPLETE = "$API/auth/me/social-complete"           // PATCH { name, identityToken? } → 갱신된 user
+        const val NICE_CONFIG = "$API/identity/nice/config"                  // GET → { available, required }
+        const val NICE_START = "$API/identity/nice/start"                    // POST { returnTo } → { authUrl } (가입 전 본인확인)
+        const val NICE_RESULT = "$API/identity/nice/result"                  // GET ?token= → { name, phone(가림) }
+        const val ROLES = "$API/me/roles"                                    // POST { role } (가입 직후 회원유형 — 웹 __onRoleComplete callAddRole)
+        const val ROLE_VERIFICATION = "$API/me/roles/{role}/verification"    // POST { documents, academyName?, businessRegistrationNumber?, businessStartDate? } → { autoApproved }
     }
 
     /** MY 화면이 읽는 것 — 출처 파일은 각 줄 끝 주석. */

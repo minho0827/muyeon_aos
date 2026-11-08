@@ -42,7 +42,11 @@ import org.koin.android.ext.android.inject
  *   → [resultIntent] 로 열렸으면 RESULT_OK 로 닫는다(부르는 쪽이 이어서 할 일을 연다), 아니면 redirect 주소(없으면 홈)로
  *   [MainActivity.openPath] — 셸이 다시 보이며 MainViewModel.onResume 이 로그인 상태를 다시 읽는다.
  *  소셜(카카오·네이버)은 SDK 가 없어 웹 OAuth 창으로 연다([WebViewActivity.startSocialLogin]) — 웹이 토큰을 넘기면
- *   ([AuthSession.webLoggedIn]) 이 화면은 닫힌다. 회원가입은 웹(/signupTerms).
+ *   ([AuthSession.webLoggedIn]) 이 화면은 닫힌다.
+ *  ★ 2026-11-08 [b1] 회원가입도 앱 화면 — 약관 동의(가입 모드, 웹 /signupTerms?mode=signup) → 이메일 가입(/register) →
+ *   완료 팝업 → 회원유형 온보딩(OnboardingActivity 앱 완료 모드 — 웹 __onRoleComplete·ROLE_LANDING 과 같은 이동).
+ *   소셜 신규·추가정보 미완료는 /social-signup 앱 화면. 웹 창이 이 세 주소로 가면 WebViewActivity 가 [startSignup] 으로 넘긴다.
+ *   휴대폰 본인확인 표준창만 앱 안 웹창(IdentityWebView).
  */
 class LoginActivity : ComponentActivity() {
     private val agreeTerms: AgreeTermsUseCase by inject()
@@ -52,6 +56,12 @@ class LoginActivity : ComponentActivity() {
     private val returnResult: Boolean get() = intent.getBooleanExtra(EXTRA_RETURN_RESULT, false)
 
     private var notice by mutableStateOf<Pair<String?, String?>?>(null)
+
+    // ★ [b1] 가입 — 약관 화면 동의값(웹 sessionStorage 캐리 대신) · 소셜 추가정보에 넘길 로그인 정보(웹 저장소 갱신용).
+    private var signupAgreements: Map<String, Boolean> = emptyMap()
+    private var socialSessionId: String? = null
+    private var socialUserName: String? = null
+    private val startScreen: String? get() = intent.getStringExtra(EXTRA_START)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         liveCount++
@@ -70,7 +80,13 @@ class LoginActivity : ComponentActivity() {
         setEdgeContent {
             MuyeonTheme(darkTheme = false, dynamicColor = false) {
                 val nav = rememberNavController()
-                NavHost(nav, startDestination = ROUTE_LOGIN) {
+                navRef = nav
+                val start = when (startScreen) {
+                    START_SOCIAL -> ROUTE_SOCIAL
+                    START_SIGNUP -> ROUTE_SIGNUP_TERMS
+                    else -> ROUTE_LOGIN
+                }
+                NavHost(nav, startDestination = start) {
                     composable(ROUTE_LOGIN) {
                         LoginScreen(
                             onBack = ::finish,
@@ -95,6 +111,35 @@ class LoginActivity : ComponentActivity() {
                         BackHandler(onBack = decline)
                         SignupTermsScreen(onAgree = ::agree, onDecline = decline, onOpenPolicy = ::openPolicy)
                     }
+                    // ★ [b1] 가입 모드 약관(웹 SignupTerms mode=signup) — 동의 → 가입 화면 / 뒤로 → 로그인(레슨 요청 중이면 그 화면).
+                    composable(ROUTE_SIGNUP_TERMS) {
+                        val cancel = { cancelSignupTerms(nav) }
+                        BackHandler(onBack = cancel)
+                        SignupTermsScreen(
+                            onAgree = { m -> signupAgreements = m; nav.navigate(ROUTE_REGISTER) },
+                            onDecline = cancel, onOpenPolicy = ::openPolicy,
+                        )
+                    }
+                    composable(ROUTE_REGISTER) {
+                        com.muyeon.app.ui.auth.signup.RegisterScreen(
+                            agreements = signupAgreements,
+                            onBack = { if (!nav.popBackStack()) finish() },
+                            onRegistered = { s -> AuthSession.onNativeLogin(this@LoginActivity, s, LoginProvider.EMAIL) },
+                            onDone = ::afterSignup,
+                        )
+                    }
+                    composable(ROUTE_SOCIAL) {
+                        com.muyeon.app.ui.auth.signup.SocialSignupScreen(
+                            currentName = socialUserName ?: intent.getStringExtra(EXTRA_USER_NAME),
+                            onQuit = ::quitSocialSignup,
+                            onCompleted = { userJson ->
+                                // 웹 창 저장소의 user 도 바꾼다(signupIncomplete=false) — 안 바꾸면 웹 게이트가 다시 /social-signup 으로 보낸다.
+                                val sid = socialSessionId ?: intent.getStringExtra(EXTRA_SESSION_ID)
+                                com.muyeon.app.webview.WebLogin.save(this@LoginActivity, sid, userJson, LoginProvider.last(this@LoginActivity) ?: LoginProvider.EMAIL)
+                            },
+                            onDone = ::afterSignup,
+                        )
+                    }
                 }
                 notice?.let { (code, message) ->
                     val close = { notice = null }
@@ -110,6 +155,8 @@ class LoginActivity : ComponentActivity() {
         }
     }
 
+    private var navRef: NavHostController? = null
+
     override fun onDestroy() {
         liveCount--
         super.onDestroy()
@@ -119,11 +166,11 @@ class LoginActivity : ComponentActivity() {
     private fun onLoggedIn(s: LoginSession, nav: NavHostController) {
         AuthSession.onNativeLogin(this, s, LoginProvider.EMAIL)
         when {
-            // 소셜 가입을 끝내지 않은 계정(이메일 로그인은 해당 없음) — 웹 가입 단계로.
+            // 소셜 가입을 끝내지 않은 계정(이메일 로그인은 해당 없음) — 앱 추가정보 화면으로([b1]).
             s.signupIncomplete -> {
-                WebViewActivity.startPath(this, "/social-signup?redirect=" + Uri.encode(redirect ?: HOME))
-                setResult(Activity.RESULT_OK)
-                finish()
+                socialSessionId = s.sessionId
+                socialUserName = userNameOf(s.userJson)
+                nav.navigate(ROUTE_SOCIAL) { popUpTo(ROUTE_LOGIN) { inclusive = true } }
             }
             s.termsAgreed == false -> nav.navigate(ROUTE_TERMS)
             else -> finishLoggedIn()
@@ -151,9 +198,40 @@ class LoginActivity : ComponentActivity() {
 
     private fun openSocial(provider: LoginProvider) = WebViewActivity.startSocialLogin(this, provider, redirect ?: HOME)
 
-    /** [이메일로 가입하기] — 지금처럼 웹 약관 동의(/signupTerms) → 가입. */
-    private fun openSignupEmail() =
-        WebViewActivity.startPath(this, "/signupTerms?mode=signup&redirect=" + Uri.encode(redirect ?: HOME))
+    /** [이메일로 가입하기] — 앱 약관 동의(가입 모드) → 앱 가입 화면([b1]). */
+    private fun openSignupEmail() = navRef?.navigate(ROUTE_SIGNUP_TERMS)
+
+    /** 가입 모드 약관 [뒤로] — 웹: 레슨 요청 중 가입이면 그 화면, 아니면 /login. */
+    private fun cancelSignupTerms(nav: NavHostController) {
+        val r = redirect
+        if (r != null && r.startsWith("/quoteRequest")) {
+            MainActivity.openPath(this, r)
+            finish()
+            return
+        }
+        if (!nav.popBackStack(ROUTE_LOGIN, inclusive = false)) {
+            nav.navigate(ROUTE_LOGIN) { popUpTo(ROUTE_SIGNUP_TERMS) { inclusive = true } }
+        }
+    }
+
+    /**
+     * 가입 완료 팝업 [확인] — 웹 Register/SocialSignup closeModal:
+     *  광고 공고·레슨 요청 중 가입 → 유형 선택 없이 하던 일로 / 그 밖 → 회원유형 온보딩(앱 완료 모드 — 선택 뒤 유형별 화면).
+     */
+    private fun afterSignup() {
+        setResult(Activity.RESULT_OK)
+        val r = com.muyeon.domain.usecase.auth.SignupRedirect.safe(redirect)
+        if (com.muyeon.domain.usecase.auth.SignupRedirect.isTaskResume(r)) MainActivity.openPath(this, r!!)
+        else com.muyeon.app.ui.onboarding.OnboardingActivity.startRoleOnboarding(this, completeInApp = true)
+        finish()
+    }
+
+    /** 소셜 추가정보 [뒤로] = 가입 그만두기 — 로그아웃 후 홈(웹 SocialSignup: logout → /home). */
+    private fun quitSocialSignup() {
+        session.logout()
+        MainActivity.openPath(this, HOME)
+        finish()
+    }
 
     /** 약관 전문 — 외부 브라우저(OnboardingActivity.openPolicy 와 같다). */
     private fun openPolicy(doc: String) {
@@ -169,6 +247,17 @@ class LoginActivity : ComponentActivity() {
         private const val ROUTE_LOGIN = "login"
         private const val ROUTE_RECOVERY = "recovery"
         private const val ROUTE_TERMS = "terms"
+        // ★ [b1] 가입
+        private const val ROUTE_SIGNUP_TERMS = "signupTerms"
+        private const val ROUTE_REGISTER = "register"
+        private const val ROUTE_SOCIAL = "socialSignup"
+        private const val EXTRA_START = "muyeon.login.start"
+        private const val EXTRA_SESSION_ID = "muyeon.login.sessionId"
+        private const val EXTRA_USER_NAME = "muyeon.login.userName"
+        private const val START_SIGNUP = "signup"
+        private const val START_SOCIAL = "social"
+        private val SIGNUP_PATHS = setOf("/signupTerms", "/register")
+        private const val SOCIAL_PATH = "/social-signup"
         private const val HOME = "/home"
         private const val LOGIN_PATH = "/login"
 
@@ -215,6 +304,38 @@ class LoginActivity : ComponentActivity() {
             Intent(context, LoginActivity::class.java)
                 .putExtra(EXTRA_REDIRECT, redirect)
                 .apply { noticeCode?.let { putExtra(EXTRA_NOTICE_CODE, it); putExtra(EXTRA_NOTICE_MESSAGE, noticeMessage) } }
+
+        /**
+         * ★ [b1] 가입 주소인가 — /signupTerms(가입 모드 · mode=gate 는 기존 약관 게이트라 제외) · /register · /social-signup.
+         *  [query] 는 '?' 뒤(없으면 빈 글자).
+         */
+        fun isSignupPath(path: String?, query: String = ""): Boolean {
+            val p = path?.substringBefore('#')?.substringBefore('?')?.trimEnd('/') ?: return false
+            if (p == SOCIAL_PATH) return true
+            if (p !in SIGNUP_PATHS) return false
+            val q = query.ifEmpty { path.substringAfter('?', "") }
+            return !(p == "/signupTerms" && q.split('&').any { it == "mode=gate" })
+        }
+
+        /**
+         * 가입 화면 열기 — /signupTerms·/register = 약관 동의(가입 모드)부터(동의값이 있어야 가입된다),
+         *  /social-signup = 소셜 추가정보([sessionId]·[userName] = 웹 저장소의 로그인 — 저장 뒤 웹 저장소 user 를 바꿀 때 쓴다).
+         */
+        fun startSignup(context: Context, path: String, sessionId: String? = null, userName: String? = null) {
+            val p = path.substringBefore('#').substringBefore('?').trimEnd('/')
+            val r = redirectOf(path)
+            context.startActivity(
+                intent(context, r)
+                    .putExtra(EXTRA_START, if (p == SOCIAL_PATH) START_SOCIAL else START_SIGNUP)
+                    .putExtra(EXTRA_SESSION_ID, sessionId)
+                    .putExtra(EXTRA_USER_NAME, userName)
+                    .apply { if (context !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) },
+            )
+        }
+
+        /** user JSON 의 name(소셜 기본 이름 판단용). */
+        internal fun userNameOf(userJson: String?): String? =
+            runCatching { org.json.JSONObject(userJson ?: "").optString("name") }.getOrNull()?.takeIf { it.isNotBlank() }
 
         /** 결과로 받기 — 성공이면 RESULT_OK 로 닫힌다(부르는 쪽이 LoginResume 등 이어서 할 일을 연다). */
         fun resultIntent(context: Context): Intent =

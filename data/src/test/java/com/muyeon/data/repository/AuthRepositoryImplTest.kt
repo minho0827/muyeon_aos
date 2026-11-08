@@ -44,5 +44,13 @@ class AuthRepositoryImplTest {
         override suspend fun sendEmailCode(body: com.muyeon.network.dto.auth.SendEmailCodeBody) = error("unused")
         override suspend fun resetPasswordEmail(body: com.muyeon.network.dto.auth.ResetPasswordEmailBody) = error("unused")
         override suspend fun agreeTerms(body: com.muyeon.network.dto.auth.TermsAgreeBody) = error("unused")
+        override suspend fun verifyEmailCode(body: com.muyeon.network.dto.auth.VerifyEmailCodeBody) = error("unused")
+        override suspend fun register(body: com.muyeon.network.dto.auth.RegisterBody) = error("unused")
+        override suspend fun completeSocial(body: com.muyeon.network.dto.auth.SocialCompleteBody) = error("unused")
+        override suspend fun niceConfig() = error("unused")
+        override suspend fun startNice(body: com.muyeon.network.dto.account.ReturnToBody) = error("unused")
+        override suspend fun niceResult(token: String) = error("unused")
+        override suspend fun addRole(body: com.muyeon.network.dto.auth.AddRoleBody) = error("unused")
+        override suspend fun submitRoleVerification(role: String, body: com.muyeon.network.dto.auth.RoleVerificationBody) = error("unused")
     }
 }

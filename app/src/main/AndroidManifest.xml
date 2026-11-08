@@ -303,6 +303,12 @@
             android:exported="false"
             android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize" />
+        <!-- ★ [b1] 학원 인증 차단 · 시스템 점검 안내(웹 /verify-required · /maintenance) -->
+        <activity
+            android:name=".ui.gate.GateActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
         <activity
             android:name=".ui.lesson.LessonActivity"
             android:exported="false"

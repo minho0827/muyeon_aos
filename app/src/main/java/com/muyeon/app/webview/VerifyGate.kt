@@ -113,6 +113,8 @@ object VerifyGate {
     /** 차단 중 이 화면을 계속 둘 수 있나 — 본문·학원 인증(온보딩)·스플래시·로그인. */
     private fun allowed(activity: Activity): Boolean =
         activity is WebViewActivity ||
+            com.muyeon.app.ui.gate.GateActivity.isGate(activity) ||          // ★ [b1] 앱 차단 화면
+            activity is com.muyeon.app.ui.auth.LoginActivity ||               // ★ [b1] 앱 로그인(차단 화면 로그아웃 뒤)
             activity is com.muyeon.app.ui.onboarding.OnboardingActivity ||
             activity is com.muyeon.app.activity.SplashActivity ||
             activity is com.muyeon.app.activity.LoginActivity ||
@@ -131,6 +133,13 @@ object VerifyGate {
     /** 본문을 앞으로(CLEAR_TOP — 그 위 네이티브 화면은 닫힌다) + 웹에 다시 확인 요청. */
     private fun bringWeb(activity: Activity, closeCurrent: Boolean) {
         runCatching {
+            // ★ 2026-11-08 [b1] 웹 창이 없으면 차단 화면은 앱 화면(GateActivity) — 차단이면 띄우고, 풀렸으면 닫고 홈.
+            if (!WebViewActivity.isAlive) {
+                if (gated) com.muyeon.app.ui.gate.GateActivity.startVerifyRequired(activity)
+                else com.muyeon.app.ui.gate.GateActivity.closeVerifyRequired(activity)
+                if (gated && closeCurrent && activity !is WebViewActivity) activity.finish()
+                return@runCatching
+            }
             // ★ 2026-11-07 웹 창이 떠 있으면 그 창에서 다시 확인, 없으면(앱 탭 화면) 차단 화면 주소로 새 창.
             val web = Intent(activity, WebViewActivity::class.java).putExtra(NativeWebRoute.EXTRA_EVAL_JS, RECHECK_JS)
             if (WebViewActivity.isAlive) web.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)

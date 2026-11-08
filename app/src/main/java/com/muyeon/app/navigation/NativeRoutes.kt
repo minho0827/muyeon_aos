@@ -121,6 +121,11 @@ object NativeRoutes {
             "/support/feedback" -> return Target.Route(Screen.SupportCompose.build(Screen.SupportCompose.FEEDBACK), auth = true)
             // ★ 2026-11-08 홈 '전체보기' 레슨 목록 — 쿼리(title·type)가 있어도 앱 화면.
             "/lessonList" -> return Target.Route(Screen.LessonList.build(query["title"]?.let(android.net.Uri::decode), query["type"]))
+            // ★ 2026-11-08 [b1] 가입(약관 가입 모드 · 이메일 가입 · 소셜 추가정보) · 학원 인증 차단 · 점검 — 앱 화면(LoginActivity · GateActivity).
+            "/signupTerms" -> if (query["mode"] != "gate") return Target.Action("openSignup", mapOf("path" to clean))
+            "/register", "/social-signup" -> return Target.Action("openSignup", mapOf("path" to clean))
+            "/verify-required" -> return Target.Action("openVerifyRequired")
+            "/maintenance" -> return Target.Action("openMaintenance")
         }
         COMMUNITY_POST.find(p)?.let { return Target.Route(Screen.CommunityPost.build(it.groupValues[1].toLong())) }
         if (p.trimEnd('/') == "/community" && !clean.contains('?')) return Target.Route(Screen.CommunityList.route)

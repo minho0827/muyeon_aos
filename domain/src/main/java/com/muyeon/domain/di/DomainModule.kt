@@ -75,6 +75,11 @@ val domainModule = module {
     factory { com.muyeon.domain.usecase.auth.FindIdUseCase(get()) }
     factory { com.muyeon.domain.usecase.auth.ResetPasswordUseCase(get()) }
     factory { com.muyeon.domain.usecase.auth.AgreeTermsUseCase(get()) }
+    // ★ 2026-11-08 [b1] 가입·소셜 추가정보·본인확인·가입 직후 회원유형
+    factory { com.muyeon.domain.usecase.auth.SignupIdentityUseCase(get()) }
+    factory { com.muyeon.domain.usecase.auth.RegisterUseCase(get()) }
+    factory { com.muyeon.domain.usecase.auth.SocialSignupUseCase(get()) }
+    factory { com.muyeon.domain.usecase.auth.CompleteRoleOnboardingUseCase(get()) }
     // 경력·자격 확인
     factory { com.muyeon.domain.usecase.credential.CredentialsUseCase(get()) }
     // 신고·차단

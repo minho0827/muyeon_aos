@@ -27,12 +27,17 @@ import com.muyeon.domain.usecase.account.EditAccountUseCase
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun IdentityWebView(url: String, onResult: (token: String?, error: String?) -> Unit) {
+fun IdentityWebView(
+    url: String,
+    onResult: (token: String?, error: String?) -> Unit,
+    /** 표준창이 돌아올 주소(가입 /register · 소셜 추가정보 /social-signup — [b1]). 기본은 개인정보 수정. */
+    returnTo: String = EditAccountUseCase.RETURN_TO,
+) {
     val result = rememberUpdatedState(onResult)
     val sent = androidx.compose.runtime.remember { booleanArrayOf(false) }
     fun check(u: String?): Boolean {
         val uri = u?.let(Uri::parse) ?: return false
-        if (uri.path?.trimEnd('/')?.endsWith(EditAccountUseCase.RETURN_TO) != true) return false
+        if (uri.path?.trimEnd('/')?.endsWith(returnTo) != true) return false
         val token = uri.getQueryParameter(EditAccountUseCase.TOKEN_PARAM)
         val error = uri.getQueryParameter(EditAccountUseCase.ERROR_PARAM)
         if (token == null && error == null) return false
