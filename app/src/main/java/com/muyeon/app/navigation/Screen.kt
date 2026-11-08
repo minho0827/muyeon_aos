@@ -156,4 +156,13 @@ sealed class Screen(val route: String) {
         const val ARG_KIND = "kind"
         fun build(kind: String) = "castingMaterials/$kind"
     }
+    // ★ 2026-11-08 묶음 3 — 대타공고 수정 · 커뮤니티 글쓰기/수정(웹 /subs/:id/edit · /community/write · /community/post/:id/edit).
+    data object SubEdit : Screen("subs/{id}/edit") {
+        const val ARG_ID = "id"
+        fun build(id: Long) = "subs/$id/edit"
+    }
+    data object CommunityWrite : Screen("community/write?edit={edit}") {
+        const val ARG_EDIT = "edit"
+        fun build(editId: Long? = null) = if (editId == null) "community/write" else "community/write?edit=$editId"
+    }
 }

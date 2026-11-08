@@ -141,6 +141,8 @@ object NativeRoutes {
         }
         // ★ 2026-11-08 묶음 0 — 앱 화면이 이미 있는데 웹 창으로 가던 주소(NativeRoutesB0).
         NativeRoutesB0.resolve(p.trimEnd('/'), query, clean.contains('?'))?.let { return it }
+        // ★ 2026-11-08 묶음 3 — 대타공고 수정 · 커뮤니티 글쓰기/수정(NativeRoutesB3).
+        NativeRoutesB3.resolve(p.trimEnd('/'), query)?.let { return it }
         COMMUNITY_POST.find(p)?.let { return Target.Route(Screen.CommunityPost.build(it.groupValues[1].toLong())) }
         if (p.trimEnd('/') == "/community" && !clean.contains('?')) return Target.Route(Screen.CommunityList.route)
         // 대타공고 등록 — 설문식 앱 화면(레슨 요청 [네, 강사 구해요]에서 온 ?prefill= 도).

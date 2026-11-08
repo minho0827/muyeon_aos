@@ -123,4 +123,9 @@ val viewModelModule = module {
     // ★ 2026-11-08 묶음 2 — 학원 정보 관리 · 캐스팅·공연 자료 업로드(인자: kind)
     viewModel { com.muyeon.app.ui.academyedit.AcademyEditViewModel(get()) }
     viewModel { p -> com.muyeon.app.ui.castingmaterial.CastingMaterialsViewModel(p.get(), get()) }
+    // ★ 2026-11-08 묶음 3 — 대타공고 수정(같은 대타 입력 폼 · 인자: 공고 id) · 커뮤니티 글쓰기/수정(인자: 고칠 글 id 또는 null)
+    viewModel(org.koin.core.qualifier.named(com.muyeon.app.ui.subwizard.SubWizardViewModel.EDIT)) { p ->
+        com.muyeon.app.ui.subwizard.SubWizardViewModel(get(), get(), get(), null, get(), p.get<Long>())
+    }
+    viewModel { p -> com.muyeon.app.ui.communitywrite.CommunityWriteViewModel(p.getOrNull(), get(), get()) }
 }

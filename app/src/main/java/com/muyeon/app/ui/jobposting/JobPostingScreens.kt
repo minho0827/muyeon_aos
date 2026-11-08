@@ -619,11 +619,12 @@ class JobPostingActivity : com.muyeon.app.result.ResultActivity() {
             // 공고가 바뀌면 웹(공고 목록)도 다시 읽게 — 기본 키와 같지만 '바뀌었다'를 명시해 둔다.
             fun changed() = addResultKeys(com.muyeon.app.result.ResultKeys.JOB_POSTINGS)
 
-            // 수정 — 채용은 네이티브 위저드, 대타는 웹 수정 화면, 공연은 수정 화면이 없다(메뉴에서 숨김).
+            // 수정 — 채용은 네이티브 위저드, 대타는 대타 입력 폼(수정 모드), 공연은 수정 화면이 없다(메뉴에서 숨김).
             fun openEdit(kind: String, pid: Int) {
                 when (kind) {
                     "JOB" -> nav.navigate("form/$pid")
-                    "SUB" -> com.muyeon.app.webview.NativeWebRoute.openWebAndFinish(this@JobPostingActivity, "/subs/$pid/edit")
+                    // ★ 2026-11-08 묶음 3 — 대타는 대타 입력 폼 수정 모드(웹 /subs/:id/edit 대신 — 저장하면 이 목록·상세로 돌아온다).
+                    "SUB" -> nav.navigate("subEdit/$pid")
                 }
             }
 
@@ -681,6 +682,11 @@ class JobPostingActivity : com.muyeon.app.result.ResultActivity() {
                     )
                 }
                 // 공연 공고 등록(네이티브) — 캐스팅·무대와 같은 화면(ui/castingstage/create).
+                // ★ 2026-11-08 묶음 3 — 대타공고 수정(셸의 대타 입력 폼과 같은 화면).
+                composable("subEdit/{id}") { e ->
+                    val sid = e.arguments?.getString("id")?.toLongOrNull() ?: 0L
+                    com.muyeon.app.ui.subwizard.SubWizardScreen(editId = sid, onClose = { back() }, onCreated = { changed(); back() })
+                }
                 composable("castingForm") {
                     val castingApi = remember { com.muyeon.app.ui.castingstage.data.CastingStageApi(api.token) }
                     com.muyeon.app.ui.castingstage.create.CastingCreateScreen(

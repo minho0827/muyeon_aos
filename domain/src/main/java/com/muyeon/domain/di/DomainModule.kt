@@ -111,4 +111,7 @@ val domainModule = module {
     // ★ 2026-11-08 묶음 2 — 학원 정보 관리 · 캐스팅·공연 자료 업로드
     factory { com.muyeon.domain.usecase.academy.AcademyProfileUseCase(get()) }
     factory { com.muyeon.domain.usecase.castingmaterial.CastingMaterialUseCase(get()) }
+    // ★ 2026-11-08 묶음 3 — 대타공고 수정 · 커뮤니티 글쓰기/수정
+    factory { com.muyeon.domain.usecase.write.EditSubUseCase(get()) }
+    factory { com.muyeon.domain.usecase.write.WriteCommunityPostUseCase(get()) }
 }

@@ -77,6 +77,8 @@ val apiModule = module {
     // ★ 2026-11-08 묶음 2 — 학원 정보 관리 · 캐스팅·공연 자료 업로드
     single<com.muyeon.network.api.AcademyProfileApi> { get<Retrofit>().create(com.muyeon.network.api.AcademyProfileApi::class.java) }
     single<com.muyeon.network.api.CastingMaterialApi> { get<Retrofit>().create(com.muyeon.network.api.CastingMaterialApi::class.java) }
+    // ★ 2026-11-08 묶음 3 — 대타공고 수정 · 커뮤니티 글쓰기/수정
+    single<com.muyeon.network.api.WriteApi> { get<Retrofit>().create(com.muyeon.network.api.WriteApi::class.java) }
 }
 
 fun networkModules(): List<Module> = listOf(networkModule, apiModule)

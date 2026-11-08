@@ -44,4 +44,7 @@ val dataModule = module {
     // ★ 2026-11-08 묶음 2 — 학원 정보 관리 · 캐스팅·공연 자료 업로드
     single<com.muyeon.domain.repository.AcademyProfileRepository> { com.muyeon.data.repository.AcademyProfileRepositoryImpl(get(), get()) }
     single<com.muyeon.domain.repository.CastingMaterialRepository> { com.muyeon.data.repository.CastingMaterialRepositoryImpl(get(), get()) }
+    // ★ 2026-11-08 묶음 3 — 대타공고 수정 · 커뮤니티 글쓰기/수정
+    single<com.muyeon.domain.repository.SubEditRepository> { com.muyeon.data.repository.SubEditRepositoryImpl(get(), get()) }
+    single<com.muyeon.domain.repository.CommunityWriteRepository> { com.muyeon.data.repository.CommunityWriteRepositoryImpl(get(), get()) }
 }
