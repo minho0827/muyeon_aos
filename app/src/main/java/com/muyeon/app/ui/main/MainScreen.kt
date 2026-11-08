@@ -202,11 +202,16 @@ fun MainScreen(
             //   채용공고 = 학원·공연팀 · 구직 프로필 = 강사·무용수 · 대타공고 = 학원·강사·무용수·공연팀 · 공연 공고 = 공연팀(canCastingCreate).
             val t = state.activeType
             val loggedIn = state.isLoggedIn
+            val writeContext = androidx.compose.ui.platform.LocalContext.current
+            val writeScope = androidx.compose.runtime.rememberCoroutineScope()
             val writeItems = buildList {
                 if (loggedIn && t in setOf(ActiveTypeK.ACADEMY, ActiveTypeK.TEAM))
                     add(com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_job), androidx.compose.ui.res.painterResource(R.drawable.ic_tab_note), com.muyeon.app.ui.theme.AppColors.Primary, "job") { onOpenPath("/jobs/create") })
                 if (loggedIn && t in setOf(ActiveTypeK.TEACHER, ActiveTypeK.DANCER))
-                    add(com.muyeon.app.ui.components.WriteMenuItem(stringResource(if (t == ActiveTypeK.DANCER) R.string.write_seek_dancer else R.string.write_seek), androidx.compose.ui.res.painterResource(R.drawable.ic_tab_my), androidx.compose.ui.graphics.Color(0xFF2E7DFF), "seek") { onOpenPath("/profileManage?seek=1&from=jobs") })
+                    add(com.muyeon.app.ui.components.WriteMenuItem(stringResource(if (t == ActiveTypeK.DANCER) R.string.write_seek_dancer else R.string.write_seek), androidx.compose.ui.res.painterResource(R.drawable.ic_tab_my), androidx.compose.ui.graphics.Color(0xFF2E7DFF), "seek") {
+                        // 이미 등록한 강사프로필이 있으면 이력서 관리, 없으면 등록(SeekProfileEntry).
+                        (writeContext as? android.app.Activity)?.let { com.muyeon.app.ui.resume.SeekProfileEntry.open(it, writeScope, t == ActiveTypeK.DANCER) }
+                    })
                 if (loggedIn && t in setOf(ActiveTypeK.TEACHER, ActiveTypeK.ACADEMY, ActiveTypeK.DANCER, ActiveTypeK.TEAM))
                     add(com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_sub), androidx.compose.ui.res.painterResource(R.drawable.ic_tab_paper), androidx.compose.ui.graphics.Color(0xFFD8564D), "sub") { onOpenPath("/subs/create") })
                 if (canCastingCreate) add(com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_casting), androidx.compose.ui.graphics.vector.rememberVectorPainter(androidx.compose.material.icons.Icons.Rounded.RecentActors), androidx.compose.ui.graphics.Color(0xFF7B5CC4), "casting") { onOpenDetail(stage.create) })
