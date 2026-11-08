@@ -45,7 +45,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun SpaceStepBasic(form: SpaceForm, categories: List<SpaceCategory>, onChange: (SpaceForm) -> Unit) {
     SectionHead("기본 정보", "공간 이름과 인원을 알려 주세요.")
-    FormField("공간 이름", required = true) { FormTextField(form.name, { onChange(form.copy(name = it)) }, "예) 사당 미러 스튜디오 A", 60) }
+    FormField("공간 이름", required = true, filled = form.name.isNotBlank()) { FormTextField(form.name, { onChange(form.copy(name = it)) }, "예) 사당 미러 스튜디오 A", 60) }
     categories.takeIf { it.isNotEmpty() }?.let { SpaceCategoryField(it, form.categoryId) { id -> onChange(form.copy(categoryId = id)) } }
     FormField("최대 인원", hint = "(명)") { NumberField(form.capacityMax, "예) 15", 4) { onChange(form.copy(capacityMax = it)) } }
     FormField("기본 인원", hint = "(명, 넘으면 추가 요금)") { NumberField(form.baseHeadcount, "예) 4", 4) { onChange(form.copy(baseHeadcount = it)) } }

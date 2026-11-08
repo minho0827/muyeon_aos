@@ -83,3 +83,6 @@ fun RequiredHint(form: RequiredForm, key: String) {
 
 /** 칸 이름 색 — 강조 중이면 빨강. */
 fun RequiredForm.labelColor(key: String) = if (isError(key)) AppColors.Danger else AppColors.TextHead
+
+/** 화면이 내려 주는 필수값 확인기 — 공용 FormField 가 읽는다(없으면 확인하지 않는다). */
+val LocalRequiredForm = androidx.compose.runtime.staticCompositionLocalOf<RequiredForm?> { null }

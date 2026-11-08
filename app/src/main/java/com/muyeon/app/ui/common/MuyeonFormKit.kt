@@ -82,22 +82,32 @@ fun FormCard(title: String, icon: ImageVector, content: @Composable ColumnScope.
     }
 }
 
-/** 칸 제목 + (필수면) 주황 *. */
+/** 칸 제목 + (필수면) 주황 *. [error] 면 제목이 빨강(필수값 확인에서 빠진 칸). */
 @Composable
-fun FormFieldHeader(text: String, required: Boolean = false, hint: String? = null) {
+fun FormFieldHeader(text: String, required: Boolean = false, hint: String? = null, error: Boolean = false) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(text, style = Sub, color = MuyeonColors.textSub)
+        Text(text, style = Sub, color = if (error) com.muyeon.app.ui.theme.AppColors.Danger else MuyeonColors.textSub)
         if (required) Text("*", style = Sub, color = MuyeonColors.primary, modifier = Modifier.padding(start = 2.dp))
         if (hint != null) Text(hint, style = Sub.copy(fontSize = 12.sp), color = MuyeonColors.textSub, modifier = Modifier.padding(start = 4.dp))
     }
 }
 
-/** 칸 제목 + 내용 한 묶음(간격 8). */
+/**
+ * 칸 제목 + 내용 한 묶음(간격 8).
+ *   ★ 2026-11-08 필수값 확인 — 화면이 [LocalRequiredForm] 을 주고 필수 칸에 [filled] 를 넘기면,
+ *   등록·다음에서 빠졌을 때 이 칸으로 스크롤·제목 빨강·'필수 항목이에요'(RequiredForm).
+ */
 @Composable
-fun FormField(label: String, required: Boolean = false, hint: String? = null, content: @Composable ColumnScope.() -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        FormFieldHeader(label, required, hint)
+fun FormField(label: String, required: Boolean = false, hint: String? = null, filled: Boolean? = null, content: @Composable ColumnScope.() -> Unit) {
+    val form = LocalRequiredForm.current
+    val check = form != null && required && filled != null
+    Column(
+        (if (check) Modifier.requiredField(form!!, label, label, filled!!) else Modifier),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        FormFieldHeader(label, required, hint, error = check && form!!.isError(label))
         content()
+        if (check) RequiredHint(form!!, label)
     }
 }
 

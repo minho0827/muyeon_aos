@@ -50,7 +50,7 @@ fun TransferStepContact(form: TransferForm, onChange: (TransferForm) -> Unit) {
     FormField("전화번호") { FormTextField(form.contactPhone, { v -> onChange(form.copy(contactPhone = v.filter { it.isDigit() || it == '-' })) }, "예) 010-1234-5678", 20, keyboardType = KeyboardType.Phone) }
     FormToggle("회원에게 전화번호 공개", form.phoneVisible) { onChange(form.copy(phoneVisible = it)) }
     // 매물과의 관계(필수) — 예전 글(null)은 선택 안 됨으로 열려 [다음]이 꺼진 채 고르게 한다.
-    FormField("매물과의 관계", required = true) {
+    FormField("매물과의 관계", required = true, filled = form.ownerRelation != null) {
         FormChipWrap(TransferLabels.ownerRelation, { form.ownerRelation == it }) { onChange(form.copy(ownerRelation = it)) }
     }
 }

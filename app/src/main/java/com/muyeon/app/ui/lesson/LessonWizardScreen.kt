@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.lesson
 
+import com.muyeon.app.ui.common.requiredField
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -153,6 +154,8 @@ fun LessonWizardScreen(
     }
     val isLast = step == STEP_TITLES.lastIndex
 
+    val required = com.muyeon.app.ui.common.rememberRequiredForm()
+    androidx.compose.runtime.CompositionLocalProvider(com.muyeon.app.ui.common.LocalRequiredForm provides required) {
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         QuoteNavBar(
             title = if (isAcademy) (if (lessonId != null) "수업 수정" else "수업 등록") else (if (lessonId != null) "레슨 수정" else "레슨 개설"),
@@ -212,9 +215,14 @@ fun LessonWizardScreen(
             val label = if (isLast) {
                 if (submitting) "저장 중…" else if (lessonId != null) "수정 완료" else "레슨 게시"
             } else "다음"
-            val enabled = if (isLast) !submitting else canProceed
+            val enabled = if (isLast) !submitting else true
             WizardButton(label, filled = true, enabled = enabled, modifier = Modifier.weight(1f)) {
-                if (!isLast) { step += 1; return@WizardButton }
+                if (!isLast) {
+                    // 빠진 필수 칸 → 스크롤·강조·토스트. 장소(온라인·장소·주소 중 하나)처럼 칸 하나로 못 말하는 건 안내 문구.
+                    if (!required.validate(context)) return@WizardButton
+                    if (!canProceed) { android.widget.Toast.makeText(context, com.muyeon.app.R.string.required_check, android.widget.Toast.LENGTH_SHORT).show(); return@WizardButton }
+                    step += 1; return@WizardButton
+                }
                 // 예약금 한도는 관리자 '환불 규정' 값으로 검사한다(iOS submit() 과 같은 규칙, 최종 검사는 서버).
                 if (draft.paymentMode == "DEPOSIT") {
                     val policy = LessonRefundPolicyRepo.current()
@@ -238,6 +246,7 @@ fun LessonWizardScreen(
                 }
             }
         }
+    }
     }
 
     if (showExit) {
@@ -296,10 +305,10 @@ private fun StepBasic(
             )
         }
     }
-    WizardField(if (isAcademy) "수업명" else "레슨명", required = true) {
+    WizardField(if (isAcademy) "수업명" else "레슨명", required = true, filled = d.title.trim().isNotEmpty()) {
         WizardTextField(d.title, "예: 성인 취미 발레 (초급)") { onChange(d.copy(title = it)) }
     }
-    WizardField("장르", required = true) {
+    WizardField("장르", required = true, filled = d.genre.isNotEmpty()) {
         WizardMenu(d.genre, "장르를 선택하세요", LessonOptions.genres) { onChange(d.copy(genre = it)) }
     }
     WizardField("난이도") {
@@ -514,7 +523,7 @@ private fun StepLocation(d: LessonWizardDraft, token: String?, recent: List<Less
 private fun StepSchedule(d: LessonWizardDraft, onChange: (LessonWizardDraft) -> Unit) {
     // ★ 2026-10-23 유형별 일정 — 정규 = 요일 + 반복, 원데이·체험 = 진행 날짜 여러 개(반복 없음). 값은 휠로 고른다.
     if (d.isDated) {
-        WizardField("진행 날짜 (여러 날 선택)", required = true) {
+        WizardField("진행 날짜 (여러 날 선택)", required = true, filled = d.dates.isNotEmpty()) {
             LessonMultiDateCalendar(d.dates) { ymd ->
                 onChange(
                     d.copy(
@@ -532,7 +541,7 @@ private fun StepSchedule(d: LessonWizardDraft, onChange: (LessonWizardDraft) -> 
             )
         }
     } else {
-        WizardField("요일", required = true) {
+        WizardField("요일", required = true, filled = d.days.isNotEmpty()) {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 LessonOptions.weekdays.forEach { (value, label) ->
                     val on = d.days.contains(value)
@@ -654,13 +663,21 @@ private fun scheduleSummary(d: LessonWizardDraft): String {
 // ============================================================
 
 @Composable
-internal fun WizardField(label: String, required: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+internal fun WizardField(label: String, required: Boolean = false, filled: Boolean? = null, content: @Composable ColumnScope.() -> Unit) {
+    // ★ 2026-11-08 공통 필수값 확인(RequiredForm) — 필수 칸에 filled 를 넘기면 [다음]에서 빠진 칸으로 스크롤·강조.
+    val form = com.muyeon.app.ui.common.LocalRequiredForm.current
+    val check = form != null && required && filled != null
+    Column(
+        if (check) Modifier.requiredField(form!!, label, label, filled!!) else Modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(label, fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 17.sp, color = MuyeonColors.textHead)
+            Text(label, fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 17.sp,
+                color = if (check && form!!.isError(label)) com.muyeon.app.ui.theme.AppColors.Danger else MuyeonColors.textHead)
             if (required) Text("*", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MuyeonColors.primary)
         }
         content()
+        if (check) com.muyeon.app.ui.common.RequiredHint(form!!, label)
     }
 }
 

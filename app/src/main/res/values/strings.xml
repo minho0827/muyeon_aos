@@ -93,6 +93,7 @@
     <string name="common_done">완료</string>
     <string name="required_missing">%1$s을(를) 입력해 주세요.</string>
     <string name="required_hint">필수 항목이에요</string>
+    <string name="required_check">입력한 내용을 확인해 주세요.</string>
     <string name="common_back">뒤로가기</string>
     <string name="common_like">좋아요</string>
     <string name="common_like_cancel">좋아요 취소</string>

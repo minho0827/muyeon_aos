@@ -44,7 +44,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun SpaceStepPrice(form: SpaceForm, onChange: (SpaceForm) -> Unit) {
     SectionHead("가격", "기본 시간당 가격과 세부공간(홀·룸)별 가격을 정해 주세요.")
-    FormField("기본 시간당 가격", required = true, hint = "(원)") { NumberField(form.pricePerHour, "예) 7000", 8) { onChange(form.copy(pricePerHour = it)) } }
+    FormField("기본 시간당 가격", required = true, hint = "(원)", filled = (form.pricePerHour.toIntOrNull() ?: 0) > 0 || form.options.any { it.label.isNotBlank() && (it.price.toIntOrNull() ?: 0) > 0 }) { NumberField(form.pricePerHour, "예) 7000", 8) { onChange(form.copy(pricePerHour = it)) } }
     FormField("세부공간", hint = "(선택)") {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             form.options.forEachIndexed { i, op ->

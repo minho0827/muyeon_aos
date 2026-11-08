@@ -174,6 +174,9 @@ fun CastingCreateScreen(
         }
     }
 
+    // 공통 필수값 확인 — 공용 FormField 가 이 값을 읽어 빠진 칸으로 스크롤·강조한다.
+    val required = com.muyeon.app.ui.common.rememberRequiredForm()
+    androidx.compose.runtime.CompositionLocalProvider(com.muyeon.app.ui.common.LocalRequiredForm provides required) {
     Column(Modifier.fillMaxSize().background(PageBg).statusBarsPadding().imePadding()) {
         // 위 막대 — ‹ · 제목 · n / 4
         Box(Modifier.fillMaxWidth().height(52.dp).background(Color.White)) {
@@ -222,12 +225,13 @@ fun CastingCreateScreen(
             Box(Modifier.height(24.dp))
         }
         when (step) {
-            0 -> MuyeonBottomButton("다음", "castingCreate.next", enabled = form.basicValid && !uploading) { step = 1 }
-            1 -> MuyeonBottomButton("다음", "castingCreate.next", enabled = form.recruitValid) { step = 2 }
+            0 -> MuyeonBottomButton("다음", "castingCreate.next", enabled = !uploading) { if (required.validate(ctx)) step = 1 }
+            1 -> MuyeonBottomButton("다음", "castingCreate.next") { if (required.validate(ctx)) step = 2 }
             2 -> MuyeonBottomButton("다음", "castingCreate.next") { step = 3 }
             else -> MuyeonBottomButton("공고 등록", "castingCreate.submit",
                 enabled = form.basicValid && form.recruitValid && !uploading, loading = saving) { submit() }
         }
+    }
     }
 
     dateField?.let { f ->
@@ -313,11 +317,11 @@ fun CastingCreateScreen(
 @Composable
 private fun BasicCard(form: CastingCreateForm, activityName: String, token: String?, update: (CastingCreateForm) -> Unit) {
     FormCard("공연 정보", Icons.Filled.TheaterComedy) {
-        FormField("공연명", required = true) {
+        FormField("공연명", required = true, filled = form.trimmedTitle.isNotEmpty()) {
             FormTextField(form.title, { update(form.copy(title = it)) }, "예: 정기공연 호두까기인형", CastingCreateOptions.TITLE_MAX, tag = "castingCreate.title")
         }
         FormField("활동명") { FormReadOnlyBox(activityName.ifEmpty { "계정 활동명" }) }
-        FormField("공연 장르", required = true) {
+        FormField("공연 장르", required = true, filled = form.genre != null) {
             FormChipWrap(CastingCreateOptions.genres.map { it to it }, { form.genre == it }) { v ->
                 update(form.copy(genre = if (form.genre == v) null else v))
             }
@@ -380,7 +384,7 @@ private fun PosterCard(imageUrl: String?, uploading: Boolean, onPick: () -> Unit
 @Composable
 private fun RecruitCard(form: CastingCreateForm, update: (CastingCreateForm) -> Unit) {
     FormCard("모집 조건", Icons.Filled.Groups) {
-        FormField("모집 역할", required = true, hint = "(복수 선택)") {
+        FormField("모집 역할", required = true, hint = "(복수 선택)", filled = form.roles.isNotEmpty()) {
             FormChipWrap(CastingCreateOptions.roles.map { it to it }, { it in form.roles }) { update(form.toggleRole(it)) }
         }
         FormField("모집 인원") {

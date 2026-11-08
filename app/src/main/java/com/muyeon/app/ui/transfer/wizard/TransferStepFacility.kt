@@ -46,7 +46,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun TransferStepFacility(form: TransferForm, onChange: (TransferForm) -> Unit) {
     SectionHead("시설·면적", "어떤 공간인지 알려 주세요.")
-    FormField("제목", required = true) { FormTextField(form.title, { onChange(form.copy(title = it)) }, "예) 강서구 45평 무용학원 양도", 60) }
+    FormField("제목", required = true, filled = form.title.isNotBlank()) { FormTextField(form.title, { onChange(form.copy(title = it)) }, "예) 강서구 45평 무용학원 양도", 60) }
     FormField("시설 유형") { FormChipWrap(TransferLabels.facility, { form.facilityType == it }) { onChange(form.copy(facilityType = if (form.facilityType == it) null else it)) } }
     FormField("운영 상태") { FormChipWrap(TransferLabels.operating, { form.operatingStatus == it }) { onChange(form.copy(operatingStatus = if (form.operatingStatus == it) null else it)) } }
     FormField("평수", hint = "(평)") { FormTextField(form.areaPyeong, { v -> onChange(form.copy(areaPyeong = v.filter { it.isDigit() || it == '.' })) }, "예) 45", 7, keyboardType = KeyboardType.Decimal) }

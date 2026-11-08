@@ -120,6 +120,9 @@ fun TransferWizardScreen(
         }
     }
 
+    // 공통 필수값 확인 — 공용 FormField 가 읽는다. [다음]은 늘 눌리고, 빠진 칸이 있으면 그 칸으로 스크롤·강조한다.
+    val required = com.muyeon.app.ui.common.rememberRequiredForm()
+    androidx.compose.runtime.CompositionLocalProvider(com.muyeon.app.ui.common.LocalRequiredForm provides required) {
     Column(Modifier.fillMaxSize().background(Color.White)) {
         // 단계 고르기 한 번 — 불러오는 중 / 이용약관 동의 / 작성 단계. 머리 높이는 셋 다 같다(진행 줄은 자리만 두고 숨김).
         val docs = consentDocs
@@ -161,9 +164,18 @@ fun TransferWizardScreen(
         }
 
         WizardNavBar(
-            showPrev = st.step > 0, nextLabel = st.nextLabel, nextEnabled = st.canNext, busy = st.saving,
-            onPrev = { st.step -= 1 }, onNext = { if (st.isLast) save() else st.step += 1 },
+            showPrev = st.step > 0, nextLabel = st.nextLabel, nextEnabled = !st.uploading, busy = st.saving,
+            onPrev = { st.step -= 1 },
+            onNext = {
+                when {
+                    !required.validate(ctx) -> Unit
+                    !st.canNext -> android.widget.Toast.makeText(ctx, com.muyeon.app.R.string.required_check, android.widget.Toast.LENGTH_SHORT).show()
+                    st.isLast -> save()
+                    else -> st.step += 1
+                }
+            },
         )
+    }
     }
 
     if (showSearch) {

@@ -47,7 +47,7 @@ fun SpaceStepLocation(form: SpaceForm, token: String?, onSearch: () -> Unit, onC
     SectionHead("위치", "주소를 검색하면 지도에 위치가 표시돼요.")
     AddressBlock(form.placeName, form.roadAddress, form.lat, form.lng, onSearch)
     FormField("상세 주소") { FormTextField(form.addressDetail, { onChange(form.copy(addressDetail = it)) }, "예) 지하 1층 B홀", 100) }
-    FormField("지역", required = true, hint = "(목록 지역 필터에 쓰여요)") {
+    FormField("지역", required = true, hint = "(목록 지역 필터에 쓰여요)", filled = form.region.isNotBlank()) {
         RegionPickRow(token = token, placeholder = "지역을 선택하세요", name = form.region, allowSidoAll = false) { name, code ->
             onChange(form.copy(region = name, regionCode = code))
         }

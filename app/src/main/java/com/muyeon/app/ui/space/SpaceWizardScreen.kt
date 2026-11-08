@@ -130,6 +130,9 @@ fun SpaceWizardScreen(
         }
     }
 
+    // 공통 필수값 확인 — 공용 FormField 가 읽는다. [다음]은 늘 눌리고, 빠진 칸이 있으면 그 칸으로 스크롤·강조한다.
+    val required = com.muyeon.app.ui.common.rememberRequiredForm()
+    androidx.compose.runtime.CompositionLocalProvider(com.muyeon.app.ui.common.LocalRequiredForm provides required) {
     Column(Modifier.fillMaxSize().background(Color.White)) {
         // 단계 고르기 한 번 — 불러오는 중 / 호스트 이용 동의 / 등록 단계.
         val docs = consentDocs
@@ -168,9 +171,18 @@ fun SpaceWizardScreen(
         }
 
         WizardNavBar(
-            showPrev = st.step > 0, nextLabel = st.nextLabel, nextEnabled = st.canNext, busy = st.saving,
-            onPrev = { st.step -= 1 }, onNext = { if (st.isLast) save() else st.step += 1 },
+            showPrev = st.step > 0, nextLabel = st.nextLabel, nextEnabled = !st.uploading, busy = st.saving,
+            onPrev = { st.step -= 1 },
+            onNext = {
+                when {
+                    !required.validate(ctx) -> Unit
+                    !st.canNext -> android.widget.Toast.makeText(ctx, com.muyeon.app.R.string.required_check, android.widget.Toast.LENGTH_SHORT).show()
+                    st.isLast -> save()
+                    else -> st.step += 1
+                }
+            },
         )
+    }
     }
 
     if (showSearch) {
