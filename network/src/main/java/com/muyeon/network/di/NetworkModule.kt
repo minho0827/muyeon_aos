@@ -79,6 +79,7 @@ val apiModule = module {
     single<com.muyeon.network.api.CastingMaterialApi> { get<Retrofit>().create(com.muyeon.network.api.CastingMaterialApi::class.java) }
     // ★ 2026-11-08 묶음 3 — 대타공고 수정 · 커뮤니티 글쓰기/수정
     single<com.muyeon.network.api.WriteApi> { get<Retrofit>().create(com.muyeon.network.api.WriteApi::class.java) }
+    single<com.muyeon.network.api.QuoteFeedApi> { get<Retrofit>().create(com.muyeon.network.api.QuoteFeedApi::class.java) }
 }
 
 fun networkModules(): List<Module> = listOf(networkModule, apiModule)

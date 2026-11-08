@@ -130,6 +130,8 @@ sealed class Screen(val route: String) {
         fun build(title: String?, type: String?) =
             "lessonList?title=${android.net.Uri.encode(title.orEmpty())}&type=${android.net.Uri.encode(type.orEmpty())}"
     }
+    /** ★ 2026-11-08 홈 [레슨] '레슨을 찾는 회원들' 전체보기(앱 주소 /quoteFeed — 웹에는 없다). */
+    data object QuoteFeed : Screen("quoteFeed")
 
     // ★ 2026-11-08 (b4) 약관·서비스 소개·관심 지역·관심 조건 알림
     /** 약관·정책 전문(웹 /policy?doc=&version=). */

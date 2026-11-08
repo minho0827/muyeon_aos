@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ★ 2026-11-08 홈 [레슨] '레슨을 찾는 회원들' 섹션 · 전체보기 목록. 카드 문구는 웹 components/muyeon/HomeQuoteRequests.js 와 같다. -->
+<resources>
+    <string name="quote_feed_title">레슨을 찾는 회원들</string>
+    <string name="quote_feed_desc">레슨을 원하는 회원들의 견적 요청</string>
+    <!-- 카드 두 줄 제목 — "발레를 가르쳐주실 강사님을 찾고 있어요" (받침에 따라 을/를) -->
+    <string name="quote_feed_seeking">%1$s%2$s 가르쳐주실 강사님을 찾고 있어요</string>
+    <string name="quote_feed_seeking_any">레슨을 해 주실 강사님을 찾고 있어요</string>
+    <string name="quote_feed_particle_eul">을</string>
+    <string name="quote_feed_particle_reul">를</string>
+    <string name="quote_feed_region_any">지역 협의</string>
+    <string name="quote_feed_schedule_any">일정 협의</string>
+    <string name="quote_feed_created">%1$s 등록</string>
+    <string name="quote_feed_mine">내 요청</string>
+    <string name="quote_feed_sent">제안 보냄</string>
+    <string name="quote_feed_guest">비회원 요청</string>
+    <string name="quote_feed_lesson">레슨</string>
+    <!-- 목록 화면 -->
+    <string name="quote_feed_list_guide_pro">레슨을 찾는 회원들이 작성한 요청을 한곳에서 확인할 수 있어요. 조건이 잘 맞는 요청에 제안을 보내고, 채팅으로 자세한 일정을 조율해 보세요.</string>
+    <string name="quote_feed_list_guide_member">최근 올라온 요청 10건까지 보여요. 강사·학원 유형으로 전환하면 모든 요청을 보고 제안을 보낼 수 있어요.</string>
+    <string name="quote_feed_list_empty">지금 레슨을 찾는 요청이 없어요.</string>
+    <string name="quote_feed_list_genre_empty">%1$s 레슨 요청이 없어요.</string>
+    <!-- 장르(서버 categoryId — 웹 QUOTE_CATEGORIES) -->
+    <string name="quote_feed_cat_ballet">발레</string>
+    <string name="quote_feed_cat_korean">한국무용</string>
+    <string name="quote_feed_cat_modern">현대무용</string>
+    <string name="quote_feed_cat_practical">실용무용</string>
+    <string name="quote_feed_cat_musical">뮤지컬</string>
+    <string name="quote_feed_cat_barre">바레</string>
+    <string name="quote_feed_cat_balletfit">발레핏</string>
+    <string name="quote_feed_cat_hobby">취미무용</string>
+    <!-- 요일·시간대·레슨 형태 짧은 이름(웹 OPTION_LABELS) -->
+    <string name="quote_feed_day_mon">월</string>
+    <string name="quote_feed_day_tue">화</string>
+    <string name="quote_feed_day_wed">수</string>
+    <string name="quote_feed_day_thu">목</string>
+    <string name="quote_feed_day_fri">금</string>
+    <string name="quote_feed_day_sat">토</string>
+    <string name="quote_feed_day_sun">일</string>
+    <string name="quote_feed_time_dawn">이른오전</string>
+    <string name="quote_feed_time_morning">오전</string>
+    <string name="quote_feed_time_noon">오후</string>
+    <string name="quote_feed_time_afternoon">늦은오후</string>
+    <string name="quote_feed_time_evening">저녁</string>
+    <string name="quote_feed_time_night">늦은저녁</string>
+    <string name="quote_feed_format_private">개인</string>
+    <string name="quote_feed_format_group">그룹</string>
+    <string name="quote_feed_format_academy">학원</string>
+    <string name="quote_feed_format_any">형태 무관</string>
+    <string name="quote_feed_format_etc">기타</string>
+</resources>

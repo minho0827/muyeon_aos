@@ -358,6 +358,14 @@ fun AppNavHost(
                 onLogin = { onOpenWeb(WebPaths.login(Screen.LessonList.build(title, type).let { "/$it" })) },
             )
         }
+        // ★ 2026-11-08 홈 [레슨] '레슨을 찾는 회원들' 전체보기 — 누르면 견적 응답(/availableQuotes/:id) · 내 요청은 받은 견적.
+        composable(Screen.QuoteFeed.route) {
+            com.muyeon.app.ui.quotefeed.QuoteFeedScreen(
+                viewModel = org.koin.androidx.compose.koinViewModel(),
+                onBack = { navController.popBackStack() },
+                onOpenPath = onOpenPath,
+            )
+        }
         // ★ 2026-11-08 (b4) 약관 — 버전을 오가면 같은 화면을 새로 쌓는다(웹 Link).
         composable(
             Screen.Policy.route,

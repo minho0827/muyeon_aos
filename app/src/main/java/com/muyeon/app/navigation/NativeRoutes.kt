@@ -123,6 +123,8 @@ object NativeRoutes {
             "/support/feedback" -> return Target.Route(Screen.SupportCompose.build(Screen.SupportCompose.FEEDBACK), auth = true)
             // ★ 2026-11-08 홈 '전체보기' 레슨 목록 — 쿼리(title·type)가 있어도 앱 화면.
             "/lessonList" -> return Target.Route(Screen.LessonList.build(query["title"]?.let(android.net.Uri::decode), query["type"]))
+            // ★ 2026-11-08 홈 [레슨] '레슨을 찾는 회원들' 전체보기 — 서버 목록이 로그인 필요라 비회원은 로그인부터.
+            "/quoteFeed" -> return Target.Route(Screen.QuoteFeed.route, auth = true)
             // ★ 2026-11-08 (b4) 약관(?doc=·?version=, 앱 안 ?embed=1 은 무시)·서비스 소개·관심 지역·지역 추가·관심 조건 알림 — 앱 화면.
             "/policy" -> return Target.Route(Screen.Policy.build(query["doc"]?.let(android.net.Uri::decode), query["version"]?.let(android.net.Uri::decode)))
             "/about" -> return Target.Route(Screen.About.route)

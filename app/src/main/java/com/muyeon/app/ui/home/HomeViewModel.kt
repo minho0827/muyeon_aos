@@ -55,6 +55,10 @@ data class HomeUiState(
     val previewLoaded: Boolean = false,
     val genreLessons: PagedList<HomeLesson> = PagedList(),
     val likedLessons: Set<Long> = emptySet(),
+    /** ★ 2026-11-08 '레슨을 찾는 회원들'(GET /quotes/home 10건) — 비회원·실패면 빈 목록(섹션 숨김, 웹과 같다). */
+    val quoteFeed: List<com.muyeon.domain.model.quotefeed.QuoteFeedItem> = emptyList(),
+    /** 강사·학원 활동 중 — 카드 '제안 보냄' 표시. */
+    val quoteFeedPro: Boolean = false,
     /** 장르 순서(사용자가 정한 것 — 순서 편집). 위 탭·장르 그림 줄이 이 순서. */
     val genres: List<String> = com.muyeon.domain.model.teacher.LessonGenres.ALL,
 ) {
@@ -83,6 +87,7 @@ class HomeViewModel(
     observeScrap: ObserveScrapChangesUseCase,
     private val prefs: KeyValueStore,
     private val tokens: TokenStore,
+    private val quoteFeed: com.muyeon.domain.usecase.quotefeed.QuoteFeedUseCase,
 ) : ViewModel() {
     private val regionFlow = observeRegion()
     private val _state = MutableStateFlow(
@@ -121,7 +126,8 @@ class HomeViewModel(
         if (loggedIn != _state.value.isLoggedIn) {
             _state.update { it.copy(isLoggedIn = loggedIn) }
             loadLikes()
-        }
+            loadQuoteFeed()
+        } else if (quoteFeed.canBrowseAll != _state.value.quoteFeedPro) loadQuoteFeed() // 유형 전환하고 돌아옴
         refreshUnread()
     }
 
@@ -207,6 +213,15 @@ class HomeViewModel(
                 it.copy(preview = p ?: it.preview, newest = newest.await(), previewLoaded = true, isRefreshing = if (pull) false else it.isRefreshing)
             }
             loadLikes()
+        }
+        loadQuoteFeed()
+    }
+
+    /** '레슨을 찾는 회원들' — 실패해도 조용히(섹션만 숨김). */
+    private fun loadQuoteFeed() {
+        viewModelScope.launch {
+            val list = quoteFeed.home().getOrNull().orEmpty()
+            _state.update { it.copy(quoteFeed = list, quoteFeedPro = quoteFeed.canBrowseAll) }
         }
     }
 
