@@ -71,7 +71,6 @@ fun HireScreen(actions: RecruitActions, vm: HireViewModel = koinViewModel()) {
         // 채용 — 위 바 + 구인·구직 밑줄 탭(사용자 결정 2026-11-08).
         com.muyeon.app.ui.main.TabSectionHeader(com.muyeon.app.ui.main.recruitTitle(), com.muyeon.app.ui.main.RECRUIT_SECTIONS, MainTab.JOBS, actions.selectTab) {
             TopBarIconButton(R.drawable.ic_web_filter, stringResource(R.string.recruit_filter), onClick = { sheet = true })
-            TopBarIconButton(R.drawable.ic_web_edit, stringResource(R.string.recruit_create_job), onClick = { actions.openPath("/jobs/create") })
         }
         PullToRefreshBox(s.isRefreshing, onRefresh = { vm.refresh(pull = true) }, modifier = Modifier.fillMaxSize()) {
             LazyVerticalGrid(

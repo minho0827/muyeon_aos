@@ -52,7 +52,6 @@ fun SubsScreen(actions: RecruitActions, vm: SubsViewModel = koinViewModel()) {
     Column(Modifier.fillMaxSize().background(AppColors.Surface)) {
         MainTopBar(stringResource(R.string.tab_subs)) {
             TopBarIconButton(R.drawable.ic_web_filter, stringResource(R.string.recruit_filter), onClick = { sheet = true })
-            TopBarIconButton(R.drawable.ic_web_edit, stringResource(R.string.recruit_create_sub), onClick = { actions.openPath("/subs/create") }) // NativeRoutes → 설문 등록(앱)
         }
         PullToRefreshBox(s.isRefreshing, onRefresh = { vm.refresh(pull = true) }, modifier = Modifier.fillMaxSize()) {
             LazyColumn(Modifier.fillMaxSize(), list, contentPadding = PaddingValues(bottom = tabBarBottomPadding())) {

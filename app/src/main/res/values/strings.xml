@@ -571,6 +571,11 @@
     <string name="recruit_create_job">채용공고 등록</string>
     <string name="recruit_create_resume">이력서 등록</string>
     <string name="recruit_create_sub">대타공고 등록</string>
+    <string name="write_menu_open">글쓰기</string>
+    <string name="write_job">채용공고 쓰기</string>
+    <string name="write_seek">구직 프로필 등록</string>
+    <string name="write_sub">대타공고 쓰기</string>
+    <string name="write_casting">공연 공고 쓰기</string>
     <string name="recruit_deadline_always">상시 모집</string>
     <string name="recruit_deadline_today">오늘 마감</string>
     <string name="recruit_deadline_d">D-%1$d</string>

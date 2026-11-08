@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!--
+      ★ 2026-11-08 edge-to-edge 하단 시트 — Material3 ModalBottomSheet 창 테마(같은 이름으로 덮는다).
+        3버튼 내비게이션에서 시스템이 내비게이션 바 뒤에 회색 대비 막을 깔아, 시트 흰 면이 바 위에서 끊겨 보였다.
+        대비 막을 끄면 시트 면이 내비게이션 바 뒤까지 이어진다(값은 라이브러리 원본 + enforceNavigationBarContrast).
+    -->
+    <style name="EdgeToEdgeFloatingDialogTheme" parent="android:Theme.DeviceDefault.Dialog" tools:override="true">
+        <item name="android:windowLayoutInDisplayCutoutMode">@integer/m3c_window_layout_in_display_cutout_mode</item>
+        <item name="android:windowClipToOutline">false</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowElevation">0dp</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:enforceStatusBarContrast">false</item>
+    </style>
+</resources>

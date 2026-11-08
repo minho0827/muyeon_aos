@@ -140,6 +140,9 @@ fun QuoteRegionPicker(
         Modifier
             .fillMaxSize()
             .background(QuoteColors.white)
+            // edge-to-edge — 흰 면은 바 뒤까지, 내용은 상태바·내비게이션 바를 피한다(이미 소비된 화면에선 0).
+            .statusBarsPadding()
+            .navigationBarsPadding()
     ) {
         // 헤더 — 제목 18sp bold, X 18. padding h20 v16 (iOS 동일)
         Box(

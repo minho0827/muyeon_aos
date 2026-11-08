@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MeetingRoom
 import androidx.compose.material.icons.rounded.RecentActors
+import com.muyeon.app.ui.components.WriteMenu
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.res.painterResource
@@ -109,7 +111,6 @@ fun MainScreen(
                         reloadKey = com.muyeon.app.ui.castingstage.CastingStageSession.reloadKey,
                         header = {
                             com.muyeon.app.ui.components.MainTopBar(stringResource(R.string.tab_casting), chat = true) {
-                                if (canCreate) com.muyeon.app.ui.components.TopBarIconButton(R.drawable.ic_web_edit, stringResource(R.string.casting_create), onClick = { onOpenDetail(r.create) })
                                 com.muyeon.app.ui.components.TopBarIconButton(R.drawable.ic_web_filter, stringResource(R.string.casting_all), onClick = { onOpenDetail(r.castingList) })
                             }
                         },
@@ -189,6 +190,20 @@ fun MainScreen(
                         com.muyeon.app.ui.main.bar.TypeAvatars(state.switchableTypes, state.activeType, state.typeImages, sel); true
                     } else false
                 },
+            )
+        }
+        // ★ 2026-11-08 채용 2계층(채용·대타공고·캐스팅) 공용 [+ 글쓰기] — 위 바 연필 대신. 탭바 위에 그려 어두운 막이 탭바까지 덮는다(PaceERA 런커 메뉴와 같은 모양).
+        if (selectedTab.mode == BarMode.JOBS) {
+            val canCastingCreate = com.muyeon.app.ui.castingstage.stageCanCreate()
+            val stage = com.muyeon.app.ui.castingstage.StageRoutes.SHELL
+            WriteMenu(
+                items = buildList {
+                    add(com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_job), androidx.compose.ui.res.painterResource(R.drawable.ic_tab_note), com.muyeon.app.ui.theme.AppColors.Primary, "job") { onOpenPath("/jobs/create") })
+                    add(com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_seek), androidx.compose.ui.res.painterResource(R.drawable.ic_tab_my), androidx.compose.ui.graphics.Color(0xFF2E7DFF), "seek") { onOpenPath("/profileManage?seek=1&from=jobs") })
+                    add(com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_sub), androidx.compose.ui.res.painterResource(R.drawable.ic_tab_paper), androidx.compose.ui.graphics.Color(0xFFD8564D), "sub") { onOpenPath("/subs/create") })
+                    if (canCastingCreate) add(com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_casting), androidx.compose.ui.graphics.vector.rememberVectorPainter(androidx.compose.material.icons.Icons.Rounded.RecentActors), androidx.compose.ui.graphics.Color(0xFF7B5CC4), "casting") { onOpenDetail(stage.create) })
+                },
+                bottom = tabBarBottomPadding() - 4.dp,
             )
         }
     }
