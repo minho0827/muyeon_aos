@@ -51,12 +51,8 @@ import androidx.compose.ui.unit.dp
 import com.muyeon.app.R
 import com.muyeon.app.ui.home.HomeLabels
 import com.muyeon.app.ui.lessons.LessonLabels
-import com.muyeon.app.ui.quote.QuoteChatBubble
-import com.muyeon.app.ui.quote.QuoteOptionRow
 import com.muyeon.app.ui.quote.QuotePrimaryButton
-import com.muyeon.app.ui.quote.QuoteProgressBar
 import com.muyeon.app.ui.quote.QuoteRegionPicker
-import com.muyeon.app.ui.quote.QuoteTypingBubble
 import com.muyeon.app.ui.recruit.RecruitLabels
 import com.muyeon.app.ui.theme.AppColors
 import com.muyeon.app.ui.theme.AppTypography
@@ -72,11 +68,19 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+import com.muyeon.app.ui.components.MainTopBar
+import com.muyeon.app.ui.lesson.LessonMultiDateCalendar
+import com.muyeon.app.ui.subwizard.components.SubChipGroup
+import com.muyeon.app.ui.subwizard.components.SubFormSection
+import com.muyeon.app.ui.subwizard.components.SubTimeField
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+
 /**
- * ★ 2026-11-08 대타공고 설문 등록 — 레슨 견적 위저드와 같은 채팅형(질문 말풍선 → 고르기 → 답 말풍선 · '수정').
- *   마지막에 제목(자동)·학원 이름을 확인하고 등록(POST /subs). 등록되면 [onCreated](목록 새로고침·안내).
+ * 대타공고 등록 — ★ 2026-11-08 사용자 요청으로 설문형에서 **한 화면 입력 양식**으로 바꿨다.
+ *   날짜는 기존 공용 달력(LessonMultiDateCalendar — 레슨 개설과 같은 달력, 지난 날 막음), 시간은 시·분 휠(10분 단위).
+ *   맨 아래 [대타공고 올리기] — 빠진 칸이 있으면 그 칸 이름을 알려 준다. 등록되면 [onCreated](목록 새로고침·안내).
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SubWizardScreen(
     onClose: () -> Unit,
@@ -88,13 +92,8 @@ fun SubWizardScreen(
     vm.titleTemplate = stringResource(R.string.subwiz_auto_title)
     val targetText = RecruitLabels.TARGETS.associateWith { t -> RecruitLabels.target(t)?.let { stringResource(it) } ?: t }
     vm.targetLabel = { targetText[it] ?: it }
-    var typing by remember { mutableStateOf(true) }
     var regionPicker by remember { mutableStateOf(false) }
-    val scroll = rememberScrollState()
-    BackHandler { if (!vm.back()) onClose() }
-    LaunchedEffect(vm.currentIndex) {
-        typing = true; scroll.animateScrollTo(scroll.maxValue); delay(600); typing = false; delay(60); scroll.animateScrollTo(scroll.maxValue)
-    }
+    BackHandler(onBack = onClose)
     LaunchedEffect(vm) {
         vm.events.collect { e ->
             when (e) {
@@ -104,58 +103,35 @@ fun SubWizardScreen(
         }
     }
 
-    Column(Modifier.fillMaxSize().background(AppColors.Surface).statusBarsPadding().navigationBarsPadding().imePadding()) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(top = 8.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text(stringResource(R.string.subwiz_title), style = AppTypography.Title18, color = AppColors.TextHead)
-                IconButton(onClick = onClose, modifier = Modifier.align(Alignment.CenterEnd)) {
-                    Icon(Icons.Filled.Close, stringResource(R.string.common_close), tint = AppColors.TextBody, modifier = Modifier.size(18.dp))
-                }
+    Column(Modifier.fillMaxSize().background(AppColors.Surface).navigationBarsPadding().imePadding()) {
+        MainTopBar(stringResource(R.string.subwiz_title), primary = false, onBack = onClose)
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 28.dp)) {
+            Text(stringResource(R.string.subwiz_form_intro), style = AppTypography.Body14, color = AppColors.TextSub, modifier = Modifier.padding(top = 12.dp))
+            vm.fields.forEach { f -> FieldSection(vm, f) { regionPicker = true } }
+            // 제목(자동 — 고칠 수 있음) · 학원 이름
+            SubFormSection(stringResource(R.string.subwiz_f_title), required = true) {
+                TextBox(vm.title, stringResource(R.string.subwiz_title_hint), onChange = vm::editTitle)
             }
-            QuoteProgressBar(progress = vm.progress, stepText = "${vm.currentIndex + 1}/${vm.steps.size}")
+            SubFormSection(stringResource(R.string.subwiz_f_academy), required = false) {
+                TextBox(vm.academy, stringResource(R.string.subwiz_academy_hint)) { vm.academy = it }
+            }
+            if (vm.timeError() == true) Text(stringResource(R.string.subwiz_past), style = AppTypography.Body14, color = AppColors.Danger, modifier = Modifier.padding(top = 16.dp))
         }
-        Column(Modifier.weight(1f).verticalScroll(scroll).padding(horizontal = 20.dp).padding(top = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            if (vm.currentIndex == 0) Text(stringResource(R.string.subwiz_intro), style = AppTypography.Body14, color = AppColors.TextSub,
-                modifier = Modifier.fillMaxWidth().background(AppColors.SurfaceMuted, RoundedCornerShape(12.dp)).padding(16.dp))
-            vm.answered.forEach { st ->
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    QuoteChatBubble(text = question(st.id), isQuestion = true)
-                    QuoteChatBubble(text = display(vm, st).ifBlank { stringResource(R.string.subwiz_skipped) }, isQuestion = false, onEdit = { vm.edit(st.id) })
-                }
-            }
-            val st = vm.current
-            AnimatedVisibility(typing, enter = fadeIn(), exit = fadeOut()) { QuoteTypingBubble() }
-            AnimatedVisibility(!typing, enter = fadeIn(), exit = fadeOut()) {
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    QuoteChatBubble(text = question(st.id), isQuestion = true)
-                    when (st.type) {
-                        SubStepType.SINGLE, SubStepType.MULTI -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            st.options.forEach { o ->
-                                QuoteOptionRow(label = optionLabel(st.id, o), isSelected = o in vm.answer(st.id).values, isMulti = st.type == SubStepType.MULTI) { vm.toggle(o) }
-                            }
-                        }
-                        SubStepType.CHIPS -> FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            st.options.forEach { o -> Chip(optionLabel(st.id, o), o in vm.answer(st.id).values) { vm.toggle(o) } }
-                        }
-                        SubStepType.DATE -> DateStep(vm)
-                        SubStepType.REGION -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            vm.answer(st.id).values.firstOrNull()?.let { Text(it, style = AppTypography.Section16, color = AppColors.TextHead) }
-                            QuotePrimaryButton(
-                                text = stringResource(if (vm.answer(st.id).isEmpty) R.string.subwiz_region_pick else R.string.subwiz_region_repick),
-                                modifier = Modifier.fillMaxWidth(), filled = false, onClick = { regionPicker = true },
-                            )
-                        }
-                        SubStepType.TEXT -> TextBox(vm.answer(st.id).text.orEmpty(), stringResource(R.string.subwiz_desc_hint), vm::setText)
-                        SubStepType.IMAGE -> ImageStep(vm)
-                        SubStepType.CONFIRM -> ConfirmStep(vm)
-                    }
-                }
-            }
-        }
-        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
+        Column(Modifier.fillMaxWidth().background(AppColors.Surface)) {
+            HorizontalDivider(color = AppColors.Divider)
+            val missing = vm.firstMissing()
+            val missingLabel = missing?.let { sectionLabel(it.id) }
             QuotePrimaryButton(
-                text = stringResource(if (vm.isLast) R.string.subwiz_submit else R.string.subwiz_next),
-                modifier = Modifier.weight(1f), filled = true, enabled = vm.canProceed, onClick = vm::next,
+                text = stringResource(R.string.subwiz_submit),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), filled = true,
+                enabled = !vm.submitting && !vm.uploading,
+                onClick = {
+                    when {
+                        missingLabel != null -> Toast.makeText(context, context.getString(R.string.subwiz_missing, missingLabel), Toast.LENGTH_SHORT).show()
+                        vm.timeError() == true -> Toast.makeText(context, R.string.subwiz_past, Toast.LENGTH_SHORT).show()
+                        else -> vm.submit()
+                    }
+                },
             )
         }
     }
@@ -172,23 +148,51 @@ fun SubWizardScreen(
     }
 }
 
+/** 항목 하나 — 종류에 맞는 입력(칩·달력·시간·지역·글·사진). */
 @Composable
-private fun question(id: String): String = stringResource(
+private fun FieldSection(vm: SubWizardViewModel, f: SubField, onPickRegion: () -> Unit) {
+    SubFormSection(sectionLabel(f.id), required = f.required) {
+        when (f.type) {
+            SubFieldType.CHIPS, SubFieldType.SINGLE, SubFieldType.MULTI ->
+                SubChipGroup(f.options, vm.answer(f.id).values, { optionLabel(f.id, it) }) { vm.toggle(f, it) }
+            SubFieldType.DATE -> Box(Modifier.fillMaxWidth().border(1.dp, AppColors.Divider, RoundedCornerShape(16.dp)).padding(8.dp)) {
+                // 기존 레슨 달력(오늘~6개월, 지난 날 막음) — 한 날만 고른다.
+                LessonMultiDateCalendar(selected = vm.answer(f.id).values) { vm.setDate(it) }
+            }
+            SubFieldType.TIME -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SubTimeField(vm.start, vm.end, vm::setStart, vm::setEnd)
+                if (vm.timeOrderError()) Text(stringResource(R.string.subwiz_time_order), style = AppTypography.Caption12, color = AppColors.Danger)
+            }
+            SubFieldType.REGION -> Row(
+                Modifier.fillMaxWidth().border(1.dp, if (vm.answer(f.id).isEmpty) AppColors.ChipBorder else AppColors.TextHead, RoundedCornerShape(12.dp))
+                    .clickable(onClick = onPickRegion).padding(horizontal = 14.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(vm.answer(f.id).values.firstOrNull() ?: stringResource(R.string.subwiz_region_pick),
+                    style = AppTypography.Body15, color = if (vm.answer(f.id).isEmpty) AppColors.TextHint else AppColors.TextHead, modifier = Modifier.weight(1f))
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = AppColors.TextHint, modifier = Modifier.size(20.dp))
+            }
+            SubFieldType.TEXT -> TextBox(vm.answer(f.id).text.orEmpty(), stringResource(R.string.subwiz_desc_hint), minHeight = 96, onChange = vm::setText)
+            SubFieldType.IMAGE -> ImageStep(vm)
+        }
+    }
+}
+
+@Composable
+private fun sectionLabel(id: String): String = stringResource(
     when (id) {
-        SubWizardQuestions.GENRE -> R.string.subwiz_q_genre
-        SubWizardQuestions.TARGET -> R.string.subwiz_q_target
-        SubWizardQuestions.FIELDS -> R.string.subwiz_q_fields
-        SubWizardQuestions.SCHEDULE -> R.string.subwiz_q_schedule
-        SubWizardQuestions.DATE -> R.string.subwiz_q_date
-        SubWizardQuestions.START -> R.string.subwiz_q_start
-        SubWizardQuestions.LENGTH -> R.string.subwiz_q_length
-        SubWizardQuestions.COUNT -> R.string.subwiz_q_count
-        SubWizardQuestions.REGION -> R.string.subwiz_q_region
-        SubWizardQuestions.SALARY -> R.string.subwiz_q_salary
-        SubWizardQuestions.CAREER -> R.string.subwiz_q_career
-        SubWizardQuestions.DESC -> R.string.subwiz_q_desc
-        SubWizardQuestions.IMAGE -> R.string.subwiz_q_image
-        else -> R.string.subwiz_q_confirm
+        SubWizardQuestions.GENRE -> R.string.subwiz_s_genre
+        SubWizardQuestions.TARGET -> R.string.subwiz_s_target
+        SubWizardQuestions.FIELDS -> R.string.subwiz_s_fields
+        SubWizardQuestions.SCHEDULE -> R.string.subwiz_s_schedule
+        SubWizardQuestions.DATE -> R.string.subwiz_s_date
+        SubWizardQuestions.TIME -> R.string.subwiz_s_time
+        SubWizardQuestions.COUNT -> R.string.subwiz_s_count
+        SubWizardQuestions.REGION -> R.string.subwiz_s_region
+        SubWizardQuestions.SALARY -> R.string.subwiz_s_salary
+        SubWizardQuestions.CAREER -> R.string.subwiz_s_career
+        SubWizardQuestions.DESC -> R.string.subwiz_s_desc
+        else -> R.string.subwiz_s_image
     },
 )
 
@@ -197,7 +201,6 @@ private fun optionLabel(id: String, v: String): String = when (id) {
     SubWizardQuestions.TARGET -> RecruitLabels.target(v)?.let { stringResource(it) } ?: v
     SubWizardQuestions.FIELDS -> LessonLabels.field(v)?.let { stringResource(it) } ?: v
     SubWizardQuestions.SCHEDULE -> RecruitLabels.schedule(v)?.let { stringResource(it) } ?: v
-    SubWizardQuestions.LENGTH -> v.toInt().let { m -> if (m % 60 == 0) stringResource(R.string.subwiz_len_h, m / 60) else if (m < 60) stringResource(R.string.subwiz_len_m, m) else stringResource(R.string.subwiz_len_hm, m / 60, m % 60) }
     SubWizardQuestions.COUNT -> stringResource(R.string.recruit_class_count, v.toInt())
     SubWizardQuestions.SALARY -> HomeLabels.salary(v)?.let { stringResource(it) } ?: v
     SubWizardQuestions.CAREER -> if (v == "ANY") stringResource(R.string.career_any) else LessonLabels.career(v)?.let { stringResource(it) } ?: v
@@ -205,63 +208,13 @@ private fun optionLabel(id: String, v: String): String = when (id) {
 }
 
 @Composable
-private fun display(vm: SubWizardViewModel, st: SubStep): String = when (st.type) {
-    SubStepType.DATE -> vm.answer(st.id).values.firstOrNull()?.let { runCatching { LocalDate.parse(it).format(DATE_FMT) }.getOrNull() }.orEmpty()
-    SubStepType.REGION -> vm.answer(st.id).values.firstOrNull().orEmpty()
-    SubStepType.TEXT -> vm.answer(st.id).text.orEmpty()
-    SubStepType.IMAGE -> if (vm.answer(st.id).text.isNullOrBlank()) "" else stringResource(R.string.subwiz_image_added)
-    else -> vm.answer(st.id).values.map { optionLabel(st.id, it) }.joinToString(", ")
-}
-
-private val DATE_FMT = DateTimeFormatter.ofPattern("yyyy.MM.dd(E)", Locale.KOREAN)
-
-/** 날짜 — 오늘부터만 고를 수 있다(지난 날 대타는 없다). */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DateStep(vm: SubWizardViewModel) {
-    val today = LocalDate.now(ZoneId.of("Asia/Seoul"))
-    val state = rememberDatePickerState(
-        initialSelectedDateMillis = vm.answer(SubWizardQuestions.DATE).values.firstOrNull()?.let { runCatching { LocalDate.parse(it).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli() }.getOrNull() },
-        selectableDates = object : SelectableDates {
-            override fun isSelectableDate(utcTimeMillis: Long) = !Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC).toLocalDate().isBefore(today)
-        },
-    )
-    LaunchedEffect(state.selectedDateMillis) {
-        state.selectedDateMillis?.let { vm.setDate(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate().toString()) }
-    }
-    DatePicker(state = state, title = null, headline = null, showModeToggle = false)
-}
-
-/** 마지막 확인 — 제목(자동, 고칠 수 있음) · 학원/단체 이름 · 수업 시간 요약 · 지난 시각 경고. */
-@Composable
-private fun ConfirmStep(vm: SubWizardViewModel) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(stringResource(R.string.subwiz_f_title), style = AppTypography.Body14SemiBold, color = AppColors.TextHead)
-        TextBox(vm.title, stringResource(R.string.subwiz_title_hint)) { vm.title = it }
-        Text(stringResource(R.string.subwiz_f_academy), style = AppTypography.Body14SemiBold, color = AppColors.TextHead)
-        TextBox(vm.academy, stringResource(R.string.subwiz_academy_hint)) { vm.academy = it }
-        vm.classTime()?.let { Text(stringResource(R.string.subwiz_time_summary, it), style = AppTypography.Body14, color = AppColors.TextSub) }
-        if (vm.timeError() == true) Text(stringResource(R.string.subwiz_past), style = AppTypography.Body14, color = AppColors.Danger)
-    }
-}
-
-@Composable
-private fun TextBox(value: String, hint: String, onChange: (String) -> Unit) {
+private fun TextBox(value: String, hint: String, minHeight: Int = 52, onChange: (String) -> Unit) {
     var v by remember(hint) { mutableStateOf(value) }
-    Box(Modifier.fillMaxWidth().heightIn(min = 52.dp).border(1.dp, AppColors.ChipBorder, RoundedCornerShape(12.dp)).padding(14.dp)) {
+    LaunchedEffect(value) { if (value != v) v = value }
+    Box(Modifier.fillMaxWidth().heightIn(min = minHeight.dp).border(1.dp, AppColors.ChipBorder, RoundedCornerShape(12.dp)).padding(14.dp)) {
         if (v.isEmpty()) Text(hint, style = AppTypography.Body15, color = AppColors.TextHint)
         BasicTextField(v, { v = it; onChange(it) }, textStyle = TextStyle(fontSize = AppTypography.Body15.fontSize, color = AppColors.TextHead), modifier = Modifier.fillMaxWidth())
     }
-}
-
-@Composable
-private fun Chip(text: String, on: Boolean, onClick: () -> Unit) {
-    Text(
-        text, style = AppTypography.Chip14, color = if (on) AppColors.TextOnPrimary else AppColors.ChipText,
-        modifier = Modifier.background(if (on) AppColors.ChipSelectedBg else AppColors.Surface, RoundedCornerShape(50))
-            .border(1.dp, if (on) AppColors.ChipSelectedBg else AppColors.ChipBorder, RoundedCornerShape(50))
-            .clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 9.dp),
-    )
 }
 
 /** 대표 사진 1장 — 사진 고르기 → 올리기(JobPostingApi.uploadImage, 웹 SubCreate 와 같은 업로드) → 미리보기. */

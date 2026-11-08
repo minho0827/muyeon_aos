@@ -90,6 +90,7 @@
     <string name="main_exit_title">앱을 종료할까요?</string>
     <string name="main_exit_confirm">종료</string>
     <string name="common_cancel">취소</string>
+    <string name="common_done">완료</string>
     <string name="common_back">뒤로가기</string>
     <string name="common_like">좋아요</string>
     <string name="common_like_cancel">좋아요 취소</string>
@@ -621,6 +622,27 @@
     <string name="subwiz_len_h">%1$d시간</string>
     <string name="subwiz_len_m">%1$d분</string>
     <string name="subwiz_len_hm">%1$d시간 %2$d분</string>
+    <string name="subwiz_form_intro">조건이 맞는 강사님들께 바로 알려 드려요.</string>
+    <string name="subwiz_s_genre">장르</string>
+    <string name="subwiz_s_target">수업 대상</string>
+    <string name="subwiz_s_fields">수업 분야 (여러 개)</string>
+    <string name="subwiz_s_schedule">대타 종류</string>
+    <string name="subwiz_s_date">수업 날짜</string>
+    <string name="subwiz_s_time">수업 시간</string>
+    <string name="subwiz_s_count">타임 수</string>
+    <string name="subwiz_s_region">수업 장소</string>
+    <string name="subwiz_s_salary">강사료</string>
+    <string name="subwiz_s_career">원하는 경력</string>
+    <string name="subwiz_s_desc">전할 말</string>
+    <string name="subwiz_s_image">학원 사진</string>
+    <string name="subwiz_optional">선택</string>
+    <string name="subwiz_start">시작</string>
+    <string name="subwiz_end">끝</string>
+    <string name="subwiz_time_pick">시간 선택</string>
+    <string name="subwiz_time_order">끝나는 시간이 시작보다 늦어야 해요.</string>
+    <string name="subwiz_hour">%1$d시</string>
+    <string name="subwiz_minute">%1$02d분</string>
+    <string name="subwiz_missing">%1$s을(를) 골라 주세요.</string>
     <!-- ★ 2026-11-08 공고 상세(보는 사람) -->
     <string name="recruit_job_detail">채용공고</string>
     <string name="posting_open_web">웹에서 보기</string>

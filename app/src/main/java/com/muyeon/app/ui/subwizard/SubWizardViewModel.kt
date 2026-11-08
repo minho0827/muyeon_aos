@@ -2,6 +2,7 @@ package com.muyeon.app.ui.subwizard
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -42,16 +43,16 @@ class SubWizardViewModel(
     /** 레슨 요청 [네, 강사 구해요]에서 넘어온 미리 채움 번호(?prefill=). */
     private val prefillId: String?,
 ) : ViewModel() {
-    val steps = SubWizardQuestions.steps
+    val fields = SubWizardQuestions.fields
     val answers = mutableStateMapOf<String, SubAnswer>()
-    var currentIndex by mutableStateOf(0)
-        private set
     var submitting by mutableStateOf(false)
         private set
-    /** 확인 단계 — 제목(자동, 고칠 수 있음) · 학원/단체 이름(계정 이름으로 채움). */
-    var title by mutableStateOf("")
+    var uploading by mutableStateOf(false)
     var academy by mutableStateOf("")
-    private var editReturn: Int? = null
+    /** 제목 — 고치기 전까지는 고른 값으로 저절로 채운다. */
+    var title by mutableStateOf("")
+        private set
+    private var titleEdited = false
     private val _events = MutableSharedFlow<SubWizardEvent>(extraBufferCapacity = 2)
     val events: SharedFlow<SubWizardEvent> = _events.asSharedFlow()
 
@@ -60,103 +61,85 @@ class SubWizardViewModel(
         prefillId?.takeIf { it.isNotBlank() }?.let { id -> viewModelScope.launch { (createSub.prefill(id) as? ApiResult.Success)?.data?.let(::applyPrefill) } }
     }
 
-    /**
-     * 레슨 요청 답으로 채운다(웹 useQuotePrefill — 비어 있는 칸만). 수업 시간 'HH:MM ~ HH:MM' 은 시작·길이 선택지에 있을 때만.
-     *   채운 질문은 건너뛰고 첫 빈 질문부터 묻는다(레슨 견적 위저드 seed 와 같다).
-     */
+    /** 레슨 요청 답으로 비어 있는 칸만 채운다(웹 useQuotePrefill). 수업 시간 'HH:MM ~ HH:MM' 은 시작·끝 그대로. */
     private fun applyPrefill(p: com.muyeon.domain.model.recruit.SubPrefill) {
         fun put(id: String, v: String?) { if (v != null && answers[id] == null) answers[id] = SubAnswer(listOf(v)) }
         put(SubWizardQuestions.GENRE, p.genre?.takeIf { it in com.muyeon.domain.model.teacher.LessonGenres.ALL })
         put(SubWizardQuestions.TARGET, p.target)
         if (p.fields.isNotEmpty() && answers[SubWizardQuestions.FIELDS] == null) answers[SubWizardQuestions.FIELDS] = SubAnswer(p.fields)
         put(SubWizardQuestions.DATE, p.classDate?.takeIf { runCatching { LocalDate.parse(it) }.isSuccess })
-        p.classTime?.split("~")?.map { it.trim() }?.takeIf { it.size == 2 }?.let { (a, b) ->
-            if (a in SubWizardQuestions.START_TIMES) {
-                put(SubWizardQuestions.START, a)
-                val len = runCatching { java.time.Duration.between(LocalTime.parse(a), LocalTime.parse(b)).toMinutes().toString() }.getOrNull()
-                put(SubWizardQuestions.LENGTH, len?.takeIf { it in SubWizardQuestions.LENGTHS })
-            }
+        p.classTime?.split("~")?.map { it.trim() }?.takeIf { it.size == 2 && it.all { t -> runCatching { LocalTime.parse(t) }.isSuccess } }?.let { (a, b) ->
+            put(SubWizardQuestions.START, a); put(SubWizardQuestions.END, b)
         }
         p.region?.let { if (answers[SubWizardQuestions.REGION] == null) answers[SubWizardQuestions.REGION] = SubAnswer(listOf(it), regionCode = p.regionCode) }
         p.content?.let { if (answers[SubWizardQuestions.DESC] == null) answers[SubWizardQuestions.DESC] = SubAnswer(text = it) }
-        p.title?.let { if (title.isBlank()) title = it }
-        while (currentIndex < steps.lastIndex && !answer(steps[currentIndex].id).isEmpty) currentIndex++
+        p.title?.let { if (title.isBlank()) { title = it; titleEdited = true } }
+        refreshTitle()
     }
 
-    val current get() = steps[currentIndex]
-    val answered get() = steps.take(currentIndex)
-    val isLast get() = currentIndex == steps.lastIndex
-    val progress get() = currentIndex.toFloat() / (steps.size - 1)
     fun answer(id: String) = answers[id] ?: SubAnswer()
-
-    val canProceed: Boolean get() = when (current.type) {
-        SubStepType.CONFIRM -> title.isNotBlank() && !submitting && timeError() == null
-        SubStepType.IMAGE -> !uploading
-        else -> !current.required || !answer(current.id).isEmpty
-    }
-
-    fun toggle(value: String) {
-        val s = current; val a = answer(s.id)
-        answers[s.id] = when (s.type) {
-            SubStepType.MULTI -> a.copy(values = if (value in a.values) a.values - value else a.values + value)
-            else -> a.copy(values = listOf(value))
-        }
-    }
-
-    fun setDate(iso: String) { answers[SubWizardQuestions.DATE] = SubAnswer(listOf(iso)) }
-    fun setRegion(name: String, code: String?) { answers[SubWizardQuestions.REGION] = SubAnswer(listOf(name), regionCode = code) }
-    fun setText(t: String) { answers[current.id] = answer(current.id).copy(text = t) }
-    fun setImage(url: String?) { answers[SubWizardQuestions.IMAGE] = SubAnswer(text = url) }
-    var uploading by mutableStateOf(false)
-
-    fun next() {
-        val back = editReturn
-        when {
-            back != null -> { editReturn = null; currentIndex = back; if (isLast && title.isBlank()) title = autoTitle() }
-            isLast -> submit()
-            else -> { currentIndex++; if (isLast && title.isBlank()) title = autoTitle() }
-        }
-    }
-
-    fun edit(id: String) {
-        val i = steps.indexOfFirst { it.id == id }
-        if (i < 0) return
-        if (editReturn == null) editReturn = currentIndex
-        currentIndex = i
-    }
-
-    fun back(): Boolean { if (currentIndex == 0) return false; currentIndex--; return true }
-
     private fun one(id: String) = answer(id).values.firstOrNull()
 
-    /** 수업 시간 'HH:mm~HH:mm'. */
-    fun classTime(): String? {
-        val start = one(SubWizardQuestions.START) ?: return null
-        val len = one(SubWizardQuestions.LENGTH)?.toLongOrNull() ?: return null
-        val t = LocalTime.parse(start)
-        return "$start~${t.plusMinutes(len)}"
+    /** 칩 고르기 — MULTI 는 켜고 끄기, 그 밖은 하나만(다시 누르면 비움 — 선택 항목만). */
+    fun toggle(field: SubField, value: String) {
+        val a = answer(field.id)
+        answers[field.id] = when {
+            field.type == SubFieldType.MULTI -> SubAnswer(if (value in a.values) a.values - value else a.values + value)
+            value in a.values && !field.required -> SubAnswer()
+            else -> SubAnswer(listOf(value))
+        }
+        refreshTitle()
     }
+    fun setDate(iso: String) { answers[SubWizardQuestions.DATE] = SubAnswer(listOf(iso)); refreshTitle() }
+    fun setStart(hhmm: String) { answers[SubWizardQuestions.START] = SubAnswer(listOf(hhmm)); refreshTitle() }
+    fun setEnd(hhmm: String) { answers[SubWizardQuestions.END] = SubAnswer(listOf(hhmm)) }
+    fun setRegion(name: String, code: String?) { answers[SubWizardQuestions.REGION] = SubAnswer(listOf(name), regionCode = code) }
+    fun setText(t: String) { answers[SubWizardQuestions.DESC] = SubAnswer(text = t) }
+    fun setImage(url: String?) { answers[SubWizardQuestions.IMAGE] = SubAnswer(text = url) }
+    fun editTitle(t: String) { title = t; titleEdited = true }
 
-    /** 오늘 지난 시각이면 문구 키(서버 assertFutureClassSchedule 와 같은 판단 — 미리 알려 준다). */
+    val start: String? get() = one(SubWizardQuestions.START)
+    val end: String? get() = one(SubWizardQuestions.END)
+
+    /** "HH:mm~HH:mm" — 끝이 시작보다 늦을 때만. */
+    fun classTime(): String? {
+        val s = start ?: return null; val e = end ?: return null
+        return if (LocalTime.parse(e).isAfter(LocalTime.parse(s))) "$s~$e" else null
+    }
+    /** 끝이 시작보다 늦지 않다. */
+    fun timeOrderError(): Boolean = start != null && end != null && classTime() == null
+
+    /** 시작이 지금보다 이전(KST)인가. 날짜·시작이 없으면 null. */
     fun timeError(): Boolean? {
         val date = one(SubWizardQuestions.DATE)?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return null
-        val start = one(SubWizardQuestions.START)?.let { LocalTime.parse(it) } ?: return null
-        val now = LocalDateTime.now(ZoneId.of("Asia/Seoul"))
-        return if (LocalDateTime.of(date, start).isBefore(now)) true else null
+        val s = start?.let { LocalTime.parse(it) } ?: return null
+        return LocalDateTime.of(date, s).isBefore(LocalDateTime.now(ZoneId.of("Asia/Seoul")))
     }
 
-    /** 자동 제목 — "{장르} {대상} 대타 구해요 · 11/20 19:00"(사용자가 고칠 수 있다). 대상 이름·문구 틀은 화면이 리소스로 넘긴다. */
+    /** 비어 있는 필수 칸(첫 번째) — 없으면 null. */
+    fun firstMissing(): SubField? = fields.firstOrNull { f ->
+        f.required && when (f.type) {
+            SubFieldType.TIME -> classTime() == null
+            SubFieldType.TEXT, SubFieldType.IMAGE -> false
+            else -> answer(f.id).isEmpty
+        }
+    }
+
+    val canSubmit: Boolean get() = !submitting && !uploading && firstMissing() == null && timeError() != true && title.isNotBlank()
+
     var targetLabel: (String) -> String = { it }
     var titleTemplate: String = "%1\$s%2\$s"
+    private fun refreshTitle() { if (!titleEdited) title = autoTitle() }
     private fun autoTitle(): String {
-        val date = one(SubWizardQuestions.DATE)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
-        val whenText = listOfNotNull(date?.let { "${it.monthValue}/${it.dayOfMonth}" }, one(SubWizardQuestions.START)).joinToString(" ")
         val head = listOfNotNull(one(SubWizardQuestions.GENRE), one(SubWizardQuestions.TARGET)?.let(targetLabel)).joinToString(" ")
+        if (head.isEmpty()) return ""
+        val date = one(SubWizardQuestions.DATE)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+        val whenText = listOfNotNull(date?.let { "${it.monthValue}/${it.dayOfMonth}" }, start).joinToString(" ")
         return String.format(titleTemplate, head, if (whenText.isNotEmpty()) " · $whenText" else "")
     }
 
-    private fun submit() {
-        if (submitting) return
+    fun submit() {
+        if (!canSubmit) return
         submitting = true
         val draft = SubDraft(
             title = title.trim(),
