@@ -36,6 +36,8 @@ object NativeRoutes {
     private val APPLICANT = Regex("^/(jobs|subs|casting)/(\\d+)/applicants/(\\d+)/?$")
     private val CASTING = Regex("^/casting/(\\d+)/?$")
     private val INQUIRY = Regex("^/support/inquiries/(\\d+)/?$")
+    private val QUOTE = Regex("^/myQuotes/(\\d+)/?$")
+    private val SPACE = Regex("^/spaces/(\\d+)/?$")
     private val RESERVATION = Regex("^/reservations/(\\d+)/?$")
 
     fun resolve(path: String?): Target? {
@@ -77,6 +79,11 @@ object NativeRoutes {
             "/lessonSlots" -> return Target.Action("openLessonSlotManage", query["lessonProductId"]?.let { mapOf("lessonProductId" to it) } ?: emptyMap())
             "/lessonHub" -> return Target.Action("openLessonQuoteHub")
             "/chat" -> return Target.Action("openChatList")
+            // ★ 2026-11-08 서버 푸시·알림톡이 보내는 주소 중 웹으로 가던 것(링크·푸시 점검).
+            "/quotes/sent" -> return Target.Action("openMyQuotes", mapOf("tab" to "sent"))
+            "/quoteRequest" -> return Target.Action("openQuoteWizard")
+            "/quoteSettings" -> return Target.Action("openAutoQuoteTemplates")
+            "/mySpaceReservations" -> return Target.Action("openMySpaceReservations")
             // ★ 2026-11-08 고객센터 — 공지사항(웹 /noticeDetail 은 state 로 id 를 받는다 — 링크는 ?id=)·FAQ.
             "/notice" -> return Target.Route(Screen.Notices.route)
             "/noticeDetail" -> return Target.Route(query["id"]?.toLongOrNull()?.let { Screen.NoticeDetail.build(it) } ?: Screen.Notices.route)
@@ -135,6 +142,8 @@ object NativeRoutes {
         CHAT_ROOM.find(p)?.let { return Target.Action("openChatRoom", mapOf("roomId" to it.groupValues[1])) }
         TRANSFER.find(p)?.let { return Target.Action("openStudioTransferDetail", mapOf("id" to it.groupValues[1])) }
         // ★ 2026-11-08 레슨 예약 상세 — 앱 화면(openLessonReservationDetail)이 있다(결제 완료 뒤 이동 등).
+        QUOTE.find(p)?.let { m -> return Target.Action("openReceivedQuotes", buildMap { put("quoteId", m.groupValues[1]); query["r"]?.let { put("r", it) } }) }
+        SPACE.find(p)?.let { return Target.Action("openSpaceDetail", buildMap { put("spaceId", it.groupValues[1]); query["date"]?.let { d -> put("date", d) } }) }
         RESERVATION.find(p)?.let { return Target.Action("openLessonReservationDetail", mapOf("reservationId" to it.groupValues[1])) }
         LESSON.find(p)?.let { return Target.Action("openLessonDetail", mapOf("lessonId" to it.groupValues[1])) }
         JOB.find(p)?.let { return Target.Route(Screen.JobDetail.build(it.groupValues[1].toLong())) }
