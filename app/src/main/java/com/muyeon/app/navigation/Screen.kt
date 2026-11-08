@@ -130,4 +130,21 @@ sealed class Screen(val route: String) {
         fun build(title: String?, type: String?) =
             "lessonList?title=${android.net.Uri.encode(title.orEmpty())}&type=${android.net.Uri.encode(type.orEmpty())}"
     }
+
+    // ★ 2026-11-08 (b4) 약관·서비스 소개·관심 지역·관심 조건 알림
+    /** 약관·정책 전문(웹 /policy?doc=&version=). */
+    data object Policy : Screen("policy?doc={doc}&version={version}") {
+        const val ARG_DOC = "doc"
+        const val ARG_VERSION = "version"
+        const val DEFAULT_DOC = "terms"
+        fun build(doc: String?, version: String?) =
+            "policy?doc=${android.net.Uri.encode(doc?.takeIf { it.isNotBlank() } ?: DEFAULT_DOC)}&version=${android.net.Uri.encode(version.orEmpty())}"
+    }
+    /** 서비스 소개(웹 /about). */
+    data object About : Screen("about")
+    /** 관심 지역 · 지역 추가(웹 /myRegions · /addRegion). */
+    data object MyRegions : Screen("myRegions")
+    data object AddRegion : Screen("addRegion")
+    /** 관심 조건 알림(웹 /alerts). */
+    data object Alerts : Screen("alerts")
 }

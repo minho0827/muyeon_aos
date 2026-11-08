@@ -30,8 +30,12 @@ import com.muyeon.app.ui.theme.AppTypography
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun HomeLegalFooter(onOpenPath: (String) -> Unit, onDial: (String) -> Unit, onMail: (String) -> Unit, modifier: Modifier = Modifier) {
-    var open by rememberSaveable { mutableStateOf(false) }
+fun HomeLegalFooter(
+    onOpenPath: (String) -> Unit, onDial: (String) -> Unit, onMail: (String) -> Unit, modifier: Modifier = Modifier,
+    /** (b4) 사업자 정보를 펼친 채로 — 웹 About 의 `<HomeLegalFooter defaultOpen />`. */
+    defaultOpen: Boolean = false,
+) {
+    var open by rememberSaveable { mutableStateOf(defaultOpen) }
     val tel = stringResource(R.string.company_tel)
     val email = stringResource(R.string.company_email)
     val links = listOf(

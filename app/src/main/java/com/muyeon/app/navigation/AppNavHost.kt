@@ -358,6 +358,52 @@ fun AppNavHost(
                 onLogin = { onOpenWeb(WebPaths.login(Screen.LessonList.build(title, type).let { "/$it" })) },
             )
         }
+        // ★ 2026-11-08 (b4) 약관 — 버전을 오가면 같은 화면을 새로 쌓는다(웹 Link).
+        composable(
+            Screen.Policy.route,
+            arguments = listOf(
+                navArgument(Screen.Policy.ARG_DOC) { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument(Screen.Policy.ARG_VERSION) { type = NavType.StringType; nullable = true; defaultValue = null },
+            ),
+        ) { e ->
+            val doc = e.arguments?.getString(Screen.Policy.ARG_DOC)?.takeIf { it.isNotBlank() } ?: Screen.Policy.DEFAULT_DOC
+            val version = e.arguments?.getString(Screen.Policy.ARG_VERSION)?.takeIf { it.isNotBlank() }
+            com.muyeon.app.ui.policy.PolicyScreen(
+                version = version,
+                onBack = { navController.popBackStack() },
+                onOpenVersion = { v -> navController.navigate(Screen.Policy.build(doc, v)) },
+                viewModel = org.koin.androidx.compose.koinViewModel(key = "policy:$doc:$version", parameters = { org.koin.core.parameter.parametersOf(doc, version) }),
+            )
+        }
+        // ★ 2026-11-08 (b4) 서비스 소개 — '둘러보기'는 홈 탭(쌓인 화면을 내린다).
+        composable(Screen.About.route) {
+            com.muyeon.app.ui.about.AboutScreen(
+                onBack = { navController.popBackStack() },
+                onHome = { navController.popBackStack(Screen.Main.route, inclusive = false); onOpenPath("/home") },
+                onOpenPath = onOpenPath,
+            )
+        }
+        // ★ 2026-11-08 (b4) 관심 지역 — [확인]은 MY(웹 navigate('/mypage')), 지역 추가는 고르면 목록으로 돌아온다.
+        composable(Screen.MyRegions.route) {
+            com.muyeon.app.ui.region.MyRegionsScreen(
+                onBack = { navController.popBackStack() },
+                onAdd = { navController.navigate(Screen.AddRegion.route) },
+                onDone = { navController.popBackStack(Screen.Main.route, inclusive = false); onOpenPath("/mypage") },
+            )
+        }
+        composable(Screen.AddRegion.route) {
+            com.muyeon.app.ui.region.AddRegionScreen(
+                onBack = { navController.popBackStack() },
+                onAdded = { if (!navController.popBackStack(Screen.MyRegions.route, inclusive = false)) { navController.popBackStack(); navController.navigate(Screen.MyRegions.route) } },
+            )
+        }
+        // ★ 2026-11-08 (b4) 관심 조건 알림 — 저장 팝업을 닫으면 MY(웹 navigate('/mypage')).
+        composable(Screen.Alerts.route) {
+            com.muyeon.app.ui.alerts.AlertSettingsScreen(
+                onBack = { navController.popBackStack() },
+                onSaved = { navController.popBackStack(Screen.Main.route, inclusive = false); onOpenPath("/mypage") },
+            )
+        }
         composable(
             Screen.PerformanceDetail.route,
             arguments = listOf(navArgument(Screen.PerformanceDetail.ARG_ID) { type = NavType.StringType }),

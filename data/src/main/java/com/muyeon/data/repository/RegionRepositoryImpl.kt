@@ -49,5 +49,23 @@ class RegionRepositoryImpl(context: Context, private val api: RegionApi, private
         _active.value = region
     }
 
+    // ★ 2026-11-08 (b4) 관심 지역 관리(앱 화면) — 목록 전체.
+    override fun saved(): com.muyeon.domain.model.region.SavedRegions {
+        val v = prefs.getString(KEY, null)?.let { runCatching { adapter.fromJson(it) }.getOrNull() }
+            ?: return com.muyeon.domain.model.region.SavedRegions()
+        val list = v.regions.orEmpty().mapNotNull { r -> r.code?.takeIf { it.isNotBlank() }?.let { ActiveRegion(r.kind ?: ActiveRegion.SIDO, it, r.name.orEmpty()) } }
+        return com.muyeon.domain.model.region.SavedRegions(list, v.repCode)
+    }
+
+    override fun saveAll(saved: com.muyeon.domain.model.region.SavedRegions) {
+        val json = adapter.toJson(WebRegionsDto(saved.regions.map { WebRegionDto(it.kind, it.code, it.name) }, saved.repCode))
+        prefs.edit().putString(KEY, json).apply()
+        val rep = saved.representative
+        if (rep != _active.value) _active.value = rep
+    }
+
+    override suspend fun allRegions(): ApiResult<List<com.muyeon.domain.model.region.RegionEntry>> =
+        safeApiCall(moshi) { api.regions() }.map { l -> l.mapNotNull { it.toDomain() } }
+
     private companion object { const val KEY = "muyeonRegions" }
 }

@@ -98,4 +98,9 @@ val domainModule = module {
     factory { com.muyeon.domain.usecase.recruit.SeekerListUseCase(get()) }
     factory { com.muyeon.domain.usecase.recruit.SubListUseCase(get()) }
     factory { com.muyeon.domain.usecase.recruit.CreateSubUseCase(get()) }
+    // ★ 2026-11-08 (b4) 약관·관심 지역·관심 조건 알림
+    factory { com.muyeon.domain.usecase.region.MyRegionsUseCase(get()) }
+    factory { com.muyeon.domain.usecase.region.AddRegionOptionsUseCase(get()) }
+    factory { com.muyeon.domain.usecase.alert.AlertPrefsUseCase(get(), get(), get()) }
+    factory { com.muyeon.domain.usecase.policy.GetPolicyUseCase(get()) }
 }

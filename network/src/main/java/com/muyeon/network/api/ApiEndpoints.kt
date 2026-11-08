@@ -181,5 +181,17 @@ object ApiEndpoints {
     /** regions.controller.ts */
     object Regions {
         const val NEAREST = "$API/regions/nearest"           // GET lat·lng → Region | null
+        const val LIST = "$API/regions"                      // (b4) GET → [{ code, sido, sigungu, name }] 시군구 전체
+    }
+
+    /** ★ 2026-11-08 (b4) alerts.controller.ts — 관심 조건 알림(웹 /alerts). */
+    object AlertPrefs {
+        const val ME = "$API/me/alert-prefs"                 // GET → { regions, fields, genres, targets, types, push } · PATCH 같은 모양
+    }
+
+    /** ★ 2026-11-08 (b4) policy-documents.controller.ts — 약관·정책 문서(비로그인). */
+    object Policies {
+        const val DOC = "$API/policies/{docKey}"                           // GET → { title, version, effectiveDate, body, upcoming, history }
+        const val VERSION = "$API/policies/{docKey}/versions/{version}"    // GET → { title, version, effectiveDate, status, changeSummary, body }
     }
 }

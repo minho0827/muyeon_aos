@@ -112,4 +112,9 @@ val viewModelModule = module {
     // 커뮤니티
     viewModel { com.muyeon.app.ui.community.CommunityListViewModel(get(), get(), get()) }
     viewModel { com.muyeon.app.ui.community.CommunityPostViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    // ★ 2026-11-08 (b4) 약관(인자: doc, version) · 관심 지역 · 지역 추가 · 관심 조건 알림
+    viewModel { p -> com.muyeon.app.ui.policy.PolicyViewModel(p.get(), p.getOrNull(), get()) }
+    viewModel { com.muyeon.app.ui.region.MyRegionsViewModel(get()) }
+    viewModel { com.muyeon.app.ui.region.AddRegionViewModel(get(), get()) }
+    viewModel { com.muyeon.app.ui.alerts.AlertSettingsViewModel(get()) }
 }
