@@ -24,3 +24,12 @@ data class WebRegionsDto(val regions: List<WebRegionDto>? = null, val repCode: S
 
 @JsonClass(generateAdapter = true)
 data class UiFlagsDto(val flags: Map<String, Any?>? = null)
+
+/** ★ (b4) `GET /regions` 한 줄. */
+@JsonClass(generateAdapter = true)
+data class RegionRowDto(val code: String? = null, val sido: String? = null, val sigungu: String? = null, val name: String? = null) {
+    fun toDomain(): com.muyeon.domain.model.region.RegionEntry? {
+        val c = code?.takeIf { it.isNotBlank() } ?: return null
+        return com.muyeon.domain.model.region.RegionEntry(c, sido.orEmpty(), sigungu.orEmpty(), name ?: listOfNotNull(sido, sigungu).joinToString(" "))
+    }
+}

@@ -294,6 +294,9 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
         WebLogout.install(this, webView, com.muyeon.app.utils.Constants.getBaseUrl(this).trimEnd('/'))
         // ★ 2026-11-08 앱 로그인 화면에서 로그인했으면 웹 저장소에도 같은 로그인을 넣는다(문서 시작 스크립트, 한 번만).
         WebLogin.install(this, webView, com.muyeon.app.utils.Constants.getBaseUrl(this).trimEnd('/'))
+        // ★ 2026-11-08 (b4) 관심 지역(앱 화면에서 고친 값)을 웹 저장소에도 — 창을 떠날 때 옛 웹 값이 앱 값을 덮지 않게 넣은 값을 기억한다.
+        injectedRegionJson = WebRegion.install(webView, com.muyeon.app.utils.Constants.getBaseUrl(this).trimEnd('/'),
+            runCatching { org.koin.java.KoinJavaComponent.get<com.muyeon.domain.repository.RegionRepository>(com.muyeon.domain.repository.RegionRepository::class.java).webJson() }.getOrNull())
         socialPending = socialProvider != null && savedInstanceState == null
         attachFloatingScrollListener()
 
@@ -943,10 +946,14 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
     }
 
     /** ★ 2026-11-07 웹 대표 지역(localStorage muyeonRegions)을 앱으로 — 지역 고르기는 웹 화면이라 창을 떠날 때마다 받아 둔다. */
+    /** (b4) 이 창에 넣은 앱 관심 지역 JSON — 웹 값이 이것 그대로면 앱으로 다시 가져오지 않는다(WebRegion). */
+    private var injectedRegionJson: String? = null
+
     private fun syncRegionFromWeb() {
         if (!::webView.isInitialized) return
         webView.evaluateJavascript("(function(){try{return localStorage.getItem('muyeonRegions')||''}catch(e){return ''}})()") { raw ->
             val json = runCatching { org.json.JSONArray("[$raw]").optString(0) }.getOrNull()?.takeIf { it.isNotBlank() } ?: return@evaluateJavascript
+            if (json == injectedRegionJson) return@evaluateJavascript
             runCatching { org.koin.java.KoinJavaComponent.get<com.muyeon.domain.repository.RegionRepository>(com.muyeon.domain.repository.RegionRepository::class.java).syncFromWeb(json) }
         }
     }

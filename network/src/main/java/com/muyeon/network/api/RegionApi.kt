@@ -15,6 +15,10 @@ interface RegionApi {
     @GET(ApiEndpoints.Regions.NEAREST)
     suspend fun nearest(@Query("lat") lat: Double, @Query("lng") lng: Double): Response<ResponseBody>
 
+    /** ★ (b4) 시군구 전체 — 관심 지역 추가·관심 조건 지역. */
+    @GET(ApiEndpoints.Regions.LIST)
+    suspend fun regions(): Response<List<com.muyeon.network.dto.region.RegionRowDto>>
+
     @GET(ApiEndpoints.Auth.UI_FLAGS)
     suspend fun uiFlags(): Response<UiFlagsDto>
 

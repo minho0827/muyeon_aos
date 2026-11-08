@@ -121,6 +121,12 @@ object NativeRoutes {
             "/support/feedback" -> return Target.Route(Screen.SupportCompose.build(Screen.SupportCompose.FEEDBACK), auth = true)
             // ★ 2026-11-08 홈 '전체보기' 레슨 목록 — 쿼리(title·type)가 있어도 앱 화면.
             "/lessonList" -> return Target.Route(Screen.LessonList.build(query["title"]?.let(android.net.Uri::decode), query["type"]))
+            // ★ 2026-11-08 (b4) 약관(?doc=·?version=, 앱 안 ?embed=1 은 무시)·서비스 소개·관심 지역·지역 추가·관심 조건 알림 — 앱 화면.
+            "/policy" -> return Target.Route(Screen.Policy.build(query["doc"]?.let(android.net.Uri::decode), query["version"]?.let(android.net.Uri::decode)))
+            "/about" -> return Target.Route(Screen.About.route)
+            "/myRegions" -> return Target.Route(Screen.MyRegions.route)
+            "/addRegion" -> return Target.Route(Screen.AddRegion.route)
+            "/alerts" -> return Target.Route(Screen.Alerts.route, auth = true)
         }
         COMMUNITY_POST.find(p)?.let { return Target.Route(Screen.CommunityPost.build(it.groupValues[1].toLong())) }
         if (p.trimEnd('/') == "/community" && !clean.contains('?')) return Target.Route(Screen.CommunityList.route)

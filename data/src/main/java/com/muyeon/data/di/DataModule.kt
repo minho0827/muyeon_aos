@@ -38,4 +38,7 @@ val dataModule = module {
     single<com.muyeon.domain.repository.SupportRepository> { com.muyeon.data.repository.SupportRepositoryImpl(get(), get()) }
     single<com.muyeon.domain.repository.SafetyRepository> { com.muyeon.data.repository.SafetyRepositoryImpl(get(), get()) }
     single<com.muyeon.domain.repository.AuthRepository> { com.muyeon.data.repository.AuthRepositoryImpl(get(), get()) }
+    // ★ 2026-11-08 (b4) 관심 조건 알림 · 약관
+    single<com.muyeon.domain.repository.AlertPrefsRepository> { com.muyeon.data.repository.AlertPrefsRepositoryImpl(get(), get()) }
+    single<com.muyeon.domain.repository.PolicyRepository> { com.muyeon.data.repository.PolicyRepositoryImpl(androidContext(), get(), get()) }
 }

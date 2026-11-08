@@ -71,6 +71,9 @@ val apiModule = module {
     single<com.muyeon.network.api.SupportApi> { get<Retrofit>().create(com.muyeon.network.api.SupportApi::class.java) }
     single<com.muyeon.network.api.SafetyApi> { get<Retrofit>().create(com.muyeon.network.api.SafetyApi::class.java) }
     single<com.muyeon.network.api.AuthApi> { get<Retrofit>().create(com.muyeon.network.api.AuthApi::class.java) }
+    // ★ 2026-11-08 (b4) 관심 조건 알림 · 약관
+    single<com.muyeon.network.api.AlertPrefsApi> { get<Retrofit>().create(com.muyeon.network.api.AlertPrefsApi::class.java) }
+    single<com.muyeon.network.api.PolicyApi> { get<Retrofit>().create(com.muyeon.network.api.PolicyApi::class.java) }
 }
 
 fun networkModules(): List<Module> = listOf(networkModule, apiModule)

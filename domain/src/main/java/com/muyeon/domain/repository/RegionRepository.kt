@@ -17,4 +17,12 @@ interface RegionRepository {
     fun webJson(): String?
     suspend fun nearest(c: Coordinates): ApiResult<ActiveRegion?>
     fun saveDetected(region: ActiveRegion)
+
+    // ★ 2026-11-08 (b4) 관심 지역 관리가 앱 화면이 됐다(웹 /myRegions·/addRegion) — 목록 전체를 읽고 쓴다.
+    /** 저장된 관심 지역 목록(없으면 빈 목록). */
+    fun saved(): com.muyeon.domain.model.region.SavedRegions
+    /** 목록 저장 — 같은 JSON 을 웹 창에도 넣는다(WebViewActivity). 대표가 바뀌면 [active] 도 바뀐다. */
+    fun saveAll(saved: com.muyeon.domain.model.region.SavedRegions)
+    /** `GET /regions` — 시군구 전체. */
+    suspend fun allRegions(): ApiResult<List<com.muyeon.domain.model.region.RegionEntry>>
 }
