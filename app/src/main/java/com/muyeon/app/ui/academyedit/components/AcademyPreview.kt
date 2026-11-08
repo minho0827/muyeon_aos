@@ -83,7 +83,7 @@ fun AcademyPreview(form: AcademyProfileForm, keywords: List<String>, lessons: Li
 @Composable
 private fun PreviewHead(form: AcademyProfileForm, keywords: List<String>) {
     Column(verticalArrangement = Arrangement.spacedBy(Dimensions.spacingS)) {
-        Text(form.academyName.ifBlank { stringResource(R.string.academy_preview_name_ph) }, style = AppTypography.Title22, color = AppColors.TextHead)
+        Text(form.academyName.ifBlank { stringResource(R.string.academy_preview_name_ph) }, style = AppTypography.Title20, color = AppColors.TextHead)
         Text(
             (form.academyGenres + form.academyRegion).filter { it.isNotBlank() }.joinToString(" · ").ifEmpty { stringResource(R.string.academy_preview_sub_ph) },
             style = AppTypography.Body14, color = AppColors.TextSub,
