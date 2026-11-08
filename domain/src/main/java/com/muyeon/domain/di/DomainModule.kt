@@ -98,4 +98,7 @@ val domainModule = module {
     factory { com.muyeon.domain.usecase.recruit.SeekerListUseCase(get()) }
     factory { com.muyeon.domain.usecase.recruit.SubListUseCase(get()) }
     factory { com.muyeon.domain.usecase.recruit.CreateSubUseCase(get()) }
+    // ★ 2026-11-08 묶음 3 — 대타공고 수정 · 커뮤니티 글쓰기/수정
+    factory { com.muyeon.domain.usecase.write.EditSubUseCase(get()) }
+    factory { com.muyeon.domain.usecase.write.WriteCommunityPostUseCase(get()) }
 }

@@ -130,4 +130,14 @@ sealed class Screen(val route: String) {
         fun build(title: String?, type: String?) =
             "lessonList?title=${android.net.Uri.encode(title.orEmpty())}&type=${android.net.Uri.encode(type.orEmpty())}"
     }
+
+    // ★ 2026-11-08 묶음 3 — 대타공고 수정 · 커뮤니티 글쓰기/수정(웹 /subs/:id/edit · /community/write · /community/post/:id/edit).
+    data object SubEdit : Screen("subs/{id}/edit") {
+        const val ARG_ID = "id"
+        fun build(id: Long) = "subs/$id/edit"
+    }
+    data object CommunityWrite : Screen("community/write?edit={edit}") {
+        const val ARG_EDIT = "edit"
+        fun build(editId: Long? = null) = if (editId == null) "community/write" else "community/write?edit=$editId"
+    }
 }

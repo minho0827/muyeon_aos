@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ★ 2026-11-08 묶음 3(공고·커뮤니티 작성/수정) 전용 문구 — strings.xml 에 넣지 않는다(묶음끼리 충돌 방지). iOS Shell.strings 는 sync-shell-strings.py 로 만든다. -->
+<resources>
+    <!-- 대타공고 수정(웹 /subs/:id/edit — SubCreate 수정 모드) -->
+    <string name="b3_subedit_title">대타공고 수정</string>
+    <string name="b3_subedit_submit">수정 완료</string>
+    <string name="b3_subedit_done">대타공고가 수정됐어요.</string>
+    <string name="b3_subedit_load_failed">공고를 불러오지 못했어요.</string>
+    <string name="b3_subedit_failed">수정에 실패했어요. 로그인·권한을 확인해 주세요.</string>
+    <string name="b3_subedit_pay_locked">확정된 공고라 금액을 바꿀 수 없어요. 확정 취소 후 수정해 주세요.</string>
+    <string name="b3_subedit_dispatch">긴급 발송 중인 공고라 급여는 타임당 금액으로 안내돼요. 발송 중지는 공고 상세에서 할 수 있어요.</string>
+
+    <!-- 커뮤니티 글쓰기·수정(웹 /community/write · /community/post/:id/edit — CommunityWrite) -->
+    <string name="b3_cwrite_title_new">글쓰기</string>
+    <string name="b3_cwrite_title_edit">글 수정</string>
+    <string name="b3_cwrite_guide">서로를 존중하는 건강한 커뮤니티를 만들어가요.\n비방·욕설·혐오·광고 글은 무관용 원칙으로 삭제돼요. 작성자의 이용이 제한될 수도 있어요.</string>
+    <string name="b3_cwrite_category">카테고리</string>
+    <string name="b3_cwrite_f_title">제목</string>
+    <string name="b3_cwrite_title_hint">제목을 입력해 주세요</string>
+    <string name="b3_cwrite_title_example">예) 성인 발레 처음 시작하려는데 추천 학원 있을까요?</string>
+    <string name="b3_cwrite_f_body">내용</string>
+    <string name="b3_cwrite_body_hint">무엇이든 자유롭게 이야기해보세요.</string>
+    <string name="b3_cwrite_body_example">경험, 정보, 질문 등 다양한 이야기를 들려주세요!</string>
+    <string name="b3_cwrite_photos">사진 첨부 (선택)</string>
+    <string name="b3_cwrite_photo_note">• 사진은 최대 10장까지 올릴 수 있어요.</string>
+    <string name="b3_cwrite_photo_add">사진 추가</string>
+    <string name="b3_cwrite_photo_remove">삭제</string>
+    <string name="b3_cwrite_count">%1$d/%2$d</string>
+    <string name="b3_cwrite_submit">등록하기</string>
+    <string name="b3_cwrite_uploading">이미지 업로드 중…</string>
+    <string name="b3_cwrite_done_new">글이 등록됐어요.</string>
+    <string name="b3_cwrite_done_edit">글이 수정됐어요.</string>
+    <string name="b3_cwrite_load_failed">글을 불러오지 못했어요.</string>
+    <string name="b3_cwrite_upload_failed">사진 업로드에 실패했어요.</string>
+    <string name="b3_cwrite_failed_new">등록에 실패했어요. 로그인 상태를 확인해 주세요.</string>
+    <string name="b3_cwrite_failed_edit">수정에 실패했어요. 로그인 상태를 확인해 주세요.</string>
+</resources>

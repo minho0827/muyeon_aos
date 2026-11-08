@@ -367,6 +367,8 @@ fun AppNavHost(
                 onLogin = { onOpenWeb(WebPaths.login("/performance")) },
             )
         }
+        // ★ 2026-11-08 묶음 3 — 대타공고 수정 · 커뮤니티 글쓰기/수정(AppNavGraphB3).
+        b3Graph(navController)
     }
 }
 

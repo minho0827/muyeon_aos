@@ -38,4 +38,7 @@ val dataModule = module {
     single<com.muyeon.domain.repository.SupportRepository> { com.muyeon.data.repository.SupportRepositoryImpl(get(), get()) }
     single<com.muyeon.domain.repository.SafetyRepository> { com.muyeon.data.repository.SafetyRepositoryImpl(get(), get()) }
     single<com.muyeon.domain.repository.AuthRepository> { com.muyeon.data.repository.AuthRepositoryImpl(get(), get()) }
+    // ★ 2026-11-08 묶음 3 — 대타공고 수정 · 커뮤니티 글쓰기/수정
+    single<com.muyeon.domain.repository.SubEditRepository> { com.muyeon.data.repository.SubEditRepositoryImpl(get(), get()) }
+    single<com.muyeon.domain.repository.CommunityWriteRepository> { com.muyeon.data.repository.CommunityWriteRepositoryImpl(get(), get()) }
 }

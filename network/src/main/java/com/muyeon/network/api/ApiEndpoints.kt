@@ -182,4 +182,14 @@ object ApiEndpoints {
     object Regions {
         const val NEAREST = "$API/regions/nearest"           // GET lat·lng → Region | null
     }
+
+    /**
+     * ★ 2026-11-08 묶음 3 — 대타공고 수정(subs.controller.ts GET·PATCH :id — 작성자만) ·
+     *   커뮤니티 글쓰기/수정(community.controller.ts POST /community/posts · PATCH /community/posts/:id — 본인 글만).
+     */
+    object Write {
+        const val SUB = "$API/subs/{id}"                          // GET 상세(수정 화면 채우기) · PATCH UpdateSubDto(부분)
+        const val POSTS = "$API/community/posts"                  // POST { category, title, body, images? }
+        const val POST = "$API/community/posts/{id}"              // PATCH { category, title, body, images }
+    }
 }

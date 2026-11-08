@@ -67,7 +67,8 @@ class NativeRoutesB0Test {
         assertEquals(Target.Route(Screen.Likes.route, auth = true), r("/myScraps"))
         assertEquals(a("openCommunityCategory", "category" to "QUESTION"), r("/community/QUESTION"))
         assertEquals(Target.Route(Screen.CommunityList.route), r("/community"))
-        assertNull(r("/community/write"))
+        // /community/write 는 묶음 3 이 앱 화면으로(NativeRoutesB3Test) — 카테고리로 걸리지 않는다.
+        assertEquals(Target.Route("community/write", auth = true), r("/community/write"))
         assertNull(r("/classes"))
         assertNull(r("/classes/3"))
     }

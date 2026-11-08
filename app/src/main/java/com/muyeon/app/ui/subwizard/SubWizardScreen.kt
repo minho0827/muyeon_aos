@@ -86,7 +86,10 @@ fun SubWizardScreen(
     onClose: () -> Unit,
     onCreated: (Long) -> Unit,
     prefillId: String? = null,
-    vm: SubWizardViewModel = koinViewModel { org.koin.core.parameter.parametersOf(prefillId) },
+    /** ★ 2026-11-08 묶음 3 — 대타공고 수정(웹 /subs/:id/edit): 기존 값을 채우고 저장하면 [onCreated](그 id). */
+    editId: Long? = null,
+    vm: SubWizardViewModel = if (editId == null) koinViewModel { org.koin.core.parameter.parametersOf(prefillId) }
+        else koinViewModel(qualifier = org.koin.core.qualifier.named(SubWizardViewModel.EDIT)) { org.koin.core.parameter.parametersOf(editId) },
 ) {
     val context = LocalContext.current
     vm.titleTemplate = stringResource(R.string.subwiz_auto_title)
@@ -99,15 +102,22 @@ fun SubWizardScreen(
         vm.events.collect { e ->
             when (e) {
                 is SubWizardEvent.Created -> { Toast.makeText(context, R.string.subwiz_done, Toast.LENGTH_SHORT).show(); onCreated(e.id) }
+                is SubWizardEvent.Updated -> { Toast.makeText(context, R.string.b3_subedit_done, Toast.LENGTH_SHORT).show(); onCreated(e.id) }
                 is SubWizardEvent.Failed -> Toast.makeText(context, e.message, Toast.LENGTH_LONG).show()
             }
         }
     }
 
     Column(Modifier.fillMaxSize().background(AppColors.Surface).navigationBarsPadding().imePadding()) {
-        MainTopBar(stringResource(R.string.subwiz_title), primary = false, onBack = onClose)
+        MainTopBar(stringResource(if (vm.isEdit) R.string.b3_subedit_title else R.string.subwiz_title), primary = false, onBack = onClose)
+        // ★ 2026-11-08 묶음 3 — 수정: 기존 공고를 읽는 동안·못 읽었을 때.
+        if (!vm.loaded) {
+            com.muyeon.app.ui.subwizard.components.SubEditLoading(vm.loadFailed, Modifier.weight(1f))
+            return@Column
+        }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 28.dp)) {
-            Text(stringResource(R.string.subwiz_form_intro), style = AppTypography.Body14, color = AppColors.TextSub, modifier = Modifier.padding(top = 12.dp))
+            if (vm.isEdit) com.muyeon.app.ui.subwizard.components.SubEditNotice(vm.dispatchLocked, vm.payLocked)
+            else Text(stringResource(R.string.subwiz_form_intro), style = AppTypography.Body14, color = AppColors.TextSub, modifier = Modifier.padding(top = 12.dp))
             vm.fields.forEach { f -> FieldSection(vm, f, required) { regionPicker = true } }
             // 제목(자동 — 고칠 수 있음) · 학원 이름
             SubFormSection(stringResource(R.string.subwiz_f_title), required = true, check = required to "title", filled = vm.title.isNotBlank()) {
@@ -121,9 +131,9 @@ fun SubWizardScreen(
         Column(Modifier.fillMaxWidth().background(AppColors.Surface)) {
             HorizontalDivider(color = AppColors.Divider)
             QuotePrimaryButton(
-                text = stringResource(R.string.subwiz_submit),
+                text = stringResource(if (vm.isEdit) R.string.b3_subedit_submit else R.string.subwiz_submit),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), filled = true,
-                enabled = !vm.submitting && !vm.uploading,
+                enabled = vm.loaded && !vm.submitting && !vm.uploading,
                 onClick = {
                     // 공통 필수값 확인 — 빠진 칸으로 스크롤·강조·토스트(RequiredForm).
                     when {

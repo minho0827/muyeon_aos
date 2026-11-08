@@ -13,6 +13,9 @@ import com.muyeon.domain.model.member.ActiveType
 import com.muyeon.domain.model.recruit.SubDraft
 import com.muyeon.domain.usecase.my.GetMyPageInfoUseCase
 import com.muyeon.domain.usecase.recruit.CreateSubUseCase
+import com.muyeon.domain.model.write.SubEditForm
+import com.muyeon.domain.model.write.SubUpdate
+import com.muyeon.domain.usecase.write.EditSubUseCase
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -29,6 +32,8 @@ data class SubAnswer(val values: List<String> = emptyList(), val text: String? =
 
 sealed interface SubWizardEvent {
     data class Created(val id: Long) : SubWizardEvent
+    /** ★ 2026-11-08 묶음 3 — 수정 저장됨. */
+    data class Updated(val id: Long) : SubWizardEvent
     data class Failed(val message: String) : SubWizardEvent
 }
 
@@ -42,8 +47,25 @@ class SubWizardViewModel(
     private val activeType: ActiveTypeStore,
     /** 레슨 요청 [네, 강사 구해요]에서 넘어온 미리 채움 번호(?prefill=). */
     private val prefillId: String?,
+    /** ★ 2026-11-08 묶음 3 — 수정 모드(웹 /subs/:id/edit): 기존 공고를 채우고 PATCH 로 저장. 등록이면 null. */
+    private val editSub: EditSubUseCase? = null,
+    private val editId: Long? = null,
 ) : ViewModel() {
-    val fields = SubWizardQuestions.fields
+    val isEdit = editId != null
+    /** 칸 목록 — 수정이면 기간·타임 수는 선택(웹: 옛 공고의 급한 수정이 막히지 않게), 목록 밖 옛 값은 선택지에 얹는다. */
+    var fields by mutableStateOf(SubWizardQuestions.fields)
+        private set
+    /** 수정: 기존 공고를 다 읽었다(등록은 처음부터 true). */
+    var loaded by mutableStateOf(editId == null)
+        private set
+    var loadFailed by mutableStateOf(false)
+        private set
+    /** 수정: 이미 긴급 발송 중인 공고 — 급여 칸을 숨긴다(웹 dispatch.enabled). */
+    var dispatchLocked by mutableStateOf(false)
+        private set
+    /** 수정: 확정된 공고 — 급여를 바꿀 수 없다(웹 payLocked). */
+    var payLocked by mutableStateOf(false)
+        private set
     val answers = mutableStateMapOf<String, SubAnswer>()
     var submitting by mutableStateOf(false)
         private set
@@ -59,6 +81,42 @@ class SubWizardViewModel(
     init {
         viewModelScope.launch { runCatching { info(ActiveType.visible(activeType.current())).name }.getOrNull()?.let { if (academy.isBlank()) academy = it } }
         prefillId?.takeIf { it.isNotBlank() }?.let { id -> viewModelScope.launch { (createSub.prefill(id) as? ApiResult.Success)?.data?.let(::applyPrefill) } }
+        if (editId != null && editSub != null) viewModelScope.launch {
+            when (val r = editSub.load(editId)) {
+                is ApiResult.Success -> applyEdit(r.data)
+                is ApiResult.Error -> loadFailed = true
+            }
+        }
+    }
+
+    /** ★ 2026-11-08 묶음 3 — 기존 공고로 칸을 채운다(웹 SubCreate 수정 모드 callGetSub). 제목은 그대로(자동 제목 안 함). */
+    private fun applyEdit(d: SubEditForm) {
+        answers.clear()
+        fun put(id: String, v: String?) { if (!v.isNullOrBlank()) answers[id] = SubAnswer(listOf(v)) }
+        put(SubWizardQuestions.GENRE, d.genre); put(SubWizardQuestions.TARGET, d.target)
+        if (d.fields.isNotEmpty()) answers[SubWizardQuestions.FIELDS] = SubAnswer(d.fields)
+        put(SubWizardQuestions.SCHEDULE, d.scheduleType); put(SubWizardQuestions.DATE, d.classDate)
+        d.classTime?.split("~")?.map { it.trim() }?.takeIf { it.size == 2 && it.all { t -> runCatching { LocalTime.parse(t) }.isSuccess } }?.let { (a, b) ->
+            put(SubWizardQuestions.START, a); put(SubWizardQuestions.END, b)
+        }
+        put(SubWizardQuestions.COUNT, d.classCount?.toString())
+        d.region?.let { answers[SubWizardQuestions.REGION] = SubAnswer(listOf(it), regionCode = d.regionCode) }
+        put(SubWizardQuestions.SALARY, d.salary); put(SubWizardQuestions.CAREER, d.career)
+        d.description?.let { answers[SubWizardQuestions.DESC] = SubAnswer(text = it) }
+        d.image?.let { answers[SubWizardQuestions.IMAGE] = SubAnswer(text = it) }
+        title = d.title; titleEdited = true
+        if (academy.isBlank()) d.academy?.let { academy = it }
+        dispatchLocked = d.dispatchEnabled
+        payLocked = d.payLocked
+        fields = SubWizardQuestions.fields.map { f ->
+            val cur = answers[f.id]?.values?.firstOrNull()
+            val opts = if (f.type == SubFieldType.CHIPS && cur != null && cur !in f.options) f.options + cur else f.options
+            when (f.id) {
+                SubWizardQuestions.SCHEDULE, SubWizardQuestions.COUNT -> f.copy(options = opts, required = false)
+                else -> f.copy(options = opts)
+            }
+        }.filterNot { dispatchLocked && it.id == SubWizardQuestions.SALARY }
+        loaded = true
     }
 
     /** 레슨 요청 답으로 비어 있는 칸만 채운다(웹 useQuotePrefill). 수업 시간 'HH:MM ~ HH:MM' 은 시작·끝 그대로. */
@@ -82,6 +140,7 @@ class SubWizardViewModel(
 
     /** 칩 고르기 — MULTI 는 켜고 끄기, 그 밖은 하나만(다시 누르면 비움 — 선택 항목만). */
     fun toggle(field: SubField, value: String) {
+        if (payLocked && field.id == SubWizardQuestions.SALARY) return
         val a = answer(field.id)
         answers[field.id] = when {
             field.type == SubFieldType.MULTI -> SubAnswer(if (value in a.values) a.values - value else a.values + value)
@@ -125,7 +184,7 @@ class SubWizardViewModel(
         }
     }
 
-    val canSubmit: Boolean get() = !submitting && !uploading && firstMissing() == null && timeError() != true && title.isNotBlank()
+    val canSubmit: Boolean get() = loaded && !submitting && !uploading && firstMissing() == null && timeError() != true && title.isNotBlank()
 
     var targetLabel: (String) -> String = { it }
     var titleTemplate: String = "%1\$s%2\$s"
@@ -141,6 +200,7 @@ class SubWizardViewModel(
     fun submit() {
         if (!canSubmit) return
         submitting = true
+        if (editId != null && editSub != null) { submitEdit(editId, editSub); return }
         val draft = SubDraft(
             title = title.trim(),
             academy = academy.trim().ifBlank { null },
@@ -165,5 +225,38 @@ class SubWizardViewModel(
                 is ApiResult.Error -> { submitting = false; _events.tryEmit(SubWizardEvent.Failed(r.message)) }
             }
         }
+    }
+
+    /** ★ 2026-11-08 묶음 3 — 수정 저장(웹 buildPayload isEdit — 빈 칸은 보내지 않고, 급여만 비우면 null 로 지운다. 긴급 공고는 급여를 보내지 않는다). */
+    private fun submitEdit(id: Long, edit: EditSubUseCase) {
+        val u = SubUpdate(
+            title = title.trim(),
+            academy = academy.trim().ifBlank { null },
+            genre = one(SubWizardQuestions.GENRE).orEmpty(),
+            target = one(SubWizardQuestions.TARGET).orEmpty(),
+            fields = answer(SubWizardQuestions.FIELDS).values,
+            scheduleType = one(SubWizardQuestions.SCHEDULE),
+            classDate = one(SubWizardQuestions.DATE).orEmpty(),
+            classTime = classTime(),
+            classCount = one(SubWizardQuestions.COUNT)?.toIntOrNull()?.takeIf { it > 0 },
+            region = one(SubWizardQuestions.REGION),
+            regionCode = answer(SubWizardQuestions.REGION).regionCode,
+            salary = one(SubWizardQuestions.SALARY),
+            sendSalary = !dispatchLocked,
+            career = one(SubWizardQuestions.CAREER),
+            description = answer(SubWizardQuestions.DESC).text?.ifBlank { null },
+            image = answer(SubWizardQuestions.IMAGE).text?.ifBlank { null },
+        )
+        viewModelScope.launch {
+            when (val r = edit.save(id, u)) {
+                is ApiResult.Success -> _events.tryEmit(SubWizardEvent.Updated(id))
+                is ApiResult.Error -> { submitting = false; _events.tryEmit(SubWizardEvent.Failed(r.message)) }
+            }
+        }
+    }
+
+    companion object {
+        /** Koin 이름 — 수정 모드 ViewModel(AppModule). */
+        const val EDIT = "subEdit"
     }
 }
