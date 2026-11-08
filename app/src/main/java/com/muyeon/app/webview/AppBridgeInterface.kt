@@ -333,7 +333,9 @@ object NativeActionRouter {
                 com.muyeon.app.ui.transfer.TransferActivity.startEditor(activity, d.optString("id").toIntOrNull()?.takeIf { it > 0 })
             "openMyStudioTransfers" -> com.muyeon.app.ui.transfer.TransferActivity.startMine(activity)
             "openAcademyProfile" -> {
-                val aid = d.optString("academyId").toIntOrNull() ?: return true
+                // id 없음(AI 도우미 '학원 정보 관리' 메뉴) = 내 학원 정보 관리 화면(무반응이던 것).
+                val aid = d.optString("academyId").toIntOrNull()
+                    ?: return true.also { com.muyeon.app.ui.main.MainActivity.openPath(activity, "/academyProfile") }
                 com.muyeon.app.ui.academy.AcademyProfileActivity.start(activity, aid)
             }
             // 학원↔강사 소속 — 네이티브 이식 완료(iOS AcademyTeachersView / AcademyInvitesView)
