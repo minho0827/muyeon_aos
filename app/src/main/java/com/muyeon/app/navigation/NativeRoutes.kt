@@ -80,6 +80,8 @@ object NativeRoutes {
             "/likes" -> return Target.Route(Screen.Likes.route, auth = true)
             "/myReservations" -> return Target.Route(Screen.MyReservations.route, auth = true)
             "/dancers" -> return Target.Route(Screen.Dancers.route)
+            // 본인확인 표준창 복귀(?niceToken=)는 웹 화면이 읽는 주소라 앱 화면으로 바꾸지 않는다(앱은 자기 웹창에서 가로챈다).
+            "/profileEdit" -> if (query.isEmpty()) return Target.Route(Screen.ProfileEdit.route, auth = true)
             "/setting" -> return Target.Route(Screen.Settings.route)
             "/blockedUsers" -> return Target.Route(Screen.BlockedUsers.route, auth = true)
             "/myApplications" -> return Target.Route(Screen.MyApplications.route, auth = true)

@@ -63,6 +63,8 @@ val domainModule = module {
     factory { com.muyeon.domain.usecase.application.ReceivedApplicationsUseCase(get()) }
     // 무용수 프로필 열람
     factory { com.muyeon.domain.usecase.dancer.DancersUseCase(get()) }
+    // 개인정보 수정
+    factory { com.muyeon.domain.usecase.account.EditAccountUseCase(get()) }
     // 신고·차단
     factory { ReportUseCase(get()) }
     factory { BlockUserUseCase(get()) }

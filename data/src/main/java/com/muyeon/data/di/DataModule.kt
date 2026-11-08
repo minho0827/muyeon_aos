@@ -32,6 +32,7 @@ val dataModule = module {
     single<com.muyeon.domain.repository.ReservationRepository> { com.muyeon.data.repository.ReservationRepositoryImpl(get(), get()) }
     single<com.muyeon.domain.repository.ApplicationRepository> { com.muyeon.data.repository.ApplicationRepositoryImpl(get(), get()) }
     single<com.muyeon.domain.repository.DancerRepository> { com.muyeon.data.repository.DancerRepositoryImpl(get(), get()) }
+    single<com.muyeon.domain.repository.AccountRepository> { com.muyeon.data.repository.AccountRepositoryImpl(get(), get()) }
     single<com.muyeon.domain.repository.SupportRepository> { com.muyeon.data.repository.SupportRepositoryImpl(get(), get()) }
     single<com.muyeon.domain.repository.SafetyRepository> { com.muyeon.data.repository.SafetyRepositoryImpl(get(), get()) }
 }

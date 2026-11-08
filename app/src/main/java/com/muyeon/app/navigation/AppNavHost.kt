@@ -289,6 +289,14 @@ fun AppNavHost(
                 onMembership = { native("openMembership", org.json.JSONObject()) },
             )
         }
+        // ★ 2026-11-08 개인정보 수정(웹 /profileEdit) — 회원유형은 셸의 유형 화면(MY 머리와 같은 길).
+        composable(Screen.ProfileEdit.route) {
+            com.muyeon.app.ui.account.ProfileEditScreen(
+                onClose = { navController.popBackStack() },
+                onOpenPath = onOpenPath,
+                onMemberType = { mainViewModel.onTypePicked(com.muyeon.app.ui.main.MainViewModel.TYPE_MANAGE) },
+            )
+        }
         // ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 /lessonList).
         composable(
             Screen.LessonList.route,

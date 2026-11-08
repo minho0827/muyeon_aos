@@ -139,6 +139,14 @@ object ApiEndpoints {
         const val MY_POSTINGS = "$API/me/postings"           // GET → 내 공고(kind=CASTING 만 고른다)
     }
 
+    /** ★ 2026-11-08 개인정보 수정(웹 ProfileEdit) — auth.controller.ts · identity.controller.ts · uploads.controller.ts. */
+    object Account {
+        const val ME = "$API/auth/me"                                   // GET 내 정보 · PATCH { name?, image }
+        const val LINK_IDENTITY = "$API/auth/me/identity"               // POST { identityToken } → 갱신된 내 정보
+        const val NICE_LINK_START = "$API/identity/nice/link/start"     // POST { returnTo } → { authUrl } (로그인 회원 본인확인)
+        const val UPLOAD_IMAGE = "$API/uploads/image"                   // POST multipart file → { url }
+    }
+
     /** regions.controller.ts */
     object Regions {
         const val NEAREST = "$API/regions/nearest"           // GET lat·lng → Region | null

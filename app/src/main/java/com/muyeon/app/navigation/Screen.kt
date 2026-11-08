@@ -102,6 +102,9 @@ sealed class Screen(val route: String) {
         fun build(id: Long) = "dancers/$id"
     }
 
+    /** 개인정보 수정(웹 /profileEdit). */
+    data object ProfileEdit : Screen("profileEdit")
+
     /** 홈 '전체보기' 레슨 목록(웹 /lessonList?title=&type=). */
     data object LessonList : Screen("lessonList?title={title}&type={type}") {
         const val ARG_TITLE = "title"

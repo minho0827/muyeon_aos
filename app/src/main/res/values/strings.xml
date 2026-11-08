@@ -456,6 +456,33 @@
     <string name="dancer_chat_failed">채팅방을 열 수 없어요. 다시 시도해 주세요.</string>
     <string-array name="dancer_week_days"><item>월</item><item>화</item><item>수</item><item>목</item><item>금</item><item>토</item><item>일</item></string-array>
     <string-array name="dancer_time_rows"><item>오전</item><item>오후</item><item>저녁</item></string-array>
+    <!-- ★ 2026-11-08 개인정보 수정(웹 ProfileEdit) -->
+    <string name="account_title">개인정보 수정</string>
+    <string name="account_head">%1$s님의 정보를 수정해 주세요</string>
+    <string name="account_photo_change">사진 바꾸기</string>
+    <string name="account_photo_remove">사진 지우기</string>
+    <string name="account_password">비밀번호</string>
+    <string name="account_password_change">비밀번호 변경</string>
+    <string name="account_email">이메일(아이디)</string>
+    <string name="account_member_type">회원유형</string>
+    <string name="account_member_general">일반회원</string>
+    <string name="account_member_change">변경/인증 ›</string>
+    <string name="account_name">이름</string>
+    <string name="account_name_placeholder">이름을 입력해 주세요</string>
+    <string name="account_name_locked">휴대폰 본인인증으로 등록된 이름이에요. 바꾸려면 아래 휴대폰 번호의 [변경]으로 본인인증을 다시 해 주세요.</string>
+    <string name="account_phone">휴대폰 번호</string>
+    <string name="account_phone_placeholder">본인인증 후 자동으로 채워져요</string>
+    <string name="account_phone_change">휴대폰 번호 변경 (본인인증)</string>
+    <string name="account_phone_register">본인인증하고 번호 등록</string>
+    <string name="account_identity_busy">이동 중…</string>
+    <string name="account_phone_verified">✓ 본인인증이 완료된 번호예요. 바꾸려면 새 번호로 본인인증을 다시 해 주세요.</string>
+    <string name="account_phone_unverified">아직 본인인증을 하지 않은 번호예요. 본인인증을 하면 실명과 번호가 인증된 값으로 바뀌어요.</string>
+    <string name="account_phone_none">본인인증을 하면 실명과 휴대폰번호가 등록돼요. 커뮤니티·구인구직에는 실명이 표시돼요.</string>
+    <string name="account_identity_hint">인증 창이 열려요. 그만두려면 인증 창의 [취소]나 뒤로가기를 누르면 이 화면으로 돌아와요.</string>
+    <string name="account_identity_title">휴대폰 본인인증</string>
+    <string name="account_leave_q">수정한 내용을 저장하지 않고 나갈까요?</string>
+    <string name="account_leave_body">나가면 고친 내용이 사라져요.</string>
+    <string name="account_leave">나가기</string>
     <!-- ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 LessonListView) -->
     <string name="lesson_list_title">레슨</string>
     <string name="lesson_list_empty">등록된 레슨이 없어요.</string>
