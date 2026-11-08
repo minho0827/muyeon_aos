@@ -1,5 +1,7 @@
 package com.muyeon.app.webview
 
+import com.muyeon.app.ui.common.applyEdgeToEdge
+
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -191,6 +193,7 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         liveCount++
+        applyEdgeToEdge()
         super.onCreate(savedInstanceState)
         pendingAfterLogin = com.muyeon.app.ui.common.market.LoginResume.fromBundle(savedInstanceState?.getBundle(STATE_AFTER_LOGIN))
         setContentView(R.layout.activity_webview)

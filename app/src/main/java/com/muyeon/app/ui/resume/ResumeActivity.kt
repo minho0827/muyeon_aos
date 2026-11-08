@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.resume
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -136,7 +138,7 @@ class ResumeActivity : ResultActivity() {
         val editRating = intent.getIntExtra(EXTRA_RATING, 0)
         val editContent = intent.getStringExtra(EXTRA_CONTENT).orEmpty()
 
-        setContent {
+        setEdgeContent {
             val nav = rememberNavController()
             com.muyeon.app.analytics.TrackNavigation("Resume", nav)
             val token = remember { TokenManager.getAccessToken(this) }

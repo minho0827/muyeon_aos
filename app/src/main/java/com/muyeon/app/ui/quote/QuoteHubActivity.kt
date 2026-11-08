@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.quote
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -72,7 +74,7 @@ class QuoteHubActivity : ResultActivity() {
         val deepQuoteId = intent.getIntExtra(EXTRA_QUOTE_ID, 0)
         val deepResponseId = intent.getIntExtra(EXTRA_RESPONSE_ID, 0).takeIf { it > 0 }
 
-        setContent {
+        setEdgeContent {
             val nav = rememberNavController()
             com.muyeon.app.analytics.TrackNavigation("QuoteHub", nav)
             val token = remember { TokenManager.getAccessToken(this) }

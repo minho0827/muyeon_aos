@@ -1,5 +1,9 @@
 package com.muyeon.app.ui.onboarding
 
+import com.muyeon.app.ui.common.applyEdgeToEdge
+
+import com.muyeon.app.ui.common.setEdgeContent
+
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -96,6 +100,7 @@ class OnboardingActivity : ComponentActivity() {
     private var startRoute: String = "manage"
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyEdgeToEdge()
         super.onCreate(savedInstanceState)
         // 시스템 뒤로가기도 닫기와 같은 경로로 — 쌓아둔 웹 콜백을 흘려보내고 나간다.
         onBackPressedDispatcher.addCallback(this) { closeAndFlush() }
@@ -108,7 +113,7 @@ class OnboardingActivity : ComponentActivity() {
         val ownerName = intent.getStringExtra(EXTRA_OWNER_NAME).orEmpty()
         val activeType = intent.getStringExtra(EXTRA_ACTIVE_TYPE)?.ifEmpty { null } ?: "GENERAL"
 
-        setContent {
+        setEdgeContent {
             val nav = rememberNavController()
             com.muyeon.app.analytics.TrackNavigation("Onboarding", nav)
             navRef = nav

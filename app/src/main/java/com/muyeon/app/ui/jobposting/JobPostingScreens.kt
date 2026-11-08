@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.jobposting
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import com.muyeon.app.ui.common.appliedPills
 import com.muyeon.app.ui.common.muyeonCardBorder
 import com.muyeon.app.result.launchScreen
@@ -593,7 +595,7 @@ class JobPostingActivity : com.muyeon.app.result.ResultActivity() {
         val route = intent.getStringExtra(EXTRA_ROUTE) ?: "list"
         val id = intent.getIntExtra(EXTRA_ID, 0)
 
-        setContent {
+        setEdgeContent {
             val nav = rememberNavController()
             com.muyeon.app.analytics.TrackNavigation("JobPosting", nav)
             val api = remember { JobPostingApi(TokenManager.getAccessToken(this)) }

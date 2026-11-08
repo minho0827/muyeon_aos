@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.membership
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import com.muyeon.app.result.launchScreen
 import android.content.Context
 import android.content.Intent
@@ -452,7 +454,7 @@ class MembershipPerformanceActivity : com.muyeon.app.result.ResultActivity() {
         super.onCreate(savedInstanceState)
         val requested = intent.getStringExtra(EXTRA_MEMBER_TYPE).orEmpty()
         val memberType = requested.ifEmpty { ActiveRole.current(this) }
-        setContent {
+        setEdgeContent {
             val api = remember { MembershipPerformanceApi(TokenManager.getAccessToken(this)) }
             MembershipPerformanceScreen(api = api, memberType = memberType, onClose = { finish() })
         }

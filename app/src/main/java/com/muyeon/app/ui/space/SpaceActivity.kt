@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.space
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -44,7 +46,7 @@ class SpaceActivity : ResultActivity() {
         val date = intent.getStringExtra(EXTRA_DATE).orEmpty()
         val fromReservation = intent.getBooleanExtra(EXTRA_FROM_RESERVATION, false)
 
-        setContent {
+        setEdgeContent {
             val api = remember { SpaceApi(this) }
             SpaceDetailScreen(
                 api = api,

@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.quote
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -37,7 +39,7 @@ class QuoteBrowseActivity : ResultActivity() {
         super.onCreate(savedInstanceState)
         // 견적 요청 둘러보기(응답)는 강사·학원 전용 — 무용수 유형이면 안내 후 종료(2026-09-26 정책).
         if (!ActiveRole.allowLessonProvider(this)) { finish(); return }
-        setContent {
+        setEdgeContent {
             val api = remember { QuoteApi(TokenManager.getAccessToken(this)) }
             // 레슨 설정(견적 수신 조건)에서 돌아오면 바뀐 조건으로 다시 읽는다.
             var prefsReload by rememberSaveable { mutableIntStateOf(0) }

@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.lesson
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import com.muyeon.app.result.ResultKeys
 import com.muyeon.app.result.launchScreen
 import com.muyeon.app.result.rememberResultLauncher
@@ -305,7 +307,7 @@ class LessonBrowseActivity : com.muyeon.app.result.ResultActivity() {
         val route = intent.getStringExtra(EXTRA_ROUTE) ?: "browse"
         val id = intent.getIntExtra(EXTRA_ID, 0)
 
-        setContent {
+        setEdgeContent {
             val api = remember { LessonBrowseApi(TokenManager.getAccessToken(this)) }
             // 강사 프로필(ResumeActivity)에서 후기를 쓰고 돌아오면 후기가 보이는 화면을 다시 읽는다.
             var reviewsReload by rememberSaveable { mutableIntStateOf(0) }

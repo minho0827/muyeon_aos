@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.studio
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import com.muyeon.app.result.launchScreen
 import android.content.Context
 import android.content.Intent
@@ -64,7 +66,7 @@ class StudioActivity : com.muyeon.app.result.ResultActivity() {
         super.onCreate(savedInstanceState)
         val route = intent.getStringExtra(EXTRA_ROUTE) ?: "hub"
 
-        setContent {
+        setEdgeContent {
             // 학원 운영 도구는 프로 멤버십 전용(2026-10-07). 서버는 회원·수강권·매출 API 를 막지만
             //  일정 API 는 레슨 달력과 공용이라 막지 않는다 → 화면 진입 자체를 여기서 막는다.
             //  iOS StudioProGate 대응. null=확인 중.

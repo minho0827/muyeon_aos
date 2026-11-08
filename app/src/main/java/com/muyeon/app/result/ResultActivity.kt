@@ -1,5 +1,7 @@
 package com.muyeon.app.result
 
+import com.muyeon.app.ui.common.applyEdgeToEdge
+
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -61,6 +63,8 @@ abstract class ResultActivity : ComponentActivity(), ResultHost {
         get() = intent?.getBooleanExtra(ResultKeys.EXTRA_FROM_NATIVE, false) == true
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // ★ 2026-11-08 모든 기능 화면 edge-to-edge(setEdgeContent 가 내용을 바·키보드에서 띄운다).
+        applyEdgeToEdge()
         super.onCreate(savedInstanceState)
         savedInstanceState?.getStringArrayList(STATE_KEYS)?.let { sessionKeys.addAll(it) }
         savedInstanceState?.getBundle(STATE_PAYLOAD)?.let { sessionPayload.putAll(it) }

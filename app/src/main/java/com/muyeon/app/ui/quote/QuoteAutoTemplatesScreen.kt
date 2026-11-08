@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.quote
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -98,7 +100,7 @@ class QuoteAutoTemplatesActivity : com.muyeon.app.result.ResultActivity() {
         if (!ActiveRole.allowLessonProvider(this)) { finish(); return }
         // 처음 열릴 때만(회전 등 재생성 땐 다시 안 연다).
         if (savedInstanceState == null && intent.getBooleanExtra(EXTRA_START_NEW, false)) newEditorSignal = 1
-        setContent {
+        setEdgeContent {
             val api = remember { AutoQuoteApi(TokenManager.getAccessToken(this)) }
             QuoteAutoTemplatesScreen(
                 api = api,

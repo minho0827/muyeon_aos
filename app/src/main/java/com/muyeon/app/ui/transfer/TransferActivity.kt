@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.transfer
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -58,7 +60,7 @@ class TransferActivity : ResultActivity() {
             else -> "list"
         }
 
-        setContent {
+        setEdgeContent {
             val nav = rememberNavController()
             com.muyeon.app.analytics.TrackNavigation("StudioTransfer", nav)
             val api = remember { TransferApi(this) }

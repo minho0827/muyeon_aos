@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.notification
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import com.muyeon.app.ui.common.muyeonCardBorder
 import android.content.Context
 import android.content.Intent
@@ -243,7 +245,7 @@ class NotificationActivity : ResultActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
+        setEdgeContent {
             val api = remember {
                 // 활동유형은 서버가 칩 구성을 정하는 기준이다(X-Active-Type).
                 NotificationApi(TokenManager.getAccessToken(this), ActiveRole.current(this))

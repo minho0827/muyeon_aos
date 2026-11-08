@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.academy
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import com.muyeon.app.result.launchScreen
 import android.content.Context
 import android.content.Intent
@@ -301,7 +303,7 @@ class AcademyProfileActivity : com.muyeon.app.result.ResultActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val id = intent.getIntExtra(EXTRA_ID, 0)
-        setContent {
+        setEdgeContent {
             val token = remember { TokenManager.getAccessToken(this) }
             AcademyProfileScreen(
                 token, id,

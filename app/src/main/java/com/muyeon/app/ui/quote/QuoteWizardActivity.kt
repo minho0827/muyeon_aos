@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.quote
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import com.muyeon.app.result.launchScreen
 import android.content.Context
 import android.content.Intent
@@ -88,7 +90,7 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
             intent.getStringExtra(EXTRA_REGION_CODE).orEmpty(),
         )
 
-        setContent {
+        setEdgeContent {
             // 최초 1회 인트로("강사를 찾고 계신가요?") — 종류 선택으로 바로 떨어지는 갑작스러움 해소.
             //  강사 지정(1:1) 요청은 프로필 맥락이 있어 스킵(iOS presentQuoteWizard 규칙 동일).
             val prefs = remember { getSharedPreferences(QUOTE_PREFS, MODE_PRIVATE) }

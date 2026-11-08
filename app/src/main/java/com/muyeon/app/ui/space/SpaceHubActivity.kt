@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.space
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -59,7 +61,7 @@ class SpaceHubActivity : ResultActivity() {
             else -> "list"
         }
 
-        setContent {
+        setEdgeContent {
             val nav = rememberNavController()
             com.muyeon.app.analytics.TrackNavigation("SpaceHub", nav)
             val api = remember { SpaceApi(this) }

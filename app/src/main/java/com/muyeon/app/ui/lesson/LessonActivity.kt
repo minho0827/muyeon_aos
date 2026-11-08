@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.lesson
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -95,7 +97,7 @@ class LessonActivity : ResultActivity() {
         }
         if (!allowed) { finish(); return }
 
-        setContent {
+        setEdgeContent {
             val nav = rememberNavController()
             com.muyeon.app.analytics.TrackNavigation("Lesson", nav)
             val token = remember { TokenManager.getAccessToken(this) }

@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.castingstage
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -44,7 +46,7 @@ class CastingStageActivity : ResultActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
+        setEdgeContent {
             val nav = rememberNavController()
             com.muyeon.app.analytics.TrackNavigation("CastingStage", nav)
             val r = StageRoutes.ACTIVITY

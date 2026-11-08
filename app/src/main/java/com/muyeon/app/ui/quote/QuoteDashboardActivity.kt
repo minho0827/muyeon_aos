@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.quote
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -61,7 +63,7 @@ class QuoteDashboardActivity : ResultActivity() {
         // 레슨 운영 허브는 강사·학원 전용 — 무용수 유형이면 안내 후 종료(2026-09-26 정책).
         if (isPro && !ActiveRole.allowLessonProvider(this)) { finish(); return }
 
-        setContent {
+        setEdgeContent {
             val token = remember { TokenManager.getAccessToken(this) }
             val api = remember { QuoteApi(token) }
             val autoApi = remember { AutoQuoteApi(token) }

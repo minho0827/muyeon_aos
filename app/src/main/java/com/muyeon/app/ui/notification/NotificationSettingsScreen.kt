@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.notification
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import com.muyeon.app.ui.common.muyeonCardBorder
 import com.muyeon.app.result.launchScreen
 import android.app.Activity
@@ -395,7 +397,7 @@ class NotificationSettingsActivity : com.muyeon.app.result.ResultActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
+        setEdgeContent {
             val api = remember {
                 NotificationApi(TokenManager.getAccessToken(this), ActiveRole.current(this))
             }

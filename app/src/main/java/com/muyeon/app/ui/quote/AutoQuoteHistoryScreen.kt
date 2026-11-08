@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.quote
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -282,7 +284,7 @@ class AutoQuoteHistoryActivity : com.muyeon.app.result.ResultActivity() {
         val initialMonth = intent.getStringExtra(EXTRA_MONTH)?.takeIf { AutoQuoteMonths.isValid(it) }
             ?: AutoQuoteMonths.current()
 
-        setContent {
+        setEdgeContent {
             val nav = rememberNavController()
             com.muyeon.app.analytics.TrackNavigation("AutoQuoteHistory", nav)
             val api = remember { QuoteApi(TokenManager.getAccessToken(this)) }

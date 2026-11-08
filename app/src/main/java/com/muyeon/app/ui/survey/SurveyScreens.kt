@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.survey
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import com.muyeon.app.result.launchScreen
 import android.content.Context
 import android.content.Intent
@@ -359,7 +361,7 @@ class SurveyActivity : com.muyeon.app.result.ResultActivity() {
         val canRespond = intent.getBooleanExtra(EXTRA_CAN_RESPOND, true)
         val recipientId = intent.getIntExtra(EXTRA_RECIPIENT, 0)
 
-        setContent {
+        setEdgeContent {
             val nav = rememberNavController()
             com.muyeon.app.analytics.TrackNavigation("Survey", nav)
             val api = remember { SurveyApi(TokenManager.getAccessToken(this)) }

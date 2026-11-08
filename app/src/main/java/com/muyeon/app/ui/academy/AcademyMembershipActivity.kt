@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.academy
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -39,7 +41,7 @@ class AcademyMembershipActivity : ResultActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val route = intent.getStringExtra(EXTRA_ROUTE) ?: "invites"
-        setContent {
+        setEdgeContent {
             val api = remember { AcademyTeacherApi(TokenManager.getAccessToken(this)) }
             if (route == "teachers") {
                 AcademyTeachersScreen(api = api, onClose = { finish() })

@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.membership
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import com.muyeon.app.result.launchScreen
 import android.content.Context
 import android.content.Intent
@@ -536,7 +538,7 @@ class MembershipActivity : com.muyeon.app.result.ResultActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
+        setEdgeContent {
             val api = remember { MembershipApi(TokenManager.getAccessToken(this)) }
             MembershipScreen(api, onClose = { finish() })
         }

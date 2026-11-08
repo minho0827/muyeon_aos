@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.chat
 
+import com.muyeon.app.ui.common.setEdgeContent
+
 import androidx.lifecycle.viewmodel.compose.viewModel
 import android.content.Context
 import android.content.Intent
@@ -133,7 +135,7 @@ class ChatActivity : ResultActivity() {
         ChatSocketManager.connect(this)
         ChatSocketLifecycleObserver.ensureAttached(this)
 
-        setContent {
+        setEdgeContent {
             val nav = rememberNavController()
             navController = nav
             com.muyeon.app.analytics.TrackNavigation("Chat", nav)
