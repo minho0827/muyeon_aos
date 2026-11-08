@@ -359,11 +359,16 @@ private fun AssistantFab(modifier: Modifier, onWeb: Boolean, onOpen: () -> Unit)
     val density = LocalDensity.current
     var menu by remember { mutableStateOf(false) }
     val screenDp = with(density) { context.resources.displayMetrics.heightPixels.toDp().value }
+    // ★ 2026-11-08 바깥 칸(자르지 않음) — 빨간 점이 원 테두리 밖으로 반쯤 걸치게(원 안에 두면 잘렸다).
     Box(
         modifier
             .padding(end = 16.dp)
             .offset { IntOffset(0, -with(density) { AssistantOverlay.bottomFor(onWeb).dp.roundToPx() }) }
-            .size(52.dp)
+            .size(52.dp),
+    ) {
+    Box(
+        Modifier
+            .fillMaxSize()
             .shadow(6.dp, CircleShape)
             .clip(CircleShape)
             .background(Color.White)
@@ -388,14 +393,15 @@ private fun AssistantFab(modifier: Modifier, onWeb: Boolean, onOpen: () -> Unit)
     ) {
         Icon(Icons.Filled.Search, contentDescription = if (AssistantBadges.total > 0) "검색, 새 소식 있음" else "검색",
             tint = AppColor.Primary, modifier = Modifier.size(22.dp))
-        // 안읽음(알림·채팅·받은 견적)이 있으면 빨간 점 — 소켓으로 실시간(iOS 와 같음).
-        if (AssistantBadges.total > 0) {
-            Box(Modifier.align(Alignment.TopEnd).padding(top = 3.dp, end = 3.dp).size(11.dp).clip(CircleShape)
-                .background(Color.White).padding(2.dp).clip(CircleShape).background(Color(0xFFFF3B30)).testTag("assistant.floating.dot"))
-        }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             DropdownMenuItem(text = { Text("이번에는 숨기기") }, onClick = { menu = false; AssistantOverlay.hide() })
         }
+    }
+    // 안읽음(알림·채팅·받은 견적)이 있으면 빨간 점 — 원 오른쪽 위 테두리 밖에 걸친다(iOS 와 같음). 소켓으로 실시간.
+    if (AssistantBadges.total > 0) {
+        Box(Modifier.align(Alignment.TopEnd).offset(x = 2.dp, y = (-2).dp).size(13.dp).clip(CircleShape)
+            .background(Color.White).padding(2.dp).clip(CircleShape).background(Color(0xFFFF3B30)).testTag("assistant.floating.dot"))
+    }
     }
 }
 
