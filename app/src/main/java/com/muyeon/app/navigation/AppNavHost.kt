@@ -129,6 +129,28 @@ fun AppNavHost(
                 },
             )
         }
+        // ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 /lessonList).
+        composable(
+            Screen.LessonList.route,
+            arguments = listOf(
+                navArgument(Screen.LessonList.ARG_TITLE) { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument(Screen.LessonList.ARG_TYPE) { type = NavType.StringType; nullable = true; defaultValue = null },
+            ),
+        ) { e ->
+            val title = e.arguments?.getString(Screen.LessonList.ARG_TITLE).orEmpty()
+            val type = e.arguments?.getString(Screen.LessonList.ARG_TYPE)?.takeIf { it.isNotBlank() }
+            com.muyeon.app.ui.lessonlist.LessonListScreen(
+                title = title,
+                viewModel = org.koin.androidx.compose.koinViewModel(parameters = { org.koin.core.parameter.parametersOf(type) }),
+                onBack = { navController.popBackStack() },
+                onOpenLesson = { id ->
+                    context.findActivity()?.let { a ->
+                        com.muyeon.app.webview.NativeActionRouter.open(a, "openLessonDetail", org.json.JSONObject().put("lessonId", id.toString()))
+                    }
+                },
+                onLogin = { onOpenWeb(WebPaths.login(Screen.LessonList.build(title, type).let { "/$it" })) },
+            )
+        }
         composable(
             Screen.PerformanceDetail.route,
             arguments = listOf(navArgument(Screen.PerformanceDetail.ARG_ID) { type = NavType.StringType }),

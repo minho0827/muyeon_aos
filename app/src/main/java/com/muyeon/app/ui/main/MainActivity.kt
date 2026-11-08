@@ -203,6 +203,8 @@ class MainActivity : ComponentActivity(), ResultHost {
         val t = com.muyeon.app.navigation.NativeRoutes.resolve(path)
         if (t is com.muyeon.app.navigation.NativeRoutes.Target.Action &&
             com.muyeon.app.webview.NativeActionRouter.open(this, t.action, org.json.JSONObject(t.data))) return
+        // ★ 2026-11-08 탭 위 앱 화면(공지·FAQ·찜 … MY 메뉴에서 옮긴 화면)도 웹 창 없이 바로.
+        if (t is com.muyeon.app.navigation.NativeRoutes.Target.Route) { viewModel.openRoute(t.route); return }
         WebViewActivity.startPath(this, path)
     }
 

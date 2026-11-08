@@ -41,6 +41,8 @@ object NativeRoutes {
             "/casting/all" -> return Target.Action("openCastingStage", mapOf("screen" to "castingList"))
             "/teachers" -> return Target.Action("openHomeTeachers")
             "/lessons/create" -> return Target.Action("openLessonCreate")
+            // ★ 2026-11-08 홈 '전체보기' 레슨 목록 — 쿼리(title·type)가 있어도 앱 화면.
+            "/lessonList" -> return Target.Route(Screen.LessonList.build(query["title"]?.let(android.net.Uri::decode), query["type"]))
         }
         COMMUNITY_POST.find(p)?.let { return Target.Route(Screen.CommunityPost.build(it.groupValues[1].toLong())) }
         if (p.trimEnd('/') == "/community" && !clean.contains('?')) return Target.Route(Screen.CommunityList.route)

@@ -29,6 +29,18 @@ interface HomeApi {
     @GET(ApiEndpoints.Home.LESSON_PAGE)
     suspend fun lessonPage(@Query("genre") genre: String?, @Query("cursor") cursor: String?, @Query("limit") limit: Int): Response<CursorPageDto<HomeLessonDto>>
 
+    /**
+     * ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 LessonListView) — 홈 칸과 같은 조건.
+     *   추천 = lessonKind=REGULAR · 체험 = lessonKind=EXPERIENCE&academyOnly=true · 원데이 = scheduled=true(서버가 7일 안 회차로 거른다).
+     */
+    @GET(ApiEndpoints.Home.LESSON_PAGE)
+    suspend fun lessonListPage(
+        @Query("genre") genre: String?, @Query("genreMatch") genreMatch: String?,
+        @Query("lessonKind") lessonKind: String?, @Query("academyOnly") academyOnly: Boolean?, @Query("scheduled") scheduled: Boolean?,
+        @Query("regionCode") regionCode: String?, @Query("sido") sido: String?,
+        @Query("cursor") cursor: String?, @Query("limit") limit: Int,
+    ): Response<CursorPageDto<HomeLessonDto>>
+
     /** 배열 또는 { items } — 저장소가 읽는다. */
     @GET(ApiEndpoints.Home.JOBS) suspend fun jobs(): Response<ResponseBody>
     @GET(ApiEndpoints.Home.SUBS) suspend fun subs(): Response<ResponseBody>

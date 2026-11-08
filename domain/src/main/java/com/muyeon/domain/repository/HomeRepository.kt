@@ -31,6 +31,8 @@ interface HomeRepository {
 
     suspend fun academyProfile(): ApiResult<AcademyHomeProfile>
     suspend fun recommendedTeachers(): ApiResult<List<TeacherCard>>
+    /** 홈 '전체보기' 레슨 목록 — [type] popular·experience·oneday(그 밖은 조건 없음). */
+    suspend fun lessonListPage(type: String?, genre: String?, region: ActiveRegion?, cursor: String?, limit: Int): ApiResult<com.muyeon.domain.common.CursorPage<HomeLesson>>
     suspend fun myLessons(): ApiResult<List<HomeLesson>>
     suspend fun myOpenJobs(): ApiResult<List<HomeMyJob>>
 

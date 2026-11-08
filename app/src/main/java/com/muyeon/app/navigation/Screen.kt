@@ -50,4 +50,13 @@ sealed class Screen(val route: String) {
         const val ARG_ID = "id"
         fun build(id: Long) = "performance/$id"
     }
+
+    // === ★ 2026-11-08 웹에만 있던 메뉴 화면을 앱으로(탭 위 화면 — 뒤로 가면 있던 자리로) ===
+    /** 홈 '전체보기' 레슨 목록(웹 /lessonList?title=&type=). */
+    data object LessonList : Screen("lessonList?title={title}&type={type}") {
+        const val ARG_TITLE = "title"
+        const val ARG_TYPE = "type"
+        fun build(title: String?, type: String?) =
+            "lessonList?title=${android.net.Uri.encode(title.orEmpty())}&type=${android.net.Uri.encode(type.orEmpty())}"
+    }
 }

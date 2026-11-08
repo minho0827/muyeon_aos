@@ -66,6 +66,8 @@ val viewModelModule = module {
     viewModel { com.muyeon.app.ui.recruit.SubsViewModel(get(), get()) }
     viewModel { p -> com.muyeon.app.ui.subwizard.SubWizardViewModel(get(), get(), get(), p.getOrNull()) }
     viewModel { com.muyeon.app.ui.home.HomeViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    // ★ 2026-11-08 홈 '전체보기' 레슨 목록 — 인자: type(popular·experience·oneday)
+    viewModel { p -> com.muyeon.app.ui.lessonlist.LessonListViewModel(p.getOrNull(), get(), get(), get(), get(), get(), get(), get()) }
     // MY
     viewModel { com.muyeon.app.ui.my.MyViewModel(get(), get(), get(), get(), get(), get(), get()) }
     // 강사

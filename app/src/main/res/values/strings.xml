@@ -231,6 +231,10 @@
     <!-- ★ 2026-11-07 강사 탭(웹 LessonTab 과 같은 말) -->
     <string name="lesson_guide">원하는 전공과 지역의 강사를 찾아\n경력과 레슨 정보를 확인하고 문의해 보세요.</string>
     <string name="lesson_view_grid">그리드 보기</string>
+    <!-- ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 LessonListView) -->
+    <string name="lesson_list_title">레슨</string>
+    <string name="lesson_list_empty">등록된 레슨이 없어요.</string>
+    <string name="lesson_list_genre_empty">%1$s 레슨이 없어요.</string>
     <string name="lesson_view_list">목록 보기</string>
     <string name="lesson_filter">필터</string>
     <string name="lesson_filter_region">지역</string>

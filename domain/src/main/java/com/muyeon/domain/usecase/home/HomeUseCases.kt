@@ -47,6 +47,10 @@ class HomeLessonsUseCase(private val repo: HomeRepository) {
     suspend fun page(genre: String, cursor: String?): ApiResult<CursorPage<HomeLesson>> =
         repo.lessonPage(genre, cursor, PAGE).map { p -> p.copy(items = p.items.clean()) }
 
+    /** 홈 '전체보기' 목록(웹 /lessonList?type=) — [genre] null = 전체. */
+    suspend fun listPage(type: String?, genre: String?, region: ActiveRegion?, cursor: String?): ApiResult<CursorPage<HomeLesson>> =
+        repo.lessonListPage(type, genre, region, cursor, PAGE).map { p -> p.copy(items = p.items.clean()) }
+
     suspend fun notices() = repo.notices().getOrNull().orEmpty().take(NOTICES)
 
     private fun List<HomeLesson>.clean() = filterNot { DemoContent.isDemoTitle(it.title) }
