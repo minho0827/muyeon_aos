@@ -39,6 +39,8 @@ object NativeRoutes {
     private val QUOTE = Regex("^/myQuotes/(\\d+)/?$")
     private val SPACE = Regex("^/spaces/(\\d+)/?$")
     private val RESERVATION = Regex("^/reservations/(\\d+)/?$")
+    // 묶음 5 — 견적 응답(웹 /availableQuotes/:id, ?sent=1 은 제목 힌트라 무시 · ?compose=1 은 로그인 뒤 작성 시트).
+    private val AVAILABLE_QUOTE = Regex("^/availableQuotes/(\\d+)/?$")
 
     fun resolve(path: String?): Target? {
         val clean = path?.substringBefore('#') ?: return null
@@ -152,6 +154,8 @@ object NativeRoutes {
         JOB.find(p)?.let { return Target.Route(Screen.JobDetail.build(it.groupValues[1].toLong())) }
         SUB.find(p)?.let { return Target.Route(Screen.SubDetail.build(it.groupValues[1].toLong())) }
         PERFORMANCE.find(p)?.let { return Target.Route(Screen.PerformanceDetail.build(it.groupValues[1].toLong())) }
+        // 묶음 5 — 견적 응답(요청 하나 보고 견적 보내기).
+        AVAILABLE_QUOTE.find(p)?.let { m -> return Target.Action("openQuoteRespond", buildMap { put("quoteId", m.groupValues[1]); if (query["compose"] == "1") put("compose", "1") }) }
         // 탭 루트는 쿼리가 없을 때만(쿼리 = 웹 화면 상태 지정 — 웹이 그린다).
         if (clean.contains('?')) return null
         return MainTab.fromWebPath(p)?.takeIf { it.nativeReady }?.let { Target.Tab(it) }

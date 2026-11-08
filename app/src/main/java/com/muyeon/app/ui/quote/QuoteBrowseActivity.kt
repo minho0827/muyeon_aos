@@ -18,6 +18,7 @@ import com.muyeon.app.result.rememberResultLauncher
 import com.muyeon.app.utils.TokenManager
 import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.webview.NativeWebRoute
+import com.muyeon.app.ui.quote.respond.QuoteRespondHost
 
 /**
  * 견적 모아보기(강사) 풀스크린 — 웹 `openQuoteBrowse` 브릿지로 진입.
@@ -33,10 +34,36 @@ class QuoteBrowseActivity : ResultActivity() {
         fun intent(context: Context): Intent = Intent(context, QuoteBrowseActivity::class.java)
 
         fun start(context: Context) = context.launchScreen(intent(context))
+
+        // ★ 묶음 5 — 요청 하나(웹 /availableQuotes/:id)를 바로 연다: 요청 상세 · 견적 보내기(QuoteRespondScreen).
+        private const val EXTRA_QUOTE_ID = "quoteId"
+        private const val EXTRA_COMPOSE = "compose"
+
+        /** @param compose 가입·로그인하고 돌아옴 — 요청이 열려 있으면 작성 시트를 바로 연다(웹 초안 quoteRespond:id). */
+        fun requestIntent(context: Context, quoteId: Int, compose: Boolean = false): Intent =
+            intent(context).putExtra(EXTRA_QUOTE_ID, quoteId).putExtra(EXTRA_COMPOSE, compose)
+
+        fun startRequest(context: Context, quoteId: Int, compose: Boolean = false) =
+            context.launchScreen(requestIntent(context, quoteId, compose))
+    }
+
+    /** 다른 화면(채팅방·유형 추가·인증)에서 돌아오면 요청·내 견적 상태를 다시 읽는다(웹 useResultRefresh). */
+    private var respondReload by mutableIntStateOf(0)
+
+    override fun onRestart() {
+        super.onRestart()
+        respondReload++
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val quoteId = intent.getIntExtra(EXTRA_QUOTE_ID, 0)
+        if (quoteId > 0) {
+            // 요청 하나 — 비회원·일반회원·무용수도 공개 상세를 본다(웹과 같다). 유형 게이트는 화면 안에서.
+            val compose = intent.getBooleanExtra(EXTRA_COMPOSE, false)
+            setEdgeContent { QuoteRespondHost(this, quoteId, compose, respondReload) }
+            return
+        }
         // 견적 요청 둘러보기(응답)는 강사·학원 전용 — 무용수 유형이면 안내 후 종료(2026-09-26 정책).
         if (!ActiveRole.allowLessonProvider(this)) { finish(); return }
         setEdgeContent {

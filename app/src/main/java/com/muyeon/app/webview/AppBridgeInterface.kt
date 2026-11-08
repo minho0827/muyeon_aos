@@ -205,6 +205,11 @@ object NativeActionRouter {
                 )
             }
             "openQuoteBrowse" -> com.muyeon.app.ui.quote.QuoteBrowseActivity.start(activity)
+            // 묶음 5 — 요청 하나(웹 /availableQuotes/:id) 상세 · 견적 보내기. 셸 전용(웹 브릿지 계약 아님 — NativeRoutes 가 보낸다).
+            "openQuoteRespond" -> {
+                val quoteId = d.optString("quoteId").toIntOrNull()?.takeIf { it > 0 } ?: return true
+                com.muyeon.app.ui.quote.QuoteBrowseActivity.startRequest(activity, quoteId, compose = d.optString("compose") == "1")
+            }
             // ★ 2026-11-08 앱 안 전용 — 추천 제외한 강사(웹 /recommendBlocks, MY 메뉴).
             "openRecommendBlocks" -> com.muyeon.app.ui.quote.QuoteHubActivity.startRecommendBlocks(activity)
             // 10-26 웹 하단 탭 '캐스팅·무대' → 네이티브 섹션 화면(웹은 nativeCastingStage 표시가 있을 때만 보낸다)

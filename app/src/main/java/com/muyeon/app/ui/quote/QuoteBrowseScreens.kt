@@ -785,12 +785,14 @@ internal fun QuoteRespondSheet(
     quote: QuoteFull,
     attachmentRole: String,                       // TEACHER | ACADEMY
     onDismiss: () -> Unit,
+    /** 메시지 칸 처음 값 — 견적 응답 화면은 자동 인사 템플릿으로 미리 채운다(웹 QuoteRespond 프리필). 모아보기는 빈칸. */
+    initialMessage: String = "",
     // (금액, 예약금, 메시지, attachmentType) → 발송 성공 여부. 실패면 시트를 열어둔 채 버튼을 되살린다.
     onSend: suspend (Int?, Int?, String, String) -> Boolean,
 ) {
     val scope = rememberCoroutineScope()
     var amountText by remember { mutableStateOf("") }
-    var message by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf(initialMessage) }
     var takesDeposit by remember { mutableStateOf(false) }
     var depositAmount by remember { mutableIntStateOf(10_000) }
     // 예약금 한도(관리자 '환불 규정') — 선택지·안내·검사가 이 값을 따른다.
