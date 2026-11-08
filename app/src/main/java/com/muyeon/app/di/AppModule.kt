@@ -105,6 +105,9 @@ val viewModelModule = module {
     // ★ 2026-11-08 로그인 · 아이디 찾기/비밀번호 재설정 — 인자: type(id·pw)
     viewModel { com.muyeon.app.ui.auth.LoginViewModel(get(), get()) }
     viewModel { p -> com.muyeon.app.ui.auth.AccountRecoveryViewModel(p.get(), get(), get()) }
+    // ★ [b1] 이메일 가입(인자: 약관 동의 체크 상태) · 소셜 추가정보(인자: 로그인 응답 이름)
+    viewModel { p -> com.muyeon.app.ui.auth.signup.RegisterViewModel(p.get(), get(), get()) }
+    viewModel { p -> com.muyeon.app.ui.auth.signup.SocialSignupViewModel(p.getOrNull(), get(), get()) }
     // MY
     viewModel { com.muyeon.app.ui.my.MyViewModel(get(), get(), get(), get(), get(), get(), get()) }
     // 강사

@@ -132,6 +132,11 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
      *    redirect 는 웹 주소창(location.search)에서, 강제 로그아웃 안내는 웹 sessionStorage(muyeon.logoutNotice)에서 읽는다.
      */
     private fun handleLoginRoute(path: String): Boolean {
+        // ★ 2026-11-08 [b1] 가입 주소(/signupTerms 가입 모드 · /register · /social-signup)는 앱 가입 화면으로.
+        if (com.muyeon.app.ui.auth.LoginActivity.isSignupPath(path)) { openSignupFromWeb(path); return true }
+        // ★ [b1] 학원 인증 차단 · 시스템 점검 안내도 앱 화면 — 차단은 이 창 위에 띄운다(풀리면 VerifyGate 가 이 창에서 다시 묻는다), 점검은 이 창을 닫는다.
+        if (path.trimEnd('/') == VerifyGate.GATE_PATH) { com.muyeon.app.ui.gate.GateActivity.startVerifyRequired(this); return true }
+        if (path.trimEnd('/') == "/maintenance") { openMaintenanceFromWeb(); return true }
         if (socialPending) {
             if (path == "/oauth/kakao" || path == "/naverAuth") socialReturned = true
             if (com.muyeon.app.ui.auth.LoginActivity.isLoginPath(path)) {
@@ -163,6 +168,45 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
             if ((o?.optInt("i") ?: 0) > 0) webView.evaluateJavascript("history.back()", null) else finish()
         }
         return true
+    }
+
+    /**
+     * ★ [b1] 웹이 가입 주소로 갔다 — 웹 화면이 비치지 않게 가리고, 주소창 쿼리(redirect·mode)와 웹 저장소의 로그인(sessionId·이름)을 읽어
+     *  앱 가입 화면([com.muyeon.app.ui.auth.LoginActivity.startSignup])을 연다. 약관 게이트(mode=gate)면 웹 그대로.
+     *  /social-signup 은 이 창을 닫는다(뒤로 가면 소셜 콜백·웹 게이트가 또 돈다). 그 밖은 SPA 이동이면 이전 화면으로, 아니면 닫는다.
+     */
+    private fun openSignupFromWeb(path: String) {
+        webView.alpha = 0f
+        val js = "(function(){var a=null;try{a=JSON.parse(localStorage.getItem('muyeonAuth')||'null')}catch(e){}" +
+            "var i=0;try{i=(history.state&&history.state.idx)||0}catch(e){}" +
+            "return JSON.stringify({s:location.search,sid:(a&&a.sessionId)||'',n:(a&&a.user&&a.user.name)||'',i:i})})()"
+        webView.evaluateJavascript(js) { raw ->
+            if (isFinishing) return@evaluateJavascript
+            val o = runCatching { org.json.JSONObject(org.json.JSONArray("[$raw]").getString(0)) }.getOrNull()
+            val search = o?.optString("s").orEmpty()
+            if (!com.muyeon.app.ui.auth.LoginActivity.isSignupPath(path, search.removePrefix("?"))) {
+                webView.alpha = 1f
+                return@evaluateJavascript
+            }
+            com.muyeon.app.ui.auth.LoginActivity.startSignup(
+                this, path + search,
+                sessionId = o?.optString("sid")?.takeIf { it.isNotBlank() },
+                userName = o?.optString("n")?.takeIf { it.isNotBlank() },
+            )
+            val social = path.trimEnd('/') == "/social-signup"
+            if (!social && (o?.optInt("i") ?: 0) > 0) webView.evaluateJavascript("history.back()", null) else finish()
+        }
+    }
+
+    /** ★ [b1] 웹 점검 화면 → 앱 점검 화면(웹이 남긴 sessionStorage lastError 를 개발용 상자로 넘긴다). */
+    private fun openMaintenanceFromWeb() {
+        webView.alpha = 0f
+        webView.evaluateJavascript("(function(){try{return sessionStorage.getItem('lastError')||''}catch(e){return ''}})()") { raw ->
+            if (isFinishing) return@evaluateJavascript
+            val err = runCatching { org.json.JSONArray("[$raw]").getString(0) }.getOrNull()?.takeIf { it.isNotBlank() && it != "null" }
+            com.muyeon.app.ui.gate.GateActivity.startMaintenance(this, err)
+            finish()
+        }
     }
 
     /** 소셜 창 — 웹 로그인 화면의 그 버튼을 대신 누른다(웹이 state·redirect 를 만든다). 문서당 한 번, 버튼이 그려질 때까지 기다린다. */
@@ -707,6 +751,11 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
             // ★ 2026-11-08 로그인은 앱 화면이다 — 웹 창 대신 앱 로그인 화면(redirect 를 들고 간다).
             if (com.muyeon.app.ui.auth.LoginActivity.isLoginPath(path)) {
                 com.muyeon.app.ui.auth.LoginActivity.startFromPath(context, path)
+                return
+            }
+            // ★ [b1] 가입 주소도 앱 화면.
+            if (com.muyeon.app.ui.auth.LoginActivity.isSignupPath(path)) {
+                com.muyeon.app.ui.auth.LoginActivity.startSignup(context, path)
                 return
             }
             context.startActivity(

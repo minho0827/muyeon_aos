@@ -21,6 +21,16 @@ class AuthUseCasesTest {
         override suspend fun sendResetCode(email: String) = ApiResult.Success(Unit)
         override suspend fun resetPassword(email: String, code: String, newPassword: String) = ApiResult.Success(Unit)
         override suspend fun agreeTerms(agreements: Map<String, Boolean>) = ApiResult.Success(Unit)
+        override suspend fun sendSignupCode(email: String) = ApiResult.Success(Unit)
+        override suspend fun verifySignupCode(email: String, code: String) = ApiResult.Success(Unit)
+        override suspend fun register(email: String, password: String, name: String, phone: String?, identityToken: String?, agreements: Map<String, Any>): ApiResult<LoginSession> =
+            ApiResult.Success(LoginSession("t", null, "{}", true, false))
+        override suspend fun completeSocial(name: String, identityToken: String?) = ApiResult.Success("{}")
+        override suspend fun niceConfig() = ApiResult.Success(com.muyeon.domain.model.auth.NiceConfig(true, false))
+        override suspend fun startNice(returnTo: String) = ApiResult.Success("")
+        override suspend fun niceResult(token: String) = ApiResult.Success(com.muyeon.domain.model.auth.NiceIdentity(token, "", ""))
+        override suspend fun addRole(role: String) = ApiResult.Success(Unit)
+        override suspend fun submitRoleVerification(role: String, urls: List<String>, academyName: String?, businessNumber: String?, startDate: String?) = ApiResult.Success(false)
     }
 
     @Test fun `로그인 — 빈 칸이면 보내지 않고, 이메일 앞뒤 공백은 지운다`() = runTest {

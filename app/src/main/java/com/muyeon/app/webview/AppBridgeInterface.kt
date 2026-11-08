@@ -430,6 +430,10 @@ object NativeActionRouter {
                 index = d.optString("index").toIntOrNull() ?: 0,
                 allowSave = d.optString("allowSave") == "true",
             )
+            // ★ 2026-11-08 [b1] 가입·학원 인증 차단·점검 앱 화면(NativeRoutes 셸 전용 동작).
+            "openSignup" -> com.muyeon.app.ui.auth.LoginActivity.startSignup(activity, d.optString("path").ifEmpty { "/signupTerms" })
+            "openVerifyRequired" -> com.muyeon.app.ui.gate.GateActivity.startVerifyRequired(activity)
+            "openMaintenance" -> com.muyeon.app.ui.gate.GateActivity.startMaintenance(activity, d.optString("error").ifEmpty { null })
             else -> return false
         }
         return true

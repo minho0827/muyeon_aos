@@ -27,6 +27,7 @@ import com.muyeon.app.webview.WebCallbackQueue
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlinx.coroutines.launch
+import org.koin.android.ext.android.inject
 
 /**
  * 온보딩/회원유형 컨테이너 — 웹 `openRoleManage` / `openRoleVerification` /
@@ -44,6 +45,8 @@ class OnboardingActivity : ComponentActivity() {
         private const val EXTRA_ROLE = "role"
         private const val EXTRA_OWNER_NAME = "ownerName"
         private const val EXTRA_ACTIVE_TYPE = "activeType"
+        /** ★ [b1] 앱 가입·앱 차단 화면에서 열었다 — 웹 콜백 대신 앱이 직접 API(역할 추가·서류 제출) 후 이동. */
+        private const val EXTRA_IN_APP = "completeInApp"
 
         /**
          * @param rolesJson 웹 data.roles — `{"held":[...],"roles":[...]}` 형태의 **JSON 문자열**
@@ -63,15 +66,18 @@ class OnboardingActivity : ComponentActivity() {
          * 회원유형 선택 온보딩(가입 완료 직후, 강제) — `openRoleOnboarding`.
          *  선택 → (인증 필요 유형이면) 서류 첨부 → 웹 __onRoleComplete 통지.
          */
-        fun startRoleOnboarding(context: Context) =
-            context.go(Intent(context, OnboardingActivity::class.java).putExtra(EXTRA_ROUTE, "roleOnboarding"))
+        //  ★ [b1] [completeInApp] = 앱 가입 화면에서 — 웹 __onRoleComplete 가 하던 역할 추가·서류 제출·이동(ROLE_LANDING)을 앱이 한다.
+        fun startRoleOnboarding(context: Context, completeInApp: Boolean = false) =
+            context.go(Intent(context, OnboardingActivity::class.java).putExtra(EXTRA_ROUTE, "roleOnboarding").putExtra(EXTRA_IN_APP, completeInApp))
 
-        fun startVerification(context: Context, role: String?, ownerName: String? = null) =
+        /** ★ [b1] [completeInApp] = 앱 차단 화면(학원 인증하기) — 웹 __onRoleVerify 대신 앱이 서류를 제출하고 차단 상태를 다시 묻는다. */
+        fun startVerification(context: Context, role: String?, ownerName: String? = null, completeInApp: Boolean = false) =
             context.go(
                 Intent(context, OnboardingActivity::class.java)
                     .putExtra(EXTRA_ROUTE, "verify")
                     .putExtra(EXTRA_ROLE, role ?: "")
-                    .putExtra(EXTRA_OWNER_NAME, ownerName ?: ""),
+                    .putExtra(EXTRA_OWNER_NAME, ownerName ?: "")
+                    .putExtra(EXTRA_IN_APP, completeInApp),
             )
 
         /** 약관 동의(강제 게이트) — `openSignupTerms`. */
@@ -151,7 +157,8 @@ class OnboardingActivity : ComponentActivity() {
                         ownerName = ownerName,
                         onClose = { finish() },
                         onDone = { r, urls, academyName, businessNumber, startDate ->
-                            notifyWeb(verifyJs("__onRoleVerify", r, urls, academyName, businessNumber, startDate))
+                            if (completeInApp) verifyInApp(r, urls, academyName, businessNumber, startDate)
+                            else notifyWeb(verifyJs("__onRoleVerify", r, urls, academyName, businessNumber, startDate))
                         },
                     )
                 }
@@ -187,7 +194,7 @@ class OnboardingActivity : ComponentActivity() {
                                 // 온보딩 위에 인증 첨부화면 — 완료 시 온보딩까지 함께 닫고 웹 통지(iOS 와 동일).
                                 nav.navigate("roleOnboardingVerify/$r")
                             } else {
-                                notifyWeb(verifyJs("__onRoleComplete", r, emptyList(), null))
+                                roleComplete(r, emptyList(), null)
                             }
                         },
                     )
@@ -196,14 +203,14 @@ class OnboardingActivity : ComponentActivity() {
                     val code = e.arguments?.getString("role").orEmpty()
                     // 시스템 뒤로가기 = X(건너뛰기)와 같다 — 유형은 이미 골랐으니 미제출로 완료 통지.
                     //  NavHost 기본 동작(선택 화면으로 pop)보다 우선하도록 목적지 안에 둔다.
-                    BackHandler { notifyWeb(verifyJs("__onRoleComplete", code, emptyList(), null)) }
+                    BackHandler { roleComplete(code, emptyList(), null) }
                     RoleVerificationScreen(
                         api, code,
                         // 최초 가입 온보딩 — 여기서만 건너뛰기를 허용한다(닫을 다른 수단이 없다).
                         //  ★ iOS allowSkip:true 와 같은 취지. 빈 목록으로 통지해 '미제출'을 그대로 알린다.
-                        onClose = { notifyWeb(verifyJs("__onRoleComplete", code, emptyList(), null)) },
+                        onClose = { roleComplete(code, emptyList(), null) },
                         onDone = { r, urls, academyName, businessNumber, startDate ->
-                            notifyWeb(verifyJs("__onRoleComplete", r, urls, academyName, businessNumber, startDate))
+                            roleComplete(r, urls, academyName, businessNumber, startDate)
                         },
                         allowSkip = true,
                     )
@@ -240,6 +247,42 @@ class OnboardingActivity : ComponentActivity() {
                     )
                 }
             }
+        }
+    }
+
+    // ── ★ [b1] 앱 완료 모드(앱 가입 · 앱 차단 화면) ──
+    private val completeRole: com.muyeon.domain.usecase.auth.CompleteRoleOnboardingUseCase by inject()
+    private val completeInApp: Boolean get() = intent.getBooleanExtra(EXTRA_IN_APP, false)
+    private var completing = false
+
+    /**
+     * 가입 직후 회원유형 완료 — 웹 콜백(__onRoleComplete) 또는 앱 완료 모드면 같은 일을 앱이:
+     *  역할 추가 → 서류 제출(있으면) → 보유 유형 다시 읽기 → 유형별 화면(ROLE_LANDING · 심사 안내 /mypage?verifySubmitted=1).
+     */
+    private fun roleComplete(role: String, urls: List<String>, academyName: String?, businessNumber: String? = null, startDate: String? = null) {
+        if (!completeInApp) {
+            notifyWeb(verifyJs("__onRoleComplete", role, urls, academyName, businessNumber, startDate))
+            return
+        }
+        if (completing) return
+        completing = true
+        lifecycleScope.launch {
+            val to = completeRole(role, urls, academyName, businessNumber, startDate?.filter(Char::isDigit))
+            ActiveRole.syncFromServer(this@OnboardingActivity)
+            com.muyeon.app.ui.main.MainActivity.openPath(this@OnboardingActivity, to)
+            finish()
+        }
+    }
+
+    /** 앱 차단 화면의 학원 인증 — 서류 제출(웹 __onRoleVerify submitDocs) 뒤 차단 상태를 다시 묻고 닫는다(승인되면 차단이 풀린다). */
+    private fun verifyInApp(role: String, urls: List<String>, academyName: String?, businessNumber: String?, startDate: String?) {
+        if (completing) return
+        completing = true
+        lifecycleScope.launch {
+            completeRole.submit(role, urls, academyName, businessNumber, startDate?.filter(Char::isDigit))
+            ActiveRole.syncFromServer(this@OnboardingActivity)
+            com.muyeon.app.webview.VerifyGate.refresh(this@OnboardingActivity)
+            finish()
         }
     }
 

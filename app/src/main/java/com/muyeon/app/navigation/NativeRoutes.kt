@@ -133,6 +133,11 @@ object NativeRoutes {
             "/academyProfile" -> return Target.Route(Screen.AcademyEdit.build(query["aiDraft"]?.let(android.net.Uri::decode)), auth = true)
             "/my/castingMaterials" -> return Target.Route(Screen.CastingMaterials.build("CASTING"), auth = true)
             "/my/performanceMaterials" -> return Target.Route(Screen.CastingMaterials.build("PERFORMANCE"), auth = true)
+            // ★ 2026-11-08 [b1] 가입(약관 가입 모드 · 이메일 가입 · 소셜 추가정보) · 학원 인증 차단 · 점검 — 앱 화면(LoginActivity · GateActivity).
+            "/signupTerms" -> if (query["mode"] != "gate") return Target.Action("openSignup", mapOf("path" to clean))
+            "/register", "/social-signup" -> return Target.Action("openSignup", mapOf("path" to clean))
+            "/verify-required" -> return Target.Action("openVerifyRequired")
+            "/maintenance" -> return Target.Action("openMaintenance")
         }
         // ★ 2026-11-08 묶음 0 — 앱 화면이 이미 있는데 웹 창으로 가던 주소(NativeRoutesB0).
         NativeRoutesB0.resolve(p.trimEnd('/'), query, clean.contains('?'))?.let { return it }
