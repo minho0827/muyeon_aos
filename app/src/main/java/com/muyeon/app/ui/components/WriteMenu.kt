@@ -61,6 +61,9 @@ data class WriteMenuItem(val label: String, val icon: Painter, val tint: Color, 
 @Composable
 fun BoxScope.WriteMenu(items: List<WriteMenuItem>, bottom: Dp, modifier: Modifier = Modifier) {
     var open by remember { mutableStateOf(false) }
+    // AI 돋보기 버튼은 막 위에 떠서 메뉴를 가린다 — 열려 있는 동안 숨긴다.
+    androidx.compose.runtime.LaunchedEffect(open) { com.muyeon.app.ui.assistant.AssistantOverlay.writeMenuOpen = open }
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { com.muyeon.app.ui.assistant.AssistantOverlay.writeMenuOpen = false } }
     AnimatedVisibility(open, enter = fadeIn(), exit = fadeOut()) {
         Box(
             Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f))

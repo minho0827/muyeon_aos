@@ -137,6 +137,8 @@ object AssistantOverlay {
     /** 이번 실행 동안 숨김(길게 눌러 숨기기). 앱을 다시 켜면 다시 보인다. */
     var hiddenThisRun by mutableStateOf(false)
         private set
+    /** 셸 [+ 글쓰기] 메뉴가 열려 있는 동안 — 버튼이 메뉴를 가리지 않게 숨긴다(iOS 와 같다). */
+    var writeMenuOpen by mutableStateOf(false)
 
     /** 버튼 위치(아래에서 dp) — 웹 화면(채팅 버튼 위)과 네이티브 화면(채팅 버튼 없음 → 구석 가까이)을 따로 기억한다(10-23:
      *  네이티브 카드 화면에서 오른쪽 아래 카드를 가렸다). */
@@ -257,7 +259,7 @@ private fun AssistantLayer(activity: Activity) {
     // ★ 2026-11-04 비회원도 빠른 메뉴 버튼을 보인다(iOS 와 같게) — 목록은 서버가 로그인 없이 볼 수 있는 화면만 준다.
     // 예약금 결제 창 위에는 띄우지 않는다 — 결제 중 다른 화면으로 나가면 결제 창이 닫히지 않은 채 남는다(iOS 와 같다).
     val inPayment = activity is com.muyeon.app.ui.lesson.LessonPaymentActivity
-    val show = !inPayment && !AssistantOverlay.hiddenThisRun && !imeVisible && !open && AssistantOverlay.chatRooms == 0 &&
+    val show = !inPayment && !AssistantOverlay.hiddenThisRun && !AssistantOverlay.writeMenuOpen && !imeVisible && !open && AssistantOverlay.chatRooms == 0 &&
         !(onWeb && (FloatingState.isAuthRoute || FloatingState.floatingHidden))
 
     Box(Modifier.fillMaxSize()) {
