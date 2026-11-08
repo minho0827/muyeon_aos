@@ -45,7 +45,7 @@ class SpaceHubActivity : ResultActivity() {
         fun startHosting(context: Context) = context.launchScreen(intent(context, "hosting"))
         fun startBookings(context: Context) = context.launchScreen(intent(context, "bookings"))
 
-        /** 공간 등록은 학원·강사 활동유형(서버는 공간 사업자 SPACE 도 받지만 앱 진입은 스펙대로 둘만). */
+        /** 공간 등록 = 학원·강사·무용수 활동유형(서버 POST /spaces RequireActiveRole 와 같다 — SPACE 유형은 쓰지 않는다). */
         fun canHost(context: Context): Boolean = ActiveRole.current(context) in setOf(ActiveRole.ACADEMY, ActiveRole.TEACHER, ActiveRole.DANCER) // 공간 등록 = 학원원장·강사·무용수(11-03)
     }
 
@@ -72,7 +72,7 @@ class SpaceHubActivity : ResultActivity() {
             fun openSpace(id: Int, date: String? = null) = SpaceActivity.start(this, id, date, false)
             fun create() {
                 if (!api.isLoggedIn) { message = com.muyeon.app.ui.common.market.loginRequired("openSpaceEditor"); return }
-                if (!canHost(this)) { message = "공간은 학원·강사 유형에서 등록할 수 있어요. MY > 회원유형에서 전환해 주세요."; return }
+                if (!canHost(this)) { message = getString(com.muyeon.app.R.string.space_role_required); return }
                 nav.navigate("editor/0")
             }
             fun changed() { changedTick++; addResultKeys(ResultKeys.SPACE, ResultKeys.RESERVATIONS) }

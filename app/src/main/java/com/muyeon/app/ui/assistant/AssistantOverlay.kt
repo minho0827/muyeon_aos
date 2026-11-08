@@ -226,10 +226,11 @@ object AssistantOverlay {
     internal fun bottomFor(onWeb: Boolean): Float {
         val b = if (onWeb) bottomDp else nativeBottomDp
         // ★ 2026-11-08 채용 2계층(채용·구직·대타공고·캐스팅)엔 오른쪽 아래 [+ 글쓰기](탭바 위 96 + 높이 56)가 있다 — 그 위로 띄운다(겹쳐 가리던 것).
+        //   공간 탭(대관·양도양수)도 같은 [+ 글쓰기]가 있다(11-08).
         val path = com.muyeon.app.ui.floating.FloatingState.currentRoute.substringBefore('?').trimEnd('/')
         return if (path in WRITE_MENU_ROUTES) maxOf(b, 172f) else b
     }
-    private val WRITE_MENU_ROUTES = setOf("/jobs", "/subs", "/casting")
+    private val WRITE_MENU_ROUTES = setOf("/jobs", "/subs", "/casting", "/spaces", "/studio-transfers")
 }
 
 @Composable

@@ -1,20 +1,20 @@
 package com.muyeon.app.ui.main
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
-import com.muyeon.app.R
-import com.muyeon.app.ui.components.TopBarIconButton
+import com.muyeon.app.navigation.collectAppResults
+import com.muyeon.app.result.ResultKeys
+import kotlinx.coroutines.launch
 import com.muyeon.app.ui.chat.ChatActivity
 import com.muyeon.app.ui.common.market.MarketMessageDialog
-import com.muyeon.app.ui.common.market.loginRequired
 import com.muyeon.app.ui.space.SpaceActivity
 import com.muyeon.app.ui.space.SpaceApi
-import com.muyeon.app.ui.space.SpaceHubActivity
 import com.muyeon.app.ui.space.SpaceListScreen
 import com.muyeon.app.ui.transfer.TransferActivity
 import com.muyeon.app.ui.transfer.TransferApi
@@ -26,27 +26,24 @@ import com.muyeon.app.ui.transfer.TransferListState
 /**
  * ★ 2026-11-08 공간 탭 — 대관·양도양수 목록(기존 앱 화면)을 탭 안에 둔다(위 바 + 밑줄 탭은 [header]).
  *   상세·등록·내 글은 지금처럼 각 화면(SpaceActivity · SpaceHubActivity · TransferActivity)으로 연다.
- *   등록 권한·로그인 안내 문구는 각 액티비티와 같다.
+ *   등록은 탭 오른쪽 아래 [+ 글쓰기](MainScreen — 채용 탭과 같은 부품)가 맡는다(위 바 ＋ 대신).
+ *   등록·수정·삭제하고 돌아오면 결과 키(공간 SPACE · 양도 [TransferActivity.RESULT_TRANSFERS])로 목록을 다시 읽는다.
  */
 @Composable
 fun SpaceRentTab(header: @Composable (actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit) -> Unit) {
     val context = LocalContext.current
     val api = remember { SpaceApi(context) }
     var message by remember { mutableStateOf<String?>(null) }
-    val canHost = SpaceHubActivity.canHost(context)
-    val create = {
-        when {
-            !api.isLoggedIn -> message = loginRequired("openSpaceEditor")
-            !canHost -> message = SPACE_ROLE_MSG
-            else -> SpaceHubActivity.startEditor(context, null)
-        }
-    }
+    var reloadTick by remember { mutableIntStateOf(0) }
+    // 공간 화면(등록 위저드·상세)이 SPACE 를 들고 닫히면 목록·찜을 다시 읽는다(MainActivity → AppResults).
+    LaunchedEffect(Unit) { collectAppResults(ResultKeys.SPACE) { reloadTick++ } }
     SpaceListScreen(
-        api = api, canCreate = canHost, onBack = null,
+        api = api, canCreate = false, onBack = null,
         onOpen = { id, date -> SpaceActivity.start(context, id, date, false) },
-        onCreate = create,
+        onCreate = {},
         onMessage = { message = it },
-        header = { header { if (canHost) TopBarIconButton(R.drawable.ic_add, stringResource(R.string.space_create), onClick = create) } },
+        header = { header {} },
+        reloadTick = reloadTick,
     )
     message?.let { MarketMessageDialog(it) { message = null } }
 }
@@ -59,27 +56,18 @@ fun TransferTab(header: @Composable (actions: @Composable androidx.compose.found
     val chatConsent = remember { TransferChatConsent(api) }
     val myId = remember { api.http.myUserId() }
     var message by remember { mutableStateOf<String?>(null) }
-    val canPost = TransferActivity.canPost(context)
-    val create = {
-        when {
-            !api.isLoggedIn -> message = loginRequired("openStudioTransferEditor")
-            !canPost -> message = TRANSFER_ROLE_MSG
-            else -> TransferActivity.startEditor(context, null)
-        }
-    }
+    // 양도 글을 올리거나 고치고 돌아오면 처음부터 다시 읽는다.
+    LaunchedEffect(Unit) { collectAppResults(TransferActivity.RESULT_TRANSFERS) { launch { listState.load(api, reset = true) } } }
     TransferListScreen(
-        api = api, state = listState, canCreate = canPost, myUserId = myId, onBack = null,
+        api = api, state = listState, canCreate = false, myUserId = myId, onBack = null,
         onOpen = { TransferActivity.startDetail(context, it) },
-        onCreate = create,
+        onCreate = {},
         onChatRoom = { roomId, title -> ChatActivity.startRoom(context, roomId, title) },
         onMessage = { message = it },
         chatConsent = chatConsent,
-        header = { header { if (canPost) TopBarIconButton(R.drawable.ic_add, stringResource(R.string.transfer_create), onClick = create) } },
+        header = { header {} },
     )
     TransferChatConsentSheet(chatConsent) { message = it }
     message?.let { MarketMessageDialog(it) { message = null } }
 }
 
-// 액티비티(SpaceHubActivity · TransferActivity)와 같은 안내.
-private const val SPACE_ROLE_MSG = "공간은 학원·강사 유형에서 등록할 수 있어요. MY > 회원유형에서 전환해 주세요."
-private const val TRANSFER_ROLE_MSG = "양도 글은 학원·강사 유형에서 올릴 수 있어요. MY > 회원유형에서 전환해 주세요."

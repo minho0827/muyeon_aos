@@ -63,6 +63,8 @@ fun SpaceListScreen(
     onMessage: (String) -> Unit,
     /** 공간 탭 안 머리(위 바 + 대관·양도양수 탭). 주면 이 화면 위 바 대신 그린다 — 등록(＋)은 머리가 맡는다. */
     header: (@Composable () -> Unit)? = null,
+    /** 바뀌면 목록·찜을 다시 읽는다(공간 탭 — 등록·상세에서 돌아왔을 때 SPACE 결과 키). */
+    reloadTick: Int = 0,
 ) {
     val scope = rememberCoroutineScope()
     var categories by remember { mutableStateOf<List<SpaceCategory>>(emptyList()) }
@@ -79,7 +81,7 @@ fun SpaceListScreen(
     var sheet by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) { api.categories().onSuccess { categories = it } }
-    LaunchedEffect(categoryId, sido, date, headcount, sort, filter) {
+    LaunchedEffect(categoryId, sido, date, headcount, sort, filter, reloadTick) {
         loading = true
         api.list(sido, categoryId.takeIf { it > 0 }, date, headcount, sort, filter)
             .onSuccess { items = it.filterNot { s -> com.muyeon.domain.usecase.home.DemoContent.isDemoTitle(s.name) }; error = null } // 예시 숨김(사용자 결정 2026-11-08).onFailure { error = it.message }

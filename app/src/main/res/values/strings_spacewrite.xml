@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ★ 2026-11-08 공간 탭(대관·양도양수) [+ 글쓰기] 메뉴 — 채용 탭과 같은 떠 있는 버튼. 서버: 공간 등록 = 학원·강사·무용수 · 양도 글 = 학원·강사. -->
+<resources>
+    <string name="write_space">대관 공간 등록</string>
+    <string name="write_transfer">양도양수 글 쓰기</string>
+    <string name="space_role_required">공간은 학원·강사·무용수 유형에서 등록할 수 있어요. MY &gt; 회원유형에서 전환해 주세요.</string>
+    <string name="transfer_role_required">양도 글은 학원·강사 유형에서 올릴 수 있어요. MY &gt; 회원유형에서 전환해 주세요.</string>
+</resources>

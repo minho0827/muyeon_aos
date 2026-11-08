@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MeetingRoom
 import androidx.compose.material.icons.rounded.RecentActors
+import androidx.compose.material.icons.filled.Apartment
 import com.muyeon.app.ui.components.WriteMenu
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.painter.Painter
@@ -217,6 +218,27 @@ fun MainScreen(
                 if (canCastingCreate) add(com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_casting), androidx.compose.ui.graphics.vector.rememberVectorPainter(androidx.compose.material.icons.Icons.Rounded.RecentActors), androidx.compose.ui.graphics.Color(0xFF7B5CC4), "casting") { onOpenDetail(stage.create) })
             }
             // 쓸 수 있는 글이 없으면(일반·비회원) 버튼도 없다.
+            if (writeItems.isNotEmpty()) WriteMenu(
+                items = writeItems,
+                bottom = tabBarBottomPadding() - 4.dp,
+            )
+        }
+        // ★ 2026-11-08 공간 탭(대관·양도양수) [+ 글쓰기] — 채용 탭과 같은 부품(위 바 ＋ 대신). 서버 등록 권한 그대로:
+        //   공간 등록 POST /spaces = 학원·강사·무용수 · 양도 글 POST /studio-transfers = 학원·강사. 보고 있는 탭 항목이 먼저.
+        if (selectedTab == MainTab.SPACES || selectedTab == MainTab.TRANSFERS) {
+            val t = state.activeType
+            val loggedIn = state.isLoggedIn
+            val writeContext = androidx.compose.ui.platform.LocalContext.current
+            val space = if (loggedIn && t in setOf(ActiveTypeK.ACADEMY, ActiveTypeK.TEACHER, ActiveTypeK.DANCER))
+                com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_space), rememberVectorPainter(Icons.Rounded.MeetingRoom), com.muyeon.app.ui.theme.AppColors.Primary, "space") {
+                    com.muyeon.app.ui.space.SpaceHubActivity.startEditor(writeContext, null)
+                } else null
+            val transfer = if (loggedIn && t in setOf(ActiveTypeK.ACADEMY, ActiveTypeK.TEACHER))
+                com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_transfer), rememberVectorPainter(Icons.Filled.Apartment), androidx.compose.ui.graphics.Color(0xFF2E7DFF), "transfer") {
+                    com.muyeon.app.ui.transfer.TransferActivity.startEditor(writeContext, null)
+                } else null
+            val writeItems = (if (selectedTab == MainTab.TRANSFERS) listOf(transfer, space) else listOf(space, transfer)).filterNotNull()
+            // 쓸 수 있는 글이 없으면(일반·공간 보유자·공연팀·비회원) 버튼도 없다.
             if (writeItems.isNotEmpty()) WriteMenu(
                 items = writeItems,
                 bottom = tabBarBottomPadding() - 4.dp,

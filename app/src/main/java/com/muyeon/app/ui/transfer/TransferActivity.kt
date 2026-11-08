@@ -44,6 +44,9 @@ class TransferActivity : ResultActivity() {
         fun startEditor(context: Context, id: Int?) = context.launchScreen(intent(context, "editor", id ?: 0))
         fun startMine(context: Context) = context.launchScreen(intent(context, "mine"))
 
+        /** ★ 2026-11-08 양도 글이 바뀌었다(등록·수정·상태·삭제) — 앱 안 알림(AppResults). 공간 탭 양도양수 목록이 다시 읽는다. */
+        const val RESULT_TRANSFERS = "STUDIO_TRANSFERS"
+
         /** 등록은 학원·강사 활동유형만(서버 ActiveRoleGuard 와 같은 기준 — 화면은 막는 쪽으로). */
         fun canPost(context: Context): Boolean = ActiveRole.current(context) in setOf(ActiveRole.ACADEMY, ActiveRole.TEACHER)
     }
@@ -69,12 +72,13 @@ class TransferActivity : ResultActivity() {
             val myId = remember { api.http.myUserId() }
             var message by remember { mutableStateOf<String?>(null) }
             var changedTick by remember { mutableIntStateOf(0) }
+            fun changed() { changedTick++; com.muyeon.app.navigation.AppResults.publish(setOf(RESULT_TRANSFERS)) }
 
             fun back() { if (!nav.popBackStack()) finish() }
             fun openChat(roomId: Int, title: String) = ChatActivity.startRoom(this, roomId, title)
             fun create() {
                 if (!api.isLoggedIn) { message = com.muyeon.app.ui.common.market.loginRequired("openStudioTransferEditor"); return }
-                if (!canPost(this)) { message = "양도 글은 학원·강사 유형에서 올릴 수 있어요. MY > 회원유형에서 전환해 주세요."; return }
+                if (!canPost(this)) { message = getString(com.muyeon.app.R.string.transfer_role_required); return }
                 nav.navigate("editor/0")
             }
 
@@ -90,7 +94,7 @@ class TransferActivity : ResultActivity() {
                     val id = e.arguments?.getInt("id") ?: 0
                     TransferDetailScreen(
                         api = api, id = id, onBack = { back() }, onEdit = { nav.navigate("editor/$it") },
-                        onChatRoom = ::openChat, onChanged = { changedTick++ }, onMessage = { message = it }, chatConsent = chatConsent,
+                        onChatRoom = ::openChat, onChanged = { changed() }, onMessage = { message = it }, chatConsent = chatConsent,
                         // 시작 화면(웹·로그인 후 다시 열기)으로 연 그 글에만 이어서 할 일을 넘긴다.
                         resumeAction = intent.getStringExtra(EXTRA_THEN)?.takeIf { it.isNotEmpty() && route == "detail" && id == startId },
                     )
@@ -100,7 +104,7 @@ class TransferActivity : ResultActivity() {
                     TransferWizardScreen(
                         api = api, editId = id, onClose = { back() },
                         onSaved = { savedId ->
-                            changedTick++
+                            changed()
                             message = if (id != null) "수정했어요." else "양도 글을 등록했어요."
                             // 위저드를 걷어내고 상세로. 수정은 이전 상세가 스택에 있으면 그 화면이 다시 읽는다.
                             if (id != null && nav.previousBackStackEntry?.destination?.route == "detail/{id}") nav.popBackStack()
@@ -111,7 +115,7 @@ class TransferActivity : ResultActivity() {
                 composable("mine") {
                     MyTransfersScreen(
                         api = api, reloadTick = changedTick, onBack = { back() }, onOpen = { nav.navigate("detail/$it") },
-                        onEdit = { nav.navigate("editor/$it") }, onCreate = { create() }, onChanged = { changedTick++ },
+                        onEdit = { nav.navigate("editor/$it") }, onCreate = { create() }, onChanged = { changed() },
                         onMessage = { message = it },
                     )
                 }
