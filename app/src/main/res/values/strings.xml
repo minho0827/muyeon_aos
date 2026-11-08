@@ -1263,4 +1263,26 @@
     <string name="auth_recovery_close">닫기</string>
     <string name="password_show">비밀번호 보기</string>
     <string name="password_hide">비밀번호 숨기기</string>
+    <!-- iOS 로그인 화면 문구(두 앱 같은 키 — iOS sync 가 지우지 않게) -->
+    <string name="auth_login_apple_canceled">애플 로그인이 취소됐어요.</string>
+    <string name="auth_login_find_pw">비밀번호 찾기</string>
+    <string name="auth_login_kakao_processing">카카오 로그인 처리 중…</string>
+    <string name="auth_login_naver_processing">네이버 로그인 처리 중…</string>
+    <string name="auth_recovery_changed">비밀번호가 변경됐어요.\n새 비밀번호로 로그인해 주세요.</string>
+    <string name="auth_recovery_email_placeholder">이메일</string>
+    <string name="auth_recovery_found">가입한 이메일은\n%1$s\n이에요.</string>
+    <string name="auth_recovery_login">로그인</string>
+    <string name="auth_login_failed">로그인에 실패했어요.</string>
+    <string name="auth_login_apple">Apple로 계속하기</string>
+    <string name="auth_login_apple_failed">애플 로그인에 실패했어요.</string>
+    <string name="auth_login_kakao_title">카카오 로그인</string>
+    <string name="auth_login_kakao_canceled">카카오 로그인이 취소됐어요.</string>
+    <string name="auth_login_kakao_failed">카카오 로그인에 실패했어요.</string>
+    <string name="auth_login_naver_title">네이버 로그인</string>
+    <string name="auth_login_naver_canceled">네이버 로그인이 취소됐어요.</string>
+    <string name="auth_login_naver_expired">로그인 요청이 만료됐어요. 다시 시도해 주세요.</string>
+    <string name="auth_login_naver_failed">네이버 로그인에 실패했어요.</string>
+    <string name="auth_recovery_send_failed">인증번호 발송에 실패했어요.</string>
+    <string name="auth_recovery_reset_failed">비밀번호 재설정에 실패했어요.</string>
+    <string name="auth_recovery_not_found">일치하는 회원 정보가 없어요.</string>
 </resources>
