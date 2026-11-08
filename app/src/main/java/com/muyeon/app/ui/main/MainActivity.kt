@@ -184,7 +184,15 @@ class MainActivity : ComponentActivity(), ResultHost {
         intent.getStringExtra(EXTRA_NOTIFICATION_URL)?.takeIf { it.isNotEmpty() }?.let { url ->
             intent.removeExtra(EXTRA_NOTIFICATION_URL)
             com.muyeon.app.analytics.Analytics.pushOpen(intent.getStringExtra("type"), url)
-            openPath(url, viaLink = false)
+            // ★ 2026-11-08 푸시 data 우선(iOS CustomAppDelegate.routePushPayload 와 같다) —
+            //  lessonId(레슨 일정·변경·취소·리마인더) → 그 레슨 상세, reviewTeacherId(후기 도착) → 받은 후기.
+            val lessonId = intent.getStringExtra("lessonId")?.toIntOrNull()?.also { intent.removeExtra("lessonId") }
+            val reviewTeacherId = intent.getStringExtra("reviewTeacherId")?.toIntOrNull()?.also { intent.removeExtra("reviewTeacherId") }
+            when {
+                lessonId != null && lessonId > 0 -> com.muyeon.app.ui.lesson.LessonActivity.startDetail(this, lessonId)
+                reviewTeacherId != null && reviewTeacherId > 0 -> com.muyeon.app.ui.resume.ResumeActivity.startReviewList(this, reviewTeacherId)
+                else -> openPath(url, viaLink = false)
+            }
         }
         if (intent.getBooleanExtra(EXTRA_STAGE, false)) {
             intent.removeExtra(EXTRA_STAGE)

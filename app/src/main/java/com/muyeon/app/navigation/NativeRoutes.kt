@@ -57,7 +57,10 @@ object NativeRoutes {
             "/teachers" -> return Target.Action("openHomeTeachers")
             "/lessons/create" -> return Target.Action("openLessonCreate")
             // ★ 2026-11-08 받은/보낸 견적 — 앱 화면(openMyQuotes)이 있는데 웹으로 가던 주소(견적 요청 완료 '견적 보기' 등).
-            "/myQuotes" -> return Target.Action("openMyQuotes", query["tab"]?.let { mapOf("tab" to it) } ?: emptyMap())
+            "/myQuotes" -> return Target.Action("openMyQuotes", (query["tab"] ?: "sent".takeIf { query["sent"] == "1" })?.let { mapOf("tab" to it) } ?: emptyMap())
+            // ★ 2026-11-08 링크·푸시 점검 — 받은 견적 푸시(/home?quotesPopup=1)는 받은 견적 화면, 자동견적 발송 내역은 앱 화면(iOS 와 같다).
+            "/home" -> if (query["quotesPopup"] == "1") return Target.Action("openMyQuotes")
+            "/autoQuoteHistory" -> return Target.Action("openAutoQuoteHistory")
             // ★ 2026-11-08 앱 화면(NativeActionRouter 표)이 이미 있는데 웹으로 가던 주소 — 전체 메뉴·링크·푸시.
             "/notifications" -> return Target.Action("openNotifications")
             "/notificationSettings" -> return Target.Action("openNotificationSettings")
