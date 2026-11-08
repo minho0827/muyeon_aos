@@ -13,6 +13,7 @@ import java.time.format.DateTimeFormatter
 object KstDates {
     private val KST: ZoneId = ZoneId.of("Asia/Seoul")
     private val DOT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd")
+    private val DOT_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm")
     private val DASH: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
     fun parse(iso: String?): Instant? {
@@ -26,6 +27,9 @@ object KstDates {
 
     /** "2026.11.07" (웹 fmtDate). */
     fun dot(iso: String?): String = localDate(iso)?.format(DOT).orEmpty()
+
+    /** "2026.11.07 14:05" (웹 fmtDateTime). */
+    fun dotTime(iso: String?): String = parse(iso)?.atZone(KST)?.format(DOT_TIME).orEmpty()
 
     /** "2026-11-07". */
     fun dash(iso: String?): String = localDate(iso)?.format(DASH).orEmpty()

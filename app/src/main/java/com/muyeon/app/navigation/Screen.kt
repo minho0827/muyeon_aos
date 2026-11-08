@@ -61,6 +61,19 @@ sealed class Screen(val route: String) {
     /** FAQ(웹 /faq). */
     data object Faq : Screen("faq")
 
+    /** 1:1 문의내역·상세·쓰기(웹 /support/inquiries · /support/inquiries/:id · /support/inquiry · /support/feedback). */
+    data object SupportInquiries : Screen("support/inquiries")
+    data object SupportInquiryDetail : Screen("support/inquiries/{id}") {
+        const val ARG_ID = "id"
+        fun build(id: Long) = "support/inquiries/$id"
+    }
+    data object SupportCompose : Screen("support/compose/{type}") {
+        const val ARG_TYPE = "type"
+        const val INQUIRY = "inquiry"
+        const val FEEDBACK = "feedback"
+        fun build(type: String) = "support/compose/$type"
+    }
+
     /** 홈 '전체보기' 레슨 목록(웹 /lessonList?title=&type=). */
     data object LessonList : Screen("lessonList?title={title}&type={type}") {
         const val ARG_TITLE = "title"

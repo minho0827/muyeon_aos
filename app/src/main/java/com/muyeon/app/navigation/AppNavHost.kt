@@ -144,7 +144,38 @@ fun AppNavHost(
             )
         }
         composable(Screen.Faq.route) {
-            com.muyeon.app.ui.support.FaqScreen(onBack = { navController.popBackStack() }, onInquiry = { onOpenWeb(WebPaths.SUPPORT_INQUIRY) })
+            com.muyeon.app.ui.support.FaqScreen(onBack = { navController.popBackStack() }, onInquiry = { navController.navigate(Screen.SupportCompose.build(Screen.SupportCompose.INQUIRY)) })
+        }
+        // ★ 2026-11-08 1:1 문의·의견(웹 /support/inquiries · /support/inquiry · /support/feedback).
+        composable(Screen.SupportInquiries.route) {
+            com.muyeon.app.ui.support.InquiryListScreen(
+                viewModel = org.koin.androidx.compose.koinViewModel(),
+                onBack = { navController.popBackStack() },
+                onOpen = { id -> navController.navigate(Screen.SupportInquiryDetail.build(id)) },
+                onWrite = { navController.navigate(Screen.SupportCompose.build(Screen.SupportCompose.INQUIRY)) },
+            )
+        }
+        composable(Screen.SupportInquiryDetail.route, arguments = listOf(navArgument(Screen.SupportInquiryDetail.ARG_ID) { type = NavType.StringType })) { e ->
+            val id = e.arguments?.getString(Screen.SupportInquiryDetail.ARG_ID)?.toLongOrNull() ?: 0L
+            com.muyeon.app.ui.support.InquiryDetailScreen(
+                viewModel = org.koin.androidx.compose.koinViewModel(parameters = { org.koin.core.parameter.parametersOf(id) }),
+                onBack = { navController.popBackStack() },
+                onDeleted = { navController.popBackStack() },
+            )
+        }
+        composable(Screen.SupportCompose.route, arguments = listOf(navArgument(Screen.SupportCompose.ARG_TYPE) { type = NavType.StringType })) { e ->
+            val type = if (e.arguments?.getString(Screen.SupportCompose.ARG_TYPE) == Screen.SupportCompose.FEEDBACK)
+                com.muyeon.domain.model.support.SupportComposeType.FEEDBACK else com.muyeon.domain.model.support.SupportComposeType.INQUIRY
+            com.muyeon.app.ui.support.SupportComposeScreen(
+                type = type,
+                viewModel = org.koin.androidx.compose.koinViewModel(parameters = { org.koin.core.parameter.parametersOf(type) }),
+                onBack = { navController.popBackStack() },
+                // 문의 접수 뒤 [문의내역 확인] — 아래가 문의내역이면 거기로 돌아가고(다시 읽는다), 아니면 이 화면 자리에 문의내역.
+                onDoneInquiry = {
+                    if (navController.previousBackStackEntry?.destination?.route == Screen.SupportInquiries.route) navController.popBackStack()
+                    else navController.navigate(Screen.SupportInquiries.route) { popUpTo(Screen.SupportCompose.route) { inclusive = true } }
+                },
+            )
         }
         // ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 /lessonList).
         composable(
