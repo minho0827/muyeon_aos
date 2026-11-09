@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.muyeon.app.auth.onAccountChanged
 
 data class PerformanceDetailUiState(
     val detail: PerformanceDetail? = null,
@@ -44,7 +45,11 @@ class PerformanceDetailViewModel(
     private val _events = MutableSharedFlow<PerformanceListEvent>(extraBufferCapacity = 4)
     val events: SharedFlow<PerformanceListEvent> = _events.asSharedFlow()
 
-    init { load() }
+    init {
+        load()
+        // ★ 2026-11-09 계정 바뀜 — 앞 계정 찜 하트를 끄고 다시 읽는다.
+        onAccountChanged { _state.update { it.copy(liked = false) }; load() }
+    }
 
     fun load() {
         _state.update { it.copy(isLoading = true, notFound = false) }

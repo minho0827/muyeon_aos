@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import com.muyeon.app.auth.onAccountChanged
 
 data class MainUiState(
     /** 지금 보이는 앱 탭. 탭바 모드·칸은 여기서 계산한다(MainTab.mode·barItem). */
@@ -88,6 +89,13 @@ class MainViewModel(
 
     init {
         refreshRoles()
+        // ★ 2026-11-09 계정 바뀜(어느 길의 로그아웃·다른 계정 로그인이든) — 앞 계정 유형·동그라미 사진·MY 점을 버리고 새 계정 것으로.
+        onAccountChanged { c ->
+            _state.update {
+                it.copy(isLoggedIn = c.loggedIn, activeType = currentType(), switchableTypes = emptyList(), typeImages = emptyMap(), myDot = false)
+            }
+            refreshRoles()
+        }
     }
 
     private fun currentType(): String = ActiveType.visible(activeTypeStore.current())
@@ -120,9 +128,10 @@ class MainViewModel(
 
     private fun refreshRoles() {
         if (!tokens.isLoggedIn) return
+        val epoch = com.muyeon.app.auth.accountEpochNow()
         viewModelScope.launch {
             val r = getMyRoles()
-            if (r is ApiResult.Success) {
+            if (r is ApiResult.Success && epoch == com.muyeon.app.auth.accountEpochNow()) {
                 val type = ActiveType.visible(r.data.activeType)
                 val changed = type != _state.value.activeType
                 if (changed) activeTypeStore.save(type)

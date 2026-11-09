@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.muyeon.app.auth.onAccountChanged
 
 data class MyUiState(
     val activeType: String = ActiveType.GENERAL,
@@ -62,6 +63,8 @@ class MyViewModel(
         viewModelScope.collectAppResults(
             ResultKeys.LESSONS, ResultKeys.JOB_POSTINGS, ResultKeys.ACADEMY, ResultKeys.RESUME, ResultKeys.MEMBERSHIP, ResultKeys.PROFILE,
         ) { refresh() }
+        // ★ 2026-11-09 계정 바뀜 — 앞 계정 이름·사진·멤버십·배지·메뉴를 버리고(웹 로그아웃·강제 로그아웃도) 새 계정 것으로.
+        onAccountChanged { _state.update { MyUiState(activeType = currentType()) }; refresh() }
     }
 
     private fun currentType() = ActiveType.visible(activeTypeStore.current())
@@ -79,12 +82,15 @@ class MyViewModel(
         val type = currentType()
         // 유형이 바뀌었으면 이전 유형 메뉴·머리 정보를 비운다 — 새 카드가 곧바로 새 유형 기본 메뉴로 그려진다.
         _state.update { if (it.activeType != type) it.copy(activeType = type, serverMenus = null) else it.copy(activeType = type) }
+        // 늦게 온 앞 계정 응답은 버린다(로그아웃 직전에 보낸 요청).
+        val epoch = com.muyeon.app.auth.accountEpochNow()
         viewModelScope.launch {
             val menus = (getMyMenus(type) as? ApiResult.Success)?.data?.takeIf { it.isNotEmpty() }
-            _state.update { it.copy(serverMenus = menus) }
+            if (epoch == com.muyeon.app.auth.accountEpochNow()) _state.update { it.copy(serverMenus = menus) }
         }
         viewModelScope.launch {
             val info = getInfo(type)
+            if (epoch != com.muyeon.app.auth.accountEpochNow()) return@launch
             _state.update { it.copy(info = info) }
             maybePendingNotice(info)
         }

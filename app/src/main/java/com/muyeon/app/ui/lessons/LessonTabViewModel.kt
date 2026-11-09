@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.muyeon.app.auth.onAccountChanged
 
 data class LessonTabUiState(
     /** [LessonTabViewModel.ALL] 또는 장르. */
@@ -122,6 +123,8 @@ class LessonTabViewModel(
         viewModelScope.launch { regionFlow.drop(1).collect { r -> _state.update { it.copy(region = r, items = emptyList(), cursor = CursorState.Initial) }; refresh() } }
         // 견적을 보내고 오면 다시(웹 useResultRefresh QUOTES).
         viewModelScope.collectAppResults(ResultKeys.QUOTES) { refresh(silent = true) }
+        // ★ 2026-11-09 계정 바뀜(로그아웃·다른 계정) — 앞 계정 찜을 비우고 새 계정 것으로.
+        onAccountChanged { wasLoggedIn = it.loggedIn; _state.update { s -> s.copy(likedIds = emptySet(), showDm = dmVisible()) }; loadLikes() }
     }
 
     private fun dmVisible(): Boolean = tokens.isLoggedIn && ActiveType.visible(activeType.current()) == ActiveType.GENERAL
@@ -212,7 +215,11 @@ class LessonTabViewModel(
     private fun setLiked(id: Long, liked: Boolean) = _state.update { it.copy(likedIds = if (liked) it.likedIds + id else it.likedIds - id) }
 
     private fun loadLikes() {
-        viewModelScope.launch { _state.update { it.copy(likedIds = getLikedIds(ScrapTarget.TEACHER)) } }
+        val epoch = com.muyeon.app.auth.accountEpochNow()
+        viewModelScope.launch {
+            val ids = getLikedIds(ScrapTarget.TEACHER)
+            if (epoch == com.muyeon.app.auth.accountEpochNow()) _state.update { it.copy(likedIds = ids) }
+        }
     }
 
     // ── 안내 ──

@@ -31,6 +31,9 @@ class MuyeonApplication : Application() {
             network = { getString(R.string.common_error_network) },
             server = { getString(R.string.common_error_server) },
         )
+        // ★ 2026-11-09 계정 바뀜 신호 — 지금 회원을 적고, 로그아웃 때 지울 기억값 지우개를 건다(auth/SessionResets).
+        com.muyeon.domain.common.SessionEvents.start(com.muyeon.app.utils.TokenManager.accountKey(com.muyeon.app.utils.TokenManager.getAccessToken(this)))
+        com.muyeon.app.auth.SessionResets.install(this, org.koin.java.KoinJavaComponent.get(com.muyeon.domain.common.KeyValueStore::class.java))
         MembershipBilling.start(this)
         Analytics.start(this)
         // AI 도우미 플로팅 — 모든 화면 위에 버튼을 붙인다(ui/assistant/AssistantOverlay).

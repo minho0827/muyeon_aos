@@ -103,7 +103,8 @@ fun LessonContentDetailScreen(
     val getLikedIds: GetLikedIdsUseCase = koinInject()
     var liked by remember { mutableStateOf(false) }
     var likeBusy by remember { mutableStateOf(false) }
-    LaunchedEffect(lessonProductId) { liked = lessonProductId.toLong() in getLikedIds(ScrapTarget.LESSON) }
+    // 계정이 바뀌면(로그아웃·다른 계정) 하트를 끄고 다시 읽는다.
+    LaunchedEffect(lessonProductId, com.muyeon.app.auth.accountEpoch()) { liked = false; liked = lessonProductId.toLong() in getLikedIds(ScrapTarget.LESSON) }
 
     LaunchedEffect(lessonProductId, reloadSignal) {
         loading = detail == null

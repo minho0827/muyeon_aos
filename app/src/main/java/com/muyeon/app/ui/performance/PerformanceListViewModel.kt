@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.muyeon.app.auth.onAccountChanged
 
 data class PerformanceListUiState(
     /** [PerformanceListViewModel.ALL] 또는 장르 값. */
@@ -90,6 +91,8 @@ class PerformanceListViewModel(
         loadLikes()
         // 상세에서 찜을 바꿨다 — 목록 하트도 맞춘다.
         viewModelScope.launch { observeScrap(ScrapTarget.PERFORMANCE).collect { c -> setLiked(c.id, c.liked) } }
+        // ★ 2026-11-09 계정 바뀜(로그아웃·다른 계정) — 앞 계정 찜을 비우고 새 계정 것으로.
+        onAccountChanged { wasLoggedIn = it.loggedIn; _state.update { s -> s.copy(likedIds = emptySet()) }; loadLikes() }
     }
 
     /** 화면 복귀 — 로그인 상태가 바뀌었으면(웹 로그인 창에서 돌아옴) 찜을 다시 읽는다. */
@@ -182,9 +185,10 @@ class PerformanceListViewModel(
     fun setLiked(id: Long, liked: Boolean) = _state.update { it.copy(likedIds = if (liked) it.likedIds + id else it.likedIds - id) }
 
     private fun loadLikes() {
+        val epoch = com.muyeon.app.auth.accountEpochNow()
         viewModelScope.launch {
             val ids = getLikedIds(ScrapTarget.PERFORMANCE)
-            _state.update { it.copy(likedIds = ids) }
+            if (epoch == com.muyeon.app.auth.accountEpochNow()) _state.update { it.copy(likedIds = ids) }
         }
     }
 

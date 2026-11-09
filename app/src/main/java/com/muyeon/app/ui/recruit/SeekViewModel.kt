@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.muyeon.app.auth.onAccountChanged
 
 data class SeekUiState(
     val list: PagedList<SeekerCard> = PagedList(),
@@ -80,8 +81,12 @@ class SeekViewModel(
     }
 
     private fun loadLikes() {
-        if (!tokens.isLoggedIn) return
-        viewModelScope.launch { _state.update { it.copy(likedTeachers = getLikedIds(ScrapTarget.TEACHER), likedDancers = getLikedIds(ScrapTarget.DANCER)) } }
+        val epoch = com.muyeon.app.auth.accountEpochNow()
+        viewModelScope.launch {
+            val t = getLikedIds(ScrapTarget.TEACHER)
+            val d = getLikedIds(ScrapTarget.DANCER)
+            if (epoch == com.muyeon.app.auth.accountEpochNow()) _state.update { it.copy(likedTeachers = t, likedDancers = d) }
+        }
     }
 
     fun toggleLike(c: SeekerCard) {

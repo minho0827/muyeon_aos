@@ -65,7 +65,8 @@ fun StageCastingDetailScreen(api: CastingStageApi, id: Int, onBack: () -> Unit, 
     var showSwitch by remember { mutableStateOf(false) }
     var toast by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(id) {
+    LaunchedEffect(id, com.muyeon.app.auth.accountEpoch()) {
+        liked = false
         runCatching { api.detail(id) }.onSuccess { c = it }.onFailure { failed = it.message ?: "공고를 찾을 수 없어요." }
         applied = api.applied(id)
         liked = id in api.scrappedIds()

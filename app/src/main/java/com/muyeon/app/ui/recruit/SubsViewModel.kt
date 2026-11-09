@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.muyeon.app.auth.onAccountChanged
 
 data class SubsUiState(
     val items: List<SubRow> = emptyList(),
@@ -36,6 +37,8 @@ class SubsViewModel(private val subs: SubListUseCase, observeRegion: ObserveActi
         viewModelScope.launch { region.drop(1).collect { refresh() } }
         // 설문 등록으로 새 공고를 올리면 다시 받는다.
         viewModelScope.collectAppResults(com.muyeon.app.result.ResultKeys.JOB_POSTINGS) { refresh() }
+        // ★ 2026-11-09 계정 바뀜 — 차단·내 공고 표시가 계정마다 다르다.
+        onAccountChanged { refresh() }
     }
 
     fun selectGenre(g: String?) { _state.update { it.copy(filter = it.filter.copy(genre = g)) }; refresh() }

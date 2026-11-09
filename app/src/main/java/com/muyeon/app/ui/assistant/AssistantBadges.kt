@@ -78,6 +78,9 @@ object AssistantBadges {
 
     fun refreshSoon() = schedule(300)
 
+    /** 계정이 떠났다(SessionResets) — 숫자를 비우고 다음 화면 복귀 때 새 토큰으로 다시 센다. */
+    fun clear() { pending?.cancel(); pending = null; counts = emptyMap(); total = 0; connectedToken = null }
+
     private fun schedule(delayMs: Long = 800) {
         if (pending != null) return
         pending = scope.launch {

@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.muyeon.app.auth.onAccountChanged
 
 /** 홈 위 토글 — 강사(에이전시형 그리드) | 레슨(뷰티컬리 배치). */
 enum class HomeMode { TEACHERS, LESSONS }
@@ -130,6 +131,11 @@ class HomeViewModel(
         viewModelScope.launch { HomeModeRequests.flow.collect { m -> HomeModeRequests.consumed(); setMode(m) } }
         viewModelScope.collectAppResults(ResultKeys.NOTIFICATIONS) { refreshUnread() }
         viewModelScope.collectAppResults(ResultKeys.LESSONS) { loadLessonHome() }
+        // ★ 2026-11-09 계정 바뀜(로그아웃·다른 계정) — 앞 계정 찜·알림 점·요청 칸을 비우고 다시 받는다.
+        onAccountChanged { c ->
+            _state.update { it.copy(isLoggedIn = c.loggedIn, likedLessons = emptySet(), unread = 0, quoteFeed = emptyList(), quoteFeedPro = false) }
+            loadLikes(); loadQuoteFeed(); refreshUnread()
+        }
     }
 
     fun onSession(loggedIn: Boolean) {
@@ -255,8 +261,12 @@ class HomeViewModel(
 
     // ── 찜 ───────────────────────────────────────────────────────────────
     private fun loadLikes() {
-        if (!tokens.isLoggedIn) return
-        viewModelScope.launch { _state.update { it.copy(likedLessons = getLikedIds(ScrapTarget.LESSON)) } }
+        // 비회원이면 빈 찜(로그아웃 뒤 하트가 남지 않게) · 늦게 온 앞 계정 응답은 버린다.
+        val epoch = com.muyeon.app.auth.accountEpochNow()
+        viewModelScope.launch {
+            val ids = getLikedIds(ScrapTarget.LESSON)
+            if (epoch == com.muyeon.app.auth.accountEpochNow()) _state.update { it.copy(likedLessons = ids) }
+        }
     }
 
     private fun setLiked(id: Long, liked: Boolean) = _state.update {

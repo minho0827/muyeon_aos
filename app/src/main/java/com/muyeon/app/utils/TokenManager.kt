@@ -79,7 +79,18 @@ object TokenManager {
             )
             putString(KEY_REFRESH_TOKEN_IV, Base64.encodeToString(refreshTokenIV, Base64.DEFAULT))
         }
+        // ★ 2026-11-09 다른 계정이면(비회원 → 회원 포함) 앞 계정 기억값을 지우고 화면이 다시 읽게 알린다. 같은 회원 토큰 갱신은 그대로.
+        com.muyeon.domain.common.SessionEvents.onAccount(accountKey(accessToken))
         notifyFloatingAuthChanged()
+    }
+
+    /** 계정 구분값 — JWT sub(회원 번호). 못 읽으면 토큰 자체(그래도 로그인은 로그인). */
+    fun accountKey(token: String?): String? {
+        val t = token?.takeIf { it.isNotBlank() } ?: return null
+        return runCatching {
+            val json = String(Base64.decode(t.split(".")[1], Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP))
+            org.json.JSONObject(json).opt("sub")?.toString()?.takeIf { it.isNotBlank() }
+        }.getOrNull() ?: "t:${t.hashCode()}"
     }
 
     fun getAccessToken(context: Context): String? {
@@ -136,6 +147,8 @@ object TokenManager {
         }
         // 다음 계정이 앞 계정의 활성유형을 X-Active-Type 으로 물려받지 않게
         com.muyeon.app.webview.ActiveRole.clear(context)
+        // ★ 2026-11-09 로그아웃 한 곳 — 모든 로그아웃 길이 여기를 지난다(SessionResets · 화면 onAccountChanged).
+        com.muyeon.domain.common.SessionEvents.onAccount(null)
         notifyFloatingAuthChanged()
     }
 

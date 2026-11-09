@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.muyeon.app.auth.onAccountChanged
 
 data class LikesUiState(
     /** [LikesViewModel.ALL] 또는 ScrapTarget.serverType. */
@@ -53,7 +54,11 @@ class LikesViewModel(
     val events: SharedFlow<LikesEvent> = _events.asSharedFlow()
     private var job: Job? = null
 
-    init { reload() }
+    init {
+        reload()
+        // ★ 2026-11-09 계정 바뀜 — 앞 계정 찜 목록을 비우고 다시.
+        onAccountChanged { _state.update { it.copy(items = emptyList()) }; reload() }
+    }
 
     fun selectTab(tab: String) {
         if (tab == _state.value.tab) return

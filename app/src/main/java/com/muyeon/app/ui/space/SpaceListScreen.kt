@@ -81,7 +81,7 @@ fun SpaceListScreen(
     var sheet by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) { api.categories().onSuccess { categories = it } }
-    LaunchedEffect(categoryId, sido, date, headcount, sort, filter, reloadTick) {
+    LaunchedEffect(categoryId, sido, date, headcount, sort, filter, reloadTick, com.muyeon.app.auth.accountEpoch()) {
         loading = true
         api.list(sido, categoryId.takeIf { it > 0 }, date, headcount, sort, filter)
             .onSuccess { items = it.filterNot { s -> com.muyeon.domain.usecase.home.DemoContent.isDemoTitle(s.name) }; error = null } // 예시 숨김(사용자 결정 2026-11-08).onFailure { error = it.message }

@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.muyeon.app.auth.onAccountChanged
 
 /** 답글 묶음(댓글 하나 아래) — 웹 PagedReplies. 펼칠 때 처음 받는다. */
 data class RepliesState(
@@ -112,7 +113,11 @@ class CommunityPostViewModel(
 
     private var wasLoggedIn = tokens.isLoggedIn
 
-    init { reload() }
+    init {
+        reload()
+        // ★ 2026-11-09 계정 바뀜 — 내 좋아요·스크랩·내 댓글 표시를 새 계정으로.
+        onAccountChanged { wasLoggedIn = it.loggedIn; reload() }
+    }
 
     private var resumedOnce = false
 

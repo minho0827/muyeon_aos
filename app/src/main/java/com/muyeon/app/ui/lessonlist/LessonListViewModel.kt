@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.muyeon.app.auth.onAccountChanged
 
 data class LessonListUiState(
     /** [LessonListViewModel.ALL] 또는 장르. */
@@ -89,6 +90,8 @@ class LessonListViewModel(
         loadLikes()
         viewModelScope.launch { observeScrap(ScrapTarget.LESSON).collect { c -> setLiked(c.id, c.liked) } }
         viewModelScope.launch { region.drop(1).collect { refresh() } }
+        // ★ 2026-11-09 계정 바뀜(로그아웃·다른 계정) — 앞 계정 찜을 비우고 새 계정 것으로.
+        onAccountChanged { wasLoggedIn = it.loggedIn; _state.update { s -> s.copy(likedIds = emptySet()) }; loadLikes() }
     }
 
     fun onResume() {
@@ -161,7 +164,11 @@ class LessonListViewModel(
     private fun setLiked(id: Long, liked: Boolean) = _state.update { it.copy(likedIds = if (liked) it.likedIds + id else it.likedIds - id) }
 
     private fun loadLikes() {
-        viewModelScope.launch { _state.update { it.copy(likedIds = getLikedIds(ScrapTarget.LESSON)) } }
+        val epoch = com.muyeon.app.auth.accountEpochNow()
+        viewModelScope.launch {
+            val ids = getLikedIds(ScrapTarget.LESSON)
+            if (epoch == com.muyeon.app.auth.accountEpochNow()) _state.update { it.copy(likedIds = ids) }
+        }
     }
 
     companion object {

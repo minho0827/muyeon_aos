@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.muyeon.app.auth.onAccountChanged
 
 data class HireUiState(
     val list: PagedList<JobCard> = PagedList(),
@@ -68,6 +69,8 @@ class HireViewModel(
     init {
         refresh()
         viewModelScope.launch { region.drop(1).collect { refresh() } }
+        // ★ 2026-11-09 계정 바뀜 — 지원함·열람함·찜·나에게 맞는 공고를 비우고 다시.
+        onAccountChanged { _state.update { s -> s.copy(forMe = emptyList(), applied = emptySet(), viewed = emptySet(), liked = emptySet()) }; loadSide() }
     }
 
     fun onResume() = loadSide()

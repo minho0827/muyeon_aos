@@ -157,6 +157,9 @@ object AssistantOverlay {
     /** 인기 검색어 캐시(유형별). */
     internal val popularCache = mutableMapOf<String, List<String>>()
 
+    /** 계정이 떠났다(SessionResets) — 기능 목록(회원마다 다를 수 있다)·검색어 캐시를 버린다. */
+    fun clearCaches() { cache.clear(); popularCache.clear(); faqCache = null; pendingDraft = null }
+
     // ── AI 작성 완료 푸시(10-23) ──
     const val PUSH_DRAFT_READY = "ai_draft_ready"
     /** 앞에 있는 화면 수 — 0 이면 앱이 뒤에 있다. */

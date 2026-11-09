@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.muyeon.app.auth.onAccountChanged
 
 data class DancerListUiState(
     val filter: DancerFilter = DancerFilter(),
@@ -86,6 +87,8 @@ class DancerListViewModel(
         refresh()
         loadLikes()
         viewModelScope.launch { observeScrap(ScrapTarget.DANCER).collect { c -> setLiked(c.id, c.liked) } }
+        // ★ 2026-11-09 계정 바뀜(로그아웃·다른 계정) — 앞 계정 찜을 비우고 새 계정 것으로.
+        onAccountChanged { _state.update { s -> s.copy(likedIds = emptySet()) }; loadLikes() }
     }
 
     fun setFilter(f: DancerFilter) {
@@ -148,7 +151,13 @@ class DancerListViewModel(
     }
 
     private fun setLiked(id: Long, liked: Boolean) = _state.update { it.copy(likedIds = if (liked) it.likedIds + id else it.likedIds - id) }
-    private fun loadLikes() { viewModelScope.launch { _state.update { it.copy(likedIds = getLikedIds(ScrapTarget.DANCER)) } } }
+    private fun loadLikes() {
+        val epoch = com.muyeon.app.auth.accountEpochNow()
+        viewModelScope.launch {
+            val ids = getLikedIds(ScrapTarget.DANCER)
+            if (epoch == com.muyeon.app.auth.accountEpochNow()) _state.update { it.copy(likedIds = ids) }
+        }
+    }
 
     companion object {
         const val ALL = "ALL"
@@ -196,6 +205,7 @@ class DancerDetailViewModel(
     init {
         load()
         viewModelScope.launch { _state.update { it.copy(liked = id in getLikedIds(ScrapTarget.DANCER)) } }
+        onAccountChanged { _state.update { s -> s.copy(liked = false) }; load(); viewModelScope.launch { _state.update { it.copy(liked = id in getLikedIds(ScrapTarget.DANCER)) } } }
         if (_state.value.isTeam) viewModelScope.launch {
             (dancers.myOpenCastingCalls() as? ApiResult.Success)?.let { r -> _state.update { it.copy(castingCalls = r.data) } }
         }

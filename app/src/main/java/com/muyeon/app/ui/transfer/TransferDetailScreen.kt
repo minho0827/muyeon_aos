@@ -112,7 +112,7 @@ fun TransferDetailScreen(
         api.detail(id).onSuccess { detail = it; error = null }.onFailure { error = it.message }
         loading = false
     }
-    LaunchedEffect(id) { load() }
+    LaunchedEffect(id, com.muyeon.app.auth.accountEpoch()) { load() }
 
     fun toggleScrap(d: TransferDetail) {
         if (!api.isLoggedIn) { onMessage(loginRequired("openStudioTransferDetail", "id" to id, "then" to "like")); return }

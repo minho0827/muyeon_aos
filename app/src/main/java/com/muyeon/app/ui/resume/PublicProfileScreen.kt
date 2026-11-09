@@ -118,7 +118,7 @@ fun PublicProfileScreen(
         }
     }
 
-    LaunchedEffect(userId, preview, initialProfile, reloadTick) {
+    LaunchedEffect(userId, preview, initialProfile, reloadTick, com.muyeon.app.auth.accountEpoch()) {
         if (initialProfile != null) {
             profile = initialProfile
             scrapped = initialProfile.scrapped == true

@@ -71,7 +71,9 @@ object CastingStageSession {
 @Composable
 fun rememberStageApi(): CastingStageApi {
     val context = LocalContext.current
-    return remember { CastingStageApi(TokenManager.getAccessToken(context)) }
+    // 계정이 바뀌면 새 토큰으로 다시 만든다(앞 계정 토큰을 쥐고 있지 않게).
+    val epoch = com.muyeon.app.auth.accountEpoch()
+    return remember(epoch) { CastingStageApi(TokenManager.getAccessToken(context)) }
 }
 
 /** 공연팀으로 활동 중일 때만 ＋(공연 공고 등록) — 웹 canAs(activeType, "casting.create") 와 같다. */

@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.muyeon.app.auth.onAccountChanged
 
 data class QuoteFeedUiState(
     /** [QuoteFeedViewModel.ALL] 또는 장르 id(ballet …). */
@@ -64,6 +65,11 @@ class QuoteFeedViewModel(
             _state.update { it.copy(canBrowseAll = pro) }
             refresh()
         }
+    }
+
+    init {
+        // ★ 2026-11-09 계정 바뀜 — 앞 계정의 '제안 보냄' 표시·강사 전체보기를 버리고 다시.
+        onAccountChanged { _state.update { it.copy(canBrowseAll = feed.canBrowseAll, items = emptyList(), page = 0, hasMore = false) }; refresh() }
     }
 
     fun selectCategory(id: String) {

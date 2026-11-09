@@ -106,7 +106,8 @@ fun SpaceDetailScreen(
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(spaceId) {
+    LaunchedEffect(spaceId, com.muyeon.app.auth.accountEpoch()) {
+        scrapped = false
         loading = true
         api.detail(spaceId).onSuccess { detail = it }.onFailure { detail = null }
         scrapped = api.scrappedSpaceIds().contains(spaceId)

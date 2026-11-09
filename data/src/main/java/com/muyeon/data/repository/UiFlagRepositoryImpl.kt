@@ -18,6 +18,11 @@ class UiFlagRepositoryImpl(
     private val prefs = context.applicationContext.getSharedPreferences("muyeon.uiFlags", Context.MODE_PRIVATE)
     @Volatile private var synced = false
 
+    init {
+        // ★ 2026-11-09 계정이 바뀌면 새 계정의 서버 플래그를 다시 합친다(본 기록 자체는 기기 것이라 남긴다).
+        com.muyeon.domain.common.SessionEvents.register { _, _ -> synced = false }
+    }
+
     override fun hasSeen(key: String): Boolean = prefs.getBoolean(key, false)
 
     override suspend fun markSeen(key: String) {

@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.muyeon.app.auth.onAccountChanged
 
 data class CommunityListUiState(
     val category: String = CommunityListViewModel.ALL,
@@ -60,6 +61,8 @@ class CommunityListViewModel(
         refresh()
         // 글 상세에서 지우거나 웹 창에서 새 글을 쓰고 돌아오면 다시 받는다.
         viewModelScope.collectAppResults(RESULT_COMMUNITY) { refresh(silent = true) }
+        // ★ 2026-11-09 계정 바뀜 — 차단한 사람 글 거르기가 계정마다 다르다.
+        onAccountChanged { wasLoggedIn = it.loggedIn; refresh(silent = true) }
     }
 
     /** 로그인·로그아웃 뒤 — 차단한 사람 글이 걸러지는지가 달라진다. */

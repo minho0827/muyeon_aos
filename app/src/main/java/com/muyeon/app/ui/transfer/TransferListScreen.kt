@@ -72,7 +72,7 @@ fun TransferListScreen(
     var showFilter by remember { mutableStateOf(false) }
     var chatBusy by remember { mutableStateOf(false) }
 
-    LaunchedEffect(state.region, state.filter) { state.load(api, reset = true) }
+    LaunchedEffect(state.region, state.filter, com.muyeon.app.auth.accountEpoch()) { state.load(api, reset = true) }
 
     val nearEnd by remember {
         derivedStateOf {

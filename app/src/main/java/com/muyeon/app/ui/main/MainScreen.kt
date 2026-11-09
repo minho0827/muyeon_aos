@@ -98,6 +98,8 @@ fun MainScreen(
                 //   상세·목록은 바깥 NavHost(탭 위 화면, StageRoutes.SHELL)로 밀려 들어온다.
                 composable(Screen.TabCasting.route) {
                     val r = com.muyeon.app.ui.castingstage.StageRoutes.SHELL
+                    // 계정이 바뀌면 새로 그린다(찜·공연팀 여부가 계정마다 다르다).
+                    androidx.compose.runtime.key(com.muyeon.app.auth.accountEpoch()) {
                     com.muyeon.app.ui.castingstage.CastingHomeScreen(
                         api = com.muyeon.app.ui.castingstage.rememberStageApi(),
                         onSearch = { onOpenDetail(Screen.Search.build(com.muyeon.app.ui.search.SearchDomainKeys.CASTING)) },
@@ -113,6 +115,7 @@ fun MainScreen(
                         onOpenIssue = { no -> onOpenDetail(r.issue(no)) },
                         reloadKey = com.muyeon.app.ui.castingstage.CastingStageSession.reloadKey,
                     )
+                    }
                 }
                 composable(Screen.TabHome.route) {
                     HomeScreen(
@@ -150,11 +153,16 @@ fun MainScreen(
                 composable(Screen.TabJobs.route) { com.muyeon.app.ui.recruit.HireScreen(recruitActions) }
                 composable(Screen.TabSeek.route) { com.muyeon.app.ui.recruit.SeekScreen(recruitActions) }
                 composable(Screen.TabSubs.route) { com.muyeon.app.ui.recruit.SubsScreen(recruitActions) }
+                // ★ 2026-11-09 공간·양도 탭은 화면 안(remember)에 찜·내 번호를 쥔다 — 계정이 바뀌면 통째로 새로 그린다.
                 composable(Screen.TabSpaces.route) {
-                    SpaceRentTab(header = { actions -> TabSectionHeader(spaceTitle(), SPACE_SECTIONS, MainTab.SPACES, viewModel::selectTab, actions) })
+                    androidx.compose.runtime.key(com.muyeon.app.auth.accountEpoch()) {
+                        SpaceRentTab(header = { actions -> TabSectionHeader(spaceTitle(), SPACE_SECTIONS, MainTab.SPACES, viewModel::selectTab, actions) })
+                    }
                 }
                 composable(Screen.TabTransfers.route) {
-                    TransferTab(header = { actions -> TabSectionHeader(spaceTitle(), SPACE_SECTIONS, MainTab.TRANSFERS, viewModel::selectTab, actions) })
+                    androidx.compose.runtime.key(com.muyeon.app.auth.accountEpoch()) {
+                        TransferTab(header = { actions -> TabSectionHeader(spaceTitle(), SPACE_SECTIONS, MainTab.TRANSFERS, viewModel::selectTab, actions) })
+                    }
                 }
                 composable(Screen.TabMy.route) {
                     MyScreen(
