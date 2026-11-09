@@ -62,7 +62,9 @@ fun QuoteFeedCard(item: QuoteFeedItem, sent: Boolean, onClick: () -> Unit, modif
             Column(Modifier.padding(start = 10.dp, end = 10.dp, top = 9.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     val genre = QuoteFeedLabels.genre(item.categoryId) ?: stringResource(R.string.quote_feed_lesson)
-                    Chip(genre, PrimaryInk, AppColors.PrimarySoft)
+                    // 장르 칩은 앱 장르 색(CategoryColors) — 레슨 카드와 같은 색.
+                    val gc = com.muyeon.app.ui.theme.CategoryColors.genre(genre)
+                    Chip(genre, gc.fg, gc.bg)
                     if (item.guestRequest) Chip(stringResource(R.string.quote_sheet_guest), AppColors.TextSub, AppColors.SurfaceMuted)
                 }
                 DashedLine()

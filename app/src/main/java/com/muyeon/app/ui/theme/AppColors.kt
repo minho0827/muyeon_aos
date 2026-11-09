@@ -76,9 +76,9 @@ object CategoryColors {
 
     private val genre = mapOf(
         "발레" to PillColors(Color(0xFFF4ECE2), Color(0xFFA9793F)),
-        "한국무용" to PillColors(Color(0xFFE7F4EA), Color(0xFF3E9D59)),
+        "한국무용" to PillColors(Color(0xFFE7F4EA), Color(0xFF2A7A43)),  // ★ 2026-11-09 글자 진하게(대비 3.0→4.7, 잘 안 보인다는 사용자 제보)
         "현대무용" to PillColors(Color(0xFFEEE8FB), Color(0xFF7B5CC4)),
-        "실용무용" to PillColors(Color(0xFFFDE9DA), Color(0xFFE0752A)),
+        "실용무용" to PillColors(Color(0xFFFDE9DA), Color(0xFFB04E0E)),  // ★ 2026-11-09 글자 진하게(대비 2.6→4.5)
         "바레" to PillColors(Color(0xFFE6F0FD), Color(0xFF3B7BD4)),
         "발레핏" to PillColors(Color(0xFFFDE6E6), Color(0xFFD8564D)),
     )
