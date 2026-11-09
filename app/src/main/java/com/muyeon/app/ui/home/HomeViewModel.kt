@@ -60,7 +60,7 @@ data class HomeUiState(
     val likedLessons: Set<Long> = emptySet(),
     /**
      * ★ 2026-11-08 '레슨을 찾는 회원들' — 비회원·실패면 빈 목록(섹션 숨김, 웹과 같다).
-     *   추천 탭 = GET /quotes/home 10건 · 장르 탭 = 그 장르만(QuoteFeedUseCase.page — 강사·학원은 서버 categoryId, 그 밖은 10건을 거름).
+     *   추천 탭 = 전체 최신 10건 · 장르 탭 = 그 장르만(QuoteFeedUseCase.section — 어디서 읽을지는 유스케이스가 고른다).
      */
     val quoteFeed: List<com.muyeon.domain.model.quotefeed.QuoteFeedItem> = emptyList(),
     /** 강사·학원 활동 중 — 카드 '제안 보냄' 표시. */
@@ -251,9 +251,9 @@ class HomeViewModel(
         val category = _state.value.lessonGenre?.let { LessonGenres.QUOTE_CATEGORY[it] }
         quoteJob = viewModelScope.launch {
             val list = when {
-                tab == HomeUiState.LESSON_RECOMMEND -> quoteFeed.home().getOrNull().orEmpty()
+                tab == HomeUiState.LESSON_RECOMMEND -> quoteFeed.section(null).getOrNull().orEmpty()
                 category == null -> emptyList()
-                else -> quoteFeed.page(category, 0).getOrNull()?.items.orEmpty().take(QUOTE_SECTION)
+                else -> quoteFeed.section(category).getOrNull().orEmpty().take(QUOTE_SECTION)
             }
             _state.update { if (it.lessonTab != tab) it else it.copy(quoteFeed = list, quoteFeedPro = quoteFeed.canBrowseAll) }
         }

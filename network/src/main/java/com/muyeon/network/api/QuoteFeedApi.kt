@@ -1,6 +1,7 @@
 package com.muyeon.network.api
 
 import com.muyeon.network.dto.quotefeed.QuoteFeedAvailableDto
+import com.muyeon.network.dto.quotefeed.QuoteFeedHomePageDto
 import com.muyeon.network.dto.quotefeed.QuoteFeedItemDto
 import com.muyeon.network.interceptor.NetworkRetryInterceptor
 import retrofit2.Response
@@ -14,6 +15,13 @@ interface QuoteFeedApi {
     @Headers("${NetworkRetryInterceptor.SILENT_HEADER}: 1")
     @GET(ApiEndpoints.QuoteFeed.HOME)
     suspend fun home(): Response<List<QuoteFeedItemDto>>
+
+    @GET(ApiEndpoints.QuoteFeed.HOME_PAGE)
+    suspend fun homePage(
+        @Query("categoryId") categoryId: String?,
+        @Query("cursor") cursor: String?,
+        @Query("limit") limit: Int,
+    ): Response<QuoteFeedHomePageDto>
 
     @GET(ApiEndpoints.QuoteFeed.AVAILABLE)
     suspend fun available(@Query("categoryId") categoryId: String?, @Query("page") page: Int): Response<QuoteFeedAvailableDto>

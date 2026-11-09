@@ -22,8 +22,10 @@ data class QuoteFeedItem(
     val guestRequest: Boolean,
 )
 
-/** 목록 한 페이지 — 강사·학원은 서버 페이지(20건), 그 밖 유형은 홈 10건 한 번. */
-data class QuoteFeedPage(val items: List<QuoteFeedItem>, val page: Int, val hasMore: Boolean)
+/**
+ * 목록 한 페이지. [next] = 다음 장을 부를 열쇠(강사·학원은 페이지 번호, 그 밖은 서버 커서) — 없으면 끝.
+ */
+data class QuoteFeedPage(val items: List<QuoteFeedItem>, val hasMore: Boolean, val next: String? = null)
 
 /** 서버 견적 장르 id(웹 constants/quoteCategories QUOTE_CATEGORIES 순서). */
 object QuoteFeedCategories {

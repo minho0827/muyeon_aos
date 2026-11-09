@@ -19,10 +19,11 @@ data class QuoteFeedUiState(
     /** [QuoteFeedViewModel.ALL] 또는 장르 id(ballet …). */
     val categoryId: String = QuoteFeedViewModel.ALL,
     val grid: Boolean = true,
-    /** 강사·학원 활동 중 — 서버 페이지 목록 · '제안 보냄' 표시. 아니면 최근 10건. */
+    /** 강사·학원 활동 중 — '제안 보냄' 표시. */
     val canBrowseAll: Boolean = false,
     val items: List<QuoteFeedItem> = emptyList(),
-    val page: Int = 0,
+    /** 다음 장 열쇠(QuoteFeedPage.next) — null 이면 끝. */
+    val next: String? = null,
     val hasMore: Boolean = false,
     val isInitialLoading: Boolean = true,
     val isRefreshing: Boolean = false,
@@ -35,7 +36,7 @@ data class QuoteFeedUiState(
 /**
  * ★ 2026-11-08 '레슨을 찾는 회원들' 전체보기 — 레슨 전체보기(LessonListViewModel)와 같은 틀:
  *   장르 칩(전체 + 견적 장르) · 그리드/목록 전환(기억한다) · 아래로 내리면 다음 페이지.
- *   강사·학원은 GET /quotes/available(웹 /availableQuotes 목록), 그 밖은 /quotes/home 10건(QuoteFeedUseCase).
+ *   어디서 읽을지는 QuoteFeedUseCase 가 고른다(강사·학원 /quotes/available · 그 밖 /quotes/home/page).
  */
 class QuoteFeedViewModel(
     /** 홈 장르 탭에서 왔으면 그 장르 칩으로 연다(ballet …, 기억한 칩보다 먼저, 기억은 바꾸지 않는다). */
@@ -69,13 +70,13 @@ class QuoteFeedViewModel(
 
     init {
         // ★ 2026-11-09 계정 바뀜 — 앞 계정의 '제안 보냄' 표시·강사 전체보기를 버리고 다시.
-        onAccountChanged { _state.update { it.copy(canBrowseAll = feed.canBrowseAll, items = emptyList(), page = 0, hasMore = false) }; refresh() }
+        onAccountChanged { _state.update { it.copy(canBrowseAll = feed.canBrowseAll, items = emptyList(), next = null, hasMore = false) }; refresh() }
     }
 
     fun selectCategory(id: String) {
         if (id == _state.value.categoryId) return
         prefs.putString(K_CATEGORY, id)
-        _state.update { it.copy(categoryId = id, items = emptyList(), page = 0, hasMore = false) }
+        _state.update { it.copy(categoryId = id, items = emptyList(), next = null, hasMore = false) }
         refresh()
     }
 
@@ -91,9 +92,9 @@ class QuoteFeedViewModel(
         _state.update { it.copy(isInitialLoading = !pull && it.items.isEmpty(), isRefreshing = pull, errorMessage = null, moreError = null) }
         val cat = categoryParam()
         loadJob = viewModelScope.launch {
-            when (val r = feed.page(cat, 0)) {
+            when (val r = feed.page(cat, null)) {
                 is ApiResult.Success -> _state.update {
-                    it.copy(items = r.data.items, page = r.data.page, hasMore = r.data.hasMore, isInitialLoading = false, isRefreshing = false)
+                    it.copy(items = r.data.items, next = r.data.next, hasMore = r.data.hasMore, isInitialLoading = false, isRefreshing = false)
                 }
                 is ApiResult.Error -> _state.update { it.copy(isInitialLoading = false, isRefreshing = false, errorMessage = r.message) }
             }
@@ -102,14 +103,14 @@ class QuoteFeedViewModel(
 
     fun loadMore() {
         val s = _state.value
-        if (s.isLoadingMore || s.isInitialLoading || !s.hasMore) return
+        if (s.isLoadingMore || s.isInitialLoading || !s.hasMore || s.next == null) return
         _state.update { it.copy(isLoadingMore = true, moreError = null) }
         val cat = categoryParam()
         loadJob = viewModelScope.launch {
-            when (val r = feed.page(cat, s.page + 1)) {
+            when (val r = feed.page(cat, s.next)) {
                 is ApiResult.Success -> _state.update { cur ->
                     val seen = cur.items.mapTo(HashSet()) { it.id }
-                    cur.copy(items = cur.items + r.data.items.filter { it.id !in seen }, page = r.data.page, hasMore = r.data.hasMore, isLoadingMore = false)
+                    cur.copy(items = cur.items + r.data.items.filter { it.id !in seen }, next = r.data.next, hasMore = r.data.hasMore, isLoadingMore = false)
                 }
                 is ApiResult.Error -> _state.update { it.copy(isLoadingMore = false, moreError = r.message) }
             }

@@ -15,4 +15,7 @@ class QuoteFeedRepositoryImpl(private val api: QuoteFeedApi, private val moshi: 
 
     override suspend fun available(categoryId: String?, page: Int): ApiResult<QuoteFeedPage> =
         safeApiCall(moshi) { api.available(categoryId, page) }.map { it.toDomain(page) }
+
+    override suspend fun homePage(categoryId: String?, cursor: String?, limit: Int): ApiResult<QuoteFeedPage> =
+        safeApiCall(moshi) { api.homePage(categoryId, cursor, limit) }.map { it.toDomain() }
 }

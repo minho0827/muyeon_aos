@@ -235,6 +235,7 @@ object ApiEndpoints {
      */
     object QuoteFeed {
         const val HOME = "$API/quotes/home"                   // GET → [{ id, categoryId, region, answers(days·time·format), createdAt, isDemo, isMine, canRespond }]
+        const val HOME_PAGE = "$API/quotes/home/page"         // ★ 2026-11-09 GET categoryId·cursor·limit → { items(HOME 과 같은 칸), hasMore, nextCursor }
         const val AVAILABLE = "$API/quotes/available"         // GET categoryId·page → { items(Quote), hasMore, page, total }
     }
 }

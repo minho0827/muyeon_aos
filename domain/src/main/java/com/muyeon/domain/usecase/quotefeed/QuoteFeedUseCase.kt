@@ -9,28 +9,33 @@ import com.muyeon.domain.repository.QuoteFeedRepository
 
 /**
  * ★ 2026-11-08 '레슨을 찾는 회원들' — 어디서 읽을지 한 곳에서 정한다.
- *   - 홈 섹션: GET /quotes/home(웹 HomeQuoteRequests 와 같은 10건). 비회원은 서버 공개 목록이 없어 빈 목록(섹션 숨김).
- *   - 전체보기: 강사·학원 활동 유형이면 GET /quotes/available(웹 /availableQuotes 목록 — 서버 페이지·장르 필터),
- *     그 밖(일반회원 등)은 /quotes/home 10건을 장르로만 거른다(서버가 다른 유형에 목록을 열지 않는다).
+ *   - 강사·학원 활동 유형: [ProQuoteFeedSource](/quotes/home · /quotes/available — 예전 그대로).
+ *   - 그 밖 회원: [MemberQuoteFeedSource](★ 2026-11-09 /quotes/home/page 로 열린 요청 전체, 서버 옛 버전이면 /quotes/home 10건).
+ *   - 비회원: 서버 공개 목록이 없어 빈 목록(섹션 숨김).
  */
 class QuoteFeedUseCase(
-    private val repo: QuoteFeedRepository,
     private val tokens: TokenStore,
     private val activeType: ActiveTypeStore,
+    private val pro: QuoteFeedSource,
+    private val member: QuoteFeedSource,
 ) {
+    constructor(repo: QuoteFeedRepository, tokens: TokenStore, activeType: ActiveTypeStore) :
+        this(tokens, activeType, ProQuoteFeedSource(repo), MemberQuoteFeedSource(repo))
+
     val isLoggedIn: Boolean get() = tokens.isLoggedIn
 
-    /** 강사·학원 활동 중 — 전체 요청 목록(페이지)을 볼 수 있다. */
+    /** 강사·학원 활동 중 — '제안 보냄' 표시 · 강사용 목록. */
     val canBrowseAll: Boolean get() = tokens.isLoggedIn && activeType.current() in PRO_TYPES
 
-    suspend fun home(): ApiResult<List<QuoteFeedItem>> =
-        if (!tokens.isLoggedIn) ApiResult.Success(emptyList()) else repo.home()
+    private val source: QuoteFeedSource get() = if (canBrowseAll) pro else member
 
-    /** @param categoryId null = 전체 */
-    suspend fun page(categoryId: String?, page: Int): ApiResult<QuoteFeedPage> {
-        if (canBrowseAll) return repo.available(categoryId, page)
-        return home().map { list -> QuoteFeedPage(list.filter { categoryId == null || it.categoryId == categoryId }, 0, hasMore = false) }
-    }
+    /** 홈 칸(최대 10건). @param categoryId null = 전체 */
+    suspend fun section(categoryId: String?): ApiResult<List<QuoteFeedItem>> =
+        if (!tokens.isLoggedIn) ApiResult.Success(emptyList()) else source.section(categoryId)
+
+    /** 전체보기 한 장. @param categoryId null = 전체 · @param next null = 첫 장 */
+    suspend fun page(categoryId: String?, next: String?): ApiResult<QuoteFeedPage> =
+        if (!tokens.isLoggedIn) ApiResult.Success(QuoteFeedPage(emptyList(), hasMore = false)) else source.page(categoryId, next)
 
     private companion object {
         val PRO_TYPES = setOf("TEACHER", "ACADEMY")

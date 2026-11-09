@@ -1,6 +1,7 @@
 package com.muyeon.network.dto
 
 import com.muyeon.network.dto.quotefeed.QuoteFeedAvailableDto
+import com.muyeon.network.dto.quotefeed.QuoteFeedHomePageDto
 import com.muyeon.network.dto.quotefeed.QuoteFeedItemDto
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
@@ -31,8 +32,20 @@ class QuoteFeedDtoTest {
         val json = """{"needsGenre":false,"items":[{"id":3,"categoryId":"modern","region":"","answers":[{"questionId":"detail","text":"비공개"}],"guestRequest":true}],"total":21,"page":0,"hasMore":true}"""
         val p = moshi.adapter(QuoteFeedAvailableDto::class.java).fromJson(json)!!.toDomain(0)
         assertTrue(p.hasMore)
+        assertEquals("1", p.next)
         assertTrue(p.items[0].canRespond)
         assertTrue(p.items[0].guestRequest)
         assertEquals(null, p.items[0].region)
+    }
+
+    @Test fun `전체 목록(home·page) — 홈 카드 그대로, 커서는 다음 장 있을 때만`() {
+        val json = """{"items":[{"id":5,"categoryId":"ballet","isMine":false,"canRespond":false}],"hasMore":true,"nextCursor":"abc"}"""
+        val p = moshi.adapter(QuoteFeedHomePageDto::class.java).fromJson(json)!!.toDomain()
+        assertEquals("abc", p.next)
+        assertTrue(p.hasMore)
+        assertFalse(p.items[0].canRespond)
+        val end = moshi.adapter(QuoteFeedHomePageDto::class.java).fromJson("""{"items":[],"hasMore":false,"nextCursor":null}""")!!.toDomain()
+        assertFalse(end.hasMore)
+        assertEquals(null, end.next)
     }
 }

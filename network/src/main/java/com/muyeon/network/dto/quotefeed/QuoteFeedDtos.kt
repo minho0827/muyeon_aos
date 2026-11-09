@@ -52,9 +52,25 @@ data class QuoteFeedAvailableDto(
     val page: Int? = null,
     val hasMore: Boolean? = null,
 ) {
-    fun toDomain(requestedPage: Int) = QuoteFeedPage(
-        items = items.orEmpty().mapNotNull { it.toDomain(fromAvailable = true) },
-        page = page ?: requestedPage,
-        hasMore = hasMore == true,
-    )
+    fun toDomain(requestedPage: Int): QuoteFeedPage {
+        val more = hasMore == true
+        return QuoteFeedPage(
+            items = items.orEmpty().mapNotNull { it.toDomain(fromAvailable = true) },
+            hasMore = more,
+            next = if (more) ((page ?: requestedPage) + 1).toString() else null,
+        )
+    }
+}
+
+/** ★ 2026-11-09 `GET /quotes/home/page` → { items(홈 카드), hasMore, nextCursor }(quotes.service listHomePage). */
+@JsonClass(generateAdapter = true)
+data class QuoteFeedHomePageDto(
+    val items: List<QuoteFeedItemDto>? = null,
+    val hasMore: Boolean? = null,
+    val nextCursor: String? = null,
+) {
+    fun toDomain(): QuoteFeedPage {
+        val next = nextCursor?.takeIf { hasMore == true && it.isNotBlank() }
+        return QuoteFeedPage(items.orEmpty().mapNotNull { it.toDomain() }, hasMore = next != null, next = next)
+    }
 }
