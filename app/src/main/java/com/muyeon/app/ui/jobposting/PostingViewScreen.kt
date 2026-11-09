@@ -52,7 +52,6 @@ import org.json.JSONObject
  * ★ 2026-11-08 공고 상세(보는 사람) — 채용(JOB)·대타(SUB). 웹 JobDetail·SubDetail 의 본문·지원하기.
  *   본문은 내 공고 관리 상세와 같은 부품(DetailHeader · JobPostingDetailContent · SubBody)을 쓴다.
  *   하단: [찜] [지원하기] → 이력서 고르기 → 지원(POST /{kind}/:id/apply). 이미 지원했으면 '지원한 공고예요'.
- *   ⚠️ 긴급 대타 수락·지원 취소·지원자 보기(작성자) 같은 흐름은 아직 웹 상세 — 메뉴 '웹에서 보기'로 연다.
  */
 @Composable
 fun PostingViewScreen(
@@ -62,7 +61,6 @@ fun PostingViewScreen(
     onToggleLike: () -> Unit,
     onBack: () -> Unit,
     onLogin: () -> Unit,
-    onOpenWeb: (String) -> Unit,
     onWriteResume: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -77,7 +75,6 @@ fun PostingViewScreen(
     var busy by remember { mutableStateOf(false) }
     var cancelOpen by remember { mutableStateOf(false) }
     val loggedIn = !token.isNullOrEmpty()
-    val webPath = "/${PostingKind.seg(kind)}/$id"
 
     LaunchedEffect(kind, id) {
         api.loadPosting(kind, id).onSuccess { detail = it }.onFailure { error = it.message ?: context.getString(R.string.posting_load_failed) }
@@ -88,10 +85,7 @@ fun PostingViewScreen(
     }
 
     Column(Modifier.fillMaxSize().background(AppColors.Surface)) {
-        MainTopBar(stringResource(if (kind == "SUB") R.string.tab_subs else R.string.recruit_job_detail), primary = false, onBack = onBack) {
-            Text(stringResource(R.string.posting_open_web), style = AppTypography.Body14SemiBold, color = AppColors.TextSub,
-                modifier = Modifier.clickable { onOpenWeb(webPath) }.padding(horizontal = 12.dp, vertical = 8.dp))
-        }
+        MainTopBar(stringResource(if (kind == "SUB") R.string.tab_subs else R.string.recruit_job_detail), primary = false, onBack = onBack)
         val d = detail
         when {
             d == null && error == null -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) { CircularProgressIndicator(color = AppColors.Primary) }

@@ -56,12 +56,12 @@ object NativeActionRouterB0 {
             "openMemberType" -> loginFirst(activity, d.optString("redirect").ifEmpty { "/my/memberType" }) {
                 val verify = d.optString("verify").uppercase()
                 if (verify.isNotEmpty() && verify !in IDENTITY_ROLES) {
-                    com.muyeon.app.ui.onboarding.OnboardingActivity.startVerification(activity, verify)
+                    com.muyeon.app.ui.onboarding.OnboardingActivity.startVerification(activity, verify, completeInApp = true)
                 } else scope(activity).launch {
                     val uc = KoinJavaComponent.get<GetRoleManageLaunchUseCase>(GetRoleManageLaunchUseCase::class.java)
                     when (val r = uc()) {
                         is ApiResult.Success -> com.muyeon.app.ui.onboarding.OnboardingActivity.startRoleManage(
-                            activity, r.data.rolesJson, r.data.heroImage, ActiveRole.current(activity),
+                            activity, r.data.rolesJson, r.data.heroImage, ActiveRole.current(activity), completeInApp = true,
                         )
                         is ApiResult.Error -> Toast.makeText(activity, r.message, Toast.LENGTH_SHORT).show()
                     }

@@ -31,7 +31,14 @@ object NativeWebRoute {
     }
 
     /** 웹에 콜백만 통지하고 종료(예: __onAutoQuoteChanged). 핸들러가 없으면 no-op. */
+    //  ★ 2026-11-09 웹 창이 없으면 새로 띄우지 않는다 — 주소 없이 뜨면 웹 첫 화면이 나온다.
+    //   콜백은 대기열에 두고(웹 창이 나중에 열리면 실행) 닫기만 한다.
     fun notifyWebAndFinish(activity: Activity, js: String) {
+        if (!WebViewActivity.isAlive) {
+            WebCallbackQueue.enqueue(activity, js)
+            activity.finish()
+            return
+        }
         activity.startActivity(webIntent(activity).putExtra(EXTRA_EVAL_JS, js))
         activity.finish()
     }

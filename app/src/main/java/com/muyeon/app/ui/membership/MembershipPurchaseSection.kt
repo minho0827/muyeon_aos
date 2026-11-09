@@ -44,7 +44,6 @@ import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.DialogAction
 import com.muyeon.app.ui.quote.DialogMessage
 import com.muyeon.app.ui.quote.DialogTitle
-import com.muyeon.app.utils.Constants
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Currency
@@ -360,10 +359,8 @@ private fun formatMicros(micros: Long, currencyCode: String): String {
     }.getOrDefault("")
 }
 
-/** 약관 — embed=1: 웹이 자체 뒤로가기를 그리지 않게(iOS MembershipLegalFooter 와 같은 규칙). */
-private fun openPolicy(context: Context, doc: String) {
-    openUrl(context, "${Constants.getBaseUrl(context).trimEnd('/')}/policy?doc=$doc&embed=1")
-}
+/** 약관 — 앱 약관 화면(뒤로 가면 구매 화면). */
+private fun openPolicy(context: Context, doc: String) = com.muyeon.app.ui.policy.PolicyActivity.start(context, doc)
 
 private fun openUrl(context: Context, url: String) {
     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }

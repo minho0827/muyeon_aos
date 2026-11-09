@@ -8,7 +8,7 @@ import com.muyeon.app.ui.main.MainTab
  *   판정은 웹 common/nativeLink.js(NATIVE_LINKS) 와 같다(쿼리 as=dancer·seekProfile·src 등 그대로).
  *   여기서 쓰는 액션 중 'Link'·'Edit'·'Detail'·'MemberType'·'AccountRecovery'·'CommunityCategory'·'LessonSettings' 는
  *   앱 안 전용(웹 브리지 계약 아님) — [com.muyeon.app.webview.NativeActionRouterB0].
- *   남겨 둔 웹: /classes·/casting/:id/edit(정리 결정 전), B 분류(새 화면 필요), D(앱 밖)·E(외부 인증·결제).
+ *   남겨 둔 웹: /casting/:id/edit(정리 결정 전), B 분류(새 화면 필요), D(앱 밖)·E(외부 인증·결제).
  */
 internal object NativeRoutesB0 {
     private val ACADEMY = Regex("^/academies/(\\d+)$")
@@ -24,6 +24,8 @@ internal object NativeRoutesB0 {
     /** 웹 community/:category — 카테고리 코드는 대문자(QUESTION·CHAT …). /community/write 등은 걸리지 않는다. */
     private val COMMUNITY_CATEGORY = Regex("^/community/([A-Z_]+)$")
     private val POSITIVE = Regex("^[1-9]\\d*$")
+    /** ★ 2026-11-09 취미 클래스는 없앴다(사용자 결정) — 예전 링크 /classes · /classes/:id 는 홈 레슨 탭으로. */
+    private val CLASSES = Regex("^/classes(/[^/]+)?$")
 
     /** [p] = 끝 / 를 뗀 경로, [query] = 쿼리(풀지 않은 값), [hasQuery] = '?' 가 있었다. */
     fun resolve(p: String, query: Map<String, String>, hasQuery: Boolean): NativeRoutes.Target? {
@@ -71,6 +73,7 @@ internal object NativeRoutesB0 {
         STAGE_ISSUE.find(p)?.let { return action("openCastingStage", "issueNo" to it.groupValues[1]) }
         STUDIO_MEMBER.find(p)?.let { return action("openStudioMemberDetail", "memberId" to it.groupValues[1], "redirect" to p) }
         COMMUNITY_CATEGORY.find(p)?.let { return action("openCommunityCategory", "category" to it.groupValues[1]) }
+        if (CLASSES.matches(p)) return NativeRoutes.Target.Tab(MainTab.LESSONS)
         return null
     }
 

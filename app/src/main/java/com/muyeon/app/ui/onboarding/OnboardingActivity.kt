@@ -24,7 +24,6 @@ import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.webview.NativeWebRoute
 import com.muyeon.app.webview.WebCallbacks
 import com.muyeon.app.webview.WebCallbackQueue
-import org.json.JSONArray
 import org.json.JSONObject
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
@@ -33,8 +32,9 @@ import org.koin.android.ext.android.inject
  * 온보딩/회원유형 컨테이너 — 웹 `openRoleManage` / `openRoleVerification` /
  *  `openSignupTerms` / `openAddressSetup` / `openNotificationConsent` 브릿지 진입점.
  *
- * ⚠️ 역할 추가·해제·활동유형 변경은 **웹 콜백**으로만 서버에 반영된다(iOS 계약).
+ * ⚠️ 웹 창이 연 경우 역할 해제·인증 제출은 **웹 콜백**으로 서버에 반영된다(iOS 계약).
  *   각 액션은 NativeWebRoute.notifyWebAndFinish 로 웹뷰에 돌아가 콜백을 호출한다.
+ * ★ 앱 화면이 연 경우(completeInApp) 인증 제출은 앱이 직접 하고, 웹 창은 절대 띄우지 않는다.
  */
 class OnboardingActivity : ComponentActivity() {
 
@@ -52,11 +52,13 @@ class OnboardingActivity : ComponentActivity() {
          * @param rolesJson 웹 data.roles — `{"held":[...],"roles":[...]}` 형태의 **JSON 문자열**
          * @param activeType 활동 유형. rolesJson 바깥(평평한 키)에 오므로 따로 받는다
          */
+        //  ★ 2026-11-09 [completeInApp] = 앱 화면(MY 유형 관리 등)에서 — 인증 서류를 앱이 바로 제출한다(웹 창이 없으면 콜백이 안 돈다).
         fun startRoleManage(
-            context: Context, rolesJson: String?, heroImageUrl: String?, activeType: String?,
+            context: Context, rolesJson: String?, heroImageUrl: String?, activeType: String?, completeInApp: Boolean = false,
         ) = context.go(
             Intent(context, OnboardingActivity::class.java)
                 .putExtra(EXTRA_ROUTE, "manage")
+                .putExtra(EXTRA_IN_APP, completeInApp)
                 .putExtra(EXTRA_PAYLOAD, rolesJson ?: "")
                 .putExtra(EXTRA_HERO, heroImageUrl ?: "")
                 .putExtra(EXTRA_ACTIVE_TYPE, activeType ?: "GENERAL"),
@@ -149,7 +151,7 @@ class OnboardingActivity : ComponentActivity() {
                         onSelectActive = { t, done -> selectActiveType(t, done) },
                     )
                 }
-                // 인증 유도 팝업(`openRoleVerification`) 직행 경로 — 관리 화면이 없으므로 제출 즉시 웹으로 돌아간다.
+                // 인증 유도 팝업(`openRoleVerification`) 직행 경로 — 웹이 열었으면 제출 즉시 웹으로, 앱이 열었으면 앱이 제출하고 닫는다.
                 //  이 경로의 웹 콜백은 __onRoleVerify 다(제출 + 마이페이지 제출완료 안내까지 웹이 처리).
                 composable("verify") {
                     RoleVerificationScreen(
@@ -157,8 +159,7 @@ class OnboardingActivity : ComponentActivity() {
                         ownerName = ownerName,
                         onClose = { finish() },
                         onDone = { r, urls, academyName, businessNumber, startDate ->
-                            if (completeInApp) verifyInApp(r, urls, academyName, businessNumber, startDate)
-                            else notifyWeb(verifyJs("__onRoleVerify", r, urls, academyName, businessNumber, startDate))
+                            finisher.verified(VerifyDocs(r, urls, academyName, businessNumber, startDate))
                         },
                     )
                 }
@@ -172,14 +173,11 @@ class OnboardingActivity : ComponentActivity() {
                             if (!nav.popBackStack()) closeAndFlush()
                         },
                         onDone = { r, urls, academyName, businessNumber, startDate ->
-                            // ★ 2026-10-22 학원은 사진 없이 사업자등록번호만으로도 제출된다(국세청 진위확인 자동 승인).
-                            val submitted = urls.isNotEmpty() || businessNumber != null
-                            verifyDone(r, urls, academyName, businessNumber, startDate)
-                            verifyCompletion?.invoke(submitted); verifyCompletion = null
+                            val d = VerifyDocs(r, urls, academyName, businessNumber, startDate)
+                            verifyCompletion?.invoke(d.submitted); verifyCompletion = null
                             // 제출을 마쳤으면 인증 화면만이 아니라 회원유형 관리 화면까지 함께 닫는다(iOS 동일).
-                            //  관리 화면이 남으면 방금 제출이 처리됐는지 알 수 없고, 웹의 제출완료 안내도
-                            //  화면 뒤에 가려진다. 큐에 쌓인 콜백은 웹뷰가 앞으로 나올 때 실행된다.
-                            if (submitted) closeAndFlush()
+                            //  관리 화면이 남으면 방금 제출이 처리됐는지 알 수 없다.
+                            if (d.submitted) finisher.manageVerified(d)
                             else if (!nav.popBackStack()) closeAndFlush()
                         },
                         initialImages = payload.documents[code].orEmpty(),
@@ -194,7 +192,7 @@ class OnboardingActivity : ComponentActivity() {
                                 // 온보딩 위에 인증 첨부화면 — 완료 시 온보딩까지 함께 닫고 웹 통지(iOS 와 동일).
                                 nav.navigate("roleOnboardingVerify/$r")
                             } else {
-                                roleComplete(r, emptyList(), null)
+                                finisher.roleChosen(VerifyDocs(r, emptyList(), null))
                             }
                         },
                     )
@@ -203,14 +201,14 @@ class OnboardingActivity : ComponentActivity() {
                     val code = e.arguments?.getString("role").orEmpty()
                     // 시스템 뒤로가기 = X(건너뛰기)와 같다 — 유형은 이미 골랐으니 미제출로 완료 통지.
                     //  NavHost 기본 동작(선택 화면으로 pop)보다 우선하도록 목적지 안에 둔다.
-                    BackHandler { roleComplete(code, emptyList(), null) }
+                    BackHandler { finisher.roleChosen(VerifyDocs(code, emptyList(), null)) }
                     RoleVerificationScreen(
                         api, code,
                         // 최초 가입 온보딩 — 여기서만 건너뛰기를 허용한다(닫을 다른 수단이 없다).
                         //  ★ iOS allowSkip:true 와 같은 취지. 빈 목록으로 통지해 '미제출'을 그대로 알린다.
-                        onClose = { roleComplete(code, emptyList(), null) },
+                        onClose = { finisher.roleChosen(VerifyDocs(code, emptyList(), null)) },
                         onDone = { r, urls, academyName, businessNumber, startDate ->
-                            roleComplete(r, urls, academyName, businessNumber, startDate)
+                            finisher.roleChosen(VerifyDocs(r, urls, academyName, businessNumber, startDate))
                         },
                         allowSkip = true,
                     )
@@ -250,55 +248,10 @@ class OnboardingActivity : ComponentActivity() {
         }
     }
 
-    // ── ★ [b1] 앱 완료 모드(앱 가입 · 앱 차단 화면) ──
+    // ── 마친 뒤 할 일 — 연 곳(웹 창 / 앱 화면)에 맞는 것 하나(OnboardingFinisher). ──
     private val completeRole: com.muyeon.domain.usecase.auth.CompleteRoleOnboardingUseCase by inject()
-    private val completeInApp: Boolean get() = intent.getBooleanExtra(EXTRA_IN_APP, false)
-    private var completing = false
-
-    /**
-     * 가입 직후 회원유형 완료 — 웹 콜백(__onRoleComplete) 또는 앱 완료 모드면 같은 일을 앱이:
-     *  역할 추가 → 서류 제출(있으면) → 보유 유형 다시 읽기 → 유형별 화면(ROLE_LANDING · 심사 안내 /mypage?verifySubmitted=1).
-     */
-    private fun roleComplete(role: String, urls: List<String>, academyName: String?, businessNumber: String? = null, startDate: String? = null) {
-        if (!completeInApp) {
-            notifyWeb(verifyJs("__onRoleComplete", role, urls, academyName, businessNumber, startDate))
-            return
-        }
-        if (completing) return
-        completing = true
-        lifecycleScope.launch {
-            val to = completeRole(role, urls, academyName, businessNumber, startDate?.filter(Char::isDigit))
-            ActiveRole.syncFromServer(this@OnboardingActivity)
-            com.muyeon.app.ui.main.MainActivity.openPath(this@OnboardingActivity, to)
-            finish()
-        }
-    }
-
-    /** 앱 차단 화면의 학원 인증 — 서류 제출(웹 __onRoleVerify submitDocs) 뒤 차단 상태를 다시 묻고 닫는다(승인되면 차단이 풀린다). */
-    private fun verifyInApp(role: String, urls: List<String>, academyName: String?, businessNumber: String?, startDate: String?) {
-        if (completing) return
-        completing = true
-        lifecycleScope.launch {
-            completeRole.submit(role, urls, academyName, businessNumber, startDate?.filter(Char::isDigit))
-            ActiveRole.syncFromServer(this@OnboardingActivity)
-            com.muyeon.app.webview.VerifyGate.refresh(this@OnboardingActivity)
-            finish()
-        }
-    }
-
-    /** 서류 제출 완료 → 웹 콜백으로 제출 API 수행 + 심사중 반영. */
-    private fun verifyDone(role: String, urls: List<String>, academyName: String?, businessNumber: String?, startDate: String?) =
-        queueWeb(verifyJs("__onRoleManageVerify", role, urls, academyName, businessNumber, startDate))
-
-    /**
-     * 인증 콜백 JS 한 줄. (역할, 서류 URL **JSON 문자열**, 학원명)
-     *  ★ 웹은 2번째 인자를 `JSON.parse` 한다 — 배열 리터럴을 넘기면 파싱이 실패해
-     *    서류가 **한 장도 제출되지 않는다**(화면상으론 제출된 것처럼 보인다). iOS 와 같은 문자열 계약.
-     */
-    //  5번째 인자 = 개업일자(YYYYMMDD) — 웹 2026-10-22~ 가 받는다(구웹은 무시).
-    private fun verifyJs(fn: String, role: String, urls: List<String>, academyName: String?, businessNumber: String? = null, startDate: String? = null): String {
-        val json = JSONArray(urls).toString()
-        return "if(window.$fn){ window.$fn('${esc(role)}', '${esc(json)}', '${esc(academyName.orEmpty())}', '${esc(businessNumber.orEmpty())}', '${esc(startDate.orEmpty().filter(Char::isDigit))}'); }"
+    private val finisher: OnboardingFinisher by lazy {
+        OnboardingFinisher.of(this, intent.getBooleanExtra(EXTRA_IN_APP, false), completeRole)
     }
 
     /**
@@ -333,7 +286,7 @@ class OnboardingActivity : ComponentActivity() {
     //    웹뷰가 다시 앞으로 나올 때(WebViewActivity.onResume) 남은 것을 흘려보낸다.
     private fun queueWeb(js: String) = WebCallbackQueue.enqueue(this, js)
 
-    private fun esc(s: String) = s.replace("\\", "\\\\").replace("'", "\\'")
+    private fun esc(s: String) = OnboardingJs.esc(s)
 
     /**
      * 닫기·시스템 뒤로가기 공통. 큐는 디스크에 있으므로 여기선 화면만 닫으면 된다.
@@ -358,29 +311,7 @@ class OnboardingActivity : ComponentActivity() {
 
     private fun notifyWeb(js: String) = NativeWebRoute.notifyWebAndFinish(this, js)
 
-    /**
-     * 약관 상세 — 외부 브라우저로 연다.
-     *
-     * 종전에는 NativeWebRoute.openWebAndFinish() 를 썼는데 두 가지가 겹쳐 있었다.
-     *  ① `activity.finish()` — 약관 동의 화면을 죽인다. 돌아올 화면이 없어지고 체크해 둔 동의도 날아간다.
-     *  ② FLAG_ACTIVITY_CLEAR_TOP|SINGLE_TOP 으로 **메인 웹뷰(WebViewActivity)를 /policy 로 가로챈다**.
-     *     새 창이 아니라 앱 본체가 약관 페이지로 바뀌는 셈이라 되돌릴 방법이 없었다.
-     * 그래서 웹의 뒤로가기를 누르면 폴백이 끝까지 떨어져 홈으로 가버렸다.
-     *
-     * 외부 브라우저로 열면 온보딩 액티비티가 그대로 살아 있어 시스템 뒤로가기로 돌아온다.
-     * iOS 가 인앱 사파리(SFSafariViewController)로 여는 것과 같은 성격이다.
-     *
-     * embed=1 — "닫기는 네이티브(브라우저)가 한다"는 표시. 웹이 자체 뒤로가기 화살표를 숨긴다.
-     */
-    private fun openPolicy(doc: String) {
-        val base = com.muyeon.app.utils.Constants.getBaseUrl(this).trimEnd('/')
-        val uri = android.net.Uri.parse("$base/policy?doc=$doc&embed=1")
-        try {
-            startActivity(Intent(Intent.ACTION_VIEW, uri))
-        } catch (e: Exception) {
-            // 브라우저가 없는 기기(사실상 없음) — 약관을 못 보는 것보다 안내가 낫다.
-            Toast.makeText(this, "약관을 열 수 있는 브라우저가 없어요.", Toast.LENGTH_SHORT).show()
-        }
-    }
+    /** 약관 상세 — 앱 약관 화면. 이 화면(체크 상태)은 그대로 살아 있어 뒤로 가면 돌아온다. */
+    private fun openPolicy(doc: String) = com.muyeon.app.ui.policy.PolicyActivity.start(this, doc)
 
 }

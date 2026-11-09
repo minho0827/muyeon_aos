@@ -69,7 +69,9 @@ class NativeRoutesB0Test {
         assertEquals(Target.Route(Screen.CommunityList.route), r("/community"))
         // /community/write 는 묶음 3 이 앱 화면으로(NativeRoutesB3Test) — 카테고리로 걸리지 않는다.
         assertEquals(Target.Route("community/write", auth = true), r("/community/write"))
-        assertNull(r("/classes"))
-        assertNull(r("/classes/3"))
+        // 취미 클래스는 없앴다 — 예전 링크는 홈 레슨 탭.
+        assertEquals(Target.Tab(MainTab.LESSONS), r("/classes"))
+        assertEquals(Target.Tab(MainTab.LESSONS), r("/classes/3"))
+        assertEquals(Target.Tab(MainTab.LESSONS), r("/classes/3?src=push"))
     }
 }

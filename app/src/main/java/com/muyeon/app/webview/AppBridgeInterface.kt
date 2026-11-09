@@ -280,14 +280,18 @@ object NativeActionRouter {
                 d.optString("roles").ifEmpty { "{}" },
                 d.optString("heroImage"),
                 d.optString("activeType").ifEmpty { "GENERAL" },
+                completeInApp = activity !is WebViewActivity,
             )
             // 회원유형 선택 온보딩 — 네이티브 이식 완료(iOS RoleOnboardingView).
             "openRoleOnboarding" ->
                 com.muyeon.app.ui.onboarding.OnboardingActivity.startRoleOnboarding(activity)
             // ownerName = 본인확인으로 등록된 실명. 학원 인증에서 '대표원장'으로 읽기전용 표시한다.
             //  구웹은 안 보내므로 빈 문자열이 되고, 그때는 화면이 해당 줄을 그리지 않는다.
+            //  ★ 2026-11-09 앱 화면(MY 공고 등록·견적 보내기)에서 열면 앱이 직접 제출하고 그 화면으로 돌아간다 —
+            //   웹 콜백 모드는 웹 창이 열 때만(아니면 빈 웹 창이 새로 뜬다).
             "openRoleVerification" -> com.muyeon.app.ui.onboarding.OnboardingActivity.startVerification(
                 activity, d.optString("role"), d.optString("ownerName"),
+                completeInApp = activity !is WebViewActivity,
             )
 
             // 온보딩·이용권·학원 프로필 — E 이식 완료

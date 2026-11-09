@@ -493,7 +493,6 @@ private fun PostingDetailRoute(kind: String, id: Int, onBack: () -> Unit, onOpen
         },
         onBack = onBack,
         onLogin = login,
-        onOpenWeb = onOpenWeb,
         onWriteResume = {
             val dancer = com.muyeon.app.webview.ActiveRole.current(context) == "DANCER"
             com.muyeon.app.ui.resume.ResumeActivity.startEdit(context, null, if (dancer) "dancer" else null)

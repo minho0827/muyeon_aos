@@ -46,11 +46,11 @@ import com.muyeon.app.utils.Constants
 import kotlinx.coroutines.launch
 
 /**
- * 약관(정책) 웹 페이지 열기 — 회원가입 약관 링크(OnboardingActivity.openPolicy)와 같은 방식:
- *  외부 브라우저로 `{base}/policy?doc=…&embed=1` 을 연다(지금 화면·체크 상태가 그대로 남는다).
- *  path 는 서버가 주는 "/policy?doc=…&embed=1" 그대로.
+ * 약관(정책) 열기 — 앱 약관 화면(PolicyActivity). 지금 화면·체크 상태가 그대로 남고 뒤로 가면 돌아온다.
+ *  path 는 서버가 주는 "/policy?doc=…&embed=1" 그대로. 약관 주소가 아닐 때만 외부 브라우저.
  */
 fun openPolicyPage(context: Context, path: String) {
+    if (com.muyeon.app.ui.policy.PolicyActivity.startPath(context, path)) return
     val base = Constants.getBaseUrl(context).trimEnd('/')
     val url = if (path.startsWith("http")) path else base + (if (path.startsWith("/")) path else "/$path")
     try {

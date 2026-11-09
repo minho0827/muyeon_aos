@@ -159,6 +159,8 @@
                 <data android:path="/studio-transfers" />
                 <data android:pathPrefix="/studio-transfers/" />
                 <data android:path="/myStudioTransfers" />
+                <!-- 취미 클래스는 없앴다 — 예전 링크도 앱으로 받아 레슨 탭으로(NativeRoutesB0). -->
+                <data android:path="/classes" />
                 <data android:pathPrefix="/classes/" />
                 <data android:pathPrefix="/performance/" />
                 <data android:pathPrefix="/community/post/" />
@@ -290,6 +292,11 @@
         <!-- 알림함 우측 톱니 → 알림 수신 설정(종류별 푸시 on/off). -->
         <activity
             android:name=".ui.notification.NotificationSettingsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+        <!-- ★ 2026-11-09 약관 전문(탭 셸 밖 화면에서 — 외부 브라우저 대신). -->
+        <activity
+            android:name=".ui.policy.PolicyActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
         <activity

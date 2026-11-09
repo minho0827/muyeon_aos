@@ -270,7 +270,7 @@ class MainActivity : ComponentActivity(), ResultHost {
             }
             MainEvent.TypeSwitchFailed -> Toast.makeText(this, R.string.main_type_switch_failed, Toast.LENGTH_SHORT).show()
             is MainEvent.Message -> Toast.makeText(this, e.text, Toast.LENGTH_SHORT).show()
-            is MainEvent.OpenRoleManage -> OnboardingActivity.startRoleManage(this, e.launch.rolesJson, e.launch.heroImage, e.activeType)
+            is MainEvent.OpenRoleManage -> OnboardingActivity.startRoleManage(this, e.launch.rolesJson, e.launch.heroImage, e.activeType, completeInApp = true)
         }
     }
 

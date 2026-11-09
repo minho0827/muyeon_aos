@@ -237,11 +237,8 @@ class LoginActivity : ComponentActivity() {
         finish()
     }
 
-    /** 약관 전문 — 외부 브라우저(OnboardingActivity.openPolicy 와 같다). */
-    private fun openPolicy(doc: String) {
-        val base = com.muyeon.app.utils.Constants.getBaseUrl(this).trimEnd('/')
-        runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("$base/policy?doc=$doc&embed=1"))) }
-    }
+    /** 약관 전문 — 앱 약관 화면(뒤로 가면 이 화면, 체크 상태 그대로). */
+    private fun openPolicy(doc: String) = com.muyeon.app.ui.policy.PolicyActivity.start(this, doc)
 
     companion object {
         private const val EXTRA_REDIRECT = "muyeon.login.redirect"

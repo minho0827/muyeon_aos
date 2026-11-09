@@ -1052,7 +1052,6 @@
     <string name="subwiz_missing">%1$s을(를) 골라 주세요.</string>
     <!-- ★ 2026-11-08 공고 상세(보는 사람) -->
     <string name="recruit_job_detail">채용공고</string>
-    <string name="posting_open_web">웹에서 보기</string>
     <string name="posting_load_failed">공고를 불러오지 못했어요.</string>
     <string name="posting_apply">지원하기</string>
     <string name="posting_applied">지원한 공고예요</string>
