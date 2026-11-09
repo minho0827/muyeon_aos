@@ -1,5 +1,8 @@
 package com.muyeon.app.ui.performance.components
 
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+
 import android.widget.Toast
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
@@ -60,7 +63,8 @@ fun LazyListScope.performanceShowcase(
         PerformancePosterRow(stringResource(R.string.perf_now), state.items.filter { it.status == PerformanceStatus.ONGOING }.take(10), onOpenDetail)
     }
     // ★ 11-09 '곧 시작해요' 줄도 뺐다(사용자 결정).
-    item(key = "showcase.title") { PerformanceListTitle(stringResource(R.string.perf_all_list)) }
+    // ★ 11-09 '전체 공연' 제목은 뺐다(사용자 결정) — '지금 공연 중' 바로 아래 목록.
+    item(key = "showcase.gap") { Spacer(Modifier.height(12.dp)) }
 }
 
 /** 쇼케이스를 보일 때 — 전체 장르·세부 전체·목록 있음. */
