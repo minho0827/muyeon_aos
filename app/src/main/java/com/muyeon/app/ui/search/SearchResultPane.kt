@@ -50,6 +50,11 @@ fun <T : Any> SearchResultPane(domain: SearchDomain<T>, query: String, onOpen: (
     val state by vm.state.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     var sheet by remember { mutableStateOf<PaneSheet?>(null) }
+    // ★ 2026-11-09 결과를 보려는 동작(시트 열기·목록 스크롤)이면 키보드를 내리고 입력칸 초점도 뺀다
+    //   — 초점이 남으면 시트를 닫을 때 키보드가 다시 올라온다(사용자 제보).
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    LaunchedEffect(sheet) { if (sheet != null) focusManager.clearFocus() }
+    LaunchedEffect(listState.isScrollInProgress) { if (listState.isScrollInProgress) focusManager.clearFocus() }
 
     LaunchedEffect(query) { vm.setQuery(query) }
     // 조건이 바뀌면 맨 위부터.

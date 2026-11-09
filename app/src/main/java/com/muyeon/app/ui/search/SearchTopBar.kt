@@ -50,6 +50,7 @@ fun SearchTopBar(
 ) {
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
     Row(modifier.fillMaxWidth().height(56.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         BarIcon(stringResource(R.string.search_back), "search.back", onBack) {
@@ -68,7 +69,7 @@ fun SearchTopBar(
                     textStyle = AppTypography.Body15.copy(color = AppColors.TextHead),
                     cursorBrush = SolidColor(AppColors.Primary),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
+                    keyboardActions = KeyboardActions(onSearch = { keyboard?.hide(); focusManager.clearFocus() }),  // 검색 키 = 결과 보기 → 초점까지 뺀다
                     modifier = Modifier.fillMaxWidth().focusRequester(focus).testTag("search.input"),
                 )
             }

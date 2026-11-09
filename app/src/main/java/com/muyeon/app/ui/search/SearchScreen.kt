@@ -47,7 +47,8 @@ fun SearchScreen(
 
     Column(Modifier.fillMaxSize().background(AppColors.Surface).statusBarsPadding()) {
         SearchTopBar(query = query, onQuery = { query = it }, onBack = onBack, onHome = onHome)
-        DomainTabs(domains, selected, onSelect = { selected = it })
+        val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+        DomainTabs(domains, selected, onSelect = { selected = it; focusManager.clearFocus() })  // 탭 바꾸기 = 결과 보기
         val domain = domains.first { it.key == selected }
         key(domain.key) { SearchResultPane(domain, query, onOpen) }
     }
