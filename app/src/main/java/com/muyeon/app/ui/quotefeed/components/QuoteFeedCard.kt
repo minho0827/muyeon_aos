@@ -41,12 +41,16 @@ import com.muyeon.domain.model.quotefeed.QuoteFeedItem
 /**
  * '레슨을 찾는 회원들' 카드 — ★ 2026-11-09 장르 사진 대신 글자로 그린 '레슨 요청서'(사용자 시안 승인).
  *   150 × 200(예전 3:4 사진 칸 크기) · 위 주황 띠(제목 + 제안 보냄·내 요청) · 장르·비회원 칩 · 점선 ·
- *   지역/요일/시간/형태 4줄(없으면 '협의') · 아래 티켓 절취선 + 'N분 전 · 제안 기다리는 중'.
+ *   지역/요일/시간/형태 4줄(없으면 '협의') · 아래 티켓 절취선 + 'N분 전'.
  *   카드 아래 글자 줄은 요청서와 겹쳐 뺐다. 요청자 이름·연락처는 서버가 주지 않는다(웹 공개 정책 그대로).
  */
 @Composable
 fun QuoteFeedCard(item: QuoteFeedItem, sent: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(10.dp)
+    // ★ 2026-11-09 띠 배경·테두리를 장르 색으로(사용자 결정) — 테두리는 장르 글자색을 옅게.
+    val genre = QuoteFeedLabels.genre(item.categoryId) ?: stringResource(R.string.quote_feed_lesson)
+    val gc = com.muyeon.app.ui.theme.CategoryColors.genre(genre)
+    val line = gc.fg.copy(alpha = 0.35f)
     Box(
         modifier
             .fillMaxWidth()
@@ -54,16 +58,14 @@ fun QuoteFeedCard(item: QuoteFeedItem, sent: Boolean, onClick: () -> Unit, modif
             .shadow(3.dp, shape, ambientColor = Color(0x14000000), spotColor = Color(0x14000000))
             .clip(shape)
             .background(AppColors.Surface)
-            .border(1.dp, SheetBorder, shape)
+            .border(1.dp, line, shape)
             .clickable(onClick = onClick),
     ) {
         Column(Modifier.fillMaxWidth()) {
-            SheetHeader(item, sent)
+            SheetHeader(item, sent, gc.bg)
             Column(Modifier.padding(start = 10.dp, end = 10.dp, top = 9.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    val genre = QuoteFeedLabels.genre(item.categoryId) ?: stringResource(R.string.quote_feed_lesson)
                     // 장르 칩은 앱 장르 색(CategoryColors) — 레슨 카드와 같은 색.
-                    val gc = com.muyeon.app.ui.theme.CategoryColors.genre(genre)
                     Chip(genre, gc.fg, gc.bg)
                     if (item.guestRequest) Chip(stringResource(R.string.quote_sheet_guest), AppColors.TextSub, AppColors.SurfaceMuted)
                 }
@@ -75,22 +77,19 @@ fun QuoteFeedCard(item: QuoteFeedItem, sent: Boolean, onClick: () -> Unit, modif
                 SheetRow(stringResource(R.string.quote_sheet_format), QuoteFeedLabels.formatsText(item) ?: any)
             }
         }
-        SheetFooter(item, Modifier.align(Alignment.BottomStart))
+        SheetFooter(item, line, Modifier.align(Alignment.BottomStart))
     }
 }
 
-private val SheetBorder = Color(0xFFECECEF)
 private val SheetDash = Color(0xFFDCDCE0)
-private val PrimaryInk = Color(0xFFC85A12)
-private val BandBg = Color(0xFFFFF1E7)
 
 @Composable
-private fun SheetHeader(item: QuoteFeedItem, sent: Boolean) {
+private fun SheetHeader(item: QuoteFeedItem, sent: Boolean, band: Color) {
     Row(
-        Modifier.fillMaxWidth().height(30.dp).background(BandBg).padding(horizontal = 10.dp),
+        Modifier.fillMaxWidth().height(30.dp).background(band).padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(stringResource(R.string.quote_sheet_title), style = TextStyle(fontFamily = com.muyeon.app.ui.theme.AppFonts.Pretendard, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp), color = PrimaryInk)
+        Text(stringResource(R.string.quote_sheet_title), style = TextStyle(fontFamily = com.muyeon.app.ui.theme.AppFonts.Pretendard, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp), color = AppColors.TextHead)
         Spacer(Modifier.weight(1f))
         // 상태 칩은 띠 오른쪽 — 아래 장르 칩과 겹치지 않게(요청 번호는 빼기로 함, 사용자 결정).
         val state = when {
@@ -130,17 +129,15 @@ private fun DashedLine(modifier: Modifier = Modifier) {
     }
 }
 
-/** 티켓 절취선 — 위 점선 + 양옆 반원 홈 + 'N분 전 · 제안 기다리는 중'. */
+/** 티켓 절취선 — 위 점선 + 양옆 반원 홈 + 'N분 전'. */
 @Composable
-private fun SheetFooter(item: QuoteFeedItem, modifier: Modifier = Modifier) {
+private fun SheetFooter(item: QuoteFeedItem, line: Color, modifier: Modifier = Modifier) {
     Box(modifier.fillMaxWidth().height(30.dp)) {
         DashedLine(Modifier.align(Alignment.TopStart))
-        Box(Modifier.size(14.dp).offset(x = (-7).dp, y = (-7).dp).clip(CircleShape).background(AppColors.Surface).border(1.dp, SheetBorder, CircleShape))
-        Box(Modifier.align(Alignment.TopEnd).size(14.dp).offset(x = 7.dp, y = (-7).dp).clip(CircleShape).background(AppColors.Surface).border(1.dp, SheetBorder, CircleShape))
+        Box(Modifier.size(14.dp).offset(x = (-7).dp, y = (-7).dp).clip(CircleShape).background(AppColors.Surface).border(1.dp, line, CircleShape))
+        Box(Modifier.align(Alignment.TopEnd).size(14.dp).offset(x = 7.dp, y = (-7).dp).clip(CircleShape).background(AppColors.Surface).border(1.dp, line, CircleShape))
         Row(Modifier.fillMaxWidth().align(Alignment.Center).padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(item.createdAt?.let { timeAgo(it) }.orEmpty(), style = TextStyle(fontFamily = com.muyeon.app.ui.theme.AppFonts.Pretendard, fontSize = 10.sp), color = AppColors.TextHint)
-            Spacer(Modifier.weight(1f))
-            Text(stringResource(R.string.quote_sheet_waiting), style = TextStyle(fontFamily = com.muyeon.app.ui.theme.AppFonts.Pretendard, fontSize = 10.sp, fontWeight = FontWeight.Bold), color = AppColors.Primary)
         }
     }
 }

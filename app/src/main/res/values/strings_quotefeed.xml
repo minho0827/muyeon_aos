@@ -23,7 +23,6 @@
     <string name="quote_sheet_format">형태</string>
     <string name="quote_sheet_any">협의</string>
     <string name="quote_sheet_guest">비회원</string>
-    <string name="quote_sheet_waiting">제안 기다리는 중</string>
     <!-- 목록 화면 -->
     <string name="quote_feed_list_guide_pro">레슨을 찾는 회원들이 작성한 요청을 한곳에서 확인할 수 있어요. 조건이 잘 맞는 요청에 제안을 보내고, 채팅으로 자세한 일정을 조율해 보세요.</string>
     <string name="quote_feed_list_guide_member">최근 올라온 요청 10건까지 보여요. 강사·학원 유형으로 전환하면 모든 요청을 보고 제안을 보낼 수 있어요.</string>
