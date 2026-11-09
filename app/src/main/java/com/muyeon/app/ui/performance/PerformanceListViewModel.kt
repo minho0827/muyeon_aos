@@ -41,11 +41,11 @@ data class PerformanceListUiState(
     val moreError: String? = null,
     val likedIds: Set<Long> = emptySet(),
 ) {
-    /** 두 번째 줄 — 고른 장르의 세부 분류 + 태그(웹 detailTabs). */
+    /** 두 번째 줄 — 고른 장르의 세부 분류만. ★ 11-09 태그(축제·가족) 칩은 뺐다(쓰는 공연이 거의 없음, 사용자 결정) —
+     *  [전체]면 [전체] 하나뿐이라 줄이 안 보인다(size > 1 일 때만 그림). 예전에 고른 TAG 는 [전체]로 돌아간다. */
     val detailOptions: List<PerformanceDetailFilter>
         get() = listOf(PerformanceDetailFilter.All) +
-            PerformanceCategory.SUB_GENRES[genre].orEmpty().map { PerformanceDetailFilter.Sub(it) } +
-            PerformanceCategory.TAGS.map { PerformanceDetailFilter.Tag(it) }
+            PerformanceCategory.SUB_GENRES[genre].orEmpty().map { PerformanceDetailFilter.Sub(it) }
 }
 
 sealed interface PerformanceListEvent {
