@@ -110,6 +110,7 @@ fun MainScreen(
                         onCastingList = { onOpenDetail(r.castingList) },
                         onNewsList = { no, code -> onOpenDetail(r.newsList(no, code)) },
                         onIssues = { onOpenDetail(r.issues) },
+                        onOpenIssue = { no -> onOpenDetail(r.issue(no)) },
                         reloadKey = com.muyeon.app.ui.castingstage.CastingStageSession.reloadKey,
                     )
                 }

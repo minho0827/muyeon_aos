@@ -46,6 +46,7 @@ fun CastingStageScreen(
     onCastingList: () -> Unit,
     onNewsList: (Int, String) -> Unit,
     onIssues: () -> Unit,
+    onOpenIssue: (Int) -> Unit,
     /** 공연팀으로 활동 중일 때만 넘긴다(웹 CastingStage 헤더 ＋와 같은 규칙). null 이면 숨김. */
     onCreate: (() -> Unit)? = null,
     /** 바뀌면 다시 불러온다 — 공고를 새로 올린 뒤. */
@@ -91,6 +92,7 @@ fun CastingStageScreen(
             onCastingList = onCastingList,
             onNewsList = onNewsList,
             onIssues = onIssues,
+            onOpenIssue = onOpenIssue,
             reloadKey = reloadKey,
         )
     }

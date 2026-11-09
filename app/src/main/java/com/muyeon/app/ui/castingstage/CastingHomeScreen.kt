@@ -32,6 +32,7 @@ fun CastingHomeScreen(
     onCastingList: () -> Unit,
     onNewsList: (Int, String) -> Unit,
     onIssues: () -> Unit,
+    onOpenIssue: (Int) -> Unit,
     reloadKey: Int = 0,
 ) {
     val body = rememberCastingStageBodyState()
@@ -55,6 +56,7 @@ fun CastingHomeScreen(
             onCastingList = onCastingList,
             onNewsList = onNewsList,
             onIssues = onIssues,
+            onOpenIssue = onOpenIssue,
             reloadKey = reloadKey,
         )
     }

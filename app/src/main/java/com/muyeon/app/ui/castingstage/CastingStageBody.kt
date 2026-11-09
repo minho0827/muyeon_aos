@@ -115,6 +115,8 @@ fun CastingStageBody(
     onCastingList: () -> Unit,
     onNewsList: (Int, String) -> Unit,
     onIssues: () -> Unit,
+    /** 이번 호 카드 → 그 호 소식 화면(11-09: 스크롤 이동이 아니라 글로 — 사용자 결정). */
+    onOpenIssue: (Int) -> Unit,
     modifier: Modifier = Modifier,
     /** 바뀌면 다시 불러온다 — 공고를 새로 올린 뒤. */
     reloadKey: Int = 0,
@@ -171,7 +173,7 @@ fun CastingStageBody(
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomPadding)) {
             item(key = "banner") {
                 StageBanner(issue, if (castingCat != null) castings else emptyList(), loading, newsSections.map { it.first },
-                    onTapIssue = { (newsSections.firstOrNull()?.first ?: castingCat)?.let { state.jump(it.code) } },
+                    onTapIssue = { issue?.let { onOpenIssue(it.issueNo) } },
                     onTapCasting = { onOpenCasting(it.id) }, onTapNews = { n -> onOpenNews(n, catOf(n)) })
             }
             if (multi) {

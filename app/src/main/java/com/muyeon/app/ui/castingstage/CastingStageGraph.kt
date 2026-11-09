@@ -98,6 +98,7 @@ fun CastingStageHome(nav: NavController, r: StageRoutes, onClose: (() -> Unit)?)
         onCastingList = { nav.navigate(r.castingList) },
         onNewsList = { no, code -> nav.navigate(r.newsList(no, code)) },
         onIssues = { nav.navigate(r.issues) },
+        onOpenIssue = { no -> nav.navigate(r.issue(no)) },
         onCreate = if (canCreate) ({ nav.navigate(r.create) }) else null,
         reloadKey = CastingStageSession.reloadKey,
     )
