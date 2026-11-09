@@ -48,8 +48,6 @@ import com.muyeon.app.ui.home.components.HomeBannerPager
 import com.muyeon.app.ui.home.components.ArtistsHeading
 import com.muyeon.app.ui.home.components.HomeLegalFooter
 import com.muyeon.app.ui.home.components.HomeTopBar
-import com.muyeon.app.ui.home.components.LessonCategoryIcons
-import com.muyeon.app.ui.home.components.LessonProductCard
 import com.muyeon.app.ui.home.components.LessonSection
 import com.muyeon.app.ui.main.MainTab
 import com.muyeon.app.ui.quotefeed.QuoteFeedLabels
@@ -59,13 +57,15 @@ import com.muyeon.app.ui.main.tabBarBottomPadding
 import com.muyeon.app.ui.theme.AppColors
 import com.muyeon.domain.model.home.HomeLesson
 import com.muyeon.domain.model.teacher.LessonGenres
+import kotlinx.coroutines.launch
 import com.muyeon.domain.usecase.home.HomeArtistsUseCase
 import org.koin.androidx.compose.koinViewModel
 
 /**
  * ★ 2026-11-08 홈 — 모든 회원·비회원 같은 화면(사용자 결정). 위 바 [舞踊緣][강사 | 레슨][🔔] + 밑줄 탭.
  *   강사: COREO 에이전시형 — 넓은 사진 띠 · ARTISTS · 2열 큰 세로 사진 그리드(끝없이 내려 받기).
- *   레슨: 뷰티컬리 — 추천 탭(배너 · 장르 아이콘 · 섹션) / 장르 탭(그 장르 레슨 2열 그리드).
+ *   레슨: 뷰티컬리 — 추천 탭 · 장르 탭 모두 같은 섹션(추천 · 레슨을 찾는 회원들 · 체험 · 원데이 · 새로 열린 레슨).
+ *         장르 탭은 칸마다 그 장르로 거른다. ★ 2026-11-09 배너·장르 그림 줄은 뺐다(장르는 위 탭 하나로 — 사용자 결정).
  *   맨 아래 사업자 정보. 홈 칸 다시 누르기 = 강사 ↔ 레슨.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -98,7 +98,12 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
         )
     }
     val openLesson: (HomeLesson) -> Unit = { actions.openPath("/lessons/${it.id}") }
-    val lessonList: (String, String) -> Unit = { title, type -> actions.openPath("/lessonList?title=${Uri.encode(title)}&type=$type") }
+    // 전체보기 — 장르 탭이면 그 장르 칩으로 연다.
+    val lessonList: (String, String) -> Unit = { title, type ->
+        val g = s.lessonGenre?.let { "&genre=${Uri.encode(it)}" }.orEmpty()
+        actions.openPath("/lessonList?title=${Uri.encode(title)}&type=$type$g")
+    }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     // 강사·레슨 그리드를 따로 둔다 — 토글을 오가도 각자 스크롤 자리를 지킨다.
     val teacherGrid = rememberLazyGridState()
@@ -107,8 +112,6 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
     // 홈 칸을 한 번 더 누르면 강사 ↔ 레슨(컬리 홈 칸처럼 — 사용자 요청 2026-11-08).
     TabReselectEffect(MainTab.HOME) { viewModel.setMode(if (s.mode == HomeMode.TEACHERS) HomeMode.LESSONS else HomeMode.TEACHERS) }
     CursorLoadMoreEffect(teacherGrid, canLoad = s.mode == HomeMode.TEACHERS && s.artists.cursor.canAutoLoad && !s.artists.isLoadingMore, onLoadMore = viewModel::loadMoreArtists)
-    CursorLoadMoreEffect(lessonGrid, canLoad = s.mode == HomeMode.LESSONS && s.lessonTab != HomeUiState.LESSON_RECOMMEND &&
-        s.genreLessons.cursor.canAutoLoad && !s.genreLessons.isLoadingMore, onLoadMore = viewModel::loadMoreGenreLessons)
 
     Column(Modifier.fillMaxSize().background(AppColors.Surface)) {
         HomeTopBar(
@@ -117,7 +120,10 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
             onChat = if (s.isLoggedIn) ({ actions.native("openChatList", emptyMap()) }) else null,
         )
         if (s.mode == HomeMode.TEACHERS) UnderlineTabs(teacherTabs, s.teacherGenre, viewModel::selectTeacherGenre, trailing = orderButton)
-        else UnderlineTabs(lessonTabs, s.lessonTab, viewModel::selectLessonTab, trailing = orderButton)
+        else UnderlineTabs(lessonTabs, s.lessonTab, { t ->
+            if (t != s.lessonTab) scope.launch { lessonGrid.scrollToItem(0) }
+            viewModel.selectLessonTab(t)
+        }, trailing = orderButton)
 
         PullToRefreshBox(s.isRefreshing, onRefresh = viewModel::pullRefresh, modifier = Modifier.fillMaxSize()) {
             if (s.mode == HomeMode.TEACHERS) {
@@ -154,65 +160,51 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
                     GridCells.Fixed(2), Modifier.fillMaxSize(), lessonGrid,
                     contentPadding = PaddingValues(bottom = tabBarBottomPadding()),
                 ) {
-                    if (s.lessonTab == HomeUiState.LESSON_RECOMMEND) {
-                        val p = s.preview
-                        item(key = "banner", span = FULL) {
-                            HomeBannerPager(
-                                p.popular.filter { it.image != null }.map { l -> HomeBanner(l.id, l.image!!, l.title, l.place) { openLesson(l) } },
-                                onAll = { lessonList(recommendTitle(context), "popular") },
-                            )
-                        }
-                        item(key = "icons", span = FULL) { LessonCategoryIcons(s.genres, viewModel::selectLessonTab) }
-                        item(key = "popular", span = FULL) {
-                            LessonSection(stringResource(R.string.home_sec_recommend), stringResource(R.string.home_sec_popular_desc), p.popular, null, s.likedLessons,
-                                openLesson, viewModel::toggleLessonLike, onAll = { lessonList(recommendTitle(context), "popular") })
-                        }
-                        // ★ 2026-11-08 회원이 올린 레슨 요청 — 추천 레슨 바로 아래(같은 섹션 틀). 비면 그리지 않는다.
-                        item(key = "quoteFeed", span = FULL) {
-                            QuoteFeedSection(
-                                s.quoteFeed,
-                                sentOf = { q -> s.quoteFeedPro && !q.isMine && !q.canRespond },
-                                onOpen = { q -> actions.openPath(QuoteFeedLabels.path(q, s.quoteFeedPro && !q.isMine && !q.canRespond)) },
-                                onAll = { actions.openPath("/quoteFeed") },
-                            )
-                        }
-                        item(key = "experience", span = FULL) {
-                            val t = stringResource(R.string.home_list_experience)
-                            LessonSection(stringResource(R.string.home_sec_experience), stringResource(R.string.home_sec_experience_desc), p.experience,
-                                stringResource(R.string.home_tag_experience), s.likedLessons, openLesson, viewModel::toggleLessonLike, onAll = { lessonList(t, "experience") })
-                        }
-                        item(key = "oneday", span = FULL) {
-                            val t = stringResource(R.string.home_list_oneday)
-                            LessonSection(stringResource(R.string.home_sec_oneday), stringResource(R.string.home_sec_oneday_desc), p.oneday,
-                                stringResource(R.string.home_tag_oneday), s.likedLessons, openLesson, viewModel::toggleLessonLike, onAll = { lessonList(t, "oneday") })
-                        }
-                        item(key = "newest", span = FULL) {
-                            LessonSection(stringResource(R.string.home_sec_newest), stringResource(R.string.home_sec_newest_desc), s.newest, null, s.likedLessons,
-                                openLesson, viewModel::toggleLessonLike, onAll = null)
-                        }
-                        if (s.previewLoaded && p.popular.isEmpty() && p.experience.isEmpty() && p.oneday.isEmpty() && s.newest.isEmpty()) {
-                            item(key = "empty", span = FULL) { EmptyView(stringResource(R.string.home_lessons_empty)) }
-                        }
-                        item(key = "gap", span = FULL) { Spacer(Modifier.height(24.dp)) }
-                        footer(s, actions)
-                    } else {
-                        val g = s.genreLessons
-                        item(key = "top", span = FULL) { Spacer(Modifier.height(16.dp)) }
-                        when {
-                            g.items.isEmpty() && g.isInitialLoading -> Unit
-                            g.items.isEmpty() -> item(key = "empty", span = FULL) {
-                                EmptyView(stringResource(if (g.errorMessage != null) R.string.home_lessons_failed else R.string.home_lessons_genre_empty),
-                                    buttonText = g.errorMessage?.let { stringResource(R.string.common_retry) }, onButton = viewModel::pullRefresh)
-                            }
-                            else -> itemsIndexed(g.items, key = { _, it -> it.id }) { i, l ->
-                                // 2열 — 바깥 20 · 가운데 10(왼쪽 칸은 오른쪽 5, 오른쪽 칸은 왼쪽 5).
-                                val left = i % 2 == 0
-                                LessonProductCard(l, null, l.id in s.likedLessons, onClick = { openLesson(l) }, onToggleLike = { viewModel.toggleLessonLike(l.id) },
-                                    modifier = Modifier.padding(start = if (left) 20.dp else 5.dp, end = if (left) 5.dp else 20.dp, bottom = 22.dp))
-                            }
-                        }
-                        item(key = "more", span = FULL) { CursorListFooter(g.isLoadingMore, g.moreError, g.cursor.needsTap || g.moreError != null, viewModel::loadMoreGenreLessons) }
+                    // 추천 탭 · 장르 탭 같은 칸들. 빈 칸은 그리지 않는다(LessonSection·QuoteFeedSection 이 빈 목록이면 안 그림).
+                    val p = s.preview
+                    val category = s.lessonGenre?.let { LessonGenres.QUOTE_CATEGORY[it] }
+                    item(key = "popular", span = FULL) {
+                        LessonSection(stringResource(R.string.home_sec_recommend), stringResource(R.string.home_sec_popular_desc), p.popular, null, s.likedLessons,
+                            openLesson, viewModel::toggleLessonLike, onAll = { lessonList(recommendTitle(context), "popular") })
                     }
+                    // ★ 2026-11-08 회원이 올린 레슨 요청 — 추천 레슨 바로 아래(같은 섹션 틀). 장르 탭은 그 장르 요청만, 전체보기도 그 장르 칩으로.
+                    item(key = "quoteFeed", span = FULL) {
+                        QuoteFeedSection(
+                            s.quoteFeed,
+                            sentOf = { q -> s.quoteFeedPro && !q.isMine && !q.canRespond },
+                            onOpen = { q -> actions.openPath(QuoteFeedLabels.path(q, s.quoteFeedPro && !q.isMine && !q.canRespond)) },
+                            onAll = { actions.openPath(if (category != null) "/quoteFeed?category=$category" else "/quoteFeed") },
+                        )
+                    }
+                    item(key = "experience", span = FULL) {
+                        val t = stringResource(R.string.home_list_experience)
+                        LessonSection(stringResource(R.string.home_sec_experience), stringResource(R.string.home_sec_experience_desc), p.experience,
+                            stringResource(R.string.home_tag_experience), s.likedLessons, openLesson, viewModel::toggleLessonLike, onAll = { lessonList(t, "experience") })
+                    }
+                    item(key = "oneday", span = FULL) {
+                        val t = stringResource(R.string.home_list_oneday)
+                        LessonSection(stringResource(R.string.home_sec_oneday), stringResource(R.string.home_sec_oneday_desc), p.oneday,
+                            stringResource(R.string.home_tag_oneday), s.likedLessons, openLesson, viewModel::toggleLessonLike, onAll = { lessonList(t, "oneday") })
+                    }
+                    item(key = "newest", span = FULL) {
+                        LessonSection(stringResource(R.string.home_sec_newest), stringResource(R.string.home_sec_newest_desc), s.newest, null, s.likedLessons,
+                            openLesson, viewModel::toggleLessonLike, onAll = null)
+                    }
+                    // 칸이 다 비었을 때만 — 못 읽었으면 다시 시도, 아니면 '아직 없어요'(장르 탭은 장르 문구).
+                    if (s.previewLoaded && p.popular.isEmpty() && p.experience.isEmpty() && p.oneday.isEmpty() && s.newest.isEmpty() && s.quoteFeed.isEmpty()) {
+                        item(key = "empty", span = FULL) {
+                            EmptyView(
+                                stringResource(when {
+                                    s.previewFailed -> R.string.home_lessons_failed
+                                    s.lessonGenre != null -> R.string.home_lessons_genre_empty
+                                    else -> R.string.home_lessons_empty
+                                }),
+                                buttonText = if (s.previewFailed) stringResource(R.string.common_retry) else null, onButton = viewModel::pullRefresh,
+                            )
+                        }
+                    }
+                    item(key = "gap", span = FULL) { Spacer(Modifier.height(24.dp)) }
+                    footer(s, actions)
                 }
             }
         }

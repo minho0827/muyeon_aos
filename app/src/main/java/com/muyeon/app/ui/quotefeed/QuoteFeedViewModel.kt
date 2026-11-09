@@ -37,6 +37,8 @@ data class QuoteFeedUiState(
  *   강사·학원은 GET /quotes/available(웹 /availableQuotes 목록), 그 밖은 /quotes/home 10건(QuoteFeedUseCase).
  */
 class QuoteFeedViewModel(
+    /** 홈 장르 탭에서 왔으면 그 장르 칩으로 연다(ballet …, 기억한 칩보다 먼저, 기억은 바꾸지 않는다). */
+    initialCategory: String?,
     private val feed: QuoteFeedUseCase,
     private val prefs: KeyValueStore,
 ) : ViewModel() {
@@ -45,7 +47,7 @@ class QuoteFeedViewModel(
 
     private val _state = MutableStateFlow(
         QuoteFeedUiState(
-            categoryId = prefs.getString(K_CATEGORY)?.takeIf { it in categoryOptions } ?: ALL,
+            categoryId = initialCategory?.takeIf { it in categoryOptions } ?: prefs.getString(K_CATEGORY)?.takeIf { it in categoryOptions } ?: ALL,
             grid = prefs.getString(K_VIEW) != "basic",
             canBrowseAll = feed.canBrowseAll,
         ),

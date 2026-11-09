@@ -12,7 +12,7 @@ import com.muyeon.domain.model.quotefeed.QuoteFeedItem
  *   선택지 id → 짧은 이름은 웹 constants/quoteCategories OPTION_LABELS 그대로(strings_quotefeed.xml).
  */
 object QuoteFeedLabels {
-    /** 장르 그림 — 레슨 요청 장르 고르기(QuoteCategoryScreen)와 홈 장르 아이콘 줄과 같은 그림. 없으면 null(취미무용 등). */
+    /** 장르 그림 — 레슨 요청 장르 고르기(QuoteCategoryScreen)와 같은 그림. 없으면 null(취미무용 등). */
     @DrawableRes
     fun genreImage(categoryId: String?): Int? = when (categoryId) {
         "ballet" -> R.drawable.img_genre_ballet

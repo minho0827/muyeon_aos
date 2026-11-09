@@ -22,15 +22,12 @@ import retrofit2.http.Query
 
 /** 출처: ApiEndpoints.Home 주석. 지역은 웹 regionParams 와 같이 regionCode(시군구) 또는 sido(시·도). */
 interface HomeApi {
+    /** 홈 레슨 묶음 — genre 는 한글 장르 이름(발레 …). 서버가 겹침(overlap)으로 거른다. null = 전체. */
     @GET(ApiEndpoints.Home.LESSON_PREVIEW)
-    suspend fun lessonPreview(@Query("regionCode") regionCode: String?, @Query("sido") sido: String?): Response<HomeLessonPreviewDto>
-
-    /** 레슨 목록(커서) — 홈 '레슨' 장르 탭 · 새로 열린 레슨. */
-    @GET(ApiEndpoints.Home.LESSON_PAGE)
-    suspend fun lessonPage(@Query("genre") genre: String?, @Query("cursor") cursor: String?, @Query("limit") limit: Int): Response<CursorPageDto<HomeLessonDto>>
+    suspend fun lessonPreview(@Query("genre") genre: String?, @Query("regionCode") regionCode: String?, @Query("sido") sido: String?): Response<HomeLessonPreviewDto>
 
     /**
-     * ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 LessonListView) — 홈 칸과 같은 조건.
+     * ★ 2026-11-08 홈 '전체보기' 레슨 목록(웹 LessonListView) · 새로 열린 레슨 — 홈 칸과 같은 조건.
      *   추천 = lessonKind=REGULAR · 체험 = lessonKind=EXPERIENCE&academyOnly=true · 원데이 = scheduled=true(서버가 7일 안 회차로 거른다).
      */
     @GET(ApiEndpoints.Home.LESSON_PAGE)

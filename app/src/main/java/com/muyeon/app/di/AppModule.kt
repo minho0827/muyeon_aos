@@ -103,9 +103,10 @@ val viewModelModule = module {
     viewModel { com.muyeon.app.ui.support.SupportChatListViewModel(get()) }
     viewModel { p -> com.muyeon.app.ui.support.SupportChatRoomViewModel(p.get(), get()) }
     // ★ 2026-11-08 홈 '전체보기' 레슨 목록 — 인자: type(popular·experience·oneday)
-    viewModel { p -> com.muyeon.app.ui.lessonlist.LessonListViewModel(p.getOrNull(), get(), get(), get(), get(), get(), get(), get()) }
+    // 인자: type, genre(둘 다 선택 — 같은 String 이라 자리로 읽는다)
+    viewModel { p -> com.muyeon.app.ui.lessonlist.LessonListViewModel(p.values.getOrNull(0) as String?, p.values.getOrNull(1) as String?, get(), get(), get(), get(), get(), get(), get()) }
     // ★ 2026-11-08 홈 [레슨] 레슨을 찾는 회원들 전체보기
-    viewModel { com.muyeon.app.ui.quotefeed.QuoteFeedViewModel(get(), get()) }
+    viewModel { p -> com.muyeon.app.ui.quotefeed.QuoteFeedViewModel(p.values.getOrNull(0) as String?, get(), get()) }
     // ★ 2026-11-08 로그인 · 아이디 찾기/비밀번호 재설정 — 인자: type(id·pw)
     viewModel { com.muyeon.app.ui.auth.LoginViewModel(get(), get()) }
     viewModel { p -> com.muyeon.app.ui.auth.AccountRecoveryViewModel(p.get(), get(), get()) }

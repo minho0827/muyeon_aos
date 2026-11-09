@@ -47,18 +47,14 @@ class HomeRepositoryImpl(private val api: HomeApi, private val moshi: Moshi) : H
         }.getOrNull().orEmpty()
     }
 
-    override suspend fun lessonPreview(region: ActiveRegion?): ApiResult<HomeLessonPreview> =
-        safeApiCall(moshi) { api.lessonPreview(region.code(), region.sido()) }.map { d ->
+    override suspend fun lessonPreview(genre: String?, region: ActiveRegion?): ApiResult<HomeLessonPreview> =
+        safeApiCall(moshi) { api.lessonPreview(genre, region.code(), region.sido()) }.map { d ->
             HomeLessonPreview(
                 d.popular.orEmpty().mapNotNull { it.toDomain() },
                 d.experience.orEmpty().mapNotNull { it.toDomain() },
                 d.oneday.orEmpty().mapNotNull { it.toDomain() },
             )
         }
-
-    override suspend fun lessonPage(genre: String?, cursor: String?, limit: Int): ApiResult<com.muyeon.domain.common.CursorPage<HomeLesson>> =
-        safeApiCall(moshi) { api.lessonPage(genre, cursor, limit) }
-            .map { com.muyeon.domain.common.CursorPage(it.items.orEmpty().mapNotNull { d -> d.toDomain() }, it.next) }
 
     override suspend fun lessonListPage(type: String?, genre: String?, region: ActiveRegion?, cursor: String?, limit: Int): ApiResult<com.muyeon.domain.common.CursorPage<HomeLesson>> =
         safeApiCall(moshi) {

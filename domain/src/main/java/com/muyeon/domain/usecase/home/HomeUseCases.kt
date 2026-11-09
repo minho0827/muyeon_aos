@@ -32,9 +32,12 @@ class HomeArtistsUseCase(private val teachers: TeacherRepository) {
     }
 }
 
-/** 홈 '레슨' — 추천 묶음(추천·체험·원데이) · 새로 열린 레슨 · 장르별 목록. 예시 레슨은 뺀다. */
+/**
+ * 홈 '레슨' — 추천 묶음(추천·체험·원데이) · 새로 열린 레슨. 예시 레슨은 뺀다.
+ *   ★ 2026-11-09 장르 탭도 추천 탭과 같은 칸들 — [genre] 한글 장르(발레 …)로 거른다. null = 추천(전체).
+ */
 class HomeLessonsUseCase(private val repo: HomeRepository) {
-    suspend fun preview(region: ActiveRegion?): ApiResult<HomeLessonPreview> = repo.lessonPreview(region).map { p ->
+    suspend fun preview(genre: String?, region: ActiveRegion?): ApiResult<HomeLessonPreview> = repo.lessonPreview(genre, region).map { p ->
         HomeLessonPreview(
             featuredFirst(p.popular.clean()).take(SECTION),
             p.experience.clean().take(SECTION),
@@ -42,10 +45,8 @@ class HomeLessonsUseCase(private val repo: HomeRepository) {
         )
     }
 
-    suspend fun newest(): List<HomeLesson> = repo.lessonPage(null, null, SECTION).getOrNull()?.items.orEmpty().clean()
-
-    suspend fun page(genre: String, cursor: String?): ApiResult<CursorPage<HomeLesson>> =
-        repo.lessonPage(genre, cursor, PAGE).map { p -> p.copy(items = p.items.clean()) }
+    /** 새로 열린 레슨 — 조건 없는 목록 첫 장(지역은 안 건다, 예전과 같다). 장르는 포함(contains). */
+    suspend fun newest(genre: String?): List<HomeLesson> = repo.lessonListPage(null, genre, null, null, SECTION).getOrNull()?.items.orEmpty().clean()
 
     /** 홈 '전체보기' 목록(웹 /lessonList?type=) — [genre] null = 전체. */
     suspend fun listPage(type: String?, genre: String?, region: ActiveRegion?, cursor: String?): ApiResult<CursorPage<HomeLesson>> =

@@ -53,9 +53,11 @@ sealed interface LessonListEvent {
  *   장르 칩(전체 + 레슨 장르) · 그리드/목록 전환 · 커서 무한 스크롤 · 찜. 칩·보기 방식은 기억한다(웹 usePersistedState).
  *
  * @param type popular(추천 = 정규) · experience(학원 체험) · oneday(7일 안 원데이) · 그 밖은 조건 없음
+ * @param initialGenre 홈 장르 탭에서 왔으면 그 장르 칩으로 연다(기억한 칩보다 먼저, 기억은 바꾸지 않는다).
  */
 class LessonListViewModel(
     private val type: String?,
+    initialGenre: String?,
     private val lessons: HomeLessonsUseCase,
     observeRegion: ObserveActiveRegionUseCase,
     private val getLikedIds: GetLikedIdsUseCase,
@@ -70,7 +72,7 @@ class LessonListViewModel(
 
     private val _state = MutableStateFlow(
         LessonListUiState(
-            genre = prefs.getString(K_GENRE)?.takeIf { it in genreOptions } ?: ALL,
+            genre = initialGenre?.takeIf { it in genreOptions } ?: prefs.getString(K_GENRE)?.takeIf { it in genreOptions } ?: ALL,
             grid = prefs.getString(K_VIEW) != "basic",
         ),
     )

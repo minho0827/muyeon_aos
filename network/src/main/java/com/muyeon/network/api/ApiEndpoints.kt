@@ -85,8 +85,8 @@ object ApiEndpoints {
 
     /** 홈(웹 Home·TeacherHome·HomeClassic) — 출처는 줄 끝 주석. */
     object Home {
-        const val LESSON_PREVIEW = "$API/lesson-products/home-preview"   // lesson-products.controller.ts
-        const val LESSON_PAGE = "$API/lesson-products/page"              // GET genre·isExperience·cursor·limit → { items, hasMore, nextCursor }
+        const val LESSON_PREVIEW = "$API/lesson-products/home-preview"   // lesson-products.controller.ts — GET genre·regionCode·sido
+        const val LESSON_PAGE = "$API/lesson-products/page"              // GET genre·genreMatch·lessonKind·academyOnly·scheduled·regionCode·sido·cursor·limit → { items, hasMore, nextCursor }
         const val MY_LESSONS = "$API/lesson-products/mine"
         const val JOBS = "$API/jobs"                                     // jobs.controller.ts
         const val SUBS = "$API/subs"                                     // subs.controller.ts

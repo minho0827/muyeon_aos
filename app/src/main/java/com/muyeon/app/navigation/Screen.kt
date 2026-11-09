@@ -128,15 +128,19 @@ sealed class Screen(val route: String) {
         fun build(id: Long) = "support/chat/$id"
     }
 
-    /** 홈 '전체보기' 레슨 목록(웹 /lessonList?title=&type=). */
-    data object LessonList : Screen("lessonList?title={title}&type={type}") {
+    /** 홈 '전체보기' 레슨 목록(웹 /lessonList?title=&type=). ★ 2026-11-09 genre = 처음 고른 장르 칩(홈 장르 탭에서). */
+    data object LessonList : Screen("lessonList?title={title}&type={type}&genre={genre}") {
         const val ARG_TITLE = "title"
         const val ARG_TYPE = "type"
-        fun build(title: String?, type: String?) =
-            "lessonList?title=${android.net.Uri.encode(title.orEmpty())}&type=${android.net.Uri.encode(type.orEmpty())}"
+        const val ARG_GENRE = "genre"
+        fun build(title: String?, type: String?, genre: String? = null) =
+            "lessonList?title=${android.net.Uri.encode(title.orEmpty())}&type=${android.net.Uri.encode(type.orEmpty())}&genre=${android.net.Uri.encode(genre.orEmpty())}"
     }
-    /** ★ 2026-11-08 홈 [레슨] '레슨을 찾는 회원들' 전체보기(앱 주소 /quoteFeed — 웹에는 없다). */
-    data object QuoteFeed : Screen("quoteFeed")
+    /** ★ 2026-11-08 홈 [레슨] '레슨을 찾는 회원들' 전체보기(앱 주소 /quoteFeed — 웹에는 없다). ★ 2026-11-09 category = 처음 고른 장르 칩. */
+    data object QuoteFeed : Screen("quoteFeed?category={category}") {
+        const val ARG_CATEGORY = "category"
+        fun build(category: String?) = "quoteFeed?category=${android.net.Uri.encode(category.orEmpty())}"
+    }
 
     // ★ 2026-11-08 (b4) 약관·서비스 소개·관심 지역·관심 조건 알림
     /** 약관·정책 전문(웹 /policy?doc=&version=). */

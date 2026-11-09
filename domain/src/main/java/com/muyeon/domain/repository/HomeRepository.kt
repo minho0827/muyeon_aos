@@ -18,9 +18,8 @@ import com.muyeon.domain.model.teacher.TeacherCard
 
 /** 홈 화면들(스와이프·강사·클래식)이 읽는 것 — 웹 Home·TeacherHome·HomeClassic 과 같은 API. */
 interface HomeRepository {
-    suspend fun lessonPreview(region: ActiveRegion?): ApiResult<HomeLessonPreview>
-    /** 레슨 목록 한 장(장르 null = 전체 최신). */
-    suspend fun lessonPage(genre: String?, cursor: String?, limit: Int): ApiResult<com.muyeon.domain.common.CursorPage<HomeLesson>>
+    /** @param genre 한글 장르(발레 …) — null = 전체. */
+    suspend fun lessonPreview(genre: String?, region: ActiveRegion?): ApiResult<HomeLessonPreview>
     suspend fun recruits(kind: HomeRecruit.Kind): ApiResult<List<HomeRecruit>>
     suspend fun spaces(): ApiResult<List<HomeSpace>>
     suspend fun transfers(limit: Int): ApiResult<List<HomeTransfer>>
@@ -31,7 +30,7 @@ interface HomeRepository {
 
     suspend fun academyProfile(): ApiResult<AcademyHomeProfile>
     suspend fun recommendedTeachers(): ApiResult<List<TeacherCard>>
-    /** 홈 '전체보기' 레슨 목록 — [type] popular·experience·oneday(그 밖은 조건 없음). */
+    /** 홈 '전체보기' 레슨 목록 — [type] popular·experience·oneday(그 밖은 조건 없음 = 새로 열린 레슨). [genre] 는 포함(contains). */
     suspend fun lessonListPage(type: String?, genre: String?, region: ActiveRegion?, cursor: String?, limit: Int): ApiResult<com.muyeon.domain.common.CursorPage<HomeLesson>>
     suspend fun myLessons(): ApiResult<List<HomeLesson>>
     suspend fun myOpenJobs(): ApiResult<List<HomeMyJob>>

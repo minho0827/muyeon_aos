@@ -342,26 +342,32 @@ fun AppNavHost(
             arguments = listOf(
                 navArgument(Screen.LessonList.ARG_TITLE) { type = NavType.StringType; nullable = true; defaultValue = null },
                 navArgument(Screen.LessonList.ARG_TYPE) { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument(Screen.LessonList.ARG_GENRE) { type = NavType.StringType; nullable = true; defaultValue = null },
             ),
         ) { e ->
             val title = e.arguments?.getString(Screen.LessonList.ARG_TITLE).orEmpty()
             val type = e.arguments?.getString(Screen.LessonList.ARG_TYPE)?.takeIf { it.isNotBlank() }
+            val genre = e.arguments?.getString(Screen.LessonList.ARG_GENRE)?.takeIf { it.isNotBlank() }
             com.muyeon.app.ui.lessonlist.LessonListScreen(
                 title = title,
-                viewModel = org.koin.androidx.compose.koinViewModel(parameters = { org.koin.core.parameter.parametersOf(type) }),
+                viewModel = org.koin.androidx.compose.koinViewModel(parameters = { org.koin.core.parameter.parametersOf(type, genre) }),
                 onBack = { navController.popBackStack() },
                 onOpenLesson = { id ->
                     context.findActivity()?.let { a ->
                         com.muyeon.app.webview.NativeActionRouter.open(a, "openLessonDetail", org.json.JSONObject().put("lessonId", id.toString()))
                     }
                 },
-                onLogin = { onOpenWeb(WebPaths.login(Screen.LessonList.build(title, type).let { "/$it" })) },
+                onLogin = { onOpenWeb(WebPaths.login(Screen.LessonList.build(title, type, genre).let { "/$it" })) },
             )
         }
         // ★ 2026-11-08 홈 [레슨] '레슨을 찾는 회원들' 전체보기 — 누르면 견적 응답(/availableQuotes/:id) · 내 요청은 받은 견적.
-        composable(Screen.QuoteFeed.route) {
+        composable(
+            Screen.QuoteFeed.route,
+            arguments = listOf(navArgument(Screen.QuoteFeed.ARG_CATEGORY) { type = NavType.StringType; nullable = true; defaultValue = null }),
+        ) { e ->
+            val category = e.arguments?.getString(Screen.QuoteFeed.ARG_CATEGORY)?.takeIf { it.isNotBlank() }
             com.muyeon.app.ui.quotefeed.QuoteFeedScreen(
-                viewModel = org.koin.androidx.compose.koinViewModel(),
+                viewModel = org.koin.androidx.compose.koinViewModel(parameters = { org.koin.core.parameter.parametersOf(category) }),
                 onBack = { navController.popBackStack() },
                 onOpenPath = onOpenPath,
             )
