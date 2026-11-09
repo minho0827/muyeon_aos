@@ -122,6 +122,8 @@ fun MainScreen(
                                 selected = current,
                                 onSelect = jump,
                             ) {
+                                // 공연팀이면 공연 공고 등록 ＋(예전 캐스팅 화면 위 바와 같은 규칙 — 통합 탭은 채용 [+ 글쓰기] 밖이다).
+                                if (canCreate) com.muyeon.app.ui.components.TopBarIconButton(R.drawable.ic_add, "공연 공고 등록", onClick = { onOpenDetail(r.create) })
                                 com.muyeon.app.ui.components.TopBarIconButton(R.drawable.ic_web_filter, stringResource(R.string.casting_all), onClick = { onOpenDetail(r.castingList) })
                             }
                         },
