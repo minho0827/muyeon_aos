@@ -16,9 +16,10 @@ import com.muyeon.domain.model.performance.PerformanceSummary
 @Composable
 fun PerformanceRow(
     item: PerformanceSummary,
-    liked: Boolean,
     onClick: () -> Unit,
-    onToggleLike: () -> Unit,
+    liked: Boolean = false,
+    /** null 이면 하트 대신 기본 화살표(검색 결과). */
+    onToggleLike: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     showDivider: Boolean = true,
 ) {
@@ -29,7 +30,7 @@ fun PerformanceRow(
         thumbUrl = item.posterUrl,
         thumbFallbackRes = R.drawable.img_noimage_performance,
         tags = { PerformanceBadges(item) },
-        trailing = { HeartButton(liked = liked, onToggle = onToggleLike) },
+        trailing = onToggleLike?.let { toggle -> { HeartButton(liked = liked, onToggle = toggle) } },
         showDivider = showDivider,
         modifier = modifier.testTag("performance_row_${item.id}"),
     )

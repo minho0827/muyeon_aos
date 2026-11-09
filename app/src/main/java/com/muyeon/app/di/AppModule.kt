@@ -57,6 +57,8 @@ val appModule = module {
 
 /** 화면 ViewModel — 새 화면은 여기 한 줄(docs/ARCHITECTURE.md 9단계 체크리스트 7번). */
 val viewModelModule = module {
+    // ★ 2026-11-09 공연 검색 도메인(검색 화면이 koinInject 로 받는다).
+    factory { com.muyeon.app.ui.search.PerformanceSearchDomain(get(), get()) }
     viewModel { MainViewModel(get(), get(), get(), get(), get(), get()) }
     // 공연
     viewModel { com.muyeon.app.ui.performance.PerformanceListViewModel(get(), get(), get(), get(), get(), get()) }

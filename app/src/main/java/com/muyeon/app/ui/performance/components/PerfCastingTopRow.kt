@@ -38,9 +38,10 @@ enum class PerfCastingMode { PERFORMANCE, CASTING }
 data class PerfCastingItem(val key: String, val label: String)
 
 /**
- * ★ 2026-11-09 공연·캐스팅 통합 탭 머리(NOL 홈·티켓 줄, 사용자 시안 승인) — 흰 위 바(DANCE 로고 + 채팅) 아래
+ * ★ 2026-11-09 공연·캐스팅 통합 탭 머리 줄(NOL 홈·티켓 줄, 사용자 시안 승인) — 위 바(BrandSearchBar) 아래
  *   `[공연] [캐스팅] | 분류…` **한 줄 전체가 같이 가로로 밀린다**(사용자 결정). 고른 칸은 검은 알약, 고른 분류는 주황 굵게.
  *   공연 → 장르(전체·발레·…) · 캐스팅 → 캐스팅 공고·국내소식·공연·축제·콩쿠르·대회·무용입시·학교·교육과정(소식이 있는 섹션만).
+ *   위 바는 여기서 그리지 않는다 — 화면(PerformanceHomeScreen·CastingHomeScreen)이 BrandSearchBar 와 같이 조립한다.
  */
 @Composable
 fun PerfCastingHeader(
@@ -49,15 +50,8 @@ fun PerfCastingHeader(
     items: List<PerfCastingItem>,
     selected: String?,
     onSelect: (String) -> Unit,
-    /** 위 바 오른쪽 버튼(캐스팅: 공고 전체 보기). */
-    actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {},
 ) {
     Column(Modifier.fillMaxWidth().background(AppColors.Surface)) {
-        // ★ 2026-11-09 주황 위 바 대신 흰 바 + DANCE 로고(홈과 같은 BrandTopBar — 사용자 요청). 오른쪽 버튼 + 채팅.
-        com.muyeon.app.ui.components.BrandTopBar(center = {}) {
-            actions()
-            com.muyeon.app.ui.components.ChatTopBarAction(AppColors.TextHead)
-        }
         val listState = rememberLazyListState()
         // 칸을 바꾸면 줄 맨 앞(알약)으로 — 분류 목록이 통째로 바뀐다.
         LaunchedEffect(mode) { listState.scrollToItem(0) }

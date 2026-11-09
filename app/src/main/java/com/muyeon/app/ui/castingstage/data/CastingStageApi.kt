@@ -123,6 +123,17 @@ class CastingStageApi(internal val token: String?) {
         return StageCastingPage(parseCastings(o), if (o.optBoolean("hasMore")) o.str("nextCursor") else null)
     }
 
+    /** 캐스팅 검색 — `GET /casting/search`([params] 는 q·genres·sidos·feeRange·sort, 빈 값 없음). */
+    suspend fun search(params: Map<String, String>, cursor: String?): com.muyeon.domain.model.search.SearchPage<StageCasting> {
+        val o = JSONObject(get("/casting/search", params + mapOf("cursor" to cursor, "limit" to "20")))
+        return com.muyeon.domain.model.search.SearchPage(
+            parseCastings(o), if (o.optBoolean("hasMore")) o.str("nextCursor") else null, if (o.has("total")) o.optInt("total") else null,
+        )
+    }
+
+    /** 같은 조건 개수 — `GET /casting/search/count`. */
+    suspend fun searchCount(params: Map<String, String>): Int = JSONObject(get("/casting/search/count", params)).optInt("total")
+
     suspend fun issue(no: Int): StageNewsIssue = parseIssue(JSONObject(get("/stage-news/issues/$no")))
 
     suspend fun issues(): List<StageIssueSummary> = runCatching {

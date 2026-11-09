@@ -1,38 +1,30 @@
 package com.muyeon.app.ui.performance
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.muyeon.app.R
-import com.muyeon.app.ui.components.CursorListFooter
-import com.muyeon.app.ui.components.CursorLoadMoreEffect
-import com.muyeon.app.ui.components.EmptyView
 import com.muyeon.app.ui.components.MainTopBar
-import com.muyeon.app.ui.main.MainTab
-import com.muyeon.app.ui.main.TabReselectEffect
+import com.muyeon.app.ui.main.tabBarBottomPadding
 import com.muyeon.app.ui.performance.components.PerformanceFilterChips
-import com.muyeon.app.ui.performance.components.PerformanceRow
-import com.muyeon.app.ui.theme.Dimensions
+import com.muyeon.app.ui.performance.components.PerformanceListEffects
+import com.muyeon.app.ui.performance.components.performanceRows
+import com.muyeon.app.ui.theme.AppColors
 import org.koin.androidx.compose.koinViewModel
 
 /**
- * 공연 탭 — 주황 위 바 "공연" + 칩 두 줄 + 목록(당겨서 새로고침 · 무한 스크롤).
+ * 공연 탭(예전 모양) — 주황 위 바 "공연" + 칩 두 줄 + 목록(당겨서 새로고침 · 무한 스크롤).
+ *   공연·캐스팅 통합 탭은 [PerformanceHomeScreen].
  *
  * @param onOpenDetail 공연 상세(앱 화면)
  * @param onLogin 비회원 찜 — 웹 로그인 창
@@ -44,119 +36,31 @@ fun PerformanceListScreen(
     onLogin: () -> Unit,
     /** 커뮤니티 탭 안 머리. 주면 이 화면 위 바 대신 그린다. */
     header: (@Composable () -> Unit)? = null,
-    /**
-     * ★ 2026-11-09 공연·캐스팅 통합 탭 머리 — 주면 [header] 대신 그리고 장르는 이 줄이 맡는다(목록 위 장르 칩 줄은 뺀다).
-     *   (장르 목록, 고른 장르, 고르기) 를 넘긴다. [전체]면 목록 위에 배너·아이콘·포스터 줄(NOL 식)을 보인다.
-     */
-    topRow: (@Composable (genres: List<String>, genre: String, onGenre: (String) -> Unit) -> Unit)? = null,
     viewModel: PerformanceListViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val listState = rememberLazyListState()
+    PerformanceListEffects(viewModel, listState, canLoadMore = state.cursor.canAutoLoad && !state.isLoadingMore, onLogin = onLogin)
 
-    LifecycleResumeEffect(Unit) {
-        viewModel.onResume()
-        onPauseOrDispose { }
-    }
-    TabReselectEffect(MainTab.PERFORMANCE) { viewModel.onTabReselect() }
-    LaunchedEffect(viewModel) {
-        viewModel.events.collect { e ->
-            when (e) {
-                is PerformanceListEvent.ScrapToast -> Toast.makeText(context, if (e.added) R.string.common_scrap_added else R.string.common_scrap_removed, Toast.LENGTH_SHORT).show()
-                is PerformanceListEvent.Message -> Toast.makeText(context, e.text, Toast.LENGTH_SHORT).show()
-                PerformanceListEvent.LoginRequired -> onLogin()
-                PerformanceListEvent.ScrollToTop -> listState.animateScrollToItem(0)
-            }
-        }
-    }
-    CursorLoadMoreEffect(listState, canLoad = state.cursor.canAutoLoad && !state.isLoadingMore, onLoadMore = viewModel::loadMore)
-
-    Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.theme.AppColors.Surface)) {
-        when {
-            topRow != null -> topRow(viewModel.genreOptions, state.genre, viewModel::selectGenre)
-            header != null -> header()
-            else -> MainTopBar(title = stringResource(R.string.tab_performance), chat = true)
-        }
+    Column(Modifier.fillMaxSize().background(AppColors.Surface)) {
+        if (header != null) header() else MainTopBar(title = stringResource(R.string.tab_performance), chat = true)
         PullToRefreshBox(
             isRefreshing = state.isRefreshing,
             onRefresh = { viewModel.refresh(pull = true) },
             modifier = Modifier.fillMaxSize(),
         ) {
-            LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = com.muyeon.app.ui.main.tabBarBottomPadding())) {
-                val showcase = topRow != null && state.genre == PerformanceListViewModel.ALL &&
-                    state.detail == com.muyeon.domain.model.performance.PerformanceDetailFilter.All && state.items.isNotEmpty()
-                if (showcase) {
-                    item(key = "showcase.banner") {
-                        com.muyeon.app.ui.performance.components.PerformanceBanner(
-                            com.muyeon.app.ui.performance.components.pickBanner(state.items), onOpen = onOpenDetail, modifier = Modifier.padding(top = 4.dp),
-                        )
-                    }
-                    item(key = "showcase.icons") {
-                        com.muyeon.app.ui.home.components.LessonCategoryIcons(
-                            genres = viewModel.genreOptions.filter { it != PerformanceListViewModel.ALL },
-                            onSelect = viewModel::selectGenre,
-                            modifier = Modifier.padding(top = 16.dp),
-                        )
-                    }
-                    item(key = "showcase.now") {
-                        com.muyeon.app.ui.performance.components.PerformancePosterRow(
-                            stringResource(R.string.perf_now), state.items.filter { it.status == com.muyeon.domain.model.performance.PerformanceStatus.ONGOING }.take(10), onOpenDetail,
-                        )
-                    }
-                    item(key = "showcase.soon") {
-                        com.muyeon.app.ui.performance.components.PerformancePosterRow(
-                            stringResource(R.string.perf_soon), state.items.filter { it.status == com.muyeon.domain.model.performance.PerformanceStatus.UPCOMING }.take(10), onOpenDetail,
-                        )
-                    }
-                    item(key = "showcase.title") { com.muyeon.app.ui.performance.components.PerformanceListTitle(stringResource(R.string.perf_all_list)) }
-                }
-                if (topRow == null) {
-                    item(key = "chips") {
-                        PerformanceFilterChips(
-                            genres = viewModel.genreOptions,
-                            genre = state.genre,
-                            details = state.detailOptions,
-                            detail = state.detail,
-                            onGenre = viewModel::selectGenre,
-                            onDetail = viewModel::selectDetail,
-                        )
-                    }
-                } else if (state.detailOptions.size > 1) {
-                    // 장르는 위 줄 — 세부 분류·태그(전막 발레·축제 등)만 칩 한 줄로.
-                    item(key = "chips.detail") {
-                        com.muyeon.app.ui.performance.components.PerformanceDetailChips(state.detailOptions, state.detail, viewModel::selectDetail)
-                    }
-                }
-                when {
-                    state.items.isEmpty() && state.isInitialLoading -> Unit
-                    state.items.isEmpty() -> item(key = "empty") {
-                        EmptyView(
-                            title = stringResource(if (state.errorMessage != null) R.string.common_list_failed else R.string.performance_list_empty),
-                            buttonText = state.errorMessage?.let { stringResource(R.string.common_retry) },
-                            onButton = { viewModel.refresh() },
-                        )
-                    }
-                    else -> itemsIndexed(state.items, key = { _, p -> p.id }) { i, p ->
-                        PerformanceRow(
-                            item = p,
-                            liked = p.id in state.likedIds,
-                            onClick = { onOpenDetail(p.id) },
-                            onToggleLike = { viewModel.toggleLike(p.id) },
-                            // 마지막 줄 아래 선 없음(웹 :last-child).
-                            showDivider = i != state.items.lastIndex,
-                        )
-                    }
-                }
-                item(key = "footer") {
-                    CursorListFooter(
-                        loading = state.isLoadingMore,
-                        error = state.moreError,
-                        hasMore = state.cursor.needsTap || (state.moreError != null),
-                        onLoadMore = viewModel::loadMore,
-                        modifier = Modifier.padding(bottom = Dimensions.spacingXXL),
+            LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(bottom = tabBarBottomPadding())) {
+                item(key = "chips") {
+                    PerformanceFilterChips(
+                        genres = viewModel.genreOptions,
+                        genre = state.genre,
+                        details = state.detailOptions,
+                        detail = state.detail,
+                        onGenre = viewModel::selectGenre,
+                        onDetail = viewModel::selectDetail,
                     )
                 }
+                performanceRows(state, viewModel, onOpenDetail)
             }
         }
     }

@@ -34,7 +34,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.muyeon.app.navigation.Screen
 import com.muyeon.app.navigation.WebPaths
-import com.muyeon.app.ui.performance.PerformanceListScreen
 import com.muyeon.app.ui.my.MyScreen
 import com.muyeon.app.ui.lessons.LessonTabScreen
 import com.muyeon.app.ui.home.HomeActions
@@ -95,13 +94,14 @@ fun MainScreen(
                 enterTransition = com.muyeon.app.ui.common.nav.MuyeonNav.tabEnter, exitTransition = com.muyeon.app.ui.common.nav.MuyeonNav.tabExit,
                 popEnterTransition = com.muyeon.app.ui.common.nav.MuyeonNav.tabEnter, popExitTransition = com.muyeon.app.ui.common.nav.MuyeonNav.tabExit,
             ) {
-                // 캐스팅·무대 첫 화면 — 상세·목록은 바깥 NavHost(탭 위 화면, StageRoutes.SHELL)로 밀려 들어온다.
+                // ★ 2026-11-09 공연·캐스팅 통합 탭 — 캐스팅 칸(검색창 위 바 + [공연][캐스팅] 줄 + 캐스팅·무대 본문).
+                //   상세·목록은 바깥 NavHost(탭 위 화면, StageRoutes.SHELL)로 밀려 들어온다.
                 composable(Screen.TabCasting.route) {
                     val r = com.muyeon.app.ui.castingstage.StageRoutes.SHELL
-                    val canCreate = com.muyeon.app.ui.castingstage.stageCanCreate()
-                    com.muyeon.app.ui.castingstage.screens.CastingStageScreen(
+                    com.muyeon.app.ui.castingstage.CastingHomeScreen(
                         api = com.muyeon.app.ui.castingstage.rememberStageApi(),
-                        onClose = null,
+                        onSearch = { onOpenDetail(Screen.Search.build(com.muyeon.app.ui.search.SearchDomainKeys.CASTING)) },
+                        onMode = { if (it == com.muyeon.app.ui.performance.components.PerfCastingMode.PERFORMANCE) viewModel.selectTab(MainTab.PERFORMANCE) },
                         onOpenCasting = { onOpenDetail(r.casting(it)) },
                         onOpenNews = { item, cat ->
                             com.muyeon.app.ui.castingstage.CastingStageSession.newsCache[item.id] = item to cat
@@ -110,23 +110,7 @@ fun MainScreen(
                         onCastingList = { onOpenDetail(r.castingList) },
                         onNewsList = { no, code -> onOpenDetail(r.newsList(no, code)) },
                         onIssues = { onOpenDetail(r.issues) },
-                        onCreate = if (canCreate) ({ onOpenDetail(r.create) }) else null,
                         reloadKey = com.muyeon.app.ui.castingstage.CastingStageSession.reloadKey,
-                        // ★ 2026-11-09 공연·캐스팅 통합 탭 — [공연] [캐스팅] | 캐스팅 공고·국내소식… 한 줄(하단 칸은 공연).
-                        topRow = { current, cats, jump ->
-                            val notice = stringResource(R.string.perf_casting_notice)
-                            com.muyeon.app.ui.performance.components.PerfCastingHeader(
-                                mode = com.muyeon.app.ui.performance.components.PerfCastingMode.CASTING,
-                                onMode = { if (it == com.muyeon.app.ui.performance.components.PerfCastingMode.PERFORMANCE) viewModel.selectTab(MainTab.PERFORMANCE) },
-                                items = cats.map { com.muyeon.app.ui.performance.components.PerfCastingItem(it.code, if (it.code == "CASTING") notice else it.label) },
-                                selected = current,
-                                onSelect = jump,
-                            ) {
-                                // 공연팀이면 공연 공고 등록 ＋(예전 캐스팅 화면 위 바와 같은 규칙 — 통합 탭은 채용 [+ 글쓰기] 밖이다).
-                                if (canCreate) com.muyeon.app.ui.components.TopBarIconButton(R.drawable.ic_add, "공연 공고 등록", onClick = { onOpenDetail(r.create) }, primary = false)
-                                com.muyeon.app.ui.components.TopBarIconButton(R.drawable.ic_web_filter, stringResource(R.string.casting_all), onClick = { onOpenDetail(r.castingList) }, primary = false)
-                            }
-                        },
                     )
                 }
                 composable(Screen.TabHome.route) {
@@ -151,21 +135,13 @@ fun MainScreen(
                         onLogin = { onOpenWeb(WebPaths.login(MainTab.LESSONS.webPath)) },
                     )
                 }
+                // ★ 2026-11-09 공연·캐스팅 통합 탭 — 공연 칸.
                 composable(Screen.TabPerformance.route) {
-                    val allLabel = stringResource(R.string.common_all)
-                    PerformanceListScreen(
+                    com.muyeon.app.ui.performance.PerformanceHomeScreen(
+                        onSearch = { onOpenDetail(Screen.Search.build(com.muyeon.app.ui.search.SearchDomainKeys.PERFORMANCE)) },
+                        onMode = { if (it == com.muyeon.app.ui.performance.components.PerfCastingMode.CASTING) viewModel.selectTab(MainTab.CASTING) },
                         onOpenDetail = { id -> onOpenDetail(Screen.PerformanceDetail.build(id)) },
                         onLogin = { onOpenWeb(WebPaths.login(MainTab.PERFORMANCE.webPath)) },
-                        // ★ 2026-11-09 공연·캐스팅 통합 탭 — [공연] [캐스팅] | 전체·발레… 한 줄.
-                        topRow = { genres, genre, onGenre ->
-                            com.muyeon.app.ui.performance.components.PerfCastingHeader(
-                                mode = com.muyeon.app.ui.performance.components.PerfCastingMode.PERFORMANCE,
-                                onMode = { if (it == com.muyeon.app.ui.performance.components.PerfCastingMode.CASTING) viewModel.selectTab(MainTab.CASTING) },
-                                items = genres.map { com.muyeon.app.ui.performance.components.PerfCastingItem(it, if (it == com.muyeon.app.ui.performance.PerformanceListViewModel.ALL) allLabel else it) },
-                                selected = genre,
-                                onSelect = onGenre,
-                            )
-                        },
                     )
                 }
                 // 구인구직·공간 — 앱 화면을 만드는 동안 지금 쓰던 화면을 연다(개편 계획 3·4단계).

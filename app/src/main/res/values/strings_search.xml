@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ★ 2026-11-09 공연·캐스팅 검색(NOL 식). 키는 iOS 가 그대로 받아 쓴다 — 이름 바꾸지 말 것(search_ 접두). -->
+<resources>
+    <!-- 위 바 검색창 -->
+    <string name="search_bar_hint">공연·캐스팅 검색</string>
+
+    <!-- 검색 화면 위 바 -->
+    <string name="search_input_hint">검색어를 입력해 주세요</string>
+    <string name="search_back">뒤로</string>
+    <string name="search_clear">검색어 지우기</string>
+    <string name="search_home">홈으로</string>
+
+    <!-- 도메인 탭 -->
+    <string name="search_tab_performance">공연</string>
+    <string name="search_tab_casting">캐스팅</string>
+
+    <!-- 칩 줄 -->
+    <string name="search_filter">필터</string>
+    <string name="search_sort">정렬</string>
+    <string name="search_chip_more">%1$s 외 %2$d</string>
+
+    <!-- 시트 -->
+    <string name="search_reset">초기화</string>
+    <string name="search_apply">결과 보기</string>
+    <string name="search_show_performance">%1$d개 공연 보기</string>
+    <string name="search_show_casting">%1$d개 캐스팅 보기</string>
+    <string name="search_close">닫기</string>
+
+    <!-- 결과 -->
+    <string name="search_total">총 %1$d개</string>
+    <string name="search_empty">검색 결과가 없어요</string>
+    <string name="search_empty_sub">검색어나 필터를 바꿔 보세요.</string>
+    <string name="search_failed">검색하지 못했어요</string>
+
+    <!-- 필터 섹션 -->
+    <string name="search_section_status">공연 상태</string>
+    <string name="search_section_genre">장르</string>
+    <string name="search_section_region">지역</string>
+    <string name="search_section_fee">출연료</string>
+
+    <!-- 공연 상태 -->
+    <string name="search_status_upcoming">공연 예정</string>
+    <string name="search_status_ongoing">공연 중</string>
+    <string name="search_status_ended">공연 종료</string>
+
+    <!-- 정렬 -->
+    <string name="search_sort_recommended">추천순</string>
+    <string name="search_sort_start">시작 빠른 순</string>
+    <string name="search_sort_ending">종료 임박 순</string>
+    <string name="search_sort_recent">최근 등록 순</string>
+    <string name="search_sort_deadline">마감 임박 순</string>
+</resources>

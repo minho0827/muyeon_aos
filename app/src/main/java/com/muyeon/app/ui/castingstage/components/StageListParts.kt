@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -64,4 +65,11 @@ internal fun StageListRow(image: String?, icon: ImageVector, tint: Color, bg: Co
             sub?.takeIf { it.isNotBlank() }?.let { Text(it, style = Regular, fontSize = 14.sp, color = MuyeonColors.textSub, maxLines = 2) }
         }
     }
+}
+
+/** 캐스팅 공고 한 줄(전체 목록·검색 결과가 같이 쓴다) — 포스터 · 마감 · 제목 · 단체·장르. */
+@Composable
+internal fun StageCastingRow(c: StageCasting, onClick: () -> Unit) {
+    StageListRow(c.imageUrl, Icons.Filled.Star, Color(0xFFFFA262), Color(0xFFFFF3EA), StageDate.deadline(c.deadline), c.title,
+        listOfNotNull(c.team, c.genre).joinToString(" · "), placeholder = com.muyeon.app.R.drawable.stage_noimage_casting, onClick = onClick)
 }

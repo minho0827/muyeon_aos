@@ -46,6 +46,11 @@ sealed class Screen(val route: String) {
         fun build(id: Long) = "community/post/$id"
     }
 
+    /** ★ 2026-11-09 공연·캐스팅 검색 — [domain] 처음 고를 탭(ui/search/SearchDomainKeys). */
+    data object Search : Screen("search?domain={domain}") {
+        const val ARG_DOMAIN = "domain"
+        fun build(domain: String) = "search?domain=$domain"
+    }
     data object PerformanceDetail : Screen("performance/{id}") {
         const val ARG_ID = "id"
         fun build(id: Long) = "performance/$id"

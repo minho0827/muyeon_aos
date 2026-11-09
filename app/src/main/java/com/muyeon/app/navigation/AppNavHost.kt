@@ -412,6 +412,22 @@ fun AppNavHost(
                 onSaved = { navController.popBackStack(Screen.Main.route, inclusive = false); onOpenPath("/mypage") },
             )
         }
+        // ★ 2026-11-09 공연·캐스팅 검색 — 탭 위 화면(탭바 없음). 홈 아이콘은 홈 탭으로.
+        composable(
+            Screen.Search.route,
+            arguments = listOf(navArgument(Screen.Search.ARG_DOMAIN) { type = NavType.StringType; nullable = true; defaultValue = null }),
+        ) { e ->
+            com.muyeon.app.ui.search.SearchScreen(
+                domains = com.muyeon.app.ui.search.rememberSearchDomains(),
+                initialKey = e.arguments?.getString(Screen.Search.ARG_DOMAIN) ?: com.muyeon.app.ui.search.SearchDomainKeys.PERFORMANCE,
+                onBack = { navController.popBackStack() },
+                onHome = {
+                    navController.popBackStack(Screen.Main.route, inclusive = false)
+                    mainViewModel.selectTab(com.muyeon.app.ui.main.MainTab.HOME)
+                },
+                onOpen = { route -> navController.navigate(route) },
+            )
+        }
         composable(
             Screen.PerformanceDetail.route,
             arguments = listOf(navArgument(Screen.PerformanceDetail.ARG_ID) { type = NavType.StringType }),

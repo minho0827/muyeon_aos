@@ -28,6 +28,8 @@ object ApiEndpoints {
     object Performances {
         const val PAGE = "$API/performances/page"             // GET genre·subGenre·tag·cursor·limit
         const val DETAIL = "$API/performances/{id}"
+        const val SEARCH = "$API/performances/search"              // GET q·statuses·genres·regions·sort·cursor·limit → { items, hasMore, nextCursor, total }
+        const val SEARCH_COUNT = "$API/performances/search/count"  // GET 같은 조건 → { total }
     }
 
     /** community.controller.ts */

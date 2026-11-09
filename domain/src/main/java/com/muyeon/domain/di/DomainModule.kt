@@ -44,6 +44,8 @@ val domainModule = module {
     // 공연
     factory { GetPerformancePageUseCase(get()) }
     factory { GetPerformanceDetailUseCase(get()) }
+    factory { com.muyeon.domain.usecase.performance.SearchPerformancesUseCase(get()) }
+    factory { com.muyeon.domain.usecase.performance.CountPerformanceSearchUseCase(get()) }
     // 커뮤니티
     factory { GetCommunityPostsUseCase(get()) }
     factory { GetCommunityPostUseCase(get()) }
