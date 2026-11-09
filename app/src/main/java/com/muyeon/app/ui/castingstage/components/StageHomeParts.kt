@@ -50,9 +50,9 @@ import com.muyeon.app.ui.castingstage.screens.*
 /** 첫 화면 부품 — 섹션 틀·바로가기 칩·붙는 탭·전체 보기 버튼(iOS StageSectionHeader·StageIconGrid·StageChipTabBar·StageMoreButton). */
 
 @Composable
-internal fun StageSectionBox(title: String, content: @Composable () -> Unit) {
-    // 위 여백 56 = 붙는 탭(46dp)에 제목이 가리지 않게 한 몫(iOS 와 같다).
-    Column(Modifier.fillMaxWidth().padding(top = SECTION_TOP_DP.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+internal fun StageSectionBox(title: String, top: Int = SECTION_TOP_DP, content: @Composable () -> Unit) {
+    // 위 여백 56 = 붙는 탭(46dp)에 제목이 가리지 않게 한 몫(iOS 와 같다). 붙는 탭이 없으면(통합 탭) 좁게 — [top].
+    Column(Modifier.fillMaxWidth().padding(top = top.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text(title, style = Bold, fontSize = 22.sp, color = MuyeonColors.textHead, modifier = Modifier.padding(horizontal = 16.dp))
         content()
     }

@@ -159,7 +159,6 @@ fun CastingStageBody(
     // 섹션이 하나뿐이면(호가 아직 없음 등) 바로가기 칩·붙는 탭은 숨긴다 — 자리만 차지한다.
     val multi = cats.size > 1 && sectionNav
     val keys = buildList {
-        add("banner")
         if (multi) { add("icons"); add("tabs") }
         castingCat?.let { add("section.${it.code}") }
         newsSections.forEach { add("section.${it.first.code}") }
@@ -177,7 +176,7 @@ fun CastingStageBody(
                 stickyHeader(key = "tabs") { StageTabBar(cats, state.current, state::jump) }
             }
             if (castingCat != null) item(key = "section.${castingCat.code}") {
-                StageSectionBox("지금 열린 캐스팅") {
+                StageSectionBox("지금 열린 캐스팅", top = if (multi) SECTION_TOP_DP else 16) {
                     // 10-27 공용 캡슐 탭(ui/common/MuyeonListKit) — 섹션 안이라 구분선 없음.
                     com.muyeon.app.ui.common.MuyeonPillTabs(GENRES.map { com.muyeon.app.ui.common.MuyeonPillTab(it, it) }, genre, { g ->
                         genre = g
@@ -188,16 +187,15 @@ fun CastingStageBody(
                             Text(if (loading) "불러오는 중…" else "지금 열린 캐스팅 공고가 없어요.", style = Regular, fontSize = 14.sp, color = MuyeonColors.textSub)
                         }
                     } else {
-                        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            items(castings, key = { it.id }) { c -> StageCastingCard(c) { onOpenCasting(c.id) } }
-                        }
+                        // ★ 11-09 가로 카드 → 세로 목록(공연 탭처럼, 사용자 결정) — 전체 목록·검색과 같은 한 줄.
+                        Column { castings.forEach { c -> StageCastingRow(c) { onOpenCasting(c.id) } } }
                     }
                     StageMoreButton(castingCat.label) { onCastingList() }
                 }
             }
             newsSections.forEach { (cat, items) ->
                 item(key = "section.${cat.code}") {
-                    StageSectionBox(cat.label) {
+                    StageSectionBox(cat.label, top = if (multi) SECTION_TOP_DP else 40) {
                         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             items(items, key = { it.id }) { n -> StageNewsCard(n, cat) { onOpenNews(n, cat) } }
                         }
