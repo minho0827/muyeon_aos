@@ -63,7 +63,7 @@ fun PerformanceHomeScreen(
             modifier = Modifier.fillMaxSize(),
         ) {
             LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(bottom = tabBarBottomPadding())) {
-                if (state.showsShowcase()) performanceShowcase(state, viewModel.genreOptions, viewModel::selectGenre, onOpenDetail)
+                if (state.showsShowcase()) performanceShowcase(state, onOpenDetail)
                 // 장르는 위 줄 — 세부 분류·태그(전막 발레·축제 등)만 칩 한 줄로.
                 if (state.detailOptions.size > 1) {
                     item(key = "chips.detail") { PerformanceDetailChips(state.detailOptions, state.detail, viewModel::selectDetail) }

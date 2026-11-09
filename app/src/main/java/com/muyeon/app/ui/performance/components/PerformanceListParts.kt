@@ -16,7 +16,6 @@ import com.muyeon.app.R
 import com.muyeon.app.ui.components.CursorListFooter
 import com.muyeon.app.ui.components.CursorLoadMoreEffect
 import com.muyeon.app.ui.components.EmptyView
-import com.muyeon.app.ui.home.components.LessonCategoryIcons
 import com.muyeon.app.ui.main.MainTab
 import com.muyeon.app.ui.main.TabReselectEffect
 import com.muyeon.app.ui.performance.PerformanceListEvent
@@ -51,17 +50,12 @@ fun PerformanceListEffects(viewModel: PerformanceListViewModel, listState: LazyL
     CursorLoadMoreEffect(listState, canLoad = canLoadMore, onLoadMore = viewModel::loadMore)
 }
 
-/** [전체]일 때 목록 위 배너·장르 아이콘·포스터 줄(NOL 식). */
+/** [전체]일 때 목록 위 배너·포스터 줄(NOL 식). 장르 아이콘 줄은 위 [공연] | 장르 줄과 겹쳐 뺐다(사용자 결정 11-09). */
 fun LazyListScope.performanceShowcase(
     state: PerformanceListUiState,
-    genres: List<String>,
-    onGenre: (String) -> Unit,
     onOpenDetail: (Long) -> Unit,
 ) {
     item(key = "showcase.banner") { PerformanceBanner(pickBanner(state.items), onOpen = onOpenDetail, modifier = Modifier.padding(top = 4.dp)) }
-    item(key = "showcase.icons") {
-        LessonCategoryIcons(genres = genres.filter { it != PerformanceListViewModel.ALL }, onSelect = onGenre, modifier = Modifier.padding(top = 16.dp))
-    }
     item(key = "showcase.now") {
         PerformancePosterRow(stringResource(R.string.perf_now), state.items.filter { it.status == PerformanceStatus.ONGOING }.take(10), onOpenDetail)
     }
