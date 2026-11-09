@@ -171,11 +171,7 @@ fun CastingStageBody(
     }
     Box(modifier.fillMaxSize()) {
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomPadding)) {
-            item(key = "banner") {
-                StageBanner(issue, if (castingCat != null) castings else emptyList(), loading, newsSections.map { it.first },
-                    onTapIssue = { issue?.let { onOpenIssue(it.issueNo) } },
-                    onTapCasting = { onOpenCasting(it.id) }, onTapNews = { n -> onOpenNews(n, catOf(n)) })
-            }
+            // ★ 11-09 맨 위 배너는 뺐다(사용자 결정) — 분류 줄·캐스팅·소식 칸부터.
             if (multi) {
                 item(key = "icons") { StageChipRow(cats, state::jump) }
                 stickyHeader(key = "tabs") { StageTabBar(cats, state.current, state::jump) }

@@ -55,13 +55,11 @@ fun LazyListScope.performanceShowcase(
     state: PerformanceListUiState,
     onOpenDetail: (Long) -> Unit,
 ) {
-    item(key = "showcase.banner") { PerformanceBanner(pickBanner(state.items), onOpen = onOpenDetail, modifier = Modifier.padding(top = 4.dp)) }
+    // ★ 11-09 맨 위 큰 포스터 배너는 뺐다(사용자 결정) — '지금 공연 중'부터.
     item(key = "showcase.now") {
         PerformancePosterRow(stringResource(R.string.perf_now), state.items.filter { it.status == PerformanceStatus.ONGOING }.take(10), onOpenDetail)
     }
-    item(key = "showcase.soon") {
-        PerformancePosterRow(stringResource(R.string.perf_soon), state.items.filter { it.status == PerformanceStatus.UPCOMING }.take(10), onOpenDetail)
-    }
+    // ★ 11-09 '곧 시작해요' 줄도 뺐다(사용자 결정).
     item(key = "showcase.title") { PerformanceListTitle(stringResource(R.string.perf_all_list)) }
 }
 
