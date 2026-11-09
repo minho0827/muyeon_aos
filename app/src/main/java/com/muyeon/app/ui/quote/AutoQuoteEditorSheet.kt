@@ -50,12 +50,16 @@ fun AutoQuoteEditorSheet(
     val canSave = !busy && message.trim().isNotEmpty()
 
     Dialog(onDismissRequest = onCancel) {
+        // ★ 2026-11-09 입력부만 스크롤, [취소]·[저장] 줄은 그 아래 고정 — 메시지 입력 중 키보드에 버튼이 묻히지 않게.
         Column(
             Modifier
                 .clip(RoundedCornerShape(16.dp))
                 .background(MuyeonColors.surface)
-                .padding(20.dp)
-                .verticalScroll(rememberScrollState()),
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+        Column(
+            Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             Text(
@@ -98,6 +102,7 @@ fun AutoQuoteEditorSheet(
                     )
                 }
             }
+        }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
                     "취소",

@@ -808,12 +808,18 @@ internal fun QuoteRespondSheet(
     val canSend = message.trim().isNotEmpty() && !sending && depositProblem == null
 
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        // ★ 2026-11-09 입력부만 스크롤하고 [제안 보내기]는 그 아래 고정 — 예전엔 버튼이 스크롤 맨 끝이라
+        //   메시지 입력 중 키보드가 올라오면 내려서 찾아야 했다(iOS 같은 화면과 함께 고침).
         Column(
             Modifier
                 .clip(RoundedCornerShape(16.dp))
-                .background(MuyeonColors.surface)
+                .background(MuyeonColors.surface),
+        ) {
+        Column(
+            Modifier
+                .weight(1f, fill = false)
                 .verticalScroll(rememberScrollState())
-                .padding(20.dp),
+                .padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
@@ -940,12 +946,14 @@ internal fun QuoteRespondSheet(
                 fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp,
                 color = MuyeonColors.textSub,
             )
+        }
 
             Text(
                 if (sending) "보내는 중…" else "제안 보내기",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
                 lineHeight = 19.sp, color = Color.White, textAlign = TextAlign.Center,
                 modifier = Modifier
+                    .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 20.dp)
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(26.dp))
                     .background(if (canSend) MuyeonColors.primary else Color.Gray.copy(alpha = 0.4f))
