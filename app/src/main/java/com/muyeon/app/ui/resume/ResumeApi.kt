@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.resume
 
+import com.muyeon.app.util.optStringOrNull
+
 import com.muyeon.app.BuildConfig
 import com.muyeon.app.ui.quote.boolOrNull
 import com.muyeon.app.ui.quote.map
@@ -246,7 +248,7 @@ class ResumeApi(internal val token: String?) {
         val o = JSONObject(text)
         o.optJSONArray("message")
             ?.let { arr -> (0 until arr.length()).joinToString("\n") { arr.optString(it) } }?.ifEmpty { null }
-            ?: o.optString("message").ifEmpty { null }
+            ?: o.optStringOrNull("message")
     }.getOrNull()
 
     private companion object { val JSON = "application/json".toMediaType() }

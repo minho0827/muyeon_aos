@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.splash
 
+import com.muyeon.app.util.optTextOrNull
+
 import android.content.Context
 import com.muyeon.app.BuildConfig
 import kotlinx.coroutines.Dispatchers
@@ -75,19 +77,19 @@ object AppGateApi {
                 val u = root.optJSONObject("update")?.let {
                     AppGateUpdate(
                         action = it.optString("action", "NONE"),
-                        latestVersionName = it.optString("latestVersionName").ifBlank { null },
-                        storeUrl = it.optString("storeUrl").ifBlank { null },
-                        title = it.optString("title").ifBlank { null },
-                        message = it.optString("message").ifBlank { null },
+                        latestVersionName = it.optTextOrNull("latestVersionName"),
+                        storeUrl = it.optTextOrNull("storeUrl"),
+                        title = it.optTextOrNull("title"),
+                        message = it.optTextOrNull("message"),
                     )
                 }
                 val n = root.optJSONObject("notice")?.let {
                     AppGateNotice(
                         id = it.optInt("id"),
                         title = it.optString("title"),
-                        body = it.optString("body").ifBlank { null },
-                        imageUrl = it.optString("imageUrl").ifBlank { null },
-                        linkUrl = it.optString("linkUrl").ifBlank { null },
+                        body = it.optTextOrNull("body"),
+                        imageUrl = it.optTextOrNull("imageUrl"),
+                        linkUrl = it.optTextOrNull("linkUrl"),
                         dismissType = it.optString("dismissType", "TODAY"),
                     )
                 }

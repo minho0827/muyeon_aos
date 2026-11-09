@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.resume
 
+import com.muyeon.app.util.optTextOrNull
+
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -70,12 +72,12 @@ data class VerifiedLogo(
     companion object {
         fun listFrom(arr: JSONArray?): List<VerifiedLogo> = (0 until (arr?.length() ?: 0)).mapNotNull { i ->
             val o = arr?.optJSONObject(i) ?: return@mapNotNull null
-            val url = o.optString("logoUrl").takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val url = o.optTextOrNull("logoUrl") ?: return@mapNotNull null
             VerifiedLogo(
                 o.optInt("id"), o.optString("kind"), o.optString("section").ifEmpty { "CAREER" },
                 // ★ JSON null 은 optString 이 "null" 글자로 준다 — 서버가 title 을 비워 보낸다(11-04 관리자 선택 방식).
                 o.optString("org"), if (o.isNull("title")) "" else o.optString("title"), url,
-                if (o.isNull("verifiedAt")) null else o.optString("verifiedAt").takeIf { it.isNotBlank() },
+                if (o.isNull("verifiedAt")) null else o.optTextOrNull("verifiedAt"),
             )
         }
     }

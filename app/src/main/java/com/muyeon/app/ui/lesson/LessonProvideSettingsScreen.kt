@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.lesson
 
+import com.muyeon.app.util.optStringOrNull
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -162,7 +164,7 @@ fun LessonProvideSettingsScreen(
     LaunchedEffect(Unit) {
         api.getProfile()?.let { p ->
             enabled = if (p.has("lessonEnabled") && !p.isNull("lessonEnabled")) p.optBoolean("lessonEnabled") else true
-            gender = p.optString("gender").ifEmpty { null }
+            gender = p.optStringOrNull("gender")
         }
         prefs = api.getPrefs()
         loading = false

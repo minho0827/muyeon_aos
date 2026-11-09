@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.jobposting
 
+import com.muyeon.app.util.optStringOrNull
+
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -94,7 +96,7 @@ fun PostingViewScreen(
             }
             else -> {
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                    DetailHeader(kind, d, null, d.optString("status").ifEmpty { null })
+                    DetailHeader(kind, d, null, d.optStringOrNull("status"))
                     Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         HorizontalDivider(Modifier.padding(vertical = 6.dp), color = AppColors.Divider)
                         if (kind == "SUB") SubBody(d) else JobPostingDetailContent(JobForm.from(d), showPlaceholders = false)

@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.onboarding
 
+import com.muyeon.app.util.optStringOrNull
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -101,7 +103,7 @@ class RoleVerificationApi(private val token: String?) {
                 .build()
             client.newCall(req).execute().use { res ->
                 if (!res.isSuccessful) return@use null
-                JSONObject(res.body?.string().orEmpty()).optString("url").ifEmpty { null }
+                JSONObject(res.body?.string().orEmpty()).optStringOrNull("url")
             }
         }.getOrNull()
     }

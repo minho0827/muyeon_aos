@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.quote
 
+import com.muyeon.app.util.optStringOrNull
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -77,7 +79,7 @@ object LessonContentRepo {
                         LessonContentItem(
                             id = o.optInt("id"),
                             title = o.optString("title"),
-                            region = o.optString("region").ifEmpty { null },
+                            region = o.optStringOrNull("region"),
                             thumbnail = if (images != null && images.length() > 0) images.optString(0) else null,
                         )
                     }

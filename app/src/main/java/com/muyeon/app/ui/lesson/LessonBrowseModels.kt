@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.lesson
 
+import com.muyeon.app.util.optStringOrNull
+
 import com.muyeon.app.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -75,19 +77,19 @@ data class BrowseFeedItem(
             type = o.optString("type").ifEmpty { "portfolio" },
             // ⚠️ 서버 키는 id 다(itemId 아님). 잘못 읽으면 카드 탭이 전부 0번으로 간다.
             itemId = o.optInt("id"),
-            title = o.optString("title").ifEmpty { null },
-            genre = o.optString("genre").ifEmpty { null },
-            region = o.optString("region").ifEmpty { null },
+            title = o.optStringOrNull("title"),
+            genre = o.optStringOrNull("genre"),
+            region = o.optStringOrNull("region"),
             images = o.optJSONArray("images")?.let { a ->
                 (0 until a.length()).map { a.optString(it) }.filter { it.isNotEmpty() }
             },
             viewCount = if (o.has("viewCount") && !o.isNull("viewCount")) o.optInt("viewCount") else null,
             creatorName = o.optJSONObject("creator")?.optString("name")?.ifEmpty { null },
-            content = o.optString("content").ifEmpty { null },
+            content = o.optStringOrNull("content"),
             rating = if (o.has("rating") && !o.isNull("rating")) o.optInt("rating") else null,
             teacherId = if (o.has("teacherId") && !o.isNull("teacherId")) o.optInt("teacherId") else null,
-            teacherName = o.optString("teacherName").ifEmpty { null },
-            image = o.optString("image").ifEmpty { null },
+            teacherName = o.optStringOrNull("teacherName"),
+            image = o.optStringOrNull("image"),
         )
     }
 }
@@ -132,9 +134,9 @@ data class LessonContentDetail(
             return LessonContentDetail(
                 id = o.optInt("id"),
                 title = o.optString("title").ifEmpty { "레슨" },
-                description = o.optString("description").ifEmpty { null },
-                genre = o.optString("genre").ifEmpty { null },
-                region = o.optString("region").ifEmpty { null },
+                description = o.optStringOrNull("description"),
+                genre = o.optStringOrNull("genre"),
+                region = o.optStringOrNull("region"),
                 price = if (o.has("price") && !o.isNull("price")) o.optInt("price") else null,
                 images = strings("images"),
                 detailImages = strings("detailImages"),
@@ -142,13 +144,13 @@ data class LessonContentDetail(
                 creatorId = c?.optInt("id"),
                 creatorName = c?.optString("name")?.ifEmpty { null },
                 creatorImage = c?.optString("image")?.ifEmpty { null },
-                level = o.optString("level").ifEmpty { null }.takeIf { !o.isNull("level") },
-                lessonKind = o.optString("lessonKind").ifEmpty { null }.takeIf { !o.isNull("lessonKind") },
-                scheduleText = o.optString("scheduleText").ifEmpty { null }.takeIf { !o.isNull("scheduleText") },
+                level = o.optStringOrNull("level").takeIf { !o.isNull("level") },
+                lessonKind = o.optStringOrNull("lessonKind").takeIf { !o.isNull("lessonKind") },
+                scheduleText = o.optStringOrNull("scheduleText").takeIf { !o.isNull("scheduleText") },
                 duration = if (o.has("duration") && !o.isNull("duration")) o.optInt("duration") else null,
                 maxParticipants = if (o.has("maxParticipants") && !o.isNull("maxParticipants")) o.optInt("maxParticipants") else null,
-                priceUnit = o.optString("priceUnit").ifEmpty { null }.takeIf { !o.isNull("priceUnit") },
-                place = o.optString("place").ifEmpty { null }.takeIf { !o.isNull("place") },
+                priceUnit = o.optStringOrNull("priceUnit").takeIf { !o.isNull("priceUnit") },
+                place = o.optStringOrNull("place").takeIf { !o.isNull("place") },
                 purposes = strings("purposes"),
                 formats = strings("formats"),
                 ageGroups = strings("ageGroups"),

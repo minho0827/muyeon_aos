@@ -1,5 +1,7 @@
 package com.muyeon.app.chat.socket
 
+import com.muyeon.app.util.optTextOrNull
+
 import android.content.Context
 import android.util.Log
 import com.muyeon.app.BuildConfig
@@ -241,7 +243,7 @@ object ChatSocketManager {
     private fun sessionIdOf(jwt: String?): String? = runCatching {
         val part = jwt?.split(".")?.getOrNull(1) ?: return null
         val body = String(android.util.Base64.decode(part, android.util.Base64.URL_SAFE or android.util.Base64.NO_PADDING or android.util.Base64.NO_WRAP))
-        JSONObject(body).optString("sid").takeIf { it.isNotBlank() }
+        JSONObject(body).optTextOrNull("sid")
     }.getOrNull()
 
     @Synchronized

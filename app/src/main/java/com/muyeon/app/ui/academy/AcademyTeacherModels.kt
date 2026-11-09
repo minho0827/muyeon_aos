@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.academy
 
+import com.muyeon.app.util.optStringOrNull
+
 import com.muyeon.app.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -37,9 +39,9 @@ data class AcademyTeacher(
             val g = u?.optJSONArray("genres")
             return AcademyTeacher(
                 id = o.optInt("id"),
-                status = o.optString("status").ifEmpty { null },
-                via = o.optString("via").ifEmpty { null },
-                message = o.optString("message").ifEmpty { null },
+                status = o.optStringOrNull("status"),
+                via = o.optStringOrNull("via"),
+                message = o.optStringOrNull("message"),
                 userId = u?.optInt("id"),
                 userName = u?.optString("name")?.ifEmpty { null },
                 userImage = u?.optString("image")?.ifEmpty { null },

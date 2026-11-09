@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.chat
 
+import com.muyeon.app.util.optStringOrNull
+
 import com.muyeon.app.BuildConfig
 import com.muyeon.app.ui.quote.map
 import kotlinx.coroutines.Dispatchers
@@ -171,7 +173,7 @@ class ChatApi(private val token: String?) {
         val o = JSONObject(text)
         o.optJSONArray("message")
             ?.let { arr -> (0 until arr.length()).joinToString("\n") { arr.optString(it) } }?.ifEmpty { null }
-            ?: o.optString("message").ifEmpty { null }
+            ?: o.optStringOrNull("message")
     }.getOrNull()
 
     companion object {
@@ -180,7 +182,7 @@ class ChatApi(private val token: String?) {
         /** 서버 거절 코드 — { code } 또는 { data: { code } }. 없으면 null. */
         fun errorCode(text: String): String? = runCatching {
             val o = JSONObject(text)
-            o.optString("code").ifEmpty { null } ?: o.optJSONObject("data")?.optString("code")?.ifEmpty { null }
+            o.optStringOrNull("code") ?: o.optJSONObject("data")?.optString("code")?.ifEmpty { null }
         }.getOrNull()
 
         /** 잠긴 방 거절(ROOM_LOCKED)인지 — 반응 등 REST 호출 실패에서 본다. */

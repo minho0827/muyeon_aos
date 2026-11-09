@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.floating
 
+import com.muyeon.app.util.optStringOrNull
+
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -104,7 +106,7 @@ class FloatingApi(private val tokenProvider: () -> String?) {
 
     suspend fun verificationStatus(): VerifyStatus? = get("/me/roles/verification-status")?.let {
         VerifyStatus(
-            it.optString("role").ifEmpty { null },
+            it.optStringOrNull("role"),
             it.optString("status").ifEmpty { "NONE" },
             it.optBoolean("acknowledged", false),
         )

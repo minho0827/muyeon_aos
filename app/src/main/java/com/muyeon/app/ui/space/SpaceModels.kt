@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.space
 
+import com.muyeon.app.util.optStringOrNull
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Checkroom
 import androidx.compose.material.icons.outlined.CropPortrait
@@ -51,10 +53,10 @@ data class SpacePriceOption(
     companion object {
         fun from(o: JSONObject) = SpacePriceOption(
             o.optInt("id"),
-            o.optString("bookingType").ifEmpty { null },
-            o.optString("label").ifEmpty { null },
+            o.optStringOrNull("bookingType"),
+            o.optStringOrNull("label"),
             if (o.has("price") && !o.isNull("price")) o.optInt("price") else null,
-            o.optString("unit").ifEmpty { null },
+            o.optStringOrNull("unit"),
             if (o.has("sort") && !o.isNull("sort")) o.optInt("sort") else null,
         )
     }
@@ -111,9 +113,9 @@ data class SpaceRefundView(
     companion object {
         fun from(o: JSONObject) = SpaceRefundView(
             preset = o.optString("preset").ifEmpty { "CUSTOM" },
-            presetLabel = o.optString("presetLabel").ifEmpty { null },
+            presetLabel = o.optStringOrNull("presetLabel"),
             rows = refundRows(o.optJSONArray("rows")),
-            freeCancelNote = o.optString("freeCancelNote").ifEmpty { null },
+            freeCancelNote = o.optStringOrNull("freeCancelNote"),
             policyUrl = o.optString("policyUrl").ifEmpty { SPACE_REFUND_POLICY },
         )
 
@@ -272,21 +274,21 @@ data class SpaceDetail(
                 id = o.optInt("id"),
                 name = o.optString("name").ifEmpty { "공간" },
                 ownerId = intOrNull("ownerId"),
-                genre = o.optString("genre").ifEmpty { null },
-                region = o.optString("region").ifEmpty { null },
-                addressDetail = o.optString("addressDetail").ifEmpty { null },
-                subwayInfo = o.optString("subwayInfo").ifEmpty { null },
+                genre = o.optStringOrNull("genre"),
+                region = o.optStringOrNull("region"),
+                addressDetail = o.optStringOrNull("addressDetail"),
+                subwayInfo = o.optStringOrNull("subwayInfo"),
                 tags = strings("tags"),
                 pricePerHour = intOrNull("pricePerHour"),
                 images = strings("images"),
-                description = o.optString("description").ifEmpty { null },
-                intro = o.optString("intro").ifEmpty { null },
+                description = o.optStringOrNull("description"),
+                intro = o.optStringOrNull("intro"),
                 capacityMin = intOrNull("capacityMin"),
                 capacityMax = intOrNull("capacityMax"),
                 areaM2 = intOrNull("areaM2"),
-                spaceType = o.optString("spaceType").ifEmpty { null },
-                businessHours = o.optString("businessHours").ifEmpty { null },
-                holidays = o.optString("holidays").ifEmpty { null },
+                spaceType = o.optStringOrNull("spaceType"),
+                businessHours = o.optStringOrNull("businessHours"),
+                holidays = o.optStringOrNull("holidays"),
                 facilities = o.optJSONObject("facilities")?.let { f ->
                     f.keys().asSequence().associateWith { f.optBoolean(it) }
                 },
@@ -296,16 +298,16 @@ data class SpaceDetail(
                 hourlyEnabled = boolOrNull("hourlyEnabled"),
                 hourlyMinHours = intOrNull("hourlyMinHours"),
                 packageEnabled = boolOrNull("packageEnabled"),
-                phone = o.optString("phone").ifEmpty { null },
+                phone = o.optStringOrNull("phone"),
                 priceOptions = o.optJSONArray("priceOptions")?.let { arr ->
                     (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let(SpacePriceOption::from) }
                 },
-                regionCode = o.optString("regionCode").ifEmpty { null },
+                regionCode = o.optStringOrNull("regionCode"),
                 categoryId = intOrNull("categoryId"),
-                roadAddress = o.optString("roadAddress").ifEmpty { null }?.takeIf { it != "null" },
+                roadAddress = o.optStringOrNull("roadAddress")?.takeIf { it != "null" },
                 lat = o.optDouble("lat").takeIf { !it.isNaN() },
                 lng = o.optDouble("lng").takeIf { !it.isNaN() },
-                hostName = o.optString("hostName").ifEmpty { null },
+                hostName = o.optStringOrNull("hostName"),
                 isOwner = o.optBoolean("isOwner"),
                 otherSpaces = o.optJSONArray("otherSpaces")?.let { arr ->
                     (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let(SpaceListItem::from) }
@@ -315,7 +317,7 @@ data class SpaceDetail(
                 openDays = o.optJSONArray("openDays")?.let { a -> (0 until a.length()).map { a.optInt(it) } } ?: emptyList(),
                 closedDates = strings("closedDates") ?: emptyList(),
                 bookingLeadMinutes = intOrNull("bookingLeadMinutes"),
-                status = o.optString("status").ifEmpty { null },
+                status = o.optStringOrNull("status"),
                 approvalMode = o.optString("approvalMode").ifEmpty { "REQUEST" },
                 hostResponseLabel = o.optJSONObject("hostResponse")?.optString("label")?.takeIf { it.isNotBlank() && it != "null" },
                 refund = o.optJSONObject("refund")?.let(SpaceRefundView::from)
@@ -386,7 +388,7 @@ data class SpaceListItem(
             fun intOrNull(k: String) = if (o.has(k) && !o.isNull(k)) o.optInt(k) else null
             return SpaceListItem(
                 id = o.optInt("id"), name = o.optString("name").ifEmpty { "공간" },
-                region = o.optString("region").ifEmpty { null },
+                region = o.optStringOrNull("region"),
                 image = imgs?.optString(0)?.takeIf { it.isNotEmpty() },
                 capacityMax = intOrNull("capacityMax"),
                 minPrice = intOrNull("minPrice") ?: intOrNull("pricePerHour"),
@@ -552,7 +554,7 @@ data class SpaceConsentDoc(val docKey: String, val title: String, val version: S
         fun listFrom(a: JSONArray): List<SpaceConsentDoc> = (0 until a.length()).mapNotNull { i ->
             a.optJSONObject(i)?.let {
                 SpaceConsentDoc(
-                    it.optString("docKey"), it.optString("title").ifEmpty { it.optString("docKey") }, it.optString("version").ifEmpty { null },
+                    it.optString("docKey"), it.optString("title").ifEmpty { it.optString("docKey") }, it.optStringOrNull("version"),
                     it.optString("url").ifEmpty { "/policy?doc=${it.optString("docKey")}&embed=1" },
                     if (it.has("required")) it.optBoolean("required") else true,
                 )

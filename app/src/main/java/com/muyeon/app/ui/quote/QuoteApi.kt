@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.quote
 
+import com.muyeon.app.util.optStringOrNull
+
 import com.muyeon.app.webview.withActiveType
 import com.muyeon.app.BuildConfig
 import kotlinx.coroutines.Dispatchers
@@ -286,7 +288,7 @@ class QuoteApi(private val token: String?) {
     /** ★ 2026-11-07 4xx 본문의 code — ChatApi 와 같이 최상위 code, 없으면 data.code. */
     private fun serverCode(text: String): String? = runCatching {
         val o = JSONObject(text)
-        o.optString("code").ifEmpty { null } ?: o.optJSONObject("data")?.optString("code")?.ifEmpty { null }
+        o.optStringOrNull("code") ?: o.optJSONObject("data")?.optString("code")?.ifEmpty { null }
     }.getOrNull()
 
     /** ★ 2026-11-07 4xx 본문의 data.paths(문자열 값만) — 없거나 비면 null. */

@@ -1,5 +1,7 @@
 package com.muyeon.app.webview
 
+import com.muyeon.app.util.optStringOrNull
+
 import androidx.lifecycle.lifecycleScope
 import android.app.Activity
 import android.webkit.JavascriptInterface
@@ -220,14 +222,14 @@ object NativeActionRouter {
             "openCastingStage" -> com.muyeon.app.ui.main.MainActivity.openCastingStage(
                 activity,
                 com.muyeon.app.ui.castingstage.CastingStageActivity.linkRoute(
-                    d.optString("castingId").ifEmpty { null }, d.optString("screen").ifEmpty { null },
-                    d.optString("issueNo").ifEmpty { null }, d.optString("category").ifEmpty { null },
+                    d.optStringOrNull("castingId"), d.optStringOrNull("screen"),
+                    d.optStringOrNull("issueNo"), d.optStringOrNull("category"),
                 ),
             )
             "openAutoQuoteTemplates" -> com.muyeon.app.ui.quote.QuoteAutoTemplatesActivity.start(activity)
             // 자동견적 발송 내역(강사·학원 전용 — Activity 가 무용수 차단). data.month = "YYYY-MM"(선택).
             "openAutoQuoteHistory" -> com.muyeon.app.ui.quote.AutoQuoteHistoryActivity.start(
-                activity, d.optString("month").ifEmpty { null },
+                activity, d.optStringOrNull("month"),
             )
             // 주소(/lessonHub)로 오면 role 이 없다 — 지금 유형으로(MY 메뉴는 activeType 을 실어 보낸다).
             "openLessonQuoteHub" -> com.muyeon.app.ui.quote.QuoteDashboardActivity.start(
@@ -360,7 +362,7 @@ object NativeActionRouter {
             "openLessonCreate" -> {
                 val lid = d.optString("lessonId").toIntOrNull()
                 if (lid != null && lid > 0) com.muyeon.app.ui.lesson.LessonActivity.startEdit(activity, lid)
-                else com.muyeon.app.ui.lesson.LessonActivity.startCreate(activity, d.optString("aiDraftId").ifEmpty { null })
+                else com.muyeon.app.ui.lesson.LessonActivity.startCreate(activity, d.optStringOrNull("aiDraftId"))
             }
             "openLessonSlotManage" -> com.muyeon.app.ui.lesson.LessonActivity.startSlots(
                 activity, d.optString("lessonProductId").toIntOrNull(),
@@ -376,7 +378,7 @@ object NativeActionRouter {
             "openResumeEdit" -> com.muyeon.app.ui.resume.ResumeActivity.startEdit(
                 activity, d.optString("resumeId").toIntOrNull(), d.optString("mode"),
                 seekProfile = d.optString("seekProfile") == "1",
-                aiDraftId = d.optString("aiDraftId").ifEmpty { null },
+                aiDraftId = d.optStringOrNull("aiDraftId"),
             )
             "openFieldVisibility" -> com.muyeon.app.ui.resume.ResumeActivity.startVisibility(activity, d.optString("mode"))
             "openPublicProfile", "openTeacherProfile" -> {
@@ -437,7 +439,7 @@ object NativeActionRouter {
             // ★ 2026-11-08 [b1] 가입·학원 인증 차단·점검 앱 화면(NativeRoutes 셸 전용 동작).
             "openSignup" -> com.muyeon.app.ui.auth.LoginActivity.startSignup(activity, d.optString("path").ifEmpty { "/signupTerms" })
             "openVerifyRequired" -> com.muyeon.app.ui.gate.GateActivity.startVerifyRequired(activity)
-            "openMaintenance" -> com.muyeon.app.ui.gate.GateActivity.startMaintenance(activity, d.optString("error").ifEmpty { null })
+            "openMaintenance" -> com.muyeon.app.ui.gate.GateActivity.startMaintenance(activity, d.optStringOrNull("error"))
             else -> return false
         }
         return true

@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.chat
 
+import com.muyeon.app.util.optStringOrNull
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -74,7 +76,7 @@ fun QuoteCardBubble(json: String, showProviderProfile: Boolean, onOpenProvider: 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             // 사진 탭도 '강사프로필 보기' 버튼과 같은 곳으로(버튼이 보일 때만 — 내가 보낸 카드는 그대로).
             QuoteAvatar(
-                d.optString("image").ifEmpty { null }, d.optString("name").ifEmpty { "강사" }, 44.dp,
+                d.optStringOrNull("image"), d.optString("name").ifEmpty { "강사" }, 44.dp,
                 modifier = if (teacherId != null && showProviderProfile) {
                     Modifier.clip(CircleShape).clickable { onOpenProvider(teacherId, isAcademy) }
                 } else Modifier,
@@ -110,8 +112,8 @@ fun QuoteCardBubble(json: String, showProviderProfile: Boolean, onOpenProvider: 
             "예상금액",
             QuoteUi.priceText(
                 d.optInt("priceAmount").takeIf { it > 0 },
-                d.optString("priceUnit").ifEmpty { null },
-                d.optString("price").ifEmpty { null },
+                d.optStringOrNull("priceUnit"),
+                d.optStringOrNull("price"),
             ),
             valueSize = 16,
         )
@@ -347,7 +349,7 @@ fun LessonCardBubble(json: String, onOpen: (Int) -> Unit) {
     val d = parse(json) ?: return
     val lessonId = d.optInt("lessonId").takeIf { it > 0 }
     val verb = d.optString("verb").ifEmpty { "등록" }
-    val by = d.optString("by").ifEmpty { null }
+    val by = d.optStringOrNull("by")
 
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
