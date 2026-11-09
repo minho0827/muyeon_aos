@@ -66,6 +66,16 @@ object QuoteFeedLabels {
         return listOf(formats, created).filter { it.isNotBlank() }.joinToString(" · ")
     }
 
+    /** ★ 2026-11-09 견적서 카드 칸 — 요일 "화·목" · 시간대 "저녁" · 형태 "개인" (없으면 null → '협의'). */
+    @Composable
+    fun daysText(item: QuoteFeedItem): String? = item.days.map { day(it) }.joinToString("·").ifBlank { null }
+
+    @Composable
+    fun timesText(item: QuoteFeedItem): String? = item.times.map { time(it) }.joinToString("·").ifBlank { null }
+
+    @Composable
+    fun formatsText(item: QuoteFeedItem): String? = item.formats.map { format(it) }.joinToString("·").ifBlank { null }
+
     /**
      * 누르면 갈 곳 — 웹 HomeQuoteRequests path 와 같다. 내 요청이면 받은 견적, 아니면 견적 응답 화면(/availableQuotes/:id).
      *   [sent] 이미 제안을 보낸 요청은 ?sent=1(응답 화면 제목 힌트).
