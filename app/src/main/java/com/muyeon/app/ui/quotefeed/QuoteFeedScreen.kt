@@ -30,7 +30,6 @@ import com.muyeon.app.ui.components.ChipRow
 import com.muyeon.app.ui.components.CursorListFooter
 import com.muyeon.app.ui.components.CursorLoadMoreEffect
 import com.muyeon.app.ui.components.EmptyView
-import com.muyeon.app.ui.components.GuideBanner
 import com.muyeon.app.ui.components.MainTopBar
 import com.muyeon.app.ui.components.ViewModeToggle
 import com.muyeon.app.ui.quotefeed.components.QuoteFeedCard
@@ -68,13 +67,7 @@ fun QuoteFeedScreen(
                 GridCells.Fixed(if (s.grid) 2 else 1), Modifier.fillMaxSize(), grid,
                 contentPadding = PaddingValues(bottom = Dimensions.spacing3XL),
             ) {
-                // ★ 11-09 강사·학원용 안내 문구는 뺐다(사용자 결정) — 일반 회원은 '10건까지' 안내만 남긴다.
-                if (!s.canBrowseAll) item(key = "guide", span = { GridItemSpan(maxLineSpan) }) {
-                    GuideBanner(
-                        stringResource(R.string.quote_feed_list_guide_member),
-                        Modifier.padding(start = Dimensions.gutter, end = Dimensions.gutter, top = Dimensions.spacingM),
-                    )
-                }
+                // ★ 11-09 안내 문구(강사용·일반 회원 '10건까지')는 모두 뺐다(사용자 결정).
                 item(key = "chips", span = { GridItemSpan(maxLineSpan) }) {
                     ChipRow(chips, s.categoryId, viewModel::selectCategory, Modifier.padding(top = Dimensions.spacingM))
                 }

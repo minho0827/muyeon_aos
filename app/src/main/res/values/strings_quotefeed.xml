@@ -24,7 +24,6 @@
     <string name="quote_sheet_any">협의</string>
     <string name="quote_sheet_guest">비회원</string>
     <!-- 목록 화면 -->
-    <string name="quote_feed_list_guide_member">최근 올라온 요청 10건까지 보여요. 강사·학원 유형으로 전환하면 모든 요청을 보고 제안을 보낼 수 있어요.</string>
     <string name="quote_feed_list_empty">지금 레슨을 찾는 요청이 없어요.</string>
     <string name="quote_feed_list_genre_empty">%1$s 레슨 요청이 없어요.</string>
     <!-- 장르(서버 categoryId — 웹 QUOTE_CATEGORIES) -->
