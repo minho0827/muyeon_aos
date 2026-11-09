@@ -53,9 +53,12 @@ fun AcademyBusinessVerificationSection(
                 color = MuyeonColors.textSub, textDecoration = TextDecoration.Underline,
                 modifier = Modifier.clickable { dialog = "number" })
         }
+        // ★ 2026-11-09 숫자만 담고 하이픈은 보이기만(VisualTransformation) — 예전엔 하이픈 넣은 글자를 그대로 칸에 넣어
+        //   커서가 하이픈 앞에 남아 다음 숫자가 엉뚱한 자리에 들어갔다(갤럭시 제보: 번호가 순서대로 안 들어감).
         OutlinedTextField(
-            value = formatBusinessNumber(businessNumber),
+            value = businessNumber.filter(Char::isDigit).take(10),
             onValueChange = { onBusinessNumberChange(it.filter(Char::isDigit).take(10)) },
+            visualTransformation = BusinessNumberTransformation,
             enabled = !verifyLater, singleLine = true,
             placeholder = { Text("사업자등록번호 입력", fontFamily = customFontFamily) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -83,6 +86,17 @@ fun AcademyBusinessVerificationSection(
             }
             Text("ⓘ 사업자등록증명원이 뭐예요?", fontFamily = customFontFamily, fontSize = 14.sp,
                 color = MuyeonColors.textSub, modifier = Modifier.clickable { dialog = "document" })
+            // ★ 2026-11-09 발급 경로가 작은 ⓘ 안 팝업에만 있어 몰랐다 — 상자 안에 바로 보이게.
+            Text(
+                "정부24에서 사업자등록증명원 발급하기 ›",
+                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
+                color = MuyeonColors.primary, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+                    .background(MuyeonColors.surface, RoundedCornerShape(10.dp))
+                    .border(1.dp, MuyeonColors.primary, RoundedCornerShape(10.dp))
+                    .clickable { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.gov.kr"))) }
+                    .padding(vertical = 12.dp),
+            )
         }
         if (allowsVerifyLater) {
             Row(Modifier.clickable { onVerifyLaterChange(!verifyLater) }, verticalAlignment = Alignment.CenterVertically) {
@@ -163,6 +177,22 @@ private fun DocumentSample(title: String, accepted: Boolean, modifier: Modifier 
         Icon(Icons.Filled.Description, null, tint = MuyeonColors.secondary, modifier = Modifier.size(36.dp))
         Text(if (accepted) "○" else "×", fontSize = 32.sp,
             color = if (accepted) MuyeonColors.primary else MuyeonColors.textSub)
+    }
+}
+
+/** 숫자 10자리를 000-00-00000 으로 보이게 — 커서 위치를 숫자 기준으로 옮겨 준다. */
+internal object BusinessNumberTransformation : androidx.compose.ui.text.input.VisualTransformation {
+    override fun filter(text: androidx.compose.ui.text.AnnotatedString): androidx.compose.ui.text.input.TransformedText {
+        val digits = text.text
+        val out = formatBusinessNumber(digits)
+        val mapping = object : androidx.compose.ui.text.input.OffsetMapping {
+            // 원래 i번째 자리 앞에 들어간 하이픈 수만큼 민다(3자리 뒤·5자리 뒤, 그 뒤에 숫자가 있을 때만).
+            override fun originalToTransformed(offset: Int): Int =
+                offset + (if (offset > 3 && digits.length > 3) 1 else 0) + (if (offset > 5 && digits.length > 5) 1 else 0)
+            override fun transformedToOriginal(offset: Int): Int =
+                (offset - (if (offset > 3 && digits.length > 3) 1 else 0) - (if (offset > 6 && digits.length > 5) 1 else 0)).coerceIn(0, digits.length)
+        }
+        return androidx.compose.ui.text.input.TransformedText(androidx.compose.ui.text.AnnotatedString(out), mapping)
     }
 }
 
