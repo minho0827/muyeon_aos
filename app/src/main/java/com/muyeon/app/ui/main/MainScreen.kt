@@ -112,8 +112,16 @@ fun MainScreen(
                         onIssues = { onOpenDetail(r.issues) },
                         onCreate = if (canCreate) ({ onOpenDetail(r.create) }) else null,
                         reloadKey = com.muyeon.app.ui.castingstage.CastingStageSession.reloadKey,
-                        header = {
-                            com.muyeon.app.ui.components.MainTopBar(stringResource(R.string.tab_casting), chat = true) {
+                        // ★ 2026-11-09 공연·캐스팅 통합 탭 — [공연] [캐스팅] | 캐스팅 공고·국내소식… 한 줄(하단 칸은 공연).
+                        topRow = { current, cats, jump ->
+                            val notice = stringResource(R.string.perf_casting_notice)
+                            com.muyeon.app.ui.performance.components.PerfCastingHeader(
+                                mode = com.muyeon.app.ui.performance.components.PerfCastingMode.CASTING,
+                                onMode = { if (it == com.muyeon.app.ui.performance.components.PerfCastingMode.PERFORMANCE) viewModel.selectTab(MainTab.PERFORMANCE) },
+                                items = cats.map { com.muyeon.app.ui.performance.components.PerfCastingItem(it.code, if (it.code == "CASTING") notice else it.label) },
+                                selected = current,
+                                onSelect = jump,
+                            ) {
                                 com.muyeon.app.ui.components.TopBarIconButton(R.drawable.ic_web_filter, stringResource(R.string.casting_all), onClick = { onOpenDetail(r.castingList) })
                             }
                         },
@@ -142,9 +150,20 @@ fun MainScreen(
                     )
                 }
                 composable(Screen.TabPerformance.route) {
+                    val allLabel = stringResource(R.string.common_all)
                     PerformanceListScreen(
                         onOpenDetail = { id -> onOpenDetail(Screen.PerformanceDetail.build(id)) },
                         onLogin = { onOpenWeb(WebPaths.login(MainTab.PERFORMANCE.webPath)) },
+                        // ★ 2026-11-09 공연·캐스팅 통합 탭 — [공연] [캐스팅] | 전체·발레… 한 줄.
+                        topRow = { genres, genre, onGenre ->
+                            com.muyeon.app.ui.performance.components.PerfCastingHeader(
+                                mode = com.muyeon.app.ui.performance.components.PerfCastingMode.PERFORMANCE,
+                                onMode = { if (it == com.muyeon.app.ui.performance.components.PerfCastingMode.CASTING) viewModel.selectTab(MainTab.CASTING) },
+                                items = genres.map { com.muyeon.app.ui.performance.components.PerfCastingItem(it, if (it == com.muyeon.app.ui.performance.PerformanceListViewModel.ALL) allLabel else it) },
+                                selected = genre,
+                                onSelect = onGenre,
+                            )
+                        },
                     )
                 }
                 // 구인구직·공간 — 앱 화면을 만드는 동안 지금 쓰던 화면을 연다(개편 계획 3·4단계).
@@ -256,7 +275,6 @@ private fun barLabel(item: BarItem, mode: BarMode, loggedIn: Boolean, activeType
         BarItem.SPACE -> R.string.tab_space
         BarItem.JOBS -> R.string.tab_recruit
         BarItem.SUBS -> R.string.tab_subs
-        BarItem.CASTING -> R.string.tab_casting
         BarItem.BACK -> R.string.tab_back
         BarItem.MY -> if (!loggedIn) R.string.tab_my else when (activeType) {
             ActiveType.TEACHER -> R.string.tab_my_teacher
@@ -276,6 +294,5 @@ private fun barIcon(item: BarItem): Painter = when (item) {
     BarItem.SPACE -> rememberVectorPainter(Icons.Rounded.MeetingRoom)
     BarItem.JOBS -> painterResource(R.drawable.ic_tab_note)
     BarItem.SUBS -> painterResource(R.drawable.ic_tab_paper)
-    BarItem.CASTING -> rememberVectorPainter(Icons.Rounded.RecentActors)
     BarItem.MY -> painterResource(R.drawable.ic_tab_my)
 }

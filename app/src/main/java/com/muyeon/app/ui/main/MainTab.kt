@@ -10,7 +10,7 @@ import com.muyeon.app.ui.main.bar.BarMode
  * ★ 2026-11-08 앱 탭 — 모든 회원·비회원이 같은 탭을 쓴다(유형별 서버 탭 목록은 쓰지 않는다).
  *   탭바 칸([barItem])과 탭바 모드([mode])는 탭에서 정해진다:
  *     홈 · 공연 · 공간(대관·양도양수) · MY      → MAIN
- *     채용(구인·구직) · 대타공고 · 캐스팅        → JOBS (채용 2계층)
+ *     채용(구인·구직) · 대타공고                 → JOBS (채용 2계층) · 캐스팅은 공연 칸 안(2026-11-09)
  *   LESSONS(예전 강사 목록)는 탭바에 없다 — 홈 '강사' 쪽이 대신한다. 웹 /lessons 링크는 이 화면으로 온다.
  */
 enum class MainTab(
@@ -30,7 +30,8 @@ enum class MainTab(
     JOBS("jobs", "/jobs", R.string.tab_jobs_hire, Screen.TabJobs.route, BarItem.JOBS, BarMode.JOBS),
     SEEK("seek", "/jobs?tab=seek", R.string.tab_jobs_seek, Screen.TabSeek.route, BarItem.JOBS, BarMode.JOBS),
     SUBS("subs", "/subs", R.string.tab_subs, Screen.TabSubs.route, BarItem.SUBS, BarMode.JOBS),
-    CASTING("casting", "/casting", R.string.tab_casting, Screen.TabCasting.route, BarItem.CASTING, BarMode.JOBS),
+    // ★ 2026-11-09 캐스팅은 공연 칸 안(공연·캐스팅 통합 탭 — 사용자 결정). 채용 2계층에서 뺐다. 링크 /casting 은 그대로 이 탭.
+    CASTING("casting", "/casting", R.string.tab_casting, Screen.TabCasting.route, BarItem.PERFORMANCE, BarMode.MAIN),
     MY("my", "/mypage", R.string.tab_my, Screen.TabMy.route, BarItem.MY, BarMode.MAIN),
     LESSONS("lessons", "/lessons", R.string.tab_lessons, Screen.TabLessons.route, BarItem.HOME, BarMode.MAIN);
 
@@ -54,7 +55,6 @@ enum class MainTab(
             BarItem.SPACE -> SPACES
             BarItem.JOBS -> JOBS
             BarItem.SUBS -> SUBS
-            BarItem.CASTING -> CASTING
             BarItem.MY -> MY
             BarItem.BACK -> null
         }

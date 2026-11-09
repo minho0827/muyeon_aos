@@ -76,6 +76,11 @@ fun CastingStageScreen(
     reloadKey: Int = 0,
     /** 커뮤니티 탭 안 머리(위 바 + 탭). 주면 이 화면 위 바(제목·＋·검색) 대신 그린다 — ＋·검색은 머리가 맡는다. */
     header: (@Composable () -> Unit)? = null,
+    /**
+     * ★ 2026-11-09 공연·캐스팅 통합 탭 머리 — 주면 [header] 대신 그리고, 섹션 이동은 이 줄이 맡는다(아이콘 칸·붙는 탭은 숨김).
+     *   (지금 보는 섹션 코드, 섹션 목록, 이동) 을 넘긴다.
+     */
+    topRow: (@Composable (current: String, cats: List<StageCategory>, jump: (String) -> Unit) -> Unit)? = null,
 ) {
     var issue by remember { mutableStateOf<StageNewsIssue?>(null) }
     var castings by remember { mutableStateOf<List<StageCasting>>(emptyList()) }
@@ -120,7 +125,7 @@ fun CastingStageScreen(
     }
 
     // 소식 칸이 없으면(호가 아직 없음) 아이콘 칸·붙는 탭은 숨긴다 — 캐스팅 하나뿐이라 자리만 차지한다.
-    val multi = cats.size > 1
+    val multi = cats.size > 1 && topRow == null
     val keys = buildList {
         add("banner")
         if (multi) { add("icons"); add("tabs") }
@@ -140,7 +145,7 @@ fun CastingStageScreen(
     }
 
     // 하단 탭으로 열리면 흰 바 위 상태바 아이콘을 검정으로(탭 셸은 주황 바 기준 흰 아이콘이 기본).
-    if (onClose == null && header == null) {
+    if (onClose == null && header == null && topRow == null) {
         val view = androidx.compose.ui.platform.LocalView.current
         androidx.compose.runtime.DisposableEffect(Unit) {
             (view.context as? android.app.Activity)?.window?.let { w ->
@@ -149,10 +154,10 @@ fun CastingStageScreen(
             onDispose { }
         }
     }
-    Column(Modifier.fillMaxSize().background(Color.White).then(if (header == null) Modifier.statusBarsPadding() else Modifier).then(if (onClose != null) Modifier.navigationBarsPadding() else Modifier)) {
-        if (header != null) header()
+    Column(Modifier.fillMaxSize().background(Color.White).then(if (header == null && topRow == null) Modifier.statusBarsPadding() else Modifier).then(if (onClose != null) Modifier.navigationBarsPadding() else Modifier)) {
+        if (topRow != null) topRow(current, cats, ::jump) else if (header != null) header()
         // 상단바
-        if (header == null) Row(Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (header == null && topRow == null) Row(Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             if (onClose != null) Box(Modifier.size(44.dp).clickable(onClick = onClose).semantics { contentDescription = "뒤로" }, Alignment.Center) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = MuyeonColors.textHead)
             } else Spacer(Modifier.width(16.dp))

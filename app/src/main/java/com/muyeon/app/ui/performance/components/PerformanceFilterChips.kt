@@ -53,3 +53,28 @@ fun PerformanceFilterChips(
         )
     }
 }
+
+/** ★ 2026-11-09 통합 탭 — 장르는 위 줄이 맡고 세부 분류·태그 한 줄만. */
+@Composable
+fun PerformanceDetailChips(
+    details: List<PerformanceDetailFilter>,
+    detail: PerformanceDetailFilter,
+    onDetail: (PerformanceDetailFilter) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val all = stringResource(R.string.common_all)
+    Column(modifier.fillMaxWidth().background(AppColors.Surface).padding(vertical = Dimensions.spacingM)) {
+        ChipRow(
+            options = details.map { d ->
+                val text = when (d) {
+                    PerformanceDetailFilter.All -> all
+                    is PerformanceDetailFilter.Sub -> PerformanceLabels.code(d.code)?.let { stringResource(it) } ?: d.code
+                    is PerformanceDetailFilter.Tag -> PerformanceLabels.code(d.code)?.let { stringResource(it) } ?: d.code
+                }
+                ChipOption(d.key, text)
+            },
+            selected = detail.key,
+            onSelect = { key -> onDetail(details.first { it.key == key }) },
+        )
+    }
+}

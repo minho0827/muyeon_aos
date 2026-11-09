@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ★ 2026-11-09 공연·캐스팅 통합 탭(NOL 식 — 사용자 시안 승인). -->
+<resources>
+    <string name="perf_now">지금 공연 중</string>
+    <string name="perf_soon">곧 시작해요</string>
+    <string name="perf_all_list">전체 공연</string>
+    <string name="perf_casting_notice">캐스팅 공고</string>
+</resources>
