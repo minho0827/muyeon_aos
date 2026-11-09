@@ -1,19 +1,5 @@
 package com.muyeon.app.ui.castingstage.model
 
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CardGiftcard
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.Newspaper
-import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.TheaterComedy
-import androidx.compose.material.icons.filled.Verified
-import androidx.compose.material.icons.filled.EditNote
 import com.muyeon.app.BuildConfig
 import java.time.LocalDate
 import java.time.ZoneId
@@ -65,18 +51,38 @@ data class StageCasting(
     val id: Int, val title: String, val team: String?, val genre: String?, val imageUrl: String?, val deadline: String?,
 )
 
-/** 칸 5개(10-31 해외·워크숍·자격증·장학·학술 뺌) + 캐스팅 — 코드·순서·색은 웹 constants/stageNews.js·backend·관리자 서버·iOS 와 같다.
- *  ★ 10-26 색은 무용연 주황 톤온톤(웹 \$primary-*) 하나로 — 보라는 경쟁사(발레매니아) 색이라 뺐다. */
-data class StageCategory(val code: String, val label: String, val icon: ImageVector, val bg: Color, val fg: Color) {
+/**
+ * 캐스팅·무대 분류 — ★ 2026-11-09 서버가 준다(`GET /stage-news/categories`, 보이는 것만·서버 순서). 관리자가 NEWS 칸을 언제든 더한다.
+ *   아이콘·색은 없다(사용자 결정: 글자만). [kind] CASTING = 캐스팅 공고 칸, NEWS = 무대 소식 칸.
+ */
+data class StageCategory(val code: String, val label: String, val kind: String) {
+    val isCasting: Boolean get() = kind == KIND_CASTING
+
     companion object {
-        val CASTING = StageCategory("CASTING", "캐스팅", Icons.Filled.Star, Color(0xFFFFF3EA), Color(0xFFC95300))
-        val NEWS = listOf(
-            StageCategory("DOMESTIC", "국내소식", Icons.Filled.Newspaper, Color(0xFFFFF3EA), Color(0xFFC95300)),
-            StageCategory("PERFORMANCE", "공연·축제", Icons.Filled.TheaterComedy, Color(0xFFFFF3EA), Color(0xFFC95300)),
-            StageCategory("CONTEST", "콩쿠르·대회", Icons.Filled.EmojiEvents, Color(0xFFFFF3EA), Color(0xFFC95300)),
-            StageCategory("ADMISSION", "무용입시", Icons.Filled.EditNote, Color(0xFFFFF3EA), Color(0xFFC95300)),
-            StageCategory("SCHOOL", "학교·교육과정", Icons.Filled.School, Color(0xFFFFF3EA), Color(0xFFC95300)),
+        const val KIND_CASTING = "CASTING"
+        const val KIND_NEWS = "NEWS"
+        const val CASTING_CODE = "CASTING"
+
+        /** 서버를 못 받았을 때(실패·404) — 국내소식·콩쿠르·대회는 뺐다(11-09 사용자 요청). */
+        val FALLBACK = listOf(
+            StageCategory(CASTING_CODE, "캐스팅 공고", KIND_CASTING),
+            StageCategory("PERFORMANCE", "공연·축제", KIND_NEWS),
+            StageCategory("ADMISSION", "무용입시", KIND_NEWS),
+            StageCategory("SCHOOL", "학교·교육과정", KIND_NEWS),
         )
+
+        /** 서버 목록 정리 — 빈 코드·모르는 kind·겹친 코드는 뺀다. null(실패)·빈 목록이면 [FALLBACK]. */
+        fun resolve(server: List<StageCategory>?): List<StageCategory> {
+            val clean = server.orEmpty()
+                .filter { it.code.isNotBlank() && (it.kind == KIND_CASTING || it.kind == KIND_NEWS) }
+                .map { if (it.label.isBlank()) it.copy(label = it.code) else it }
+                .distinctBy { it.code }
+            return clean.ifEmpty { FALLBACK }
+        }
+
+        /** 보일 소식 칸 — 목록에 있고(서버 순서) 이번 호에 글이 있는 칸만. */
+        fun newsSections(cats: List<StageCategory>, sections: Map<String, List<StageNewsItem>>?): List<Pair<StageCategory, List<StageNewsItem>>> =
+            cats.filter { it.kind == KIND_NEWS }.mapNotNull { c -> sections?.get(c.code)?.takeIf { it.isNotEmpty() }?.let { c to it } }
     }
 }
 

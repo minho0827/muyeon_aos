@@ -48,6 +48,8 @@ interface HomeApi {
     @GET(ApiEndpoints.Home.TRANSFERS) suspend fun transfers(@Query("limit") limit: Int): Response<HomeTransferPageDto>
     @GET(ApiEndpoints.Home.NOTICES) suspend fun notices(): Response<List<HomeNoticeDto>>
     @GET(ApiEndpoints.Home.QUOTES) suspend fun homeQuotes(): Response<ResponseBody>
+    /** 하단 [공연] 칸 점 — 칸마다 최신 시각. */
+    @GET(ApiEndpoints.Home.TAB_UPDATES) suspend fun tabUpdates(): Response<com.muyeon.network.dto.home.TabUpdatesDto>
     @POST(ApiEndpoints.Home.RECOMMEND_BLOCKS) suspend fun blockRecommendation(@Body body: RecommendBlockBody): Response<ResponseBody>
 
     @GET(ApiEndpoints.Home.ACADEMY_PROFILE) suspend fun academyProfile(): Response<AcademyProfileDto>

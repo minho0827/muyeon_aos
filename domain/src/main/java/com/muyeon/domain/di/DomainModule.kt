@@ -101,6 +101,8 @@ val domainModule = module {
     // 홈
     factory { HomeArtistsUseCase(get()) }
     factory { HomeLessonsUseCase(get()) }
+    // 하단 [공연] 칸 점 — 마지막으로 본 시각을 쥐고 있어 하나만.
+    single { com.muyeon.domain.usecase.home.TabUpdatesUseCase(get(), get()) }
     factory { com.muyeon.domain.usecase.recruit.JobListUseCase(get(), get()) }
     factory { com.muyeon.domain.usecase.recruit.SeekerListUseCase(get()) }
     factory { com.muyeon.domain.usecase.recruit.SubListUseCase(get()) }

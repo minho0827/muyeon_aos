@@ -32,7 +32,7 @@ class NetworkRetryInterceptor(private val prompt: () -> NetworkRetryPrompt) : In
         /** 웹에서 silent 로 부르는 뒤쪽 요청들(배지 폴링·역할·열람 기록·찜 목록·지역 추정). */
         private val SILENT_PATHS = listOf(
             "/notifications/unread-count", "/me/roles", "/me/ui-flags", "/ui-flags", "/jobs/views/mine",
-            "/me/applications", "/me/scraps", "/regions/nearest", "/app-menus", "/badges",
+            "/me/applications", "/me/scraps", "/regions/nearest", "/app-menus", "/badges", "/home/tab-updates",
         )
     }
 }

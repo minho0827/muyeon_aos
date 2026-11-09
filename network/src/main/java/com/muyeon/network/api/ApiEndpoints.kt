@@ -94,6 +94,7 @@ object ApiEndpoints {
         const val TRANSFERS = "$API/studio-transfers/page"               // studio-transfers.controller.ts
         const val NOTICES = "$API/notices"                               // notices.controller.ts
         const val QUOTES = "$API/quotes/home"                            // quotes.controller.ts
+        const val TAB_UPDATES = "$API/home/tab-updates"                   // GET { performance, casting, stageNews } ISO|null
         const val RECOMMEND_BLOCKS = "$API/quotes/recommend-blocks"      // POST { teacherId }
         const val ACADEMY_PROFILE = "$API/auth/me/academy"               // auth.controller.ts
         const val RECOMMENDED_TEACHERS = "$API/teachers/recommended"     // profiles.controller.ts

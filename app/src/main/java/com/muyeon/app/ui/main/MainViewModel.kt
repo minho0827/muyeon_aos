@@ -35,6 +35,8 @@ data class MainUiState(
     val typeEpoch: Int = 0,
     /** MY 탭 빨간 점(웹 useTypeBadges mine>0). MY 탭 이식 때 채운다. */
     val myDot: Boolean = false,
+    /** ★ 2026-11-09 공연 칸 빨간 점 — 마지막으로 본 뒤 공연·캐스팅·무대 소식이 새로 올라왔다. */
+    val perfDot: Boolean = false,
 )
 
 /** 화면이 한 번만 처리할 일. */
@@ -58,6 +60,7 @@ class MainViewModel(
     private val detectRegion: com.muyeon.domain.usecase.region.DetectRegionUseCase,
     private val tokens: TokenStore,
     private val activeTypeStore: ActiveTypeStore,
+    private val tabUpdates: com.muyeon.domain.usecase.home.TabUpdatesUseCase,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(
@@ -99,6 +102,16 @@ class MainViewModel(
         }
         refreshRoles()
     }
+
+    /** 앱을 켰다·앞으로 돌아왔다(ON_START) — 공연 칸 새 글 점을 다시 본다. 실패면 점 없음. */
+    fun onForeground() {
+        viewModelScope.launch {
+            val dot = tabUpdates.check(onTab = isPerfTab(_state.value.selectedKey))
+            _state.update { it.copy(perfDot = dot && !isPerfTab(it.selectedKey)) }
+        }
+    }
+
+    private fun isPerfTab(key: String) = key == MainTab.PERFORMANCE.key || key == MainTab.CASTING.key
 
     /** 대표 지역이 아직 없으면 좌표로 정한다(웹 RegionProvider 첫 실행과 같다). */
     fun detectRegionIfNeeded(coords: suspend () -> com.muyeon.domain.model.region.Coordinates?) {
@@ -157,6 +170,11 @@ class MainViewModel(
         if (tab == MainTab.LESSONS) {
             com.muyeon.app.ui.home.HomeModeRequests.request(com.muyeon.app.ui.home.HomeMode.LESSONS)
             return selectTab(MainTab.HOME)
+        }
+        // 공연·캐스팅 칸을 열면 새 글을 본 것으로 — 점을 끈다.
+        if (tab == MainTab.PERFORMANCE || tab == MainTab.CASTING) {
+            tabUpdates.markSeen()
+            _state.update { it.copy(perfDot = false) }
         }
         _state.update {
             it.copy(selectedKey = tab.key, lastMainKey = if (tab.mode == com.muyeon.app.ui.main.bar.BarMode.MAIN && tab != MainTab.LESSONS) tab.key else it.lastMainKey)

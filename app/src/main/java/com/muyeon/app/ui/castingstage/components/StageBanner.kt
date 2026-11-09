@@ -59,14 +59,16 @@ import com.muyeon.app.ui.castingstage.screens.*
 @Composable
 internal fun StageBanner(
     issue: StageNewsIssue?, castings: List<StageCasting>, loading: Boolean,
+    /** 보이는 소식 칸(서버 순서). */
+    newsCats: List<StageCategory>,
     onTapIssue: () -> Unit, onTapCasting: (StageCasting) -> Unit, onTapNews: (StageNewsItem) -> Unit,
 ) {
-    val slides = remember(issue, castings) {
+    val slides = remember(issue, castings, newsCats) {
         buildList<Any> {
             issue?.let { add(it) }
             addAll(castings.filter { !it.imageUrl.isNullOrBlank() }.take(3))
             issue?.let { i ->
-                StageCategory.NEWS.forEach { c ->
+                newsCats.forEach { c ->
                     i.sections[c.code].orEmpty().filter { !it.imageUrl.isNullOrBlank() }.forEach { if (size < 8) add(it to c) }
                 }
             }

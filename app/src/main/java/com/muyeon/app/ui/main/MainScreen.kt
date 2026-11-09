@@ -177,7 +177,7 @@ fun MainScreen(
                 selected = selectedTab.barItem,
                 label = { item, mode -> barLabel(item, mode, state.isLoggedIn, state.activeType) },
                 icon = { item -> barIcon(item) },
-                dotOn = { item -> item == BarItem.MY && state.myDot },
+                dotOn = { item -> (item == BarItem.MY && state.myDot) || (item == BarItem.PERFORMANCE && state.perfDot) },
                 onItemClick = viewModel::onBarItem,
                 onItemLongClick = { item -> if (item == BarItem.MY && state.isLoggedIn) onMyLongPress() },
                 onItemDoubleClick = if (state.switchableTypes.size >= 2) ({ _ -> viewModel.onMyDoubleTap() }) else null,

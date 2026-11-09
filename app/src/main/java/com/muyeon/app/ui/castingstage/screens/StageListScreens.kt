@@ -100,9 +100,12 @@ fun StageNewsListScreen(api: CastingStageApi, issueNo: Int, code: String?, onBac
     var issue by remember { mutableStateOf<StageNewsIssue?>(null) }
     var failed by remember { mutableStateOf(false) }
     LaunchedEffect(issueNo) { runCatching { api.issue(issueNo) }.onSuccess { issue = it }.onFailure { failed = true } }
-    val cats = StageCategory.NEWS.filter { code == null || it.code == code }
+    // 보이는 소식 칸(서버 순서). 링크의 칸이 없거나 숨겨졌으면 호 전체를 보인다.
+    val news = com.muyeon.app.ui.castingstage.CastingStageSession.categories.filter { it.kind == StageCategory.KIND_NEWS }
+    val one = news.firstOrNull { it.code == code }
+    val cats = if (one != null) listOf(one) else news
     Column(Modifier.fillMaxSize().background(Color.White).statusBarsPadding().navigationBarsPadding()) {
-        StageListBar(code?.let { c -> StageCategory.NEWS.firstOrNull { it.code == c }?.label } ?: "무대 소식 #${issueNo.toString().padStart(3, '0')}", onBack)
+        StageListBar(one?.label ?: "무대 소식 #${issueNo.toString().padStart(3, '0')}", onBack)
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 40.dp)) {
             val i = issue
             if (i == null) {
@@ -110,7 +113,7 @@ fun StageNewsListScreen(api: CastingStageApi, issueNo: Int, code: String?, onBac
                     if (failed) Text("소식을 불러오지 못했어요.", style = Regular, fontSize = 14.sp, color = MuyeonColors.textSub) else CircularProgressIndicator(color = Brand)
                 } }
             } else {
-                if (code == null) item {
+                if (one == null) item {
                     Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                         Text(i.headline, style = Bold, fontSize = 20.sp, color = MuyeonColors.textHead)
                         Text(StageDate.week(i.weekStart)?.range ?: "", style = Regular, fontSize = 12.sp, color = MuyeonColors.textSub)
@@ -119,9 +122,9 @@ fun StageNewsListScreen(api: CastingStageApi, issueNo: Int, code: String?, onBac
                 cats.forEach { c ->
                     val list = i.sections[c.code].orEmpty()
                     if (list.isNotEmpty()) {
-                        if (code == null) item { Text(c.label, style = Bold, fontSize = 18.sp, color = c.fg, modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 4.dp)) }
+                        if (one == null) item { Text(c.label, style = Bold, fontSize = 18.sp, color = StageTint, modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 4.dp)) }
                         items(list, key = { "${c.code}.${it.id}" }) { n ->
-                            StageListRow(n.imageUrl, c.icon, c.fg, c.bg, StageDate.short(n.eventDate)?.let { "일정 $it" }, n.title, n.sourceName) { onOpen(n, c) }
+                            StageListRow(n.imageUrl, StageNewsIcon, StageTint, StageTintBg, StageDate.short(n.eventDate)?.let { "일정 $it" }, n.title, n.sourceName) { onOpen(n, c) }
                         }
                     }
                 }

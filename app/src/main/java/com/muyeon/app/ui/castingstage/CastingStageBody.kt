@@ -63,8 +63,8 @@ class CastingStageBodyState internal constructor(
     private val scope: CoroutineScope,
     private val passLine: Int,
 ) {
-    /** 캐스팅 + 소식이 있는 섹션(본문이 채운다). */
-    var cats by mutableStateOf(listOf(StageCategory.CASTING))
+    /** 캐스팅(서버 목록에 있을 때) + 소식이 있는 섹션(본문이 채운다). 서버 순서·이름. */
+    var cats by mutableStateOf(CastingStageSession.categories.filter { it.isCasting })
         internal set
     internal var keys by mutableStateOf(listOf<String>())
     private var jumpingTo by mutableStateOf<String?>(null)
@@ -74,7 +74,7 @@ class CastingStageBodyState internal constructor(
         jumpingTo ?: listState.layoutInfo.visibleItemsInfo
             .filter { (it.key as? String)?.startsWith("section.") == true && it.offset <= passLine }
             .maxByOrNull { it.offset }?.let { (it.key as String).removePrefix("section.") }
-        ?: StageCategory.CASTING.code
+        ?: cats.firstOrNull()?.code ?: StageCategory.CASTING_CODE
     }
 
     fun jump(code: String) {
@@ -100,7 +100,7 @@ fun rememberCastingStageBodyState(): CastingStageBodyState {
 /**
  * 캐스팅·무대 본문(배너 · 캐스팅 섹션 · 소식 섹션 · 안내 · 맨 위로) — 예전 캐스팅·무대 화면과 통합 탭이 같이 쓴다.
  *
- * @param sectionNav true 면 배너 아래 아이콘 칸 + 붙는 탭(섹션이 둘 이상일 때). 머리가 섹션 줄을 맡으면 false.
+ * @param sectionNav true 면 배너 아래 바로가기 칩 + 붙는 탭(섹션이 둘 이상일 때). 머리가 섹션 줄을 맡으면 false.
  * @param bottomPadding 목록 맨 아래 여백(하단 탭이면 탭바 높이)
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -130,6 +130,9 @@ fun CastingStageBody(
     LaunchedEffect(reloadKey) {
         val i = async { runCatching { api.latest() } }
         val c = async { runCatching { api.castings(null) } }
+        // ★ 11-09 분류는 서버가 준다 — 실패·404 면 기본 목록(국내소식·콩쿠르·대회 뺌).
+        val k = async { runCatching { api.categories() } }
+        CastingStageSession.categories = StageCategory.resolve(k.await().getOrNull())
         val ri = i.await()
         val rc = c.await()
         issue = ri.getOrNull()
@@ -138,23 +141,25 @@ fun CastingStageBody(
         loading = false
     }
 
-    val newsSections = remember(issue) {
-        StageCategory.NEWS.mapNotNull { c -> issue?.sections?.get(c.code)?.takeIf { it.isNotEmpty() }?.let { c to it } }
-    }
-    val cats = listOf(StageCategory.CASTING) + newsSections.map { it.first }
-    fun catOf(n: StageNewsItem): StageCategory = newsSections.firstOrNull { (_, list) -> list.any { it.id == n.id } }?.first ?: StageCategory.NEWS.first()
+    val categories = CastingStageSession.categories
+    // 캐스팅 칸은 서버 목록에 있을 때만 · 소식 칸은 목록에 있고 글이 있을 때만(서버 순서).
+    val castingCat = categories.firstOrNull { it.isCasting }
+    val newsSections = remember(issue, categories) { StageCategory.newsSections(categories, issue?.sections) }
+    val cats = listOfNotNull(castingCat) + newsSections.map { it.first }
+    fun catOf(n: StageNewsItem): StageCategory = newsSections.firstOrNull { (_, list) -> list.any { it.id == n.id } }?.first
+        ?: StageCategory("NEWS", "무대 소식", StageCategory.KIND_NEWS)
 
-    // 배너·아이콘 칸을 지나 내려가면(첫 항목이 배너가 아니고 조금 더 내려감) 맨 위로 버튼.
+    // 배너·바로가기 칩을 지나 내려가면(첫 항목이 배너가 아니고 조금 더 내려감) 맨 위로 버튼.
     val showTop by remember {
         derivedStateOf { listState.firstVisibleItemIndex >= 2 || (listState.firstVisibleItemIndex == 1 && listState.firstVisibleItemScrollOffset > 300) }
     }
 
-    // 소식 칸이 없으면(호가 아직 없음) 아이콘 칸·붙는 탭은 숨긴다 — 캐스팅 하나뿐이라 자리만 차지한다.
+    // 섹션이 하나뿐이면(호가 아직 없음 등) 바로가기 칩·붙는 탭은 숨긴다 — 자리만 차지한다.
     val multi = cats.size > 1 && sectionNav
     val keys = buildList {
         add("banner")
         if (multi) { add("icons"); add("tabs") }
-        add("section.CASTING")
+        castingCat?.let { add("section.${it.code}") }
         newsSections.forEach { add("section.${it.first.code}") }
         add("footer")
     }
@@ -165,14 +170,15 @@ fun CastingStageBody(
     Box(modifier.fillMaxSize()) {
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomPadding)) {
             item(key = "banner") {
-                StageBanner(issue, castings, loading, onTapIssue = { state.jump(newsSections.firstOrNull()?.first?.code ?: "CASTING") },
+                StageBanner(issue, if (castingCat != null) castings else emptyList(), loading, newsSections.map { it.first },
+                    onTapIssue = { (newsSections.firstOrNull()?.first ?: castingCat)?.let { state.jump(it.code) } },
                     onTapCasting = { onOpenCasting(it.id) }, onTapNews = { n -> onOpenNews(n, catOf(n)) })
             }
             if (multi) {
-                item(key = "icons") { StageIconGrid(cats, state::jump) }
+                item(key = "icons") { StageChipRow(cats, state::jump) }
                 stickyHeader(key = "tabs") { StageTabBar(cats, state.current, state::jump) }
             }
-            item(key = "section.CASTING") {
+            if (castingCat != null) item(key = "section.${castingCat.code}") {
                 StageSectionBox("지금 열린 캐스팅") {
                     // 10-27 공용 캡슐 탭(ui/common/MuyeonListKit) — 섹션 안이라 구분선 없음.
                     com.muyeon.app.ui.common.MuyeonPillTabs(GENRES.map { com.muyeon.app.ui.common.MuyeonPillTab(it, it) }, genre, { g ->
@@ -188,7 +194,7 @@ fun CastingStageBody(
                             items(castings, key = { it.id }) { c -> StageCastingCard(c) { onOpenCasting(c.id) } }
                         }
                     }
-                    StageMoreButton("캐스팅 공고") { onCastingList() }
+                    StageMoreButton(castingCat.label) { onCastingList() }
                 }
             }
             newsSections.forEach { (cat, items) ->

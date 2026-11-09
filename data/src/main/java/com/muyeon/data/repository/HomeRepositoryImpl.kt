@@ -78,6 +78,7 @@ class HomeRepositoryImpl(private val api: HomeApi, private val moshi: Moshi) : H
     override suspend fun spaces(): ApiResult<List<HomeSpace>> = safeApiCall(moshi) { api.spaces() }.map { l -> l.mapNotNull { it.toDomain() } }
     override suspend fun transfers(limit: Int): ApiResult<List<HomeTransfer>> = safeApiCall(moshi) { api.transfers(limit) }.map { p -> p.items.orEmpty().mapNotNull { it.toDomain() } }
     override suspend fun notices(): ApiResult<List<HomeNotice>> = safeApiCall(moshi) { api.notices() }.map { l -> l.mapNotNull { it.toDomain() } }
+    override suspend fun tabUpdates(): ApiResult<com.muyeon.domain.model.home.TabUpdates> = safeApiCall(moshi) { api.tabUpdates() }.map { it.toDomain() }
     override suspend fun homeQuotes(): ApiResult<List<HomeQuote>> = safeApiCall(moshi) { api.homeQuotes() }.map { b -> b.listOrItems<HomeQuoteDto>().mapNotNull { it.toDomain() } }
     override suspend fun blockRecommendation(teacherId: Long): ApiResult<Unit> = safeUnitCall(moshi) { api.blockRecommendation(RecommendBlockBody(teacherId)) }
 

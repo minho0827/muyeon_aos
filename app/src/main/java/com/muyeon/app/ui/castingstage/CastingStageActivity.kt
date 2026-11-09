@@ -24,6 +24,7 @@ import com.muyeon.app.ui.castingstage.screens.*
 class CastingStageActivity : ResultActivity() {
     companion object {
         private const val EXTRA_ROUTE = "route"
+        private val CATEGORY_CODE = Regex("^[A-Z][A-Z0-9_]{0,39}$")
 
         /** route — 링크로 열 때 첫 화면 위에 쌓을 화면(linkRoute). null 이면 첫 화면. */
         fun start(context: Context, route: String? = null) =
@@ -41,7 +42,8 @@ class CastingStageActivity : ResultActivity() {
                 "create" -> return "create"
             }
             val no = issueNo?.toIntOrNull()?.takeIf { it > 0 } ?: return null
-            return if (category != null && StageCategory.NEWS.any { it.code == category }) "newsList/$no/$category" else "issue/$no"
+            // ★ 11-09 분류는 서버가 정한다(관리자가 더함) — 코드 모양만 보고, 없는·숨긴 칸이면 목록 화면이 호 전체를 보인다.
+            return if (category != null && CATEGORY_CODE.matches(category)) "newsList/$no/$category" else "issue/$no"
         }
     }
 

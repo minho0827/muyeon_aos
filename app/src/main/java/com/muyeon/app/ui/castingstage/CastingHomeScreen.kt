@@ -35,13 +35,13 @@ fun CastingHomeScreen(
     reloadKey: Int = 0,
 ) {
     val body = rememberCastingStageBodyState()
-    val notice = stringResource(R.string.perf_casting_notice)
     Column(Modifier.fillMaxSize().background(Color.White)) {
         BrandSearchBar(onClick = onSearch)
         PerfCastingHeader(
             mode = PerfCastingMode.CASTING,
             onMode = onMode,
-            items = body.cats.map { PerfCastingItem(it.code, if (it.code == StageCategory.CASTING.code) notice else it.label) },
+            // ★ 11-09 이름·순서·보임은 서버 분류 목록(GET /stage-news/categories) 그대로.
+            items = body.cats.map { PerfCastingItem(it.code, it.label) },
             selected = body.current,
             onSelect = body::jump,
         )

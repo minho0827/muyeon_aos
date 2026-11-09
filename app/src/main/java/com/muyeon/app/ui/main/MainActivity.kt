@@ -160,6 +160,12 @@ class MainActivity : ComponentActivity(), ResultHost {
         handleEntry(intent)
     }
 
+    override fun onStart() {
+        super.onStart()
+        // 앱을 켰다·앞으로 돌아왔다 — 공연 칸 새 글 점.
+        viewModel.onForeground()
+    }
+
     override fun onPause() {
         NetworkRetryHost.hostVisible = false
         super.onPause()

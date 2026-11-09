@@ -47,7 +47,7 @@ import com.muyeon.app.ui.castingstage.model.*
 import com.muyeon.app.ui.castingstage.data.*
 import com.muyeon.app.ui.castingstage.screens.*
 
-/** 첫 화면 부품 — 섹션 틀·아이콘 칸·붙는 탭·전체 보기 버튼(iOS StageSectionHeader·StageIconGrid·StageChipTabBar·StageMoreButton). */
+/** 첫 화면 부품 — 섹션 틀·바로가기 칩·붙는 탭·전체 보기 버튼(iOS StageSectionHeader·StageIconGrid·StageChipTabBar·StageMoreButton). */
 
 @Composable
 internal fun StageSectionBox(title: String, content: @Composable () -> Unit) {
@@ -58,29 +58,18 @@ internal fun StageSectionBox(title: String, content: @Composable () -> Unit) {
     }
 }
 
+/**
+ * 섹션 바로가기 — ★ 2026-11-09 아이콘 칸 → 글자 칩(사용자 결정: 아이콘 없이 글자만). 공용 [ChipRow] 그대로.
+ *   고른 칸 표시는 바로 아래 붙는 탭이 맡아서 여기는 고른 칩 없이 둔다.
+ */
 @Composable
-internal fun StageIconGrid(cats: List<StageCategory>, onJump: (String) -> Unit) {
-    // ★ 2026-10-31 두 줄 격자 → 한 줄(칸이 5개로 줄어 한 줄에 들어간다, 넘치면 옆으로 밀어 본다). iOS 와 같다.
-    Row(
-        Modifier.fillMaxWidth().padding(top = 20.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        cats.forEach { StageIconButton(it, onJump) }
-    }
-}
-
-@Composable
-internal fun StageIconButton(c: StageCategory, onJump: (String) -> Unit) {
-    Column(
-        Modifier.width(76.dp).clickable { onJump(c.code) }.semantics { contentDescription = "stage.icon.${c.code}" },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Box(Modifier.size(60.dp).clip(RoundedCornerShape(18.dp)).background(c.bg), Alignment.Center) {
-            Icon(c.icon, null, tint = c.fg, modifier = Modifier.size(28.dp))
-        }
-        Text(c.label, style = Medium, fontSize = 13.sp, color = MuyeonColors.textHead, maxLines = 1, overflow = TextOverflow.Ellipsis)
-    }
+internal fun StageChipRow(cats: List<StageCategory>, onJump: (String) -> Unit) {
+    com.muyeon.app.ui.components.ChipRow(
+        options = cats.map { com.muyeon.app.ui.components.ChipOption(it.code, it.label) },
+        selected = "",
+        onSelect = onJump,
+        modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+    )
 }
 
 @Composable

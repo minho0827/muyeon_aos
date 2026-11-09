@@ -113,3 +113,9 @@ data class HomeFeedItemDto(
 
 @JsonClass(generateAdapter = true)
 data class MyApplicationDto(val kind: String? = null, val postingId: Long? = null)
+
+/** `GET /home/tab-updates` — 칸마다 최신 시각(ISO). */
+@JsonClass(generateAdapter = true)
+data class TabUpdatesDto(val performance: String? = null, val casting: String? = null, val stageNews: String? = null) {
+    fun toDomain() = com.muyeon.domain.model.home.TabUpdates(performance?.takeIf { it.isNotBlank() }, casting?.takeIf { it.isNotBlank() }, stageNews?.takeIf { it.isNotBlank() })
+}

@@ -42,4 +42,7 @@ interface HomeRepository {
     suspend fun feedPage(region: ActiveRegion?, domain: String, sub: String, cursor: String?): ApiResult<CursorPage<HomeFeedItem>>
     suspend fun myAppliedJobIds(): Set<Long>
     suspend fun myViewedJobIds(): Set<Long>
+
+    /** ★ 2026-11-09 공연·캐스팅·무대 소식 최신 시각(`GET /home/tab-updates`) — 하단 [공연] 칸 점. */
+    suspend fun tabUpdates(): ApiResult<com.muyeon.domain.model.home.TabUpdates>
 }

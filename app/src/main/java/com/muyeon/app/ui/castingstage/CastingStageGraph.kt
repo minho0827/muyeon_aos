@@ -64,6 +64,8 @@ object CastingStageSession {
     val newsCache = mutableMapOf<Int, Pair<StageNewsItem, StageCategory>>()
     /** 공고를 새로 올리면 올라간다 — 첫 화면·전체 목록이 다시 불러온다. */
     var reloadKey by mutableIntStateOf(0)
+    /** 분류 목록(서버 · 못 받으면 기본) — 본문이 받아 두면 목록·배너·링크가 같이 쓴다. */
+    var categories by androidx.compose.runtime.mutableStateOf(StageCategory.FALLBACK)
 }
 
 @Composable

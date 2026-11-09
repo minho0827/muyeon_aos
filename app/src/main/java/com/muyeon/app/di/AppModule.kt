@@ -59,7 +59,7 @@ val appModule = module {
 val viewModelModule = module {
     // ★ 2026-11-09 공연 검색 도메인(검색 화면이 koinInject 로 받는다).
     factory { com.muyeon.app.ui.search.PerformanceSearchDomain(get(), get()) }
-    viewModel { MainViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel { MainViewModel(get(), get(), get(), get(), get(), get(), get()) }
     // 공연
     viewModel { com.muyeon.app.ui.performance.PerformanceListViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { com.muyeon.app.ui.performance.PerformanceDetailViewModel(get(), get(), get(), get()) }

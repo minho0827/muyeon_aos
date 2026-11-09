@@ -60,8 +60,8 @@ internal fun StageCastingCard(c: StageCasting, onClick: () -> Unit) {
 @Composable
 internal fun StageNewsCard(n: StageNewsItem, cat: StageCategory, onClick: () -> Unit) {
     Column(Modifier.width(230.dp).clickable(onClick = onClick), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Box(Modifier.width(230.dp).height(140.dp).clip(RoundedCornerShape(14.dp)).background(cat.bg), Alignment.Center) {
-            Icon(cat.icon, null, tint = cat.fg, modifier = Modifier.size(34.dp))
+        Box(Modifier.width(230.dp).height(140.dp).clip(RoundedCornerShape(14.dp)).background(StageTintBg), Alignment.Center) {
+            Icon(StageNewsIcon, null, tint = StageTint, modifier = Modifier.size(34.dp))
             stageImageUrl(n.imageUrl)?.let { AsyncImage(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
         }
         val when_ = StageDate.short(n.eventDate)

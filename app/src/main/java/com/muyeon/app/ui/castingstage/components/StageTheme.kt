@@ -3,6 +3,7 @@ package com.muyeon.app.ui.castingstage.components
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import com.muyeon.app.theme.customFontFamily
@@ -29,6 +30,13 @@ internal val Ink100 = Color(0xFFF8F8F8)
 internal val Ink200 = Color(0xFFEAEAEA)
 
 internal val Ink300 = Color(0xFFDADADA)
+
+/** 소식 그림 자리(사진 없을 때) — 분류마다 아이콘을 두지 않는다(11-09 글자만). 무용연 주황 톤온톤. */
+internal val StageTint = Color(0xFFC95300)
+
+internal val StageTintBg = Color(0xFFFFF3EA)
+
+internal val StageNewsIcon: androidx.compose.ui.graphics.vector.ImageVector get() = androidx.compose.material.icons.Icons.Filled.Newspaper
 
 internal const val TAB_HEIGHT_DP = 46
 

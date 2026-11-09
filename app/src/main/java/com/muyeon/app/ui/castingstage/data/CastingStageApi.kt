@@ -55,6 +55,16 @@ class CastingStageApi(internal val token: String?) {
         return parseIssue(JSONObject(text))
     }
 
+    /** 분류 목록(보이는 것만·서버 순서) — `GET /stage-news/categories`. 실패는 예외(부르는 쪽이 기본 목록으로). */
+    suspend fun categories(): List<StageCategory> {
+        val a = org.json.JSONArray(get("/stage-news/categories"))
+        return (0 until a.length()).mapNotNull { i ->
+            val o = a.optJSONObject(i) ?: return@mapNotNull null
+            val code = o.str("code") ?: return@mapNotNull null
+            StageCategory(code, o.str("label") ?: code, o.str("kind") ?: StageCategory.KIND_NEWS)
+        }
+    }
+
     private fun parseIssue(o: JSONObject): StageNewsIssue {
         val sections = mutableMapOf<String, List<StageNewsItem>>()
         val arr = o.optJSONArray("sections")

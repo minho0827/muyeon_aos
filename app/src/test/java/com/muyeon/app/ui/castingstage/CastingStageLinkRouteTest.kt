@@ -17,7 +17,10 @@ class CastingStageLinkRouteTest {
     @Test fun issueAndCategory() {
         assertEquals("issue/3", r(issueNo = "3"))
         assertEquals("newsList/3/DOMESTIC", r(issueNo = "3", category = "DOMESTIC"))
-        assertEquals("issue/3", r(issueNo = "3", category = "NOPE"))
+        // ★ 11-09 분류는 서버가 정한다 — 코드 모양이면 그 칸으로(없는 칸이면 목록 화면이 호 전체를 보인다).
+        assertEquals("newsList/3/NEW_CODE", r(issueNo = "3", category = "NEW_CODE"))
+        assertEquals("issue/3", r(issueNo = "3", category = "nope/../x"))
+        assertEquals("issue/3", r(issueNo = "3", category = ""))
     }
     @Test fun badValuesOpenHome() {
         assertNull(r())

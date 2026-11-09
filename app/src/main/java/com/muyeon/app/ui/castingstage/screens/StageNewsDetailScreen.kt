@@ -40,10 +40,10 @@ fun StageNewsDetailScreen(item: StageNewsItem, cat: StageCategory, onBack: () ->
         ),
         header = {
             Column {
-                StageHeroGallery(listOfNotNull(item.imageUrl), cat.icon, cat.fg, cat.bg)
+                StageHeroGallery(listOfNotNull(item.imageUrl), StageNewsIcon, StageTint, StageTintBg)
                 Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(cat.label, style = Semi, fontSize = 12.sp, color = cat.fg,
-                        modifier = Modifier.clip(CircleShape).background(cat.bg).padding(horizontal = 10.dp, vertical = 4.dp))
+                    Text(cat.label, style = Semi, fontSize = 12.sp, color = StageTint,
+                        modifier = Modifier.clip(CircleShape).background(StageTintBg).padding(horizontal = 10.dp, vertical = 4.dp))
                     Text(item.title, style = Bold, fontSize = 24.sp, color = MuyeonColors.textHead)
                     item.sourceName?.let { Text(it, style = Regular, fontSize = 16.sp, color = MuyeonColors.textSub) }
                 }
