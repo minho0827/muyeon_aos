@@ -17,7 +17,6 @@
     <string name="quote_feed_lesson">레슨</string>
     <!-- ★ 2026-11-09 견적서 모양 카드(사진 대신) -->
     <string name="quote_sheet_title">레슨 요청서</string>
-    <string name="quote_sheet_no">No.%1$s</string>
     <string name="quote_sheet_region">지역</string>
     <string name="quote_sheet_days">요일</string>
     <string name="quote_sheet_time">시간</string>
