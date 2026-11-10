@@ -170,6 +170,7 @@ data class StudioSale(
     val method: String?,
     val soldAt: String,
     val memberId: Int?,
+    val memo: String? = null,
 ) {
     val categoryLabel: String get() = StudioSaleCat.label(category)
 
@@ -177,7 +178,7 @@ data class StudioSale(
         fun from(o: JSONObject) = StudioSale(
             o.optInt("id"), o.optString("category"), o.optString("title"),
             o.optInt("amount"), o.optInt("unpaidAmount"), o.stringOrNull("method"),
-            o.optString("soldAt"), o.intOrNull("memberId"),
+            o.optString("soldAt"), o.intOrNull("memberId"), o.stringOrNull("memo"),
         )
     }
 }
@@ -230,7 +231,7 @@ object StudioDateFmt {
     fun won(n: Int): String = String.format(Locale.KOREA, "%,d원", n)
 }
 
-class StudioApi(private val token: String?) {
+class StudioApi(internal val token: String?) {
 
     private val client = OkHttpClient()
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
@@ -293,6 +294,12 @@ class StudioApi(private val token: String?) {
         call("/studio/sales?from=$from&to=$to").map { JSONArray(it.ifBlank { "[]" }).map(StudioSale::from) }
 
     suspend fun createSale(body: JSONObject): Result<Unit> = call("/studio/sales", "POST", body).map { }
+
+    /** 매출 수정 — PATCH /studio/sales/:id(등록과 같은 칸, 보낸 칸만). 서버 배포 전 404 면 서버 문구 그대로. */
+    suspend fun updateSale(id: Int, body: JSONObject): Result<Unit> = call("/studio/sales/$id", "PATCH", body).map { }
+
+    /** 매출 삭제 — DELETE /studio/sales/:id. */
+    suspend fun deleteSale(id: Int): Result<Unit> = call("/studio/sales/$id", "DELETE").map { }
 
     suspend fun schedule(from: String, to: String): Result<StudioScheduleData> =
         call("/studio/schedule?from=$from&to=$to").map { StudioScheduleData.from(JSONObject(it)) }

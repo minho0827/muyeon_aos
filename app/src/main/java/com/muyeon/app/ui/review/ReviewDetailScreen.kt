@@ -53,8 +53,14 @@ fun ReviewDetailScreen(
     onRequestQuote: (LessonQuotePrefill) -> Unit,
     /** 값이 바뀌면 다시 읽는다(강사 프로필에서 후기 작성 후 복귀 — REVIEWS). */
     reloadSignal: Int = 0,
+    /** 내 후기 [수정] → 작성 화면 수정 모드(teacherId, 강사 이름). */
+    onEditMine: (Int, String?) -> Unit = { _, _ -> },
+    /** 내 후기 삭제 뒤 — 지운 후기라 보통 화면을 닫는다. */
+    onDeletedMine: () -> Unit = onClose,
 ) {
     var review by remember { mutableStateOf<ReviewDetail?>(null) }
+    // 상세 응답엔 작성자 표시가 없다 — 강사 후기 목록의 mine 으로 내 후기인지 본다(로그인 시만 true).
+    var mine by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
     var expanded by remember { mutableStateOf(false) }
     var requesting by remember { mutableStateOf(false) }
@@ -63,6 +69,9 @@ fun ReviewDetailScreen(
     LaunchedEffect(reviewId, reloadSignal) {
         api.detail(reviewId).onSuccess { review = it }
         loading = false
+        review?.teacher?.id?.takeIf { it > 0 }?.let { tid ->
+            mine = api.list(tid, sort = "recent").getOrNull()?.items?.any { it.id == reviewId && it.mine == true } == true
+        }
     }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
@@ -99,6 +108,13 @@ fun ReviewDetailScreen(
                                     color = MuyeonColors.textSub,
                                 )
                             }
+                        }
+                        if (mine) {
+                            ReviewOwnerActions(
+                                api, r.teacher.id,
+                                onEdit = { onEditMine(r.teacher.id, r.teacher.name) },
+                                onDeleted = onDeletedMine,
+                            )
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                             (1..5).forEach { i ->

@@ -26,7 +26,7 @@ class NativeRoutesB3Test {
         assertEquals(Target.Route("community/post/5"), r("/community/post/5"))
     }
 
-    @Test fun castingEditStaysWeb() {
-        assertNull(r("/casting/3/edit"))
+    @Test fun castingEditIsNative() {
+        assertEquals(Target.Action("openCastingStage", mapOf("castingId" to "3", "screen" to "edit")), r("/casting/3/edit"))
     }
 }

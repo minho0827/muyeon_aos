@@ -46,6 +46,7 @@ import kotlinx.coroutines.withContext
  *  헤더(강사·레슨일시) + 3축 별점 + 레슨형태 + 목적 + 수강기간 + 좋았던 점 태그 +
  *  사진 첨부(최대 20) + 본문 + 재수강 의향. 하단 CTA는 필수 미충족 시 안내 문구로 바뀐다.
  *  필수: 3축 별점 전부 + 레슨 형태 + 목적.
+ *  initial 을 주면 수정 모드 — 내 후기 값으로 채우고 같은 POST /reviews 로 고친다(ReviewEditSheet).
  */
 @Composable
 fun ReviewWriteScreen(
@@ -58,15 +59,18 @@ fun ReviewWriteScreen(
     prefillLessonType: String?,
     onClose: () -> Unit,
     onDone: () -> Unit,
+    /** 내 후기(수정 모드). null 이면 새로 쓰기. */
+    initial: ReviewList.MyReview? = null,
 ) {
-    var ratings by remember { mutableStateOf(mapOf<String, Int>()) }
-    var lessonType by remember { mutableStateOf(prefillLessonType) }
-    var purpose by remember { mutableStateOf<String?>(null) }
-    var durationBucket by remember { mutableStateOf<String?>(null) }
-    var tags by remember { mutableStateOf(setOf<String>()) }
-    var images by remember { mutableStateOf(listOf<String>()) }
-    var content by remember { mutableStateOf("") }
-    var revisit by remember { mutableStateOf<Boolean?>(null) }
+    val editing = initial != null
+    var ratings by remember { mutableStateOf(initial?.let { reviewInitialRatings(it) } ?: mapOf()) }
+    var lessonType by remember { mutableStateOf(initial?.lessonType ?: prefillLessonType) }
+    var purpose by remember { mutableStateOf(initial?.purpose) }
+    var durationBucket by remember { mutableStateOf(initial?.durationBucket) }
+    var tags by remember { mutableStateOf(initial?.tags?.toSet() ?: setOf()) }
+    var images by remember { mutableStateOf(initial?.images ?: listOf()) }
+    var content by remember { mutableStateOf(initial?.content.orEmpty()) }
+    var revisit by remember { mutableStateOf(initial?.revisit) }
     var uploading by remember { mutableStateOf(false) }
     var saving by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -93,6 +97,7 @@ fun ReviewWriteScreen(
         !allAxesRated -> "별점을 매겨주세요"
         lessonType == null -> "레슨 형태를 선택해 주세요"
         purpose == null -> "레슨 목적을 선택해 주세요"
+        editing -> "수정 완료"
         else -> "리뷰 등록하기"
     }
     // 전체 별점 = 3축 평균(반올림)
@@ -117,7 +122,7 @@ fun ReviewWriteScreen(
     }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
-        QuoteNavBar(title = "리뷰 작성", onClose = onClose)
+        QuoteNavBar(title = if (editing) "리뷰 수정" else "리뷰 작성", onClose = onClose)
 
         Column(
             Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
@@ -262,7 +267,7 @@ fun ReviewWriteScreen(
         }
 
         Text(
-            if (saving) "등록 중…" else ctaText,
+            if (saving) (if (editing) "저장 중…" else "등록 중…") else ctaText,
             fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
             lineHeight = 19.sp, color = Color.White, textAlign = TextAlign.Center,
             modifier = Modifier
@@ -291,6 +296,15 @@ fun ReviewWriteScreen(
     errorMessage?.let { msg ->
         QuoteDialog("오류", msg, "확인", onConfirm = { errorMessage = null }, onDismiss = { errorMessage = null })
     }
+}
+
+/** 옛 후기는 3축 없이 별점 하나만 있다 — 그 값으로 세 칸을 채운다. */
+internal fun reviewInitialRatings(r: ReviewList.MyReview): Map<String, Int> {
+    val keys = ReviewOptions.ratingAxes.map { it.first }
+    val axes = r.ratings.filterKeys { it in keys }.filterValues { it in 1..5 }
+    if (axes.size == keys.size) return axes
+    val one = r.rating?.takeIf { it in 1..5 } ?: return axes
+    return keys.associateWith { axes[it] ?: one }
 }
 
 @Composable

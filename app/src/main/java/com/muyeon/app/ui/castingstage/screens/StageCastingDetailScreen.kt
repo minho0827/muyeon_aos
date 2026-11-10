@@ -52,7 +52,11 @@ import com.muyeon.app.ui.castingstage.components.*
 /** 캐스팅 공고 상세(iOS StageCastingDetailView). */
 
 @Composable
-fun StageCastingDetailScreen(api: CastingStageApi, id: Int, onBack: () -> Unit, onOpenUrl: (String) -> Unit, onWriteResume: () -> Unit) {
+fun StageCastingDetailScreen(
+    api: CastingStageApi, id: Int, onBack: () -> Unit, onOpenUrl: (String) -> Unit, onWriteResume: () -> Unit,
+    /** 작성자 [수정] → 등록 흐름 수정 모드(CastingEditFlow). */
+    onEdit: () -> Unit = {},
+) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var c by remember { mutableStateOf<CastingDetail?>(null) }
@@ -160,6 +164,7 @@ fun StageCastingDetailScreen(api: CastingStageApi, id: Int, onBack: () -> Unit, 
             if (myId != null && detail.authorId == myId) StageCastingOwnerBar(
                 open = !closed, busy = ownerActions.busy,
                 onDelete = { ownerActions.requestDelete(ref) }, onClose = { ownerActions.requestClose(ref) },
+                onEdit = onEdit,
             )
             else StageCastingApplyButton(detail, closed, applied, applying, onOpenUrl,
                 onSwitch = { showSwitch = true }, onApply = { scope.launch { startApply() } })

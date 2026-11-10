@@ -47,8 +47,8 @@ class NativeRoutesB0Test {
         assertEquals(a("openCastingStage", "screen" to "issues"), r("/casting/stage"))
         assertEquals(a("openCastingStage", "issueNo" to "3"), r("/casting/stage/3"))
         assertEquals(a("openCastingStage", "issueNo" to "3", "category" to "DOMESTIC"), r("/casting/stage/3/DOMESTIC"))
-        // 그대로 웹(정리 결정 전).
-        assertNull(r("/casting/5/edit"))
+        // 11-10 공고 수정도 앱 화면(등록 흐름 수정 모드).
+        assertEquals(a("openCastingStage", "castingId" to "5", "screen" to "edit"), r("/casting/5/edit"))
     }
 
     @Test fun accountAndMembership() {

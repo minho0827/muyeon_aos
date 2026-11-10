@@ -26,7 +26,7 @@ fun PostingOwnerBar(open: Boolean, busy: Boolean, onDelete: () -> Unit, onClose:
         HorizontalDivider(color = AppColors.Divider)
         Row(Modifier.padding(horizontal = 16.dp).padding(top = 8.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             JobButton(stringResource(R.string.owner_delete), filled = false, enabled = !busy, modifier = Modifier.weight(1f), onClick = onDelete)
-            JobButton(stringResource(R.string.owner_close), filled = false, enabled = open && !busy, modifier = Modifier.weight(1f), onClick = onClose)
+            JobButton(stringResource(R.string.posting_owner_close), filled = false, enabled = open && !busy, modifier = Modifier.weight(1f), onClick = onClose)
             JobButton(stringResource(R.string.owner_edit), filled = true, enabled = !busy, modifier = Modifier.weight(1f), onClick = onEdit)
         }
     }

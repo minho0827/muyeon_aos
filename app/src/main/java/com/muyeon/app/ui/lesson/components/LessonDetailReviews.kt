@@ -48,6 +48,8 @@ fun LessonDetailReviews(
     onSelectReview: (Int) -> Unit,
     onViewAll: () -> Unit,
     onWrite: () -> Unit,
+    /** 내 후기 줄에 붙일 [수정]·[삭제](ReviewOwnerActions). */
+    mineActions: @Composable () -> Unit = {},
 ) {
     val count = data.count ?: data.items.size
     HorizontalDivider(color = MuyeonColors.border)
@@ -70,7 +72,7 @@ fun LessonDetailReviews(
             )
         }
         // 신규 작성 — 웹과 같이 쓸 수 있고(레슨 이용 회원) 내 리뷰가 없을 때만.
-        if (data.canWrite == true && data.items.none { it.mine == true }) {
+        if (data.canWrite == true && data.myReview == null && data.items.none { it.mine == true }) {
             WriteBox(onWrite)
         }
         if (data.items.isEmpty()) {
@@ -82,7 +84,7 @@ fun LessonDetailReviews(
         } else {
             data.items.take(PREVIEW).forEachIndexed { i, r ->
                 if (i > 0) HorizontalDivider(color = MuyeonColors.tileIdle)
-                ReviewRow(r) { onSelectReview(r.id) }
+                ReviewRow(r, mineActions) { onSelectReview(r.id) }
             }
         }
         if (count > PREVIEW && data.items.size > PREVIEW) {
@@ -99,7 +101,7 @@ fun LessonDetailReviews(
 private const val PREVIEW = 3
 
 @Composable
-private fun ReviewRow(r: ReviewList.Item, onClick: () -> Unit) {
+private fun ReviewRow(r: ReviewList.Item, mineActions: @Composable () -> Unit, onClick: () -> Unit) {
     Column(
         Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -125,7 +127,11 @@ private fun ReviewRow(r: ReviewList.Item, onClick: () -> Unit) {
                 fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 14.sp, color = MuyeonColors.hint,
             )
         }
-        ReviewStars(r.rating ?: 0, 14.dp)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            ReviewStars(r.rating ?: 0, 14.dp)
+            Spacer(Modifier.weight(1f))
+            if (r.mine == true) mineActions()
+        }
         r.content?.takeIf { it.isNotBlank() }?.let {
             Text(
                 it,

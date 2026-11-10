@@ -52,6 +52,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -124,8 +125,12 @@ fun CastingCreateScreen(
     onOpenMembership: () -> Unit,
     /** 한도 안내의 [내 공고 관리]. null 이면 버튼 숨김. */
     onOpenMyPostings: (() -> Unit)? = null,
+    /** 수정 모드(CastingEditFlow) — 원본으로 채우고 PATCH 로 저장. null 이면 새로 등록. */
+    edit: CastingEdit? = null,
 ) {
-    var form by remember { mutableStateOf(CastingCreateForm()) }
+    val start = edit?.original ?: CastingCreateForm()
+    val locked = edit != null
+    var form by remember { mutableStateOf(start) }
     var activityName by remember { mutableStateOf("") }
     var step by remember { mutableIntStateOf(0) }
     var saving by remember { mutableStateOf(false) }
@@ -145,7 +150,7 @@ fun CastingCreateScreen(
 
     fun requestBack() {
         if (step > 0) { step -= 1; return }
-        if (form.isDirty) showExit = true else onClose()
+        if (form != start) showExit = true else onClose()
     }
     BackHandler { requestBack() }
 
@@ -162,9 +167,17 @@ fun CastingCreateScreen(
 
     fun submit() {
         if (saving || !form.basicValid || !form.recruitValid) return
+        if (edit != null) {
+            CastingEditRules.validate(form)?.let { errorMessage = it; return }
+            val body = CastingEditRules.patchBody(edit.original, form)
+            if (body.length() == 0) { onCreated(edit.id); return }
+        }
         saving = true
         scope.launch {
-            runCatching { api.createCasting(form.toJson(activityName)) }
+            runCatching {
+                if (edit != null) { api.updateCasting(edit.id, CastingEditRules.patchBody(edit.original, form)); edit.id }
+                else api.createCasting(form.toJson(activityName))
+            }
                 .onSuccess { created = it; createdDone = true }
                 .onFailure { e ->
                     if (e is PostingLimitException) postingLimit = e
@@ -185,7 +198,7 @@ fun CastingCreateScreen(
                     .semantics { contentDescription = "뒤로" }.testTag("castingCreate.back"),
                 contentAlignment = Alignment.Center,
             ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = MuyeonColors.textHead) }
-            Text("공연 공고 등록", style = TitleStyle.copy(fontSize = 18.sp), color = MuyeonColors.textHead, modifier = Modifier.align(Alignment.Center))
+            Text(if (locked) "공연 공고 수정" else "공연 공고 등록", style = TitleStyle.copy(fontSize = 18.sp), color = MuyeonColors.textHead, modifier = Modifier.align(Alignment.Center))
             Text("${step + 1} / 4", style = SubStyle, color = MuyeonColors.textSub,
                 modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp))
         }
@@ -205,20 +218,20 @@ fun CastingCreateScreen(
             when (step) {
                 0 -> {
                     BasicCard(form, activityName, api.token) { form = it }
-                    ScheduleCard(form, onPick = { dateField = it }) { form = it }
+                    ScheduleCard(form, locked, onPick = { dateField = it }) { form = it }
                     PosterCard(form.imageUrl, uploading,
                         onPick = { poster.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                         onRemove = { form = form.copy(imageUrl = null) })
                 }
-                1 -> RecruitCard(form) { form = it }
+                1 -> RecruitCard(form, locked) { form = it }
                 2 -> {
-                    FeeCard(form) { form = it }
-                    RequirementCard(form) { form = it }
+                    FeeCard(form, locked) { form = it }
+                    RequirementCard(form, locked) { form = it }
                     GuideCard(form) { form = it }
                 }
                 else -> {
                     SummaryCard(form)
-                    Text("등록하면 바로 무용수에게 보여요. 공고는 내 공고 관리에서 마감할 수 있어요.",
+                    Text(if (locked) "저장하면 바로 공고에 반영돼요." else "등록하면 바로 무용수에게 보여요. 공고는 내 공고 관리에서 마감할 수 있어요.",
                         style = CaptionStyle, color = MuyeonColors.textSub, modifier = Modifier.padding(horizontal = 4.dp))
                 }
             }
@@ -228,7 +241,7 @@ fun CastingCreateScreen(
             0 -> MuyeonBottomButton("다음", "castingCreate.next", enabled = !uploading) { if (required.validate(ctx)) step = 1 }
             1 -> MuyeonBottomButton("다음", "castingCreate.next") { if (required.validate(ctx)) step = 2 }
             2 -> MuyeonBottomButton("다음", "castingCreate.next") { step = 3 }
-            else -> MuyeonBottomButton("공고 등록", "castingCreate.submit",
+            else -> MuyeonBottomButton(if (locked) "수정 완료" else "공고 등록", "castingCreate.submit",
                 enabled = form.basicValid && form.recruitValid && !uploading, loading = saving) { submit() }
         }
     }
@@ -268,7 +281,7 @@ fun CastingCreateScreen(
 
     if (showExit) {
         MuyeonDialog(
-            title = "작성 중인 내용이 사라져요.",
+            title = if (locked) "고친 내용이 저장되지 않아요." else "작성 중인 내용이 사라져요.",
             actions = listOf(
                 MuyeonDialogAction("나가기", MuyeonDialogKind.DESTRUCTIVE) { showExit = false; onClose() },
                 MuyeonDialogAction("계속 작성", MuyeonDialogKind.CANCEL) { showExit = false },
@@ -278,7 +291,7 @@ fun CastingCreateScreen(
     }
     if (createdDone) {
         MuyeonDialog(
-            title = "공연 공고가 등록됐어요.",
+            title = if (locked) "공연 공고를 수정했어요." else "공연 공고가 등록됐어요.",
             actions = listOf(MuyeonDialogAction("확인", MuyeonDialogKind.PRIMARY) { createdDone = false; onCreated(created) }),
             onDismiss = { createdDone = false; onCreated(created) },
         )
@@ -338,14 +351,16 @@ private fun BasicCard(form: CastingCreateForm, activityName: String, token: Stri
 }
 
 @Composable
-private fun ScheduleCard(form: CastingCreateForm, onPick: (DateField) -> Unit, update: (CastingCreateForm) -> Unit) {
+private fun ScheduleCard(form: CastingCreateForm, locked: Boolean, onPick: (DateField) -> Unit, update: (CastingCreateForm) -> Unit) {
     FormCard("일정", Icons.Filled.CalendarToday) {
         FormField("공연 날짜") { FormDateRow(form.schedule.dotted(), "날짜 선택", Modifier.fillMaxWidth()) { onPick(DateField.SCHEDULE) } }
         FormField("리허설 기간") {
+            EditLocked(locked) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FormDateRow(form.rehearsalStart.dotted(), "시작일", Modifier.weight(1f)) { onPick(DateField.REHEARSAL_START) }
                 Text("~", color = MuyeonColors.textSub)
                 FormDateRow(form.rehearsalEnd.dotted(), "종료일", Modifier.weight(1f)) { onPick(DateField.REHEARSAL_END) }
+            }
             }
         }
         FormField("지원 마감일") {
@@ -382,7 +397,7 @@ private fun PosterCard(imageUrl: String?, uploading: Boolean, onPick: () -> Unit
 }
 
 @Composable
-private fun RecruitCard(form: CastingCreateForm, update: (CastingCreateForm) -> Unit) {
+private fun RecruitCard(form: CastingCreateForm, locked: Boolean, update: (CastingCreateForm) -> Unit) {
     FormCard("모집 조건", Icons.Filled.Groups) {
         FormField("모집 역할", required = true, hint = "(복수 선택)", filled = form.roles.isNotEmpty()) {
             FormChipWrap(CastingCreateOptions.roles.map { it to it }, { it in form.roles }) { update(form.toggleRole(it)) }
@@ -397,40 +412,66 @@ private fun RecruitCard(form: CastingCreateForm, update: (CastingCreateForm) -> 
             }
         }
         FormField("나이 조건") { FormTextField(form.age, { update(form.copy(age = it)) }, "예: 20~30세", CastingCreateOptions.SHORT_MAX) }
-        FormField("키 조건") { FormTextField(form.height, { update(form.copy(height = it)) }, "예: 165cm 이상", CastingCreateOptions.SHORT_MAX) }
+        FormField("키 조건") { EditLocked(locked) { FormTextField(form.height, { update(form.copy(height = it)) }, "예: 165cm 이상", CastingCreateOptions.SHORT_MAX) } }
         FormField("전공 조건") {
+            EditLocked(locked) {
             FormChipWrap(CastingCreateOptions.genres.map { it to it }, { form.major == it }) { v ->
                 update(form.copy(major = if (form.major == v) null else v))
+            }
             }
         }
     }
 }
 
 @Composable
-private fun FeeCard(form: CastingCreateForm, update: (CastingCreateForm) -> Unit) {
+private fun FeeCard(form: CastingCreateForm, locked: Boolean, update: (CastingCreateForm) -> Unit) {
     FormCard("비용", Icons.Filled.Payments) {
         FormField("출연료") {
+            EditLocked(locked) {
             FormChipWrap(CastingCreateOptions.feeRanges, { form.feeRange == it }) { v ->
                 update(form.copy(feeRange = if (form.feeRange == v) null else v))
+            }
             }
         }
         FormField("출연료 부가설명") {
             FormTextField(form.fee, { update(form.copy(fee = it)) }, "예: 회당 200,000원 / 리허설 별도", CastingCreateOptions.FEE_MAX)
         }
         HorizontalDivider(color = Color(0xFFEAEAEA))
+        EditLocked(locked) {
         FormToggle("리허설비 지급", form.rehearsalFee) { update(form.copy(rehearsalFee = it)) }
         FormToggle("교통비 지급", form.transportFee) { update(form.copy(transportFee = it)) }
+        }
     }
 }
 
 @Composable
-private fun RequirementCard(form: CastingCreateForm, update: (CastingCreateForm) -> Unit) {
+private fun RequirementCard(form: CastingCreateForm, locked: Boolean, update: (CastingCreateForm) -> Unit) {
     FormCard("제출물 필수 여부", Icons.Filled.Description) {
+        EditLocked(locked) {
         FormToggle("영상 제출 필수", form.videoRequired) { update(form.copy(videoRequired = it)) }
         FormToggle("프로필 사진 필수", form.photoRequired) { update(form.copy(photoRequired = it)) }
         FormToggle("수상경력 필수", form.awardRequired) { update(form.copy(awardRequired = it)) }
         FormToggle("공연경력 필수", form.careerRequired) { update(form.copy(careerRequired = it)) }
         FormToggle("자기소개 필수", form.introRequired) { update(form.copy(introRequired = it)) }
+        }
+    }
+}
+
+/**
+ * 수정 모드에서 서버가 아직 받지 않는 칸 — 값은 보이되 흐리게, 누를 수 없게. 아래 한 줄로 이유를 적는다.
+ *  (서버 PATCH /casting/:id 가 이 칸을 받게 되면 locked 만 false 로.)
+ */
+@Composable
+private fun EditLocked(locked: Boolean, content: @Composable () -> Unit) {
+    if (!locked) { content(); return }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Box {
+            Box(Modifier.alpha(0.45f)) { content() }
+            // 덮개 — 터치를 먹는다.
+            Box(Modifier.matchParentSize().clickable(enabled = true, indication = null,
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) {})
+        }
+        Text("등록한 뒤에는 바꿀 수 없는 칸이에요.", style = CaptionStyle, color = MuyeonColors.textSub)
     }
 }
 

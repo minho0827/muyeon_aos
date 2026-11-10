@@ -382,10 +382,10 @@ private fun PostingCard(
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     val menu = buildList<Pair<String, () -> Unit>> {
                         add("공고 보기" to onView)
-                        // 공연(CASTING)은 수정 화면이 없다 — 숨긴다.
+                        // ★ 11-10 공연(CASTING)도 수정(등록 흐름 수정 모드 CastingEditFlow).
                         // 인증 대기 공고는 승인 전이라 수정·보류·복사·마감이 의미 없다 → 보기·삭제만.
                         val pending = p.pendingVerification
-                        if (p.kind != "CASTING" && !pending) add("수정" to onEdit)
+                        if (!pending) add("수정" to onEdit)
                         if (!pending) {
                             if (p.status == "OPEN") add("보류" to { onStatus("HOLD") })
                             else add("다시 열기" to { onStatus("OPEN") })
@@ -619,12 +619,13 @@ class JobPostingActivity : com.muyeon.app.result.ResultActivity() {
             // 공고가 바뀌면 웹(공고 목록)도 다시 읽게 — 기본 키와 같지만 '바뀌었다'를 명시해 둔다.
             fun changed() = addResultKeys(com.muyeon.app.result.ResultKeys.JOB_POSTINGS)
 
-            // 수정 — 채용은 네이티브 위저드, 대타는 대타 입력 폼(수정 모드), 공연은 수정 화면이 없다(메뉴에서 숨김).
+            // 수정 — 채용은 네이티브 위저드, 대타는 대타 입력 폼(수정 모드), 공연은 등록 흐름 수정 모드(CastingEditFlow).
             fun openEdit(kind: String, pid: Int) {
                 when (kind) {
                     "JOB" -> nav.navigate("form/$pid")
                     // ★ 2026-11-08 묶음 3 — 대타는 대타 입력 폼 수정 모드(웹 /subs/:id/edit 대신 — 저장하면 이 목록·상세로 돌아온다).
                     "SUB" -> nav.navigate("subEdit/$pid")
+                    "CASTING" -> nav.navigate("castingEdit/$pid")
                 }
             }
 
@@ -686,6 +687,15 @@ class JobPostingActivity : com.muyeon.app.result.ResultActivity() {
                 composable("subEdit/{id}") { e ->
                     val sid = e.arguments?.getString("id")?.toLongOrNull() ?: 0L
                     com.muyeon.app.ui.subwizard.SubWizardScreen(editId = sid, onClose = { back() }, onCreated = { changed(); back() })
+                }
+                composable("castingEdit/{id}") { e ->
+                    val cid = e.arguments?.getString("id")?.toIntOrNull() ?: 0
+                    val castingApi = remember { com.muyeon.app.ui.castingstage.data.CastingStageApi(api.token) }
+                    com.muyeon.app.ui.castingstage.create.CastingEditFlow(
+                        api = castingApi, castingId = cid,
+                        onClose = { back() },
+                        onSaved = { com.muyeon.app.ui.castingstage.CastingStageSession.reloadKey++; changed(); back() },
+                    )
                 }
                 composable("castingForm") {
                     val castingApi = remember { com.muyeon.app.ui.castingstage.data.CastingStageApi(api.token) }

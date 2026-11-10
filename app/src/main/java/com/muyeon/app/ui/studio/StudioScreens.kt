@@ -462,6 +462,10 @@ fun StudioSalesScreen(api: StudioApi, onClose: () -> Unit) {
     val (from, to) = remember { monthRange() }
     val scope = rememberCoroutineScope()
     var summaryGeneration by remember { mutableIntStateOf(0) }
+    // 매출 등록·수정 시트 — sheetSale=null 이면 새 매출.
+    var sheetOpen by remember { mutableStateOf(false) }
+    var sheetSale by remember { mutableStateOf<StudioSale?>(null) }
+    var toast by remember { mutableStateOf<String?>(null) }
     suspend fun load(reset: Boolean = true) {
         if (reset) { summaryGeneration++; summary = null }
         val version = summaryGeneration
@@ -504,9 +508,17 @@ fun StudioSalesScreen(api: StudioApi, onClose: () -> Unit) {
                         }
                     }
                 }
-                item { Text(if (page.hasMore) "불러온 매출 내역 ${page.items.size}건" else "매출 내역 ${page.items.size}건", fontWeight = FontWeight.Bold) }
-                items(page.items, key = { it.id }) { sale ->
+                item {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (page.hasMore) "불러온 매출 내역 ${page.items.size}건" else "매출 내역 ${page.items.size}건",
+                            fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        Text("+ 매출 등록", fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                            color = MuyeonColors.primary, modifier = Modifier.clickable { sheetSale = null; sheetOpen = true })
+                    }
+                }
+                items(page.items, key = { it.id }) { sale ->
+                    // 누르면 수정·삭제 시트.
+                    Row(Modifier.fillMaxWidth().clickable { sheetSale = sale; sheetOpen = true }.padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(sale.title, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, color = MuyeonColors.textHead)
                             Text("${sale.categoryLabel} · ${QuoteUi.relativeTime(sale.soldAt)}", fontFamily = customFontFamily, fontSize = 11.sp, color = MuyeonColors.secondary)
@@ -518,6 +530,36 @@ fun StudioSalesScreen(api: StudioApi, onClose: () -> Unit) {
                 item { Spacer(Modifier.height(12.dp)) }
             }
         }
+    }
+
+    if (sheetOpen) {
+        val target = sheetSale
+        SaleEditSheet(
+            sale = target,
+            onSubmit = { body ->
+                sheetOpen = false
+                scope.launch {
+                    (if (target == null) api.createSale(body) else api.updateSale(target.id, body))
+                        .onSuccess { load(); toast = if (target == null) "매출을 등록했어요." else "매출을 수정했어요." }
+                        // 서버 문구 그대로(수정·삭제 API 배포 전이면 404 문구).
+                        .onFailure { toast = it.message ?: "저장하지 못했어요." }
+                }
+            },
+            onDelete = target?.let { t ->
+                {
+                    sheetOpen = false
+                    scope.launch {
+                        api.deleteSale(t.id)
+                            .onSuccess { load(); toast = "매출을 삭제했어요." }
+                            .onFailure { toast = it.message ?: "삭제하지 못했어요." }
+                    }
+                }
+            },
+            onDismiss = { sheetOpen = false },
+        )
+    }
+    toast?.let { msg ->
+        com.muyeon.app.ui.quote.QuoteDialog("알림", msg, "확인", onConfirm = { toast = null }, onDismiss = { toast = null })
     }
 }
 
@@ -534,9 +576,15 @@ fun StudioScheduleScreen(api: StudioApi, onClose: () -> Unit) {
     var refreshing by remember { mutableStateOf(false) }
     val (from, to) = remember { monthRange() }
     val scope = rememberCoroutineScope()
+    // 개인 일정 추가·수정·삭제 — 레슨 캘린더의 편집기(ScheduleBlockEditor)를 그대로 쓴다(삭제 확인 포함).
+    val calendarApi = remember { com.muyeon.app.ui.lesson.UserCalendarApi(api.token) }
+    var calendars by remember { mutableStateOf<List<com.muyeon.app.ui.lesson.UserCalendar>>(emptyList()) }
+    var editorOpen by remember { mutableStateOf(false) }
+    var editorBlock by remember { mutableStateOf<com.muyeon.app.ui.lesson.StudioBlock?>(null) }
 
     suspend fun load() {
         api.schedule(from, to).onSuccess { data = it }
+        calendarApi.list().onSuccess { calendars = it }
         api.getSettings().onSuccess { noshowConsumes = it }
         loading = false
     }
@@ -612,17 +660,39 @@ fun StudioScheduleScreen(api: StudioApi, onClose: () -> Unit) {
                     }
                 }
 
-                StudioSection("개인 일정 ${data?.blocks?.size ?: 0}건") {
+                StudioSection(
+                    "개인 일정 ${data?.blocks?.size ?: 0}건",
+                    action = "추가" to { editorBlock = null; editorOpen = true },
+                ) {
                     (data?.blocks ?: emptyList()).forEach { b ->
-                        Text(
-                            listOfNotNull(b.date, if (b.allDay) "종일" else b.startTime, b.title).joinToString(" · "),
-                            fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp, color = MuyeonColors.body,
-                        )
+                        // 누르면 편집기(수정·삭제).
+                        Row(
+                            Modifier.fillMaxWidth().clickable { editorBlock = b; editorOpen = true }.padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                listOfNotNull(b.date, if (b.allDay) "종일" else b.startTime, b.title).joinToString(" · "),
+                                fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp, color = MuyeonColors.body,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text("›", fontFamily = customFontFamily, fontSize = 16.sp, color = MuyeonColors.chevron)
+                        }
                     }
                 }
                 Spacer(Modifier.height(12.dp))
             }
         }
+    }
+
+    if (editorOpen) {
+        com.muyeon.app.ui.lesson.ScheduleBlockEditor(
+            api = calendarApi,
+            block = editorBlock,
+            defaultYmd = editorBlock?.date ?: com.muyeon.app.ui.lesson.LessonCalendarState.todayYmdKST(),
+            calendars = calendars,
+            onSaved = { editorOpen = false; scope.launch { load() } },
+            onDismiss = { editorOpen = false },
+        )
     }
 }
 

@@ -111,10 +111,10 @@ fun PostingDetailScreen(
                         Icons.Filled.MoreVert, "더보기", tint = MuyeonColors.textHead,
                         modifier = Modifier.size(44.dp).clickable { menuOpen = true }.padding(12.dp),
                     )
-                    // 수정은 채용(네이티브 위저드)·대타(웹 수정)만 — 공연은 수정 화면이 없다.
+                    // 수정 — 채용(위저드)·대타(입력 폼)·공연(등록 흐름 수정 모드) 모두 앱 화면.
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         val menu = buildList<Pair<String, () -> Unit>> {
-                            if (kind != "CASTING" && !pending) add("수정" to { onEdit(kind, id) })
+                            if (!pending) add("수정" to { onEdit(kind, id) })
                             if (!pending) add("복사" to { actions.duplicate(ref) })
                             add("삭제" to { actions.requestDelete(ref) })
                         }

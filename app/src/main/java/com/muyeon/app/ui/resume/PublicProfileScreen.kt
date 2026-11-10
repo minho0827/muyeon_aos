@@ -94,6 +94,10 @@ fun PublicProfileScreen(
     onOpenReviews: () -> Unit,
     // 이미 이 강사에게 견적요청했고 응답이 있으면 [받은 견적 보기] → 받은 견적(quoteId) (iOS onReceivedQuotes)
     onOpenReceivedQuotes: (Int) -> Unit = {},
+    /** 내 후기 [수정] → 작성 화면 수정 모드. 비우면 [수정]·[삭제] 를 그리지 않는다(미리보기·지원자 화면). */
+    onEditMyReview: (() -> Unit)? = null,
+    /** 내 후기 삭제 뒤(이 화면 후기는 여기서 다시 읽는다). */
+    onDeletedMyReview: () -> Unit = {},
 ) {
     var profile by remember { mutableStateOf<PublicProfile?>(null) }
     var reviews by remember { mutableStateOf<ReviewList?>(null) }
@@ -235,7 +239,19 @@ fun PublicProfileScreen(
                         }
                     }
                 }
-                ProfileBody(p, reviews, isSelf, onOpenReviews)   // 레이아웃 분기
+                // 내 후기 줄의 [수정]·[삭제] — 부품(ReviewOwnerActions)을 칸에 끼워 넣기만 한다.
+                val mineActions: @Composable () -> Unit = {
+                    onEditMyReview?.let { edit ->
+                        com.muyeon.app.ui.review.ReviewOwnerActions(
+                            reviewApi, userId, onEdit = edit,
+                            onDeleted = {
+                                onDeletedMyReview()
+                                scope.launch { reviewApi.list(userId).onSuccess { reviews = it } }
+                            },
+                        )
+                    }
+                }
+                ProfileBody(p, reviews, isSelf, onOpenReviews, mineActions)   // 레이아웃 분기
                 Spacer(Modifier.height(20.dp))
             }
 
@@ -472,7 +488,10 @@ private fun GrayChip(text: String) {
  *  ★ 2026-11-04 멤버십 없는 강사에게 보이던 기본 폼(라벨 + 읽기전용 박스)은 없앴다.
  */
 @Composable
-private fun ProfileBody(p: PublicProfile, reviews: ReviewList?, isSelf: Boolean, onOpenReviews: () -> Unit) {
+private fun ProfileBody(
+    p: PublicProfile, reviews: ReviewList?, isSelf: Boolean, onOpenReviews: () -> Unit,
+    mineActions: @Composable () -> Unit = {},
+) {
     val detailImages = p.detailImages.orEmpty().filter { it.isNotBlank() }
     if (p.profileMembershipActive == true && p.detailType == "IMAGE" && detailImages.isNotEmpty()) {
         Column(Modifier.fillMaxWidth()) {
@@ -487,17 +506,20 @@ private fun ProfileBody(p: PublicProfile, reviews: ReviewList?, isSelf: Boolean,
                 }
             }
             VideoSection(p)
-            ReviewsSection(reviews, onOpenReviews)
+            ReviewsSection(reviews, onOpenReviews, mineActions)
         }
     } else {
-        ProfileSections(p, reviews, isSelf, onOpenReviews)
+        ProfileSections(p, reviews, isSelf, onOpenReviews, mineActions)
     }
 }
 
 /** 꾸민 레이아웃 섹션 묶음 — iOS PublicProfileView.sections(p) 와 같은 순서·스타일. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ProfileSections(p: PublicProfile, reviews: ReviewList?, isSelf: Boolean, onOpenReviews: () -> Unit) {
+private fun ProfileSections(
+    p: PublicProfile, reviews: ReviewList?, isSelf: Boolean, onOpenReviews: () -> Unit,
+    mineActions: @Composable () -> Unit = {},
+) {
     Column(Modifier.fillMaxWidth()) {
         p.intro?.replace("\r", "")?.takeIf { it.isNotEmpty() }?.let {
             ProfileSection("소개글") {
@@ -571,7 +593,7 @@ private fun ProfileSections(p: PublicProfile, reviews: ReviewList?, isSelf: Bool
             ProfileSection("포트폴리오") { PortfolioGrid(imgs, allowSave = isSelf) }
         }
         VideoSection(p)
-        ReviewsSection(reviews, onOpenReviews)
+        ReviewsSection(reviews, onOpenReviews, mineActions)
     }
 }
 
@@ -805,7 +827,7 @@ private fun VideoSection(p: PublicProfile) {
 /** 레슨 후기 요약 — 태그 배지(상위 4) + 최근 3개(별 5개·작성자·내용) + 전체보기. iOS reviewsSection. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ReviewsSection(reviews: ReviewList?, onOpenReviews: () -> Unit) {
+private fun ReviewsSection(reviews: ReviewList?, onOpenReviews: () -> Unit, mineActions: @Composable () -> Unit = {}) {
     reviews?.items?.takeIf { it.isNotEmpty() }?.let { items ->
         ProfileSection("레슨 후기 ${reviews.count ?: items.size}개") {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -840,6 +862,10 @@ private fun ReviewsSection(reviews: ReviewList?, onOpenReviews: () -> Unit) {
                                     lineHeight = 14.sp, color = MuyeonColors.hint,
                                     modifier = Modifier.padding(start = 6.dp),
                                 )
+                                if (r.mine == true) {
+                                    Spacer(Modifier.weight(1f))
+                                    mineActions()
+                                }
                             }
                             r.content?.takeIf { it.isNotEmpty() }?.let {
                                 Text(

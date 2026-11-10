@@ -48,6 +48,10 @@ fun ReviewListScreen(
     teacherId: Int,
     onClose: () -> Unit,
     onWrite: () -> Unit,
+    /** 내 후기 [수정] → 작성 화면 수정 모드. */
+    onEditMine: () -> Unit = {},
+    /** 내 후기 삭제 뒤(목록은 여기서 다시 읽는다) — 부모 화면 갱신용. */
+    onDeletedMine: () -> Unit = {},
 ) {
     var data by remember { mutableStateOf<ReviewList?>(null) }
     var loading by remember { mutableStateOf(true) }
@@ -97,14 +101,23 @@ fun ReviewListScreen(
                             }
                         } else {
                             items(items, key = { it.id }) { item ->
-                                ReviewCard(item) { rid ->
+                                ReviewCard(
+                                    item,
+                                    ownerActions = {
+                                        ReviewOwnerActions(
+                                            api, teacherId, onEdit = onEditMine,
+                                            onDeleted = { onDeletedMine(); scope.launch { load() } },
+                                        )
+                                    },
+                                ) { rid ->
                                     scope.launch { api.toggleHelpful(rid); load() }
                                 }
                             }
                         }
                     }
                 }
-                if (d?.canWrite == true) {
+                // 내 후기가 있으면 새로 쓰기 대신 카드의 [수정]·[삭제].
+                if (d?.canWrite == true && d.myReview == null && d.items.none { it.mine == true }) {
                     Text(
                         "후기 쓰기",
                         fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
@@ -262,7 +275,11 @@ private fun FilterChip(text: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ReviewCard(item: ReviewList.Item, onHelpful: (Int) -> Unit) {
+private fun ReviewCard(
+    item: ReviewList.Item,
+    ownerActions: @Composable () -> Unit = {},
+    onHelpful: (Int) -> Unit,
+) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -334,7 +351,8 @@ private fun ReviewCard(item: ReviewList.Item, onHelpful: (Int) -> Unit) {
             }
         }
 
-        // 도움돼요 토글
+        // 도움돼요 토글 · (내 후기면) 오른쪽 [수정]·[삭제]
+        Row(verticalAlignment = Alignment.CenterVertically) {
         Row(
             Modifier.clickable { onHelpful(item.id) }.padding(top = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -350,6 +368,9 @@ private fun ReviewCard(item: ReviewList.Item, onHelpful: (Int) -> Unit) {
                 fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 14.sp,
                 color = if (item.helpfulByMe == true) MuyeonColors.primary else MuyeonColors.secondary,
             )
+        }
+        Spacer(Modifier.weight(1f))
+        if (item.mine == true) ownerActions()
         }
     }
 }

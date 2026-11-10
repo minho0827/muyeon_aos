@@ -83,6 +83,8 @@ fun LessonContentDetailScreen(
     onViewAllReviews: (Int) -> Unit = {},
     /** [후기 작성하기] → 기존 후기 작성(teacherId, 강사 이름). */
     onWriteReview: (Int, String?) -> Unit = { _, _ -> },
+    /** 내 후기 [수정] → 작성 화면 수정 모드(teacherId, 강사 이름). */
+    onEditReview: (Int, String?) -> Unit = { _, _ -> },
 ) {
     var detail by remember { mutableStateOf<LessonContentDetail?>(null) }
     var similar by remember { mutableStateOf<List<BrowseFeedItem>>(emptyList()) }
@@ -279,6 +281,15 @@ fun LessonContentDetailScreen(
                         onSelectReview = onSelectReview,
                         onViewAll = { onViewAllReviews(creatorId) },
                         onWrite = { onWriteReview(creatorId, d.creatorName) },
+                        mineActions = {
+                            reviewApi?.let { ra ->
+                                com.muyeon.app.ui.review.ReviewOwnerActions(
+                                    ra, creatorId,
+                                    onEdit = { onEditReview(creatorId, d.creatorName) },
+                                    onDeleted = { reviewsResume++ },
+                                )
+                            }
+                        },
                     )
                 }
 

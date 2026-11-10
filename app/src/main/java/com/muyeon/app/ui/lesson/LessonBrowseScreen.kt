@@ -326,6 +326,10 @@ class LessonBrowseActivity : com.muyeon.app.result.ResultActivity() {
                     onClose = { finish() },
                     onSelectTeacher = { tid -> openTeacher(tid, "review") },
                     reloadSignal = reviewsReload,
+                    // 내 후기 수정 — 저장하면 REVIEWS 키로 이 상세를 다시 읽는다. 삭제하면 닫는다(기본값).
+                    onEditMine = { tid, name ->
+                        profileLauncher.launch(com.muyeon.app.ui.resume.ResumeActivity.myReviewEditIntent(this, tid, name))
+                    },
                     onRequestQuote = { p ->
                         com.muyeon.app.ui.quote.QuoteWizardActivity.start(
                             this, p.categoryId, p.targetTeacherId.takeIf { it > 0 }?.toString(),
@@ -367,6 +371,7 @@ class LessonBrowseActivity : com.muyeon.app.result.ResultActivity() {
                     onSelectReview = { rid -> startReview(this, rid) },
                     onViewAllReviews = { tid -> com.muyeon.app.ui.resume.ResumeActivity.startReviewList(this, tid) },
                     onWriteReview = { tid, name -> com.muyeon.app.ui.resume.ResumeActivity.startReviewWrite(this, tid, name, null) },
+                    onEditReview = { tid, name -> com.muyeon.app.ui.resume.ResumeActivity.startMyReviewEdit(this, tid, name) },
                 )
             } else {
                 LessonBrowseScreen(

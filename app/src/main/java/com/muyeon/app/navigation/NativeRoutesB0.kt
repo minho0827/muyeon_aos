@@ -8,11 +8,12 @@ import com.muyeon.app.ui.main.MainTab
  *   판정은 웹 common/nativeLink.js(NATIVE_LINKS) 와 같다(쿼리 as=dancer·seekProfile·src 등 그대로).
  *   여기서 쓰는 액션 중 'Link'·'Edit'·'Detail'·'MemberType'·'AccountRecovery'·'CommunityCategory'·'LessonSettings' 는
  *   앱 안 전용(웹 브리지 계약 아님) — [com.muyeon.app.webview.NativeActionRouterB0].
- *   남겨 둔 웹: /casting/:id/edit(정리 결정 전), B 분류(새 화면 필요), D(앱 밖)·E(외부 인증·결제).
+ *   ★ 11-10 /casting/:id/edit 도 앱 화면(등록 흐름 수정 모드). 남겨 둔 웹: B 분류(새 화면 필요), D(앱 밖)·E(외부 인증·결제).
  */
 internal object NativeRoutesB0 {
     private val ACADEMY = Regex("^/academies/(\\d+)$")
     private val JOB_EDIT = Regex("^/jobs/(\\d+)/edit$")
+    private val CASTING_EDIT = Regex("^/casting/(\\d+)/edit$")
     private val LESSON_EDIT = Regex("^/lessons/(\\d+)/edit$")
     private val SPACE_EDIT = Regex("^/spaces/(\\d+)/edit$")
     private val TRANSFER_EDIT = Regex("^/studio-transfers/(\\d+)/edit$")
@@ -59,6 +60,7 @@ internal object NativeRoutesB0 {
             "/myScraps" -> return NativeRoutes.Target.Route(Screen.Likes.route, auth = true)
         }
         ACADEMY.find(p)?.let { return action("openAcademyProfile", "academyId" to it.groupValues[1], "src" to query["src"]) }
+        CASTING_EDIT.find(p)?.let { return action("openCastingStage", "castingId" to it.groupValues[1], "screen" to "edit") }
         JOB_EDIT.find(p)?.let { return action("openJobPostingEdit", "jobId" to it.groupValues[1], "redirect" to p) }
         LESSON_EDIT.find(p)?.let { return action("openLessonCreate", "lessonId" to it.groupValues[1]) }
         SPACE_EDIT.find(p)?.let { return action("openSpaceEditor", "id" to it.groupValues[1]) }

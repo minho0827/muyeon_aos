@@ -113,6 +113,8 @@ fun ChatRoomScreen(
     var showReport by remember { mutableStateOf(false) }
     var reportMessage by remember { mutableStateOf<ChatMessage?>(null) }   // 상대 메시지 길게 누르기 → 메시지 신고
     var confirmBlock by remember { mutableStateOf(false) }
+    // 메시지 삭제 확인 — iOS ChatMessageActionPresentations 와 같은 문구.
+    var deleteTarget by remember { mutableStateOf<ChatMessage?>(null) }
     var reactionTarget by remember { mutableStateOf<ChatMessage?>(null) }
     // ── 상단 레슨 컨텍스트(iOS lessonContextArea) 시트·확인창 상태 ──
     var showCyclesSheet by remember { mutableStateOf(false) }
@@ -806,10 +808,20 @@ fun ChatRoomScreen(
                 reactionTarget = null
             },
             onEdit = { vm.startEdit(m); reactionTarget = null },
-            onDelete = { vm.deleteMessage(m); reactionTarget = null },
+            onDelete = { deleteTarget = m; reactionTarget = null },
             onReport = { reportMessage = m; reactionTarget = null },
             // 차단은 우상단 메뉴와 같은 확인 다이얼로그를 띄운다.
             onBlock = { confirmBlock = true; reactionTarget = null },
+        )
+    }
+    deleteTarget?.let { m ->
+        com.muyeon.app.ui.common.MuyeonDialog(
+            title = "모든 사람에게서 삭제할까요?",
+            actions = listOf(
+                com.muyeon.app.ui.common.MuyeonDialogAction("삭제", com.muyeon.app.ui.common.MuyeonDialogKind.DESTRUCTIVE) { vm.deleteMessage(m) },
+                com.muyeon.app.ui.common.MuyeonDialogAction("취소", com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL),
+            ),
+            onDismiss = { deleteTarget = null },
         )
     }
     // 이번 달 새 강사·무용수 채팅 한도(전송 거절 RECRUIT_CHAT_LIMIT) — 이력서 화면과 같은 팝업·멤버십 화면

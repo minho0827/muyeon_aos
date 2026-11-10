@@ -197,6 +197,14 @@ class CastingStageApi(internal val token: String?) {
         }
     }
 
+    /** 수정 화면 채우기용 원본 — GET /casting/:id 그대로. */
+    suspend fun castingJson(id: Int): JSONObject = JSONObject(get("/casting/$id"))
+
+    /** 공고 수정(작성자) — PATCH /casting/:id, 바꾼 칸만. 거절은 서버 문구(StageMessageException). */
+    suspend fun updateCasting(id: Int, body: JSONObject) {
+        call("/casting/$id", "PATCH", body = body)
+    }
+
     suspend fun castings(genre: String?): List<StageCasting> =
         parseCastings(JSONObject(get("/casting/page", mapOf("genre" to genre, "feeRange" to "ALL", "limit" to "12"))))
 }

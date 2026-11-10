@@ -5,7 +5,7 @@ package com.muyeon.app.navigation
  *   [NativeRoutes.resolve] 가 묶음 0 표 다음에 이 표를 본다. iOS Shell/Navigation/NativeRoutes+B3.swift 와 같은 표·같은 순서.
  *   모두 로그인해야 쓰는 화면(웹 meta auth) — 비회원이면 셸이 앱 로그인부터(돌아오면 이 주소로).
  *   /community/write?id=N 은 예전 iOS 가 글 수정에 쓰던 주소 — 수정으로 받는다.
- *   남겨 둔 웹: /casting/:id/edit(앱에서 꺼짐).
+ *   /casting/:id/edit 는 11-10 부터 앱 화면(NativeRoutesB0 — 등록 흐름 수정 모드).
  */
 internal object NativeRoutesB3 {
     private val SUB_EDIT = Regex("^/subs/(\\d+)/edit$")

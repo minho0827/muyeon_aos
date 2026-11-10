@@ -12,13 +12,14 @@ import com.muyeon.app.R
 import com.muyeon.app.ui.common.market.MarketBarDelete
 
 /**
- * ★ 2026-11-10 캐스팅 공고 상세 — 작성자 하단 [삭제] [마감]. 수정 화면은 원래 없다(의도).
+ * ★ 2026-11-10 캐스팅 공고 상세 — 작성자 하단 [삭제] [수정] [마감하기]. 수정은 등록 흐름 수정 모드(CastingEditFlow).
  *  지원 버튼 자리에 대신 놓는다. 마감은 열린 공고일 때만.
  */
 @Composable
-fun StageCastingOwnerBar(open: Boolean, busy: Boolean, onDelete: () -> Unit, onClose: () -> Unit) {
+fun StageCastingOwnerBar(open: Boolean, busy: Boolean, onDelete: () -> Unit, onClose: () -> Unit, onEdit: () -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         MarketBarDelete(onDelete)
-        Box(Modifier.weight(1f)) { StageBottomButton(stringResource(R.string.owner_close), enabled = open, busy = busy, onClick = onClose) }
+        com.muyeon.app.ui.common.market.MarketBarSecondary(stringResource(R.string.owner_edit), onEdit)
+        Box(Modifier.weight(1f)) { StageBottomButton(stringResource(R.string.posting_owner_close), enabled = open, busy = busy, onClick = onClose) }
     }
 }

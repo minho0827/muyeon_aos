@@ -23,6 +23,7 @@ import com.muyeon.app.ui.chat.ChatActivity
 import com.muyeon.app.ui.quote.QuoteWizardActivity
 import com.muyeon.app.ui.review.ReviewApi
 import com.muyeon.app.ui.review.ReviewEditSheet
+import com.muyeon.app.ui.review.ReviewQuickEditSheet
 import com.muyeon.app.ui.review.ReviewListScreen
 import com.muyeon.app.ui.review.ReviewWriteScreen
 import com.muyeon.app.utils.TokenManager
@@ -94,6 +95,15 @@ class ResumeActivity : ResultActivity() {
                     .putExtra(EXTRA_TEACHER_NAME, teacherName ?: "")
                     .putExtra(EXTRA_LESSON_TYPE, lessonType ?: ""),
             )
+
+        /** 내 후기 수정(작성 화면 수정 모드) — 결과 런처로 띄우면 저장 뒤 REVIEWS 키가 돌아온다. */
+        fun myReviewEditIntent(context: Context, teacherId: Int, teacherName: String?): Intent =
+            intent(context, "myReviewEdit")
+                .putExtra(EXTRA_USER_ID, teacherId)
+                .putExtra(EXTRA_TEACHER_NAME, teacherName ?: "")
+
+        fun startMyReviewEdit(context: Context, teacherId: Int, teacherName: String?) =
+            context.go(myReviewEditIntent(context, teacherId, teacherName))
 
         /** 지원자 이력서(원장). kind=JOB(구인) | SUB(대타) — postingId 가 각각 jobId/subId. */
         /**
@@ -236,6 +246,8 @@ class ResumeActivity : ResultActivity() {
                             }
                         },
                         onOpenReviews = { nav.navigate("reviews") },
+                        onEditMyReview = { nav.navigate("myReviewEdit") },
+                        onDeletedMyReview = { addResultKeys(ResultKeys.REVIEWS) },
                         // 이미 요청·응답 존재 → 받은 견적 상세(iOS presentReceivedQuotes)
                         onOpenReceivedQuotes = { qid ->
                             com.muyeon.app.ui.quote.QuoteHubActivity.start(this@ResumeActivity, isPro = false, quoteId = qid)
@@ -253,6 +265,8 @@ class ResumeActivity : ResultActivity() {
                     ReviewListScreen(
                         api = reviewApi, teacherId = userId,
                         onClose = { back() }, onWrite = { nav.navigate("write") },
+                        onEditMine = { nav.navigate("myReviewEdit") },
+                        onDeletedMine = { addResultKeys(ResultKeys.REVIEWS) },
                     )
                 }
                 composable("write") {
@@ -265,9 +279,17 @@ class ResumeActivity : ResultActivity() {
                         onDone = { addResultKeys(ResultKeys.REVIEWS); back() },
                     )
                 }
+                composable("myReviewEdit") {
+                    // 내 후기 수정 — 작성 화면을 수정 모드로. 저장·삭제 뒤 후기가 보이는 화면들이 다시 읽는다(REVIEWS).
+                    ReviewEditSheet(
+                        api = reviewApi, resumeApi = api, teacherId = userId, teacherName = teacherName,
+                        onClose = { back() },
+                        onDone = { addResultKeys(ResultKeys.REVIEWS); back() },
+                    )
+                }
                 composable("reviewEdit") {
                     // 리뷰 수정은 네이티브가 UI 만 담당하고 저장은 웹이 __onReviewEdited 로 수행한다.
-                    ReviewEditSheet(
+                    ReviewQuickEditSheet(
                         initialRating = editRating, initialContent = editContent,
                         onSave = { r, c ->
                             WebCallbacks.reviewEdited(this@ResumeActivity, r, c)

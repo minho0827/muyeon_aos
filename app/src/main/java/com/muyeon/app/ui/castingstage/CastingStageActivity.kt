@@ -35,7 +35,8 @@ class CastingStageActivity : ResultActivity() {
          *  castingId → 공고 상세 · screen=castingList·issues · issueNo(+category) → 그 호(그 칸) 소식. 이상한 값은 null(첫 화면).
          */
         fun linkRoute(castingId: String?, screen: String?, issueNo: String?, category: String?): String? {
-            castingId?.toIntOrNull()?.takeIf { it > 0 }?.let { return "casting/$it" }
+            // screen=edit + castingId → 공고 수정(웹 /casting/:id/edit 대신).
+            castingId?.toIntOrNull()?.takeIf { it > 0 }?.let { return if (screen == "edit") "edit/$it" else "casting/$it" }
             when (screen) {
                 "castingList" -> return "castingList"
                 "issues" -> return "issues"

@@ -36,11 +36,13 @@ class StageRoutes(private val prefix: String) {
     val news = "${prefix}news/{id}"
     val castingList = "${prefix}castingList"
     val create = "${prefix}create"
+    val edit = "${prefix}edit/{id}"
     val newsList = "${prefix}newsList/{no}/{code}"
     val issues = "${prefix}issues"
     val issue = "${prefix}issue/{no}"
 
     fun casting(id: Int) = "${prefix}casting/$id"
+    fun edit(id: Int) = "${prefix}edit/$id"
     fun news(id: Int) = "${prefix}news/$id"
     fun newsList(no: Int, code: String) = "${prefix}newsList/$no/$code"
     fun issue(no: Int) = "${prefix}issue/$no"
@@ -122,7 +124,16 @@ fun NavGraphBuilder.castingStageGraph(
     composable(r.casting, listOf(navArgument("id") { type = NavType.IntType })) { e ->
         val context = LocalContext.current
         StageCastingDetailScreen(rememberStageApi(), e.arguments?.getInt("id") ?: 0, onBack = back, onOpenUrl = { openUrl(context, it) },
-            onWriteResume = { com.muyeon.app.ui.resume.ResumeActivity.startEdit(context, null, "dancer") })
+            onWriteResume = { com.muyeon.app.ui.resume.ResumeActivity.startEdit(context, null, "dancer") },
+            onEdit = { nav.navigate(r.edit(e.arguments?.getInt("id") ?: 0)) })
+    }
+    // 공연 공고 수정(작성자) — 등록 흐름 수정 모드. 저장하면 돌아가고, 상세·목록이 다시 읽는다.
+    composable(r.edit, listOf(navArgument("id") { type = NavType.IntType })) { e ->
+        com.muyeon.app.ui.castingstage.create.CastingEditFlow(
+            api = rememberStageApi(), castingId = e.arguments?.getInt("id") ?: 0,
+            onClose = back,
+            onSaved = { CastingStageSession.reloadKey++; onCreated(); back() },
+        )
     }
     composable(r.news, listOf(navArgument("id") { type = NavType.IntType })) { e ->
         val context = LocalContext.current

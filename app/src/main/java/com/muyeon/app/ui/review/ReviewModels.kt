@@ -67,7 +67,36 @@ data class ReviewList(
     val tagCounts: Map<String, Int>,
     val items: List<Item>,
     val canWrite: Boolean?,
+    /** 내가 쓴 후기(로그인 시) — 수정 화면 채우기용. 없으면 null. */
+    val myReview: MyReview? = null,
 ) {
+    /** 내 후기 원본 값 — 서버 myReview. 수정은 같은 POST /reviews 에 이 값을 고쳐 보낸다. */
+    data class MyReview(
+        val ratings: Map<String, Int>,
+        val rating: Int?,
+        val revisit: Boolean?,
+        val content: String?,
+        val lessonType: String?,
+        val purpose: String?,
+        val durationBucket: String?,
+        val tags: List<String>,
+        val images: List<String>,
+    ) {
+        companion object {
+            fun from(o: JSONObject?) = o?.let {
+                MyReview(
+                    ratings = it.optJSONObject("ratings").toIntMap(), rating = it.intOrNull("rating"),
+                    // 서버는 tinyint(1/0) — 옛 값은 true/false 일 수도 있어 둘 다 받는다.
+                    revisit = when (val v = it.opt("revisit")) { is Boolean -> v; is Number -> v.toInt() == 1; else -> null },
+                    content = it.stringOrNull("content"),
+                    lessonType = it.stringOrNull("lessonType"), purpose = it.stringOrNull("purpose"),
+                    durationBucket = it.stringOrNull("durationBucket"),
+                    tags = it.stringList("tags") ?: emptyList(), images = it.stringList("images") ?: emptyList(),
+                )
+            }
+        }
+    }
+
     data class Item(
         val id: Int,
         val rating: Int?,
@@ -110,6 +139,7 @@ data class ReviewList(
             tagCounts = o.optJSONObject("tagCounts").toIntMap(),
             items = o.optJSONArray("items")?.map { Item.from(it) } ?: emptyList(),
             canWrite = o.boolOrNull("canWrite"),
+            myReview = ReviewList.MyReview.from(o.optJSONObject("myReview")),
         )
     }
 }
@@ -168,8 +198,12 @@ class ReviewApi(private val token: String?) {
         return call("/teachers/$teacherId/reviews?$q").map { ReviewList.from(JSONObject(it)) }
     }
 
-    /** 리뷰 작성/수정. */
+    /** 리뷰 작성/수정 — 서버는 (강사, 나) 한 건이라 같은 POST 가 수정이 된다. */
     suspend fun submit(payload: ReviewSubmit): Result<Unit> = call("/reviews", "POST", payload.toJson()).map { }
+
+    /** 내 후기 삭제 — DELETE /teachers/:teacherId/reviews/mine. */
+    suspend fun removeMine(teacherId: Int): Result<Unit> =
+        call("/teachers/$teacherId/reviews/mine", "DELETE", fail = "후기를 삭제하지 못했어요.").map { }
 
     /** 도움돼요 토글 → { liked, count }. */
     /** 리뷰 상세 — 둘러보기 리뷰 카드에서 연다. */
@@ -203,7 +237,9 @@ class ReviewApi(private val token: String?) {
         }
     }
 
-    private suspend fun call(path: String, method: String = "GET", body: JSONObject? = null): Result<String> =
+    private suspend fun call(
+        path: String, method: String = "GET", body: JSONObject? = null, fail: String = "리뷰 등록에 실패했어요.",
+    ): Result<String> =
         withContext(Dispatchers.IO) {
             runCatching {
                 val payload: RequestBody? = when {
@@ -219,7 +255,7 @@ class ReviewApi(private val token: String?) {
                     val text = res.body?.string().orEmpty()
                     if (!res.isSuccessful) {
                         val msg = runCatching { JSONObject(text).optString("message") }.getOrNull()
-                        throw IllegalStateException(msg?.ifEmpty { null } ?: "리뷰 등록에 실패했어요.")
+                        throw IllegalStateException(msg?.ifEmpty { null } ?: fail)
                     }
                     text
                 }

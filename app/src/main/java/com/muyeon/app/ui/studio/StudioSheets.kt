@@ -400,3 +400,110 @@ private fun StudioDatePicker(
         },
     ) { DatePicker(state) }
 }
+
+/** 결제 수단 — 서버 CreateSaleDto.method. */
+private val SALE_METHODS = listOf("" to "선택 안 함", "CARD" to "카드", "CASH" to "현금", "TRANSFER" to "이체")
+
+/** 'yyyy-MM-dd'(KST) → 그날 정오 millis. 못 읽으면 오늘. */
+private fun ymdToMillis(ymd: String?): Long =
+    ymd?.take(10)?.let { runCatching { YMD.parse(it)?.time?.plus(12 * 60 * 60 * 1000) }.getOrNull() } ?: todayMillis()
+
+/**
+ * 매출 등록·수정 시트 — 같은 칸을 한 시트로(sale 이 있으면 수정 모드 + 하단 [삭제]).
+ *  본문은 POST /studio/sales · PATCH /studio/sales/:id 가 같은 모양. 삭제는 확인창을 거친다.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SaleEditSheet(
+    sale: StudioSale?,
+    onSubmit: (JSONObject) -> Unit,
+    onDelete: (() -> Unit)?,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var category by remember { mutableStateOf(sale?.category ?: "PASS") }
+    var title by remember { mutableStateOf(sale?.title.orEmpty()) }
+    var amountText by remember { mutableStateOf(sale?.amount?.toString().orEmpty()) }
+    var unpaidText by remember { mutableStateOf(sale?.unpaidAmount?.takeIf { it > 0 }?.toString().orEmpty()) }
+    var method by remember { mutableStateOf(sale?.method.orEmpty()) }
+    var soldAt by remember { mutableLongStateOf(ymdToMillis(sale?.soldAt)) }
+    var memo by remember { mutableStateOf(sale?.memo.orEmpty()) }
+    var showDate by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
+
+    val amount = amountText.toIntOrNull()
+    val unpaid = unpaidText.toIntOrNull() ?: 0
+    val unpaidOver = amount != null && unpaid > amount
+    val canSubmit = title.isNotBlank() && amount != null && !unpaidOver
+
+    fun buildBody() = JSONObject().apply {
+        put("category", category)
+        put("title", title.trim())
+        put("amount", amount ?: 0)
+        put("unpaidAmount", unpaid)
+        if (method.isNotEmpty()) put("method", method)
+        put("soldAt", studioYmd(soldAt))
+        put("memo", memo.trim())
+    }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(Modifier.fillMaxWidth()) {
+            SheetHeader(if (sale == null) "매출 등록" else "매출 수정", "저장", canSubmit, onDismiss) { onSubmit(buildBody()) }
+            HorizontalDivider(color = MuyeonColors.border)
+            Column(
+                Modifier.verticalScroll(rememberScrollState()).padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
+            ) {
+                SheetField("항목") {
+                    StudioSaleCat.all.chunked(3).forEach { row -> SegmentedRow(row, category) { category = it } }
+                }
+                SheetField("내용") {
+                    OutlinedTextField(
+                        value = title, onValueChange = { title = it.take(100) },
+                        placeholder = { Text("예: 3개월 수강권", fontFamily = customFontFamily, fontSize = 15.sp, color = MuyeonColors.chevron) },
+                        singleLine = true, modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                SheetField("금액 (원)") {
+                    OutlinedTextField(
+                        value = amountText, onValueChange = { v -> amountText = v.filter { it.isDigit() }.take(9) },
+                        singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                SheetField("미수금 (원, 선택)") {
+                    OutlinedTextField(
+                        value = unpaidText, onValueChange = { v -> unpaidText = v.filter { it.isDigit() }.take(9) },
+                        singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        isError = unpaidOver, modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (unpaidOver) Text("미수금이 금액보다 클 수 없어요.", fontFamily = customFontFamily, fontSize = 12.sp, color = MuyeonColors.danger)
+                }
+                SheetField("결제 수단") { SegmentedRow(SALE_METHODS, method) { method = it } }
+                SheetField("판매일") { SheetBox(studioYmd(soldAt)) { showDate = true } }
+                SheetField("메모 (선택)") {
+                    OutlinedTextField(value = memo, onValueChange = { memo = it.take(200) }, modifier = Modifier.fillMaxWidth())
+                }
+                onDelete?.let {
+                    Text(
+                        "매출 삭제",
+                        fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
+                        color = MuyeonColors.danger, textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                            .border(1.dp, MuyeonColors.border, RoundedCornerShape(10.dp))
+                            .clickable { confirmDelete = true }.padding(vertical = 12.dp),
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+    }
+    if (showDate) StudioDatePicker(soldAt, onDismiss = { showDate = false }) { soldAt = it }
+    if (confirmDelete && onDelete != null) {
+        com.muyeon.app.ui.quote.QuoteDialog(
+            "이 매출을 삭제할까요?", "되돌릴 수 없어요.", "삭제",
+            onConfirm = { confirmDelete = false; onDelete() },
+            onDismiss = { confirmDelete = false },
+        )
+    }
+}

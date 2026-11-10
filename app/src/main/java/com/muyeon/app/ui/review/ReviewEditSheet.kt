@@ -25,13 +25,55 @@ import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteNavBar
 
 /**
- * 강사 리뷰 수정 — iOS `ReviewEditSheet.swift` 1:1.
+ * 내 후기 수정 — 작성 화면(ReviewWriteScreen)을 수정 모드로 다시 쓴다.
+ *  GET /teachers/:id/reviews 의 myReview 로 채우고, 저장은 같은 POST /reviews(작성·수정 겸용).
+ *  내 후기가 없으면(이미 지워짐) 안내 후 닫는다.
+ */
+@Composable
+fun ReviewEditSheet(
+    api: ReviewApi,
+    resumeApi: com.muyeon.app.ui.resume.ResumeApi,
+    teacherId: Int,
+    teacherName: String,
+    onClose: () -> Unit,
+    onDone: () -> Unit,
+) {
+    var mine by remember { mutableStateOf<ReviewList.MyReview?>(null) }
+    var missing by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(teacherId) {
+        api.list(teacherId)
+            .onSuccess { if (it.myReview != null) mine = it.myReview else missing = "수정할 후기가 없어요." }
+            .onFailure { missing = it.message ?: "후기를 불러오지 못했어요." }
+    }
+    val m = mine
+    if (m != null) {
+        ReviewWriteScreen(
+            api = api, resumeApi = resumeApi, teacherId = teacherId,
+            teacherName = teacherName, teacherImage = null,
+            lessonDateLine = null, prefillLessonType = null,
+            onClose = onClose, onDone = onDone, initial = m,
+        )
+    } else {
+        Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
+            QuoteNavBar(title = "리뷰 수정", onClose = onClose)
+            Box(Modifier.fillMaxSize(), Alignment.Center) {
+                androidx.compose.material3.CircularProgressIndicator(color = MuyeonColors.primary)
+            }
+        }
+    }
+    missing?.let { msg ->
+        com.muyeon.app.ui.quote.QuoteDialog("안내", msg, "확인", onConfirm = { missing = null; onClose() }, onDismiss = { missing = null; onClose() })
+    }
+}
+
+/**
+ * 웹이 연 간단 수정(별점·글) — iOS `ReviewEditSheet.swift` 1:1.
  *
  * ⚠️ 네이티브는 **UI 만** 담당한다. 저장 API 는 웹이 `window.__onReviewEdited(rating, content)`
  *   콜백을 받아서 수행한다. 콜백을 안 쏘면 수정이 조용히 사라진다.
  */
 @Composable
-fun ReviewEditSheet(
+fun ReviewQuickEditSheet(
     initialRating: Int,
     initialContent: String,
     onSave: (Int, String) -> Unit,
