@@ -7,6 +7,7 @@ import com.muyeon.domain.model.credential.MyCredentials
 import com.muyeon.domain.repository.CredentialRepository
 import com.muyeon.network.api.CredentialApi
 import com.muyeon.network.dto.credential.CredentialKeysBody
+import com.muyeon.network.dto.credential.CredentialWithdrawBody
 import com.squareup.moshi.Moshi
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -21,4 +22,9 @@ class CredentialRepositoryImpl(private val api: CredentialApi, private val moshi
 
     override suspend fun submit(kind: String, keys: List<String>): ApiResult<MyCredentials> =
         safeApiCall(moshi) { api.submit(kind, CredentialKeysBody(keys)) }.map { it.toDomain() }
+
+    override suspend fun withdraw(kind: String, id: Long?, reason: String?): ApiResult<MyCredentials> {
+        val body = CredentialWithdrawBody(reason?.trim()?.ifEmpty { null })
+        return safeApiCall(moshi) { if (id != null) api.withdrawById(kind, id, body) else api.withdraw(kind, body) }.map { it.toDomain() }
+    }
 }

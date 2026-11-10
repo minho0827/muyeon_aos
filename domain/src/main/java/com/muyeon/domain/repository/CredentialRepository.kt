@@ -9,4 +9,6 @@ interface CredentialRepository {
     suspend fun mine(): ApiResult<MyCredentials>
     suspend fun upload(doc: CredentialDocument): ApiResult<String>
     suspend fun submit(kind: String, keys: List<String>): ApiResult<MyCredentials>
+    /** 신청 철회 — id 가 있으면 그 신청, 없으면 그 종류의 최근 신청. */
+    suspend fun withdraw(kind: String, id: Long?, reason: String?): ApiResult<MyCredentials>
 }

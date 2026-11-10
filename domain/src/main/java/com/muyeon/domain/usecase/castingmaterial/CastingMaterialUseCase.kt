@@ -11,6 +11,7 @@ import com.muyeon.domain.repository.CastingMaterialRepository
 class CastingMaterialUseCase(private val repo: CastingMaterialRepository) {
     suspend fun access() = repo.access()
     suspend fun list(kind: CastingMaterialKind) = repo.list(kind)
+    suspend fun delete(id: Long) = repo.delete(id)
 
     suspend fun submit(kind: CastingMaterialKind, images: List<String>, instagram: String, link: String): ApiResult<Unit> {
         if (images.isEmpty()) return ApiResult.Error(IllegalArgumentException("images"), NO_IMAGES)

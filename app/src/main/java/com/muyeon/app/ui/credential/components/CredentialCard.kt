@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.muyeon.app.R
 import com.muyeon.app.ui.components.RemoteImage
 import com.muyeon.app.ui.credential.PickedDoc
+import com.muyeon.app.ui.format.KstDates
 import com.muyeon.app.ui.theme.AppColors
 import com.muyeon.app.ui.theme.AppTypography
 import com.muyeon.app.ui.theme.Dimensions
@@ -49,11 +50,13 @@ fun CredentialCard(
     onRemove: (Int) -> Unit,
     onCancel: () -> Unit,
     onSubmit: () -> Unit,
+    onWithdraw: () -> Unit,
 ) {
     val (statusText, statusColor) = when (item.status) {
         "PENDING" -> R.string.credential_status_pending to AppColors.Primary
         "APPROVED" -> R.string.credential_status_approved to AppColors.Positive
         "REJECTED" -> R.string.credential_status_rejected to AppColors.Danger
+        "WITHDRAWN" -> R.string.credential_status_withdrawn to AppColors.TextSub
         else -> R.string.credential_status_none to AppColors.TextHint
     }
     Column(
@@ -62,7 +65,9 @@ fun CredentialCard(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(item.label, style = AppTypography.Section16, color = AppColors.TextHead, modifier = Modifier.weight(1f))
-            Text(stringResource(statusText), style = AppTypography.Sub13SemiBold, color = statusColor)
+            // ★ 11-10 철회한 항목은 '철회됨 · 날짜'.
+            val date = KstDates.dot(item.withdrawnAt).takeIf { item.status == "WITHDRAWN" && it.isNotEmpty() }
+            Text(date?.let { stringResource(R.string.credential_withdrawn_at, it) } ?: stringResource(statusText), style = AppTypography.Sub13SemiBold, color = statusColor)
         }
         item.desc?.let { Text(it, style = AppTypography.Sub13, color = AppColors.TextSub) }
         item.docs?.let { Text(it, style = AppTypography.Sub13, color = AppColors.TextSub) }
@@ -73,9 +78,10 @@ fun CredentialCard(
         if (item.status == "REJECTED") item.memo?.let { Text(stringResource(R.string.credential_reject_reason, it), style = AppTypography.Sub13, color = AppColors.Danger) }
         if (item.canSubmit && !editing) {
             OutlinedButton(onClick = onStart, shape = CircleShape, modifier = Modifier.fillMaxWidth().padding(top = Dimensions.spacingS)) {
-                Text(stringResource(if (item.status == "REJECTED") R.string.credential_resubmit else R.string.credential_submit_docs), style = AppTypography.Body14SemiBold, color = AppColors.TextBody)
+                Text(stringResource(if (item.status == "REJECTED" || item.status == "WITHDRAWN") R.string.credential_resubmit else R.string.credential_submit_docs), style = AppTypography.Body14SemiBold, color = AppColors.TextBody)
             }
         }
+        if (item.canWithdraw && !editing) CredentialWithdrawAction(busy, onWithdraw)
         if (editing) {
             Text(stringResource(R.string.credential_notice), style = AppTypography.Sub13, color = AppColors.TextSub, modifier = Modifier.padding(top = Dimensions.spacingS))
             FlowRow(Modifier.padding(top = Dimensions.spacingS), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

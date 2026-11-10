@@ -29,9 +29,16 @@ data class CastingMaterialsUiState(
     /** 빨간 안내(웹 msg) — 업로드·등록 실패. */
     val message: String? = null,
     val items: List<CastingMaterialBatch> = emptyList(),
+    /** 지우는 중인 묶음 id. */
+    val deleting: Long? = null,
 )
 
-sealed interface CastingMaterialsEvent { data object Submitted : CastingMaterialsEvent }
+sealed interface CastingMaterialsEvent {
+    data object Submitted : CastingMaterialsEvent
+    /** ★ 11-10 지웠다 — [kept] 개의 공고·공연은 남아 있다. */
+    data class Deleted(val kept: Int) : CastingMaterialsEvent
+    data class DeleteFailed(val message: String) : CastingMaterialsEvent
+}
 
 /**
  * ★ 2026-11-08 묶음 2 — 캐스팅·공연 자료 업로드(웹 pages/muyeon/my/CastingMaterials.js, kind=CASTING|PERFORMANCE).
@@ -79,6 +86,24 @@ class CastingMaterialsViewModel(val kind: CastingMaterialKind, private val useCa
     fun addImages(urls: List<String>) = _state.update { it.copy(images = (it.images + urls).take(CastingMaterialUseCase.MAX_IMAGES)) }
     fun removeImage(i: Int) = _state.update { it.copy(images = it.images.filterIndexed { idx, _ -> idx != i }) }
     fun showMessage(m: String?) = _state.update { it.copy(message = m) }
+
+    /** ★ 11-10 묶음 지우기 — 성공이면 목록에서 뺀다. 실패(처리 중 409 등)는 서버 문구 그대로. */
+    fun delete(id: Long) {
+        if (_state.value.deleting != null) return
+        _state.update { it.copy(deleting = id) }
+        viewModelScope.launch {
+            when (val r = useCase.delete(id)) {
+                is ApiResult.Success -> {
+                    _state.update { s -> s.copy(deleting = null, items = s.items.filterNot { it.id == id }) }
+                    _events.tryEmit(CastingMaterialsEvent.Deleted(r.data.kept.size))
+                }
+                is ApiResult.Error -> {
+                    _state.update { it.copy(deleting = null) }
+                    _events.tryEmit(CastingMaterialsEvent.DeleteFailed(r.message))
+                }
+            }
+        }
+    }
 
     fun submit(failText: String) {
         val s = _state.value

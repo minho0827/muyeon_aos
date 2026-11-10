@@ -30,6 +30,9 @@ import com.muyeon.app.ui.format.KstDates
 import com.muyeon.app.ui.quote.QuoteFull
 import com.muyeon.app.ui.quote.QuoteRespondSheet
 import com.muyeon.app.ui.quote.QuoteUi
+import com.muyeon.app.ui.quote.owner.QuoteResponseDraft
+import com.muyeon.app.ui.quote.owner.QuoteResponseOwnerActions
+import com.muyeon.app.ui.quote.owner.canChangeResponse
 import com.muyeon.app.ui.quote.respond.components.QuotePublicCta
 import com.muyeon.app.ui.quote.respond.components.QuoteRequestDetailSection
 import com.muyeon.app.ui.quote.respond.components.QuoteRequestSummaryCard
@@ -70,6 +73,7 @@ fun QuoteRespondScreen(state: QuoteRespondState, actions: QuoteRespondActions) {
         state.toast?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show(); state.toast = null }
     }
     val phase = state.phase
+    val reload = rememberLaunch { state.load() }
     val title = stringResource(if (phase is QuoteRespondPhase.Sent) R.string.quote_respond_title_sent else R.string.quote_respond_title)
 
     Column(Modifier.fillMaxSize().background(AppColors.Surface).navigationBarsPadding()) {
@@ -89,6 +93,16 @@ fun QuoteRespondScreen(state: QuoteRespondState, actions: QuoteRespondActions) {
                     Section {
                         Text(stringResource(R.string.quote_respond_section_sent), style = AppTypography.Section16, color = AppColors.TextHead)
                         QuoteSentResponseCard(phase.mine)
+                        // ★ 11-10 보낸 상태 · 요청이 열려 있으면 [수정][철회] — 바뀌면 다시 읽는다(철회면 다시 보내기 화면으로).
+                        if (canChangeResponse(phase.mine.status, phase.detail.quote.status == "OPEN" && !phase.detail.expired)) {
+                            QuoteResponseOwnerActions(
+                                quoteId = phase.detail.quote.id,
+                                responseId = phase.mine.id,
+                                categoryLabel = QuoteUi.categoryLabel(phase.detail.quote.categoryId),
+                                sent = phase.mine.draft(),
+                                onChanged = { reload() },
+                            )
+                        }
                     }
                     QuoteRequestDetailSection(phase.detail.quote, Modifier.padding(horizontal = Dimensions.gutter), onOpenPhoto = actions.onOpenPhoto)
                     QuoteRespondButtons(
@@ -101,6 +115,7 @@ fun QuoteRespondScreen(state: QuoteRespondState, actions: QuoteRespondActions) {
                 }
                 is QuoteRespondPhase.Request -> RespondPage {
                     Summary(phase.detail.quote)
+                    phase.withdrawn?.let { WithdrawnSection(it) }
                     QuoteRequestDetailSection(phase.detail.quote, Modifier.padding(horizontal = Dimensions.gutter), onOpenPhoto = actions.onOpenPhoto)
                     QuoteRespondButtons(
                         listOf(SheetAction(stringResource(R.string.quote_respond_send), true) { state.composing = true }),
@@ -127,6 +142,17 @@ fun QuoteRespondScreen(state: QuoteRespondState, actions: QuoteRespondActions) {
         )
     }
 }
+
+/** 전에 보냈다가 철회한 제안 — 카드 + '다시 보낼 수 있어요'. */
+@Composable
+private fun WithdrawnSection(withdrawn: MyQuoteResponse) = Section {
+    Text(stringResource(R.string.quote_owner_resend_title), style = AppTypography.Section16, color = AppColors.TextHead)
+    QuoteSentResponseCard(withdrawn)
+    Text(stringResource(R.string.quote_owner_resend_note), style = AppTypography.Sub13, color = AppColors.TextSub)
+}
+
+/** 고치기 시트를 보낸 값으로 채운다. */
+private fun MyQuoteResponse.draft() = QuoteResponseDraft.of(priceAmount, priceUnit, paymentMode, depositAmount, message)
 
 /** 공개 상세 — 요약(요청일 · 받은 견적 수) · 요청 내용(사진은 개수만) · 유도 박스 · 가입/전환/유형 추가 · 둘러보기. */
 @Composable

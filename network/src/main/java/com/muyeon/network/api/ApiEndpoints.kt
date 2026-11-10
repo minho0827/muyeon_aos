@@ -173,6 +173,8 @@ object ApiEndpoints {
     object Credentials {
         const val MINE = "$API/me/credentials"                 // GET → { identity:{verified}, unsortedPending, items:[…] }
         const val SUBMIT = "$API/me/credentials/{kind}"        // POST { keys } → 같은 모양
+        const val WITHDRAW = "$API/me/credentials/{kind}/withdraw"            // ★ 11-10 POST { reason? } → 같은 모양
+        const val WITHDRAW_BY_ID = "$API/me/credentials/{kind}/{id}/withdraw" // ★ 11-10 신청 하나
         const val UPLOAD_DOCUMENT = "$API/uploads/document"    // POST multipart file(이미지·PDF) → { key }
     }
 
@@ -217,6 +219,7 @@ object ApiEndpoints {
     /** ★ 2026-11-08 묶음 2 — 캐스팅·공연 자료 업로드(웹 my/CastingMaterials.js) — casting-materials.controller.ts. */
     object CastingMaterial {
         const val LIST = "$API/casting-materials"           // GET ?kind=CASTING|PERFORMANCE → { items } · POST { kind, imageUrls, instagramUrl?, linkUrl? }
+        const val ONE = "$API/casting-materials/{id}"       // ★ 11-10 DELETE → { ok, id, keptCreated }(만든 공고·공연은 남는다, 처리 중 409)
     }
 
     /**

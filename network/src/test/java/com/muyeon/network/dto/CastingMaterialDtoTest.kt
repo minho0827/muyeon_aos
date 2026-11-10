@@ -1,5 +1,6 @@
 package com.muyeon.network.dto
 
+import com.muyeon.network.dto.castingmaterial.CastingMaterialDeleteDto
 import com.muyeon.network.dto.castingmaterial.CastingMaterialListDto
 import com.squareup.moshi.Moshi
 import org.junit.Assert.assertEquals
@@ -23,5 +24,15 @@ class CastingMaterialDtoTest {
         assertEquals(1, items[0].skipped[0].image)
         assertNull(items[0].linkUrl)
         assertTrue(items[1].processing)
+    }
+
+    @Test fun `지우기 — 남은 공고·공연 · id 없으면 부른 id`() {
+        val del = Moshi.Builder().build().adapter(CastingMaterialDeleteDto::class.java)
+        val d = del.fromJson("""{"ok":true,"id":9,"keptCreated":[{"castingId":11,"title":"지젤"},{"performanceId":5,"title":"공연"}]}""")!!.toDomain(1)
+        assertEquals(9L, d.id)
+        assertEquals(listOf("/casting/11", "/performance/5"), d.kept.map { it.path })
+        val empty = del.fromJson("""{"ok":true}""")!!.toDomain(7)
+        assertEquals(7L, empty.id)
+        assertTrue(empty.kept.isEmpty())
     }
 }

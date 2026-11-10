@@ -24,5 +24,8 @@ data class CastingMaterialCreated(val title: String, val castingId: Long?, val p
     val path: String? get() = performanceId?.let { "/performance/$it" } ?: castingId?.let { "/casting/$it" }
 }
 
+/** ★ 2026-11-10 지운 묶음 — [kept] 는 그대로 남은 공고·공연. */
+data class CastingMaterialDeleted(val id: Long, val kept: List<CastingMaterialCreated>)
+
 /** 건너뛴 사진 — [image] 는 0부터 센 사진 번호. */
 data class CastingMaterialSkipped(val title: String?, val image: Int?, val reason: String?)

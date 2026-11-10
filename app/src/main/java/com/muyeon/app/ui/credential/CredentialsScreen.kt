@@ -76,6 +76,7 @@ fun CredentialsScreen(onBack: () -> Unit, onProfileEdit: () -> Unit, viewModel: 
                         onAdd = { pick.launch(arrayOf("image/*", PDF)) },
                         onRemove = viewModel::removeFile,
                         onCancel = viewModel::cancelEdit,
+                        onWithdraw = { viewModel.withdraw(it) },
                         onSubmit = {
                             viewModel.setBusy(true)
                             scope.launch {

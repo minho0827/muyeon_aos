@@ -169,9 +169,13 @@ data class QuoteResponseItem(
     val priceAmount: Int?,        // 구조화 금액(원) — 정렬/표시
     val priceUnit: String?,       // PER_SESSION | PER_MONTH | TOTAL
     val message: String?,
-    val status: String?,          // SENT | ACCEPTED | REJECTED
+    val status: String?,          // SENT | ACCEPTED | REJECTED | WITHDRAWN(강사가 철회)
     val createdAt: String?,
     val responder: QuotePro?,
+    // ★ 2026-11-10 보낸 제안 고치기·철회
+    val editedAt: String? = null,
+    val withdrawnAt: String? = null,
+    val withdrawReason: String? = null,
 ) {
     companion object {
         fun from(o: JSONObject) = QuoteResponseItem(
@@ -183,6 +187,9 @@ data class QuoteResponseItem(
             status = o.stringOrNull("status"),
             createdAt = o.stringOrNull("createdAt"),
             responder = QuotePro.from(o.optJSONObject("responder")),
+            editedAt = o.stringOrNull("editedAt"),
+            withdrawnAt = o.stringOrNull("withdrawnAt"),
+            withdrawReason = o.stringOrNull("withdrawReason"),
         )
     }
 }
@@ -281,13 +288,19 @@ data class SentQuoteItem(
     val priceAmount: Int?,
     val priceUnit: String?,
     val message: String?,
-    val status: String?,          // 내 응답: SENT | ACCEPTED | REJECTED
+    val status: String?,          // 내 응답: SENT | ACCEPTED | REJECTED | WITHDRAWN(내가 철회)
     val chatRoomId: Int?,
     val createdAt: String?,
     val categoryId: String?,
     val region: String?,
     val quoteStatus: String?,     // 요청 상태: OPEN | MATCHED | EXPIRED | CANCELED
     val customer: QuoteCustomer?,
+    // ★ 2026-11-10 보낸 제안 고치기·철회 — 고치기 시트를 보낸 값으로 채운다.
+    val paymentMode: String? = null,
+    val depositAmount: Int? = null,
+    val editedAt: String? = null,
+    val withdrawnAt: String? = null,
+    val withdrawReason: String? = null,
 ) {
     companion object {
         fun from(o: JSONObject) = SentQuoteItem(
@@ -298,6 +311,9 @@ data class SentQuoteItem(
             createdAt = o.stringOrNull("createdAt"), categoryId = o.stringOrNull("categoryId"),
             region = o.stringOrNull("region"), quoteStatus = o.stringOrNull("quoteStatus"),
             customer = QuoteCustomer.from(o.optJSONObject("customer")),
+            paymentMode = o.stringOrNull("paymentMode"), depositAmount = o.intOrNull("depositAmount"),
+            editedAt = o.stringOrNull("editedAt"), withdrawnAt = o.stringOrNull("withdrawnAt"),
+            withdrawReason = o.stringOrNull("withdrawReason"),
         )
     }
 }

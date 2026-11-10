@@ -20,6 +20,8 @@ import com.muyeon.app.R
 import com.muyeon.app.ui.components.LevelBadge
 import com.muyeon.app.ui.format.KstDates
 import com.muyeon.app.ui.quote.QuoteUi
+import com.muyeon.app.ui.quote.owner.QuoteResponseMark
+import com.muyeon.app.ui.quote.owner.QuoteResponseStatusBadge
 import com.muyeon.app.ui.quote.respond.MyQuoteResponse
 import com.muyeon.app.ui.quote.respond.MyResponseBadge
 import com.muyeon.app.ui.theme.AppColors
@@ -35,16 +37,21 @@ import java.util.Locale
 fun QuoteSentResponseCard(mine: MyQuoteResponse, modifier: Modifier = Modifier) {
     val priceText = QuoteUi.priceText(mine.priceAmount, mine.priceUnit, mine.price)
     val memo = mine.price?.takeIf { it.isNotBlank() && it != priceText }
-    val badge = MyResponseBadge.of(mine.status)
+    val mark = QuoteResponseMark.of(mine.status, mine.editedAt, mine.withdrawnAt, mine.withdrawReason)
     val shape = RoundedCornerShape(Dimensions.cardRadius)
     Column(
         modifier.fillMaxWidth().background(AppColors.Surface, shape).border(1.dp, AppColors.Divider, shape).padding(Dimensions.spacingL),
         verticalArrangement = Arrangement.spacedBy(CARD_GAP),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            LevelBadge(stringResource(badge.label), badge.level)
+            HeadBadge(mine, mark)
             Spacer(Modifier.weight(1f))
             Text(KstDates.dotTime(mine.createdAt), style = AppTypography.Caption12, color = AppColors.TextSub)
+        }
+        // ★ 11-10 고친 제안 — '수정됨 · 시각'. 철회 사유는 머리 배지 아래.
+        if (mark is QuoteResponseMark.Edited) QuoteResponseStatusBadge(mark)
+        (mark as? QuoteResponseMark.Withdrawn)?.reason?.let {
+            Text(stringResource(R.string.quote_owner_withdraw_reason, it), style = AppTypography.Sub13, color = AppColors.TextSub)
         }
         Text(priceText, style = AppTypography.Title18, color = AppColors.TextHead)
         if (mine.paymentMode == "DEPOSIT" && mine.depositAmount > 0) {
@@ -57,6 +64,13 @@ fun QuoteSentResponseCard(mine: MyQuoteResponse, modifier: Modifier = Modifier) 
             Text(message, style = AppTypography.Body14, color = AppColors.TextBody, modifier = Modifier.padding(top = Dimensions.spacingXS))
         }
     }
+}
+
+/** 머리 배지 — 철회했으면 '철회됨 · 시각', 아니면 상태 배지. */
+@Composable
+private fun HeadBadge(mine: MyQuoteResponse, mark: QuoteResponseMark) {
+    if (mark is QuoteResponseMark.Withdrawn) QuoteResponseStatusBadge(mark)
+    else MyResponseBadge.of(mine.status).let { LevelBadge(stringResource(it.label), it.level) }
 }
 
 /** 웹 flex-col gap 0.6rem. */

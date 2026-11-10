@@ -14,7 +14,8 @@ sealed interface QuoteRespondPhase {
     data class Done(val detail: QuoteRespondDetail) : QuoteRespondPhase
     data class Sent(val detail: QuoteRespondDetail, val mine: MyQuoteResponse) : QuoteRespondPhase
     data class Closed(val detail: QuoteRespondDetail, val reason: QuoteRespondClosed) : QuoteRespondPhase
-    data class Request(val detail: QuoteRespondDetail) : QuoteRespondPhase
+    /** [withdrawn] = 전에 보냈다가 철회한 제안(있으면 위에 보여 주고 다시 보낼 수 있다). */
+    data class Request(val detail: QuoteRespondDetail, val withdrawn: MyQuoteResponse? = null) : QuoteRespondPhase
 }
 
 /**
@@ -65,13 +66,15 @@ class QuoteRespondState(
     private fun phaseOf(d: QuoteRespondDetail?): QuoteRespondPhase {
         if (d == null) return QuoteRespondPhase.Gone(QuoteRespondGone.DELETED)
         if (d.quote.status == "CANCELED") return QuoteRespondPhase.Gone(QuoteRespondGone.CANCELED)
-        d.myResponse?.let { return QuoteRespondPhase.Sent(d, it) }
+        // ★ 11-10 철회한 제안은 '보냄'이 아니다 — 열린 요청이면 다시 보내기로.
+        val mine = d.myResponse
+        if (mine != null && mine.status != com.muyeon.app.ui.quote.owner.WITHDRAWN) return QuoteRespondPhase.Sent(d, mine)
         val closed = when {
             d.quote.status == "MATCHED" -> QuoteRespondClosed.MATCHED
             d.expired || d.quote.status == "EXPIRED" || d.quote.status == "CLOSED" -> QuoteRespondClosed.EXPIRED
             else -> null
         }
-        return closed?.let { QuoteRespondPhase.Closed(d, it) } ?: QuoteRespondPhase.Request(d)
+        return closed?.let { QuoteRespondPhase.Closed(d, it) } ?: QuoteRespondPhase.Request(d, mine)
     }
 
     /**

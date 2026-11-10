@@ -6,6 +6,7 @@ import com.muyeon.app.navigation.AppResults
 import com.muyeon.app.result.ResultKeys
 import com.muyeon.domain.common.ApiResult
 import com.muyeon.domain.model.credential.CredentialDocument
+import com.muyeon.domain.model.credential.CredentialItem
 import com.muyeon.domain.model.credential.MyCredentials
 import com.muyeon.domain.usecase.credential.CredentialsUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -72,12 +73,28 @@ class CredentialsViewModel(private val credentials: CredentialsUseCase) : ViewMo
         }
     }
 
+    /** ★ 11-10 신청 철회 — 서류는 서버가 지우고 배지도 빠진다. 성공이면 받은 현황으로 바꾼다. */
+    fun withdraw(item: CredentialItem) {
+        if (_state.value.busy) return
+        _state.update { it.copy(busy = true) }
+        viewModelScope.launch {
+            when (val r = credentials.withdraw(item.kind, item.id)) {
+                is ApiResult.Success -> {
+                    AppResults.publish(setOf(ResultKeys.PROFILE))
+                    _state.update { it.copy(data = r.data, busy = false, message = WITHDRAWN) }
+                }
+                is ApiResult.Error -> _state.update { it.copy(busy = false, message = r.message) }
+            }
+        }
+    }
+
     fun readFailed() = _state.update { it.copy(busy = false, message = READ_FAIL) }
     fun setBusy(b: Boolean) = _state.update { it.copy(busy = b) }
     fun dismissMessage() = _state.update { it.copy(message = null) }
 
     companion object {
         const val SUBMITTED = "서류가 등록됐어요. 확인이 끝나면 알림으로 알려 드릴게요(보통 1영업일)."
+        const val WITHDRAWN = "철회했어요. 필요하면 다시 등록할 수 있어요."
         const val READ_FAIL = "파일을 읽지 못했어요. 10MB 이하 사진이나 PDF 로 다시 골라 주세요."
     }
 }

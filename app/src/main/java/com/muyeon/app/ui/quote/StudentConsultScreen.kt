@@ -76,6 +76,7 @@ private fun proposalItem(item: SentQuoteItem): ConsultItem {
     val talking = item.chatRoomId != null || item.status == "ACCEPTED"
     val badge = when {
         item.status == "ACCEPTED" -> "채택됨" to MuyeonColors.green
+        item.status == "WITHDRAWN" -> "철회됨" to MuyeonColors.textSub   // ★ 11-10 내가 철회
         closed -> "마감" to MuyeonColors.textSub
         item.chatRoomId != null -> "상담 중" to MuyeonColors.green
         else -> "제안 보냄" to MuyeonColors.primary

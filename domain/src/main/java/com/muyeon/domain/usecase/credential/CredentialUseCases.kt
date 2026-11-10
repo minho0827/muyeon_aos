@@ -9,6 +9,9 @@ import com.muyeon.domain.repository.CredentialRepository
 class CredentialsUseCase(private val repo: CredentialRepository) {
     suspend fun load() = repo.mine()
 
+    /** 신청 철회 — 확인 중·확인 완료만(아니면 서버 409 문구 그대로). */
+    suspend fun withdraw(kind: String, id: Long?, reason: String? = null) = repo.withdraw(kind, id, reason)
+
     suspend fun submit(kind: String, docs: List<CredentialDocument>): ApiResult<MyCredentials> {
         if (docs.isEmpty()) return ApiResult.Error(IllegalArgumentException("docs"), "서류를 한 장 이상 골라 주세요.")
         val keys = ArrayList<String>()

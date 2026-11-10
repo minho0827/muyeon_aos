@@ -2,6 +2,7 @@ package com.muyeon.network.dto.castingmaterial
 
 import com.muyeon.domain.model.castingmaterial.CastingMaterialBatch
 import com.muyeon.domain.model.castingmaterial.CastingMaterialCreated
+import com.muyeon.domain.model.castingmaterial.CastingMaterialDeleted
 import com.muyeon.domain.model.castingmaterial.CastingMaterialSkipped
 import com.squareup.moshi.JsonClass
 
@@ -33,6 +34,15 @@ data class CastingMaterialBatchDto(
 
 @JsonClass(generateAdapter = true)
 data class CastingMaterialListDto(val items: List<CastingMaterialBatchDto>? = null)
+
+/** ★ 2026-11-10 DELETE /casting-materials/:id — keptCreated = 이 묶음으로 만든(지우지 않고 남는) 공고·공연. */
+@JsonClass(generateAdapter = true)
+data class CastingMaterialDeleteDto(val ok: Boolean? = null, val id: Long? = null, val keptCreated: List<CastingMaterialCreatedDto>? = null) {
+    fun toDomain(fallbackId: Long) = CastingMaterialDeleted(
+        id ?: fallbackId,
+        keptCreated.orEmpty().map { c -> CastingMaterialCreated(c.title.orEmpty(), c.castingId, c.performanceId) },
+    )
+}
 
 /** POST /casting-materials — 빈 링크는 null(Moshi 가 빼고 보낸다). */
 @JsonClass(generateAdapter = true)

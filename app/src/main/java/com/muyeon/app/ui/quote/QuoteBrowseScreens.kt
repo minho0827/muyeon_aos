@@ -840,84 +840,10 @@ internal fun QuoteRespondSheet(
                     )
                 }
             }
-            Text(
-                "회당 금액 (원)",
-                fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
-                lineHeight = 16.sp, color = MuyeonColors.textSub,
-            )
-            OutlinedTextField(
-                value = amountText,
-                onValueChange = { v -> amountText = v.filter { it.isDigit() } },
-                placeholder = { Text("예: 60000 (비우면 협의)", fontFamily = customFontFamily, fontSize = 14.sp) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-
+            QuoteAmountField(amountText) { amountText = it }
             // 예약금 — 한도는 관리자 '환불 규정'(서버 quotes.service 도 같은 값으로 검사)
-            Row(
-                Modifier.fillMaxWidth().clickable { takesDeposit = !takesDeposit },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    "예약금 결제 후 확정",
-                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 15.sp,
-                    lineHeight = 18.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
-                )
-                Switch(
-                    checked = takesDeposit, onCheckedChange = { takesDeposit = it },
-                    colors = SwitchDefaults.colors(checkedTrackColor = MuyeonColors.primary),
-                )
-            }
-            if (takesDeposit) {
-                Row(
-                    Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    refundPolicy.depositChoices.forEach { v ->
-                        val on = depositAmount == v
-                        Text(
-                            "${String.format(java.util.Locale.KOREA, "%,d", v)}원",
-                            fontFamily = customFontFamily,
-                            fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
-                            fontSize = 14.sp, lineHeight = 17.sp,
-                            color = if (on) Color.White else MuyeonColors.textHead,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (on) MuyeonColors.primary else Color(0xFFF2F2F7))
-                                .clickable { depositAmount = v }
-                                .padding(horizontal = 14.dp, vertical = 9.dp),
-                        )
-                    }
-                }
-                Text(
-                    refundPolicy.deposit.hint,
-                    fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp,
-                    color = MuyeonColors.secondary,
-                )
-                depositProblem?.let {
-                    Text(
-                        it,
-                        fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp,
-                        color = Color.Red,
-                    )
-                }
-            }
-
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "견적 메시지",
-                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
-                    lineHeight = 16.sp, color = MuyeonColors.textSub, modifier = Modifier.weight(1f),
-                )
-                // 예시 시트 — 열고 닫아도 쓰던 메시지(message)는 그대로.
-                QuoteMessageExamplesButton()
-            }
-            OutlinedTextField(
-                value = message,
-                onValueChange = { message = it },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
-            )
+            QuoteDepositField(takesDeposit, { takesDeposit = it }, depositAmount, { depositAmount = it }, refundPolicy, depositProblem)
+            QuoteMessageField(message) { message = it }
 
             // 내 프로필 첨부 — 켜면 견적 카드에 기본 이력서(강사) / 학원 기본정보(학원)가 붙는다.
             Row(

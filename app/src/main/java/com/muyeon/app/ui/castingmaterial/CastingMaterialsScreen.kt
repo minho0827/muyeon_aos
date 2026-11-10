@@ -42,7 +42,7 @@ import com.muyeon.domain.usecase.castingmaterial.CastingMaterialUseCase
 /**
  * ★ 2026-11-08 묶음 2 — 캐스팅·공연 자료 업로드(웹 /my/castingMaterials · /my/performanceMaterials, 무용연 운영 계정 전용).
  *   안내 · 캡처 사진(최대 20, 필수 — RequiredForm) · 인스타그램 링크(선택) · 그 밖의 링크(선택) · [AI로 … 등록하기] · 올린 자료 목록.
- *   웹처럼 수정·삭제는 없다(올리면 AI 가 바로 공고·공연으로 공개). 등록된 글은 누르면 그 상세(앱 경로표).
+ *   수정은 없다(올리면 AI 가 바로 공고·공연으로 공개). ★ 11-10 묶음 [삭제] — 만든 글은 남는다. 등록된 글은 누르면 그 상세(앱 경로표).
  */
 @Composable
 fun CastingMaterialsScreen(viewModel: CastingMaterialsViewModel, onBack: () -> Unit, onOpenPath: (String) -> Unit) {
@@ -54,7 +54,15 @@ fun CastingMaterialsScreen(viewModel: CastingMaterialsViewModel, onBack: () -> U
     val failText = stringResource(R.string.casting_mat_failed)
     val uploadFail = stringResource(R.string.casting_mat_upload_failed)
     LaunchedEffect(viewModel) {
-        viewModel.events.collect { if (it == CastingMaterialsEvent.Submitted) Toast.makeText(context, doneText, Toast.LENGTH_LONG).show() }
+        viewModel.events.collect { e ->
+            val text = when (e) {
+                CastingMaterialsEvent.Submitted -> doneText
+                is CastingMaterialsEvent.Deleted ->
+                    if (e.kept > 0) context.getString(R.string.casting_mat_deleted_kept, e.kept) else context.getString(R.string.casting_mat_deleted)
+                is CastingMaterialsEvent.DeleteFailed -> e.message
+            }
+            Toast.makeText(context, text, Toast.LENGTH_LONG).show()
+        }
     }
     val pick = rememberMultiImageUpload(
         max = CastingMaterialUseCase.MAX_IMAGES,
@@ -111,7 +119,7 @@ fun CastingMaterialsScreen(viewModel: CastingMaterialsViewModel, onBack: () -> U
                     ReadSectionTitle(stringResource(R.string.casting_mat_list_title))
                     if (s.items.isEmpty()) Text(stringResource(R.string.casting_mat_list_empty), style = AppTypography.Body14, color = AppColors.TextSub)
                     else Column(verticalArrangement = Arrangement.spacedBy(Dimensions.spacingM)) {
-                        s.items.forEach { CastingMaterialBatchRow(it, onOpenPath) }
+                        s.items.forEach { b -> CastingMaterialBatchRow(b, onOpenPath, deleting = s.deleting != null) { viewModel.delete(b.id) } }
                     }
                 }
             }

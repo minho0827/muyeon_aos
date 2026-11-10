@@ -4,6 +4,7 @@ import com.muyeon.data.common.safeApiCall
 import com.muyeon.data.common.safeUnitCall
 import com.muyeon.domain.common.ApiResult
 import com.muyeon.domain.model.castingmaterial.CastingMaterialBatch
+import com.muyeon.domain.model.castingmaterial.CastingMaterialDeleted
 import com.muyeon.domain.model.castingmaterial.CastingMaterialKind
 import com.muyeon.domain.repository.CastingMaterialRepository
 import com.muyeon.network.api.CastingMaterialApi
@@ -15,6 +16,8 @@ class CastingMaterialRepositoryImpl(private val api: CastingMaterialApi, private
     override suspend fun access(): ApiResult<Boolean> = safeApiCall(moshi) { api.access() }.map { it.allowed == true }
     override suspend fun list(kind: CastingMaterialKind): ApiResult<List<CastingMaterialBatch>> =
         safeApiCall(moshi) { api.list(kind.code) }.map { d -> d.items.orEmpty().mapNotNull { it.toDomain() } }
+    override suspend fun delete(id: Long): ApiResult<CastingMaterialDeleted> =
+        safeApiCall(moshi) { api.delete(id) }.map { it.toDomain(id) }
     override suspend fun create(kind: CastingMaterialKind, imageUrls: List<String>, instagramUrl: String?, linkUrl: String?): ApiResult<Unit> =
         safeUnitCall(moshi) { api.create(CreateCastingMaterialBody(kind.code, imageUrls, instagramUrl, linkUrl)) }
 }

@@ -21,6 +21,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
+import com.muyeon.app.ui.quote.owner.QuoteResponseDraft
+import com.muyeon.app.ui.quote.owner.QuoteResponseMark
+import com.muyeon.app.ui.quote.owner.QuoteResponseOwnerActions
+import com.muyeon.app.ui.quote.owner.QuoteResponseStatusBadge
+import com.muyeon.app.ui.quote.owner.QuoteResponseUpdate
+import com.muyeon.app.ui.quote.owner.canChangeResponse
 
 /**
  * '보낸 견적' 상세(강사·원장 관점) — iOS `SentQuoteDetailView.swift` 1:1.
@@ -36,12 +42,14 @@ fun SentQuoteDetailScreen(
     onOpenChat: (Int) -> Unit,
 ) {
     var request by remember { mutableStateOf<QuoteFull?>(null) }
+    // ★ 2026-11-10 고치기·철회하면 서버가 돌려준 값으로 이 화면만 바꾼다(목록은 돌아가면 다시 읽는다).
+    var current by remember(item) { mutableStateOf(item) }
 
     LaunchedEffect(item.quoteId) {
         api.getQuote(item.quoteId).onSuccess { request = it.quote }
     }
 
-    val (badgeText, badgeColor) = sentQuoteBadge(item)
+    val (badgeText, badgeColor) = sentQuoteBadge(current)
 
     Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
         QuoteNavBar(title = "보낸 제안", onBack = onBack)
@@ -49,9 +57,9 @@ fun SentQuoteDetailScreen(
             Modifier.verticalScroll(rememberScrollState()).padding(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            RequestSummaryCard(item, request)
-            MyQuoteCard(item, badgeText, badgeColor)
-            ChatSection(item, onOpenChat)
+            RequestSummaryCard(current, request)
+            MyQuoteCard(current, badgeText, badgeColor) { u -> current = current.applied(u) }
+            ChatSection(current, onOpenChat)
         }
     }
 }
@@ -101,7 +109,7 @@ private fun RequestSummaryCard(item: SentQuoteItem, request: QuoteFull?) {
 
 /** 내가 보낸 견적 — 금액 + 메시지 + 내 상태. */
 @Composable
-private fun MyQuoteCard(item: SentQuoteItem, badgeText: String, badgeColor: Color) {
+private fun MyQuoteCard(item: SentQuoteItem, badgeText: String, badgeColor: Color, onChanged: (QuoteResponseUpdate) -> Unit) {
     val msg = (item.message ?: "").trim()
     SentCard {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -124,6 +132,13 @@ private fun MyQuoteCard(item: SentQuoteItem, badgeText: String, badgeColor: Colo
             lineHeight = 24.sp, color = MuyeonColors.textHead,
             modifier = Modifier.padding(top = 12.dp),
         )
+        item.depositAmount?.takeIf { item.paymentMode == "DEPOSIT" && it > 0 }?.let { d ->
+            Text(
+                "예약금 ${String.format(java.util.Locale.KOREA, "%,d", d)}원",
+                fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 16.sp, color = MuyeonColors.textSub,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
         if (msg.isNotEmpty()) {
             Text(
                 msg,
@@ -132,8 +147,37 @@ private fun MyQuoteCard(item: SentQuoteItem, badgeText: String, badgeColor: Colo
                 modifier = Modifier.padding(top = 12.dp),
             )
         }
+        // ★ 2026-11-10 수정됨·철회됨 표시 + 보낸 상태·요청이 열려 있을 때만 [수정][철회].
+        QuoteResponseStatusBadge(
+            QuoteResponseMark.of(item.status, item.editedAt, item.withdrawnAt, item.withdrawReason),
+            Modifier.padding(top = 10.dp),
+        )
+        if (canChangeResponse(item.status, item.quoteStatus == "OPEN")) {
+            QuoteResponseOwnerActions(
+                quoteId = item.quoteId,
+                responseId = item.id,
+                categoryLabel = QuoteUi.categoryLabel(item.categoryId),
+                sent = QuoteResponseDraft.of(item.priceAmount, item.priceUnit, item.paymentMode, item.depositAmount, item.message),
+                onChanged = onChanged,
+                modifier = Modifier.padding(top = 14.dp),
+            )
+        }
     }
 }
+
+/** 서버가 돌려준 고친·철회한 제안을 목록 항목에 덮는다. 본문을 못 읽었으면(id 0) 그대로. */
+internal fun SentQuoteItem.applied(u: QuoteResponseUpdate): SentQuoteItem = if (u.id == 0) this else copy(
+    status = u.status ?: status,
+    priceAmount = u.priceAmount,
+    priceUnit = u.priceUnit,
+    price = u.price,
+    paymentMode = u.paymentMode ?: paymentMode,
+    depositAmount = u.depositAmount ?: depositAmount,
+    message = u.message ?: message,
+    editedAt = u.editedAt ?: editedAt,
+    withdrawnAt = u.withdrawnAt,
+    withdrawReason = u.withdrawReason,
+)
 
 /** 채팅 — 방이 이미 있으면 이어가기, 없으면 안내(채팅 시작은 고객 권한). */
 @Composable

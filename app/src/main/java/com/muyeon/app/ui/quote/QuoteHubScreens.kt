@@ -408,6 +408,7 @@ fun SentQuotesList(
 internal fun sentQuoteBadge(item: SentQuoteItem): Pair<String, androidx.compose.ui.graphics.Color> = when {
     item.status == "ACCEPTED" -> "채택됨" to MuyeonColors.green   // 대기중(primary)과 구분
     item.status == "REJECTED" -> "거절됨" to MuyeonColors.textSub
+    item.status == "WITHDRAWN" -> "철회됨" to MuyeonColors.textSub   // ★ 11-10 내가 철회(다시 보낼 수 있다)
     item.quoteStatus == "EXPIRED" || item.quoteStatus == "CANCELED" -> "마감" to MuyeonColors.textSub
     else -> "대기중" to MuyeonColors.primary
 }

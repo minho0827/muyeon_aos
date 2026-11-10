@@ -1,6 +1,7 @@
 package com.muyeon.network.api
 
 import com.muyeon.network.dto.credential.CredentialKeysBody
+import com.muyeon.network.dto.credential.CredentialWithdrawBody
 import com.muyeon.network.dto.credential.DocumentKeyDto
 import com.muyeon.network.dto.credential.MyCredentialsDto
 import okhttp3.MultipartBody
@@ -16,6 +17,9 @@ import retrofit2.http.Path
 interface CredentialApi {
     @GET(ApiEndpoints.Credentials.MINE) suspend fun mine(): Response<MyCredentialsDto>
     @POST(ApiEndpoints.Credentials.SUBMIT) suspend fun submit(@Path("kind") kind: String, @Body body: CredentialKeysBody): Response<MyCredentialsDto>
+    @POST(ApiEndpoints.Credentials.WITHDRAW) suspend fun withdraw(@Path("kind") kind: String, @Body body: CredentialWithdrawBody): Response<MyCredentialsDto>
+    @POST(ApiEndpoints.Credentials.WITHDRAW_BY_ID)
+    suspend fun withdrawById(@Path("kind") kind: String, @Path("id") id: Long, @Body body: CredentialWithdrawBody): Response<MyCredentialsDto>
 
     @Multipart
     @POST(ApiEndpoints.Credentials.UPLOAD_DOCUMENT)

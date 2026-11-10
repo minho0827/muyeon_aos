@@ -17,7 +17,7 @@ import org.json.JSONObject
 /** 내가 이 요청에 보낸 견적서 — GET /quotes/:id 의 responses 중 responderId == 나. */
 data class MyQuoteResponse(
     val id: Int,
-    val status: String?,          // SENT | ACCEPTED | REJECTED
+    val status: String?,          // SENT | ACCEPTED | REJECTED | WITHDRAWN(내가 철회 — 다시 보낼 수 있다)
     val priceAmount: Int?,
     val priceUnit: String?,
     val price: String?,           // 메모가 있으면 메모, 없으면 서버가 만든 금액 문자열
@@ -26,6 +26,10 @@ data class MyQuoteResponse(
     val message: String?,
     val chatRoomId: Int?,
     val createdAt: String?,
+    // ★ 2026-11-10 고치기·철회
+    val editedAt: String? = null,
+    val withdrawnAt: String? = null,
+    val withdrawReason: String? = null,
 ) {
     companion object {
         fun from(o: JSONObject) = MyQuoteResponse(
@@ -39,6 +43,9 @@ data class MyQuoteResponse(
             message = o.jStr("message"),
             chatRoomId = o.jInt("chatRoomId")?.takeIf { it > 0 },
             createdAt = o.jStr("createdAt"),
+            editedAt = o.jStr("editedAt"),
+            withdrawnAt = o.jStr("withdrawnAt"),
+            withdrawReason = o.jStr("withdrawReason"),
         )
     }
 }
@@ -88,9 +95,10 @@ enum class MyResponseBadge(@StringRes val label: Int, val level: com.muyeon.app.
     SENT(R.string.quote_respond_status_sent, com.muyeon.app.ui.theme.CategoryColors.Level.Middle),
     ACCEPTED(R.string.quote_respond_status_accepted, com.muyeon.app.ui.theme.CategoryColors.Level.Row),
     REJECTED(R.string.quote_respond_status_rejected, com.muyeon.app.ui.theme.CategoryColors.Level.VeryHigh),
+    WITHDRAWN(R.string.quote_owner_withdrawn_plain, com.muyeon.app.ui.theme.CategoryColors.Level.End),
     OTHER(R.string.quote_respond_status_default, com.muyeon.app.ui.theme.CategoryColors.Level.Middle);
 
     companion object {
-        fun of(status: String?) = when (status) { "SENT" -> SENT; "ACCEPTED" -> ACCEPTED; "REJECTED" -> REJECTED; else -> OTHER }
+        fun of(status: String?) = when (status) { "SENT" -> SENT; "ACCEPTED" -> ACCEPTED; "REJECTED" -> REJECTED; "WITHDRAWN" -> WITHDRAWN; else -> OTHER }
     }
 }

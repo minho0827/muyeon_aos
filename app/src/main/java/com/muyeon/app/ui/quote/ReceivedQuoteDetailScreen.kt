@@ -37,6 +37,10 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
+import com.muyeon.app.ui.quote.owner.QuoteResponseMark
+import com.muyeon.app.ui.quote.owner.QuoteResponseStatusBadge
+import com.muyeon.app.ui.quote.owner.WITHDRAWN
+import com.muyeon.app.ui.quote.owner.WithdrawnResponseNotice
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -107,6 +111,9 @@ fun ReceivedQuoteDetailScreen(
         responses.sortedWith(Comparator { a, b ->
             val aAcc = isAccepted(a); val bAcc = isAccepted(b)
             if (aAcc != bAcc) return@Comparator if (aAcc) -1 else 1
+            // ★ 11-10 강사가 철회한 제안은 맨 아래.
+            val aW = a.status == WITHDRAWN; val bW = b.status == WITHDRAWN
+            if (aW != bW) return@Comparator if (aW) 1 else -1
             when (sortMode) {
                 QuoteSortMode.CHEAPEST -> {
                     val pa = normalizedPrice(a); val pb = normalizedPrice(b)
@@ -442,6 +449,7 @@ private fun ResponseCard(
     val genres = (pro?.genres ?: emptyList()).take(3)
     val msg = (r.message ?: "").trim()
     val cornerText = if (accepted) "✓ 채택한 강사" else if (isClosed) "마감" else "서비스 견적"
+    val mark = QuoteResponseMark.of(r.status, r.editedAt, r.withdrawnAt, r.withdrawReason)
 
     QuoteCard(borderColor = if (isNew) MuyeonColors.primary else null) {
         // 카드 상단 — 상태 라벨 + NEW + 시간
@@ -455,6 +463,8 @@ private fun ResponseCard(
                 Spacer(Modifier.width(6.dp))
                 QuotePill("NEW", MuyeonColors.primary, filled = true)
             }
+            // ★ 11-10 수정됨 · 철회됨
+            QuoteResponseStatusBadge(mark, Modifier.padding(start = 6.dp))
             Spacer(Modifier.weight(1f))
             Text(
                 QuoteUi.relativeTime(r.createdAt),
@@ -494,8 +504,9 @@ private fun ResponseCard(
             }
         }
 
-        // 카드 액션 — 강사 프로필 / 채팅 / 채택
-        Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // 카드 액션 — 강사 프로필 / 채팅 / 채택. 철회한 제안은 채택·채팅 대신 안내(서버도 막는다).
+        if (mark is QuoteResponseMark.Withdrawn) WithdrawnResponseNotice(mark, Modifier.padding(top = 12.dp))
+        else Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (pro?.id != null) {
                 CardButton("강사프로필", filled = false, modifier = Modifier.weight(1f), onClick = onProfile)
             }
