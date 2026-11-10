@@ -42,6 +42,8 @@ class PostingActions internal constructor(
         private set
     private var deleteTarget by mutableStateOf<PostingRef?>(null)
     private var closeTarget by mutableStateOf<Pair<PostingRef, Int>?>(null)
+    /** 공연(CASTING) 마감 확인 — 미선정 안내가 없어 묻기만 하고 상태를 바꾼다. */
+    private var plainCloseTarget by mutableStateOf<PostingRef?>(null)
 
     private fun run(block: suspend () -> Unit) {
         if (busy) return
@@ -69,7 +71,8 @@ class PostingActions internal constructor(
 
     /** 마감하기 — 채용·대타는 대기 지원자 확인창부터. */
     fun requestClose(ref: PostingRef) {
-        if (ref.kind != "JOB" && ref.kind != "SUB") { setStatus(ref, "CLOSED"); return }
+        // ★ 11-10 공연은 바로 닫지 않고 한 번 묻는다(상세 화면 [마감]에서도 같은 동작).
+        if (ref.kind != "JOB" && ref.kind != "SUB") { plainCloseTarget = ref; return }
         run {
             api.pendingApplicantCount(ref.kind, ref.id)
                 .onSuccess { closeTarget = ref to it }
@@ -129,6 +132,15 @@ class PostingActions internal constructor(
                 confirmText = "마감하고 일괄 안내",
                 onConfirm = { closeTarget = null; confirmClose(target) },
                 onDismiss = { closeTarget = null },
+            )
+        }
+        plainCloseTarget?.let { target ->
+            QuoteDialog(
+                title = "이 공고를 마감할까요?",
+                message = "마감하면 더 이상 지원을 받지 않아요.",
+                confirmText = "마감",
+                onConfirm = { plainCloseTarget = null; setStatus(target, "CLOSED") },
+                onDismiss = { plainCloseTarget = null },
             )
         }
         message?.let { msg ->

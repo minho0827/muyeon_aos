@@ -95,6 +95,8 @@ class TransferActivity : ResultActivity() {
                     TransferDetailScreen(
                         api = api, id = id, onBack = { back() }, onEdit = { nav.navigate("editor/$it") },
                         onChatRoom = ::openChat, onChanged = { changed() }, onMessage = { message = it }, chatConsent = chatConsent,
+                        // 삭제 — 아래 목록에서도 바로 빼고 닫는다.
+                        onDeleted = { listState.items = listState.items.filter { it.id != id }; back() },
                         // 시작 화면(웹·로그인 후 다시 열기)으로 연 그 글에만 이어서 할 일을 넘긴다.
                         resumeAction = intent.getStringExtra(EXTRA_THEN)?.takeIf { it.isNotEmpty() && route == "detail" && id == startId },
                     )

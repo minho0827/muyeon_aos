@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.lesson
 
+import com.muyeon.app.util.runCatchingCancellable
+
 import com.muyeon.app.util.optStringOrNull
 
 import com.muyeon.app.BuildConfig
@@ -167,7 +169,7 @@ class LessonBrowseApi(private val token: String?) {
 
     data class FeedPage(val items: List<BrowseFeedItem>, val hasMore: Boolean, val nextCursor: String?)
 
-    suspend fun feedPage(filter: LessonBrowseFilter, cursor: String? = null): Result<FeedPage> = runCatching {
+    suspend fun feedPage(filter: LessonBrowseFilter, cursor: String? = null): Result<FeedPage> = runCatchingCancellable {
         val q = mutableListOf("limit=30")
         filter.genre?.let { q += "genre=" + URLEncoder.encode(it, "UTF-8") }
         filter.sidoCode?.let { q += "regionCode=" + URLEncoder.encode(it, "UTF-8") }
@@ -182,14 +184,14 @@ class LessonBrowseApi(private val token: String?) {
     }
 
     /** 상세. view=1 은 조회수 증가(첫 진입에만). */
-    suspend fun detail(id: Int, countView: Boolean): Result<LessonContentDetail> = runCatching {
+    suspend fun detail(id: Int, countView: Boolean): Result<LessonContentDetail> = runCatchingCancellable {
         val path = if (countView) "/lesson-products/$id?view=1" else "/lesson-products/$id"
         val body = get(path) ?: error("상세를 불러오지 못했어요.")
         LessonContentDetail.from(JSONObject(body.ifBlank { "{}" }))
     }
 
     /** 비슷한 콘텐츠 — 상세 하단 추천. */
-    suspend fun similar(id: Int): List<BrowseFeedItem> = runCatching {
+    suspend fun similar(id: Int): List<BrowseFeedItem> = runCatchingCancellable {
         val body = get("/lesson-products/$id/similar").orEmpty()
         val arr = JSONArray(body.ifBlank { "[]" })
         (0 until arr.length()).mapNotNull { arr.optJSONObject(it)?.let(BrowseFeedItem::from) }

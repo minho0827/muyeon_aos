@@ -54,6 +54,7 @@ import org.json.JSONObject
  * ★ 2026-11-08 공고 상세(보는 사람) — 채용(JOB)·대타(SUB). 웹 JobDetail·SubDetail 의 본문·지원하기.
  *   본문은 내 공고 관리 상세와 같은 부품(DetailHeader · JobPostingDetailContent · SubBody)을 쓴다.
  *   하단: [찜] [지원하기] → 이력서 고르기 → 지원(POST /{kind}/:id/apply). 이미 지원했으면 '지원한 공고예요'.
+ *   ★ 11-10 내 공고(authorId == 내 id)면 하단은 [PostingOwnerBar](삭제·마감·수정) — 둘 중 하나를 고르기만 한다.
  */
 @Composable
 fun PostingViewScreen(
@@ -64,6 +65,10 @@ fun PostingViewScreen(
     onBack: () -> Unit,
     onLogin: () -> Unit,
     onWriteResume: () -> Unit,
+    /** 작성자 [수정] — 대타는 대타 수정 폼, 채용은 채용 위저드(부모가 고른다). */
+    onEdit: () -> Unit = {},
+    /** 작성자 삭제 뒤 — 부모가 목록 결과 키를 싣고 닫는다. */
+    onDeleted: () -> Unit = onBack,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -85,6 +90,21 @@ fun PostingViewScreen(
             if (kind == "JOB") api.recordView(id)
         }
     }
+    suspend fun reload() { api.loadPosting(kind, id).onSuccess { detail = it } }
+    // 수정 화면(채용 위저드는 다른 Activity)에서 돌아오면 다시 읽는다 — 처음 한 번은 위 LaunchedEffect 가 읽었다.
+    var resumedOnce by remember { mutableStateOf(false) }
+    androidx.lifecycle.compose.LifecycleResumeEffect(kind, id) {
+        if (resumedOnce) scope.launch { reload() } else resumedOnce = true
+        onPauseOrDispose { }
+    }
+    // 작성자 동작 — 내 공고 관리와 같은 마감·삭제(확인창·서버 문구 그대로).
+    val myId = remember { com.muyeon.app.ui.common.NativeHttp(context).myUserId() }
+    val ownerActions = rememberPostingActions(api) { _, change ->
+        if (change == PostingChange.DELETED) {
+            Toast.makeText(context, R.string.owner_posting_deleted, Toast.LENGTH_SHORT).show()
+            onDeleted()
+        } else scope.launch { reload() }
+    }
 
     Column(Modifier.fillMaxSize().background(AppColors.Surface)) {
         MainTopBar(stringResource(if (kind == "SUB") R.string.tab_subs else R.string.recruit_job_detail), primary = false, onBack = onBack)
@@ -103,42 +123,33 @@ fun PostingViewScreen(
                     }
                 }
                 val open = d.optString("status").let { it.isEmpty() || it == "OPEN" }
-                Column(Modifier.fillMaxWidth().background(AppColors.Surface).navigationBarsPadding()) {
-                    HorizontalDivider(color = AppColors.Divider)
-                    Row(Modifier.padding(horizontal = 16.dp).padding(top = 8.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Box(Modifier.size(52.dp).border(1.dp, AppColors.ChipBorder, RoundedCornerShape(12.dp)), Alignment.Center) {
-                            HeartButton(liked, onToggleLike, size = 24.dp)
+                // 하단 바 — 작성자/지원자 둘 중 하나를 고르기만 한다.
+                val isOwner = myId != null && d.optInt("authorId", -1) == myId
+                if (isOwner) PostingOwnerBar(
+                    open = open, busy = ownerActions.busy,
+                    onDelete = { ownerActions.requestDelete(PostingRef(kind, id)) },
+                    onClose = { ownerActions.requestClose(PostingRef(kind, id)) },
+                    onEdit = onEdit,
+                )
+                else PostingApplicantBar(
+                    kind = kind, d = d, open = open, liked = liked, applied = applied, busy = busy,
+                    onToggleLike = onToggleLike,
+                    onCancel = { cancelOpen = true },
+                    onApply = {
+                        if (!loggedIn) { onLogin(); return@PostingApplicantBar }
+                        busy = true
+                        scope.launch {
+                            val mode = if (ActiveRole.current(context) == "DANCER") ResumeMode.DANCER else ResumeMode.TEACHER
+                            resumes = ResumeApi(token).list(mode).getOrNull().orEmpty()
+                            busy = false; picking = true
                         }
-                        // 대타 — 내 지원 상태(myOffer: 웹 SubDetail 과 같은 분기). 확정 + 수업 전이면 [지원 취소].
-                        val offer = if (kind == "SUB") d.optJSONObject("myOffer") else null
-                        val offerStatus = offer?.optString("status").orEmpty()
-                        val confirmed = offerStatus in setOf("ACCEPTED", "HIRED")
-                        val canceledAfterConfirm = offerStatus == "CANCELED" && offer?.optString("canceledBy") in setOf("TEACHER", "POSTER")
-                        val classStarted = kind == "SUB" && subClassStarted(d)
-                        val label = when {
-                            confirmed && !classStarted -> R.string.posting_cancel_apply
-                            confirmed -> R.string.posting_confirmed
-                            canceledAfterConfirm -> R.string.posting_canceled
-                            applied -> R.string.posting_applied
-                            !open -> R.string.posting_closed
-                            else -> R.string.posting_apply
-                        }
-                        if (confirmed && !classStarted) JobButton(stringResource(label), filled = false, enabled = !busy, modifier = Modifier.weight(1f)) { cancelOpen = true }
-                        else JobButton(stringResource(label), filled = true, enabled = open && !applied && !confirmed && !canceledAfterConfirm && !busy, modifier = Modifier.weight(1f)) {
-                            if (!loggedIn) { onLogin(); return@JobButton }
-                            busy = true
-                            scope.launch {
-                                val mode = if (ActiveRole.current(context) == "DANCER") ResumeMode.DANCER else ResumeMode.TEACHER
-                                resumes = ResumeApi(token).list(mode).getOrNull().orEmpty()
-                                busy = false; picking = true
-                            }
-                        }
-                    }
-                }
+                    },
+                )
             }
         }
     }
+
+    ownerActions.Dialogs()
 
     if (cancelOpen) {
         val appId = detail?.optJSONObject("myOffer")?.optInt("applicationId", 0) ?: 0
@@ -163,6 +174,39 @@ fun PostingViewScreen(
             }
         },
     )
+}
+
+/** 지원자 하단 바 — [찜] [지원하기 / 지원한 공고예요 / 지원 취소 …]. 대타는 내 지원 상태(myOffer, 웹 SubDetail 과 같은 분기). */
+@Composable
+private fun PostingApplicantBar(
+    kind: String, d: JSONObject, open: Boolean, liked: Boolean, applied: Boolean, busy: Boolean,
+    onToggleLike: () -> Unit, onCancel: () -> Unit, onApply: () -> Unit,
+) {
+    Column(Modifier.fillMaxWidth().background(AppColors.Surface).navigationBarsPadding()) {
+        HorizontalDivider(color = AppColors.Divider)
+        Row(Modifier.padding(horizontal = 16.dp).padding(top = 8.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(Modifier.size(52.dp).border(1.dp, AppColors.ChipBorder, RoundedCornerShape(12.dp)), Alignment.Center) {
+                HeartButton(liked, onToggleLike, size = 24.dp)
+            }
+            // 확정 + 수업 전이면 [지원 취소].
+            val offer = if (kind == "SUB") d.optJSONObject("myOffer") else null
+            val offerStatus = offer?.optString("status").orEmpty()
+            val confirmed = offerStatus in setOf("ACCEPTED", "HIRED")
+            val canceledAfterConfirm = offerStatus == "CANCELED" && offer?.optString("canceledBy") in setOf("TEACHER", "POSTER")
+            val classStarted = kind == "SUB" && subClassStarted(d)
+            val label = when {
+                confirmed && !classStarted -> R.string.posting_cancel_apply
+                confirmed -> R.string.posting_confirmed
+                canceledAfterConfirm -> R.string.posting_canceled
+                applied -> R.string.posting_applied
+                !open -> R.string.posting_closed
+                else -> R.string.posting_apply
+            }
+            if (confirmed && !classStarted) JobButton(stringResource(label), filled = false, enabled = !busy, modifier = Modifier.weight(1f), onClick = onCancel)
+            else JobButton(stringResource(label), filled = true, enabled = open && !applied && !confirmed && !canceledAfterConfirm && !busy, modifier = Modifier.weight(1f), onClick = onApply)
+        }
+    }
 }
 
 /** 이력서 고르기 시트 — 웹 지원 확인 팝업(ResumePicker). 기본 이력서가 먼저 골라져 있다. 이력서가 없으면 작성하기. */

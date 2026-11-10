@@ -236,7 +236,8 @@ class SubWizardViewModel(
             target = one(SubWizardQuestions.TARGET).orEmpty(),
             fields = answer(SubWizardQuestions.FIELDS).values,
             scheduleType = one(SubWizardQuestions.SCHEDULE),
-            classDate = one(SubWizardQuestions.DATE).orEmpty(),
+            // 날짜 없는 글은 classDate 를 빼고 보낸다(빈 글자 "" 를 보내지 않는다).
+            classDate = one(SubWizardQuestions.DATE)?.ifBlank { null },
             classTime = classTime(),
             classCount = one(SubWizardQuestions.COUNT)?.toIntOrNull()?.takeIf { it > 0 },
             region = one(SubWizardQuestions.REGION),

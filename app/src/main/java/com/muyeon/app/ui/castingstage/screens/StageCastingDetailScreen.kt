@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.castingstage.screens
 
+import com.muyeon.app.util.runCatchingCancellable
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -67,9 +69,20 @@ fun StageCastingDetailScreen(api: CastingStageApi, id: Int, onBack: () -> Unit, 
 
     LaunchedEffect(id, com.muyeon.app.auth.accountEpoch()) {
         liked = false
-        runCatching { api.detail(id) }.onSuccess { c = it }.onFailure { failed = it.message ?: "공고를 찾을 수 없어요." }
+        runCatchingCancellable { api.detail(id) }.onSuccess { c = it }.onFailure { failed = it.message ?: "공고를 찾을 수 없어요." }
         applied = api.applied(id)
         liked = id in api.scrappedIds()
+    }
+
+    // 작성자 동작 — 내 공고 관리와 같은 마감·삭제(확인창·서버 문구 그대로). 마감 뒤엔 다시 읽고, 삭제 뒤엔 닫는다.
+    val myId = remember { com.muyeon.app.ui.common.NativeHttp(ctx).myUserId() }
+    val postingApi = remember { com.muyeon.app.ui.jobposting.JobPostingApi(api.token) }
+    val ownerActions = com.muyeon.app.ui.jobposting.rememberPostingActions(postingApi) { _, change ->
+        com.muyeon.app.navigation.AppResults.publish(setOf(com.muyeon.app.result.ResultKeys.JOB_POSTINGS))
+        if (change == com.muyeon.app.ui.jobposting.PostingChange.DELETED) {
+            android.widget.Toast.makeText(ctx, com.muyeon.app.R.string.owner_posting_deleted, android.widget.Toast.LENGTH_SHORT).show()
+            onBack()
+        } else scope.launch { runCatchingCancellable { api.detail(id) }.onSuccess { c = it } }
     }
 
     suspend fun startApply() {
@@ -142,22 +155,18 @@ fun StageCastingDetailScreen(api: CastingStageApi, id: Int, onBack: () -> Unit, 
             }
         },
         bottom = {
-            val type = ActiveRole.current(ctx)
-            when {
-                closed -> StageBottomButton("마감된 공고예요", enabled = false) {}
-                detail.isExternal -> {
-                    val url = detail.d("applyUrl") ?: detail.d("sourceUrl")
-                    StageBottomButton(if (detail.d("applyUrl") != null) "원문에서 지원하기" else "원문 공고 보러 가기", enabled = url != null) { url?.let(onOpenUrl) }
-                }
-                applied -> StageBottomButton("지원한 공고예요", enabled = false) {}
-                type == "DANCER" || type == "TEACHER" -> StageBottomButton("이력서로 지원하기", busy = applying) {
-                    if (type == "TEACHER") showSwitch = true else scope.launch { startApply() }
-                }
-                else -> StageBottomButton("무용수 회원만 지원할 수 있어요", enabled = false) {}
-            }
+            // 하단 — 작성자/지원자 둘 중 하나를 고르기만 한다.
+            val ref = com.muyeon.app.ui.jobposting.PostingRef("CASTING", id)
+            if (myId != null && detail.authorId == myId) StageCastingOwnerBar(
+                open = !closed, busy = ownerActions.busy,
+                onDelete = { ownerActions.requestDelete(ref) }, onClose = { ownerActions.requestClose(ref) },
+            )
+            else StageCastingApplyButton(detail, closed, applied, applying, onOpenUrl,
+                onSwitch = { showSwitch = true }, onApply = { scope.launch { startApply() } })
         },
     )
 
+    ownerActions.Dialogs()
     if (showSwitch) AlertDialog(
         onDismissRequest = { showSwitch = false },
         title = { Text("무용수 유형으로 전환해 주세요", style = Bold) },
@@ -202,7 +211,7 @@ fun StageCastingDetailScreen(api: CastingStageApi, id: Int, onBack: () -> Unit, 
             TextButton(enabled = !applying, onClick = {
                 scope.launch {
                     applying = true
-                    runCatching { api.apply(id, resumeId) }
+                    runCatchingCancellable { api.apply(id, resumeId) }
                         .onSuccess { applied = true; toast = "지원이 접수됐어요." }
                         .onFailure { toast = it.message ?: "지원에 실패했어요. 잠시 후 다시 시도해 주세요." }
                     applying = false
@@ -215,6 +224,27 @@ fun StageCastingDetailScreen(api: CastingStageApi, id: Int, onBack: () -> Unit, 
     toast?.let { msg ->
         AlertDialog(onDismissRequest = { toast = null }, text = { Text(msg, style = Regular) },
             confirmButton = { TextButton({ toast = null }) { Text("확인", color = Brand) } })
+    }
+}
+
+/** 지원자 하단 버튼 — 마감 / 원문 공고(웹 수집) / 지원함 / 이력서로 지원 / 무용수만. */
+@Composable
+private fun StageCastingApplyButton(
+    detail: CastingDetail, closed: Boolean, applied: Boolean, applying: Boolean,
+    onOpenUrl: (String) -> Unit, onSwitch: () -> Unit, onApply: () -> Unit,
+) {
+    val type = ActiveRole.current(LocalContext.current)
+    when {
+        closed -> StageBottomButton("마감된 공고예요", enabled = false) {}
+        detail.isExternal -> {
+            val url = detail.d("applyUrl") ?: detail.d("sourceUrl")
+            StageBottomButton(if (detail.d("applyUrl") != null) "원문에서 지원하기" else "원문 공고 보러 가기", enabled = url != null) { url?.let(onOpenUrl) }
+        }
+        applied -> StageBottomButton("지원한 공고예요", enabled = false) {}
+        type == "DANCER" || type == "TEACHER" -> StageBottomButton("이력서로 지원하기", busy = applying) {
+            if (type == "TEACHER") onSwitch() else onApply()
+        }
+        else -> StageBottomButton("무용수 회원만 지원할 수 있어요", enabled = false) {}
     }
 }
 

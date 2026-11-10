@@ -11,7 +11,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
@@ -322,7 +321,7 @@ object PostingKind {
 
 class JobPostingApi(internal val token: String?) {
 
-    private val client = OkHttpClient()
+    private val client = com.muyeon.app.ui.common.NativeHttp.sharedClient
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
 
     data class PostingPage(val items: List<MyPosting>, val hasMore: Boolean, val nextCursor: String?,
@@ -455,7 +454,7 @@ class JobPostingApi(internal val token: String?) {
 
     private suspend fun call(path: String, method: String = "GET", body: JSONObject? = null): Result<String> =
         withContext(Dispatchers.IO) {
-            runCatching {
+            com.muyeon.app.util.runCatchingCancellable {
                 val payload = when {
                     body != null -> body.toString().toRequestBody(JSON)
                     method != "GET" && method != "DELETE" -> "".toRequestBody(JSON)

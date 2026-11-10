@@ -95,6 +95,8 @@ fun TransferDetailScreen(
     onChatRoom: (Int, String) -> Unit,
     onChanged: () -> Unit,
     onMessage: (String) -> Unit,
+    /** 글쓴이가 삭제한 뒤 — 부모가 닫는다. */
+    onDeleted: () -> Unit = onBack,
     /** 문의 채팅 전 이용약관 동의(액티비티가 하나를 만들어 넘기고 시트도 그린다). */
     chatConsent: TransferChatConsent,
     /** ★ 로그인 후 이어서 할 일(chat·like) — 상세를 다 불러온 뒤 한 번만 한다(LoginResume). */
@@ -106,6 +108,8 @@ fun TransferDetailScreen(
     var chatBusy by remember { mutableStateOf(false) }
     var statusOpen by remember { mutableStateOf(false) }
     var reportOpen by remember { mutableStateOf(false) }
+    var deleteOpen by remember { mutableStateOf(false) }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
 
     suspend fun load() {
@@ -177,7 +181,7 @@ fun TransferDetailScreen(
         }
         // 하단 바 자리 — 불러오는 중엔 같은 높이의 자리, 오류면 같은 높이의 빈칸.
         when {
-            d != null && d.isAuthor -> TransferAuthorBottomBar(onEdit = { onEdit(d.card.id) }, onStatus = { statusOpen = true })
+            d != null && d.isAuthor -> TransferAuthorBottomBar(onDelete = { deleteOpen = true }, onEdit = { onEdit(d.card.id) }, onStatus = { statusOpen = true })
             d != null -> TransferViewerBottomBar(d.card.scrapped, d.toView().phone, chatBusy, onHeart = { toggleScrap(d) }, onChat = { chat(d) })
             loading -> MarketBottomBarSkeleton()
             else -> BottomBarSpace()
@@ -195,6 +199,19 @@ fun TransferDetailScreen(
                 }
             },
             onDismiss = { statusOpen = false },
+        )
+    }
+    // 내 글 삭제 — '내 양도 글'과 같은 확인창 · 실패는 서버 문구 그대로.
+    if (deleteOpen) {
+        TransferDeleteDialog(
+            onConfirm = {
+                scope.launch {
+                    api.remove(id)
+                        .onSuccess { onChanged(); onMessage(ctx.getString(R.string.owner_transfer_deleted)); onDeleted() }
+                        .onFailure { onMessage(it.message ?: ctx.getString(R.string.owner_delete_failed)) }
+                }
+            },
+            onDismiss = { deleteOpen = false },
         )
     }
     if (reportOpen) {

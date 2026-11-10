@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.search
 
+import com.muyeon.app.util.runCatchingCancellable
+
 import androidx.compose.runtime.Composable
 import com.muyeon.app.R
 import com.muyeon.app.ui.castingstage.StageRoutes
@@ -22,11 +24,11 @@ class CastingSearchDomain(private val api: CastingStageApi) : SearchDomain<Stage
     override val quickChips = listOf(FilterKeys.GENRE, FilterKeys.REGION)
 
     override suspend fun search(query: String, filter: SearchFilter, sort: String, cursor: String?): ApiResult<SearchPage<StageCasting>> =
-        runCatching { api.search(params(query, filter, sort), cursor) }
+        runCatchingCancellable { api.search(params(query, filter, sort), cursor) }
             .fold({ ApiResult.Success(it) }, { e -> ApiResult.Error(e, e.message?.takeIf { it.isNotBlank() } ?: com.muyeon.domain.common.UserFacingError.server) })
 
     override suspend fun count(query: String, filter: SearchFilter): Int? =
-        runCatching { api.searchCount(params(query, filter, defaultSort)) }.getOrNull()
+        runCatchingCancellable { api.searchCount(params(query, filter, defaultSort)) }.getOrNull()
 
     override fun idOf(item: StageCasting): Any = item.id
     override fun open(item: StageCasting): String = StageRoutes.SHELL.casting(item.id)

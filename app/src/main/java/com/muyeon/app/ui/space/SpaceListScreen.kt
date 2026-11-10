@@ -20,6 +20,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -52,6 +53,7 @@ import com.muyeon.app.ui.components.EmptyView
  * 공간 대관 목록 — [필터(이용유형·가격·편의시설)][지역][날짜][인원][정렬] 시트.
  *  카드: 사진 · 이름 · "서울 동작구 · 최대 15명" · "시간당 7,000원~" · 하트. 화면은 상태 연결과 조립만 한다.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SpaceListScreen(
     api: SpaceApi,
@@ -80,13 +82,27 @@ fun SpaceListScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var sheet by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(Unit) { api.categories().onSuccess { categories = it } }
-    LaunchedEffect(categoryId, sido, date, headcount, sort, filter, reloadTick, com.muyeon.app.auth.accountEpoch()) {
+    var refreshing by remember { mutableStateOf(false) }
+
+    // 목록 읽기 — 실패해도 있던 목록은 그대로 두고 문구만 남긴다(빈 목록일 때 보인다).
+    suspend fun load() {
         loading = true
         api.list(sido, categoryId.takeIf { it > 0 }, date, headcount, sort, filter)
-            .onSuccess { items = it.filterNot { s -> com.muyeon.domain.usecase.home.DemoContent.isDemoTitle(s.name) }; error = null } // 예시 숨김(사용자 결정 2026-11-08).onFailure { error = it.message }
+            // 예시 숨김(사용자 결정 2026-11-08).
+            .onSuccess { items = it.filterNot { s -> com.muyeon.domain.usecase.home.DemoContent.isDemoTitle(s.name) }; error = null }
+            .onFailure { error = it.message }
         scrapped = api.scrappedSpaceIds()
         loading = false
+    }
+
+    LaunchedEffect(Unit) { api.categories().onSuccess { categories = it } }
+    LaunchedEffect(categoryId, sido, date, headcount, sort, filter, reloadTick, com.muyeon.app.auth.accountEpoch()) { load() }
+
+    // 당겨서 새로고침 — 화면 scope 에서 돌려 손을 떼도 요청이 끊기지 않는다.
+    fun refresh() {
+        if (refreshing) return
+        refreshing = true
+        scope.launch { try { load() } finally { refreshing = false } }
     }
     // 상세에서 찜을 바꾸고 돌아오면 하트를 다시 읽는다.
     OnChildResult { keys -> if ("SPACE" in keys) scope.launch { scrapped = api.scrappedSpaceIds() } }
@@ -115,13 +131,15 @@ fun SpaceListScreen(
             items.isEmpty() -> ListPhase.Empty
             else -> ListPhase.Items
         }
-        StableSwap(phase, Modifier.weight(1f).fillMaxWidth()) { p ->
+        PullToRefreshBox(refreshing, onRefresh = ::refresh, modifier = Modifier.weight(1f).fillMaxWidth()) {
+        StableSwap(phase, Modifier.fillMaxSize()) { p ->
             Box(Modifier.fillMaxSize()) {
                 when (p) {
                     ListPhase.Loading -> Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         repeat(3) { SpaceCardSkeleton() }
                     }
-                    ListPhase.Empty, ListPhase.Error -> EmptyView(error ?: stringResource(R.string.space_list_empty))
+                    ListPhase.Empty, ListPhase.Error -> EmptyView(error ?: stringResource(R.string.space_list_empty),
+                        buttonText = error?.let { stringResource(R.string.common_retry) }, onButton = ::refresh)
                     ListPhase.Items -> LazyColumn(Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = if (onBack == null) com.muyeon.app.ui.main.tabBarBottomPadding() else 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(items, key = { it.id }) { s ->
@@ -130,6 +148,7 @@ fun SpaceListScreen(
                     }
                 }
             }
+        }
         }
     }
 

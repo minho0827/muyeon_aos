@@ -98,6 +98,30 @@ fun MarketOwnerBar(left: String, onLeft: () -> Unit, right: String, onRight: () 
     }
 }
 
+/** ★ 11-10 글쓴이·호스트 하단 바 + [삭제] — [삭제] [수정] [상태 변경·예약 관리]. 삭제는 부르는 쪽이 확인창을 띄운다. */
+@Composable
+fun MarketOwnerDeleteBar(onDelete: () -> Unit, left: String, onLeft: () -> Unit, right: String, onRight: () -> Unit) {
+    MarketBottomBarFrame {
+        MarketBarDelete(onDelete)
+        Box(
+            Modifier.weight(1f).height(56.dp).clip(RoundedCornerShape(16.dp)).border(1.dp, MuyeonList.ink300, RoundedCornerShape(16.dp))
+                .clickable(onClick = onLeft),
+            Alignment.Center,
+        ) { Text(left, style = ts(FontWeight.Bold, 17), color = MuyeonColors.textHead) }
+        Box(Modifier.weight(1f)) { StageBottomButton(right, onClick = onRight) }
+    }
+}
+
+/** 하단 바 [삭제] — 보조 버튼 모양, 빨간 글자. */
+@Composable
+fun MarketBarDelete(onClick: () -> Unit) {
+    Box(
+        Modifier.height(56.dp).clip(RoundedCornerShape(16.dp)).border(1.dp, MuyeonList.ink300, RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick).padding(horizontal = 18.dp),
+        Alignment.Center,
+    ) { Text(androidx.compose.ui.res.stringResource(R.string.owner_delete), style = ts(FontWeight.Bold, 16), color = MuyeonColors.danger) }
+}
+
 /** 고정 하단 바 틀 — 위 구분선 + 가로 줄(간격 8). 안에 놓을 버튼은 아래 조각들을 골라 쓴다. */
 @Composable
 fun MarketBottomBarFrame(content: @Composable RowScope.() -> Unit) {

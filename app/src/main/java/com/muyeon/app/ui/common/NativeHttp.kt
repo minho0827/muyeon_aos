@@ -44,7 +44,7 @@ class NativeHttp(context: Context) {
     suspend fun get(path: String): Result<String> = call(path, "GET", null)
     suspend fun call(path: String, method: String = "GET", body: Any? = null): Result<String> =
         withContext(Dispatchers.IO) {
-            runCatching {
+            com.muyeon.app.util.runCatchingCancellable {
                 val payload = when {
                     body != null -> body.toString().toRequestBody(JSON)
                     method != "GET" && method != "DELETE" -> "{}".toRequestBody(JSON)
@@ -71,7 +71,13 @@ class NativeHttp(context: Context) {
     suspend fun uploadImage(bytes: ByteArray): Result<String> = JobPostingApi(token()).uploadImage(bytes)
 
     companion object {
-        private val client = OkHttpClient()
+        /** 네이티브 화면 공용 OkHttp — 하나만 만들어 연결을 나눠 쓴다. 기본 10초는 느린 망에서 자주 끊겨 30초. */
+        val sharedClient: OkHttpClient = OkHttpClient.Builder()
+            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
+        private val client get() = sharedClient
         private val JSON = "application/json; charset=utf-8".toMediaType()
 
         fun codeOf(text: String): String? =

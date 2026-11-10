@@ -61,6 +61,8 @@ class SpaceActivity : ResultActivity() {
                 onScrapChanged = { addResultKeys(ResultKeys.SPACE) },
                 onEdit = { SpaceHubActivity.startEditor(this, it) },
                 onManage = { SpaceHubActivity.startHosting(this) },
+                // 삭제 — 목록·내 공간이 다시 읽게 SPACE 를 싣고 닫는다.
+                onDeleted = { addResultKeys(ResultKeys.SPACE); finish() },
                 onOpenSpace = { start(this, it, null, false) },
                 // 결제 완료 → 내 예약(새로 읽은 목록)으로. 웹 부모도 예약 목록을 다시 읽게 RESERVATIONS 를 싣는다.
                 onPaid = { addResultKeys(ResultKeys.RESERVATIONS); SpaceHubActivity.startBookings(this) },

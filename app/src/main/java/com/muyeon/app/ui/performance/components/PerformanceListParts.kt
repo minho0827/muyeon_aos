@@ -1,7 +1,5 @@
 package com.muyeon.app.ui.performance.components
 
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.padding
@@ -25,8 +23,6 @@ import com.muyeon.app.ui.performance.PerformanceListEvent
 import com.muyeon.app.ui.performance.PerformanceListUiState
 import com.muyeon.app.ui.performance.PerformanceListViewModel
 import com.muyeon.app.ui.theme.Dimensions
-import com.muyeon.domain.model.performance.PerformanceDetailFilter
-import com.muyeon.domain.model.performance.PerformanceStatus
 
 /**
  * 공연 목록 공용 부품 — 예전 공연 화면(PerformanceListScreen)과 통합 탭(PerformanceHomeScreen)이 같이 쓴다.
@@ -52,24 +48,6 @@ fun PerformanceListEffects(viewModel: PerformanceListViewModel, listState: LazyL
     }
     CursorLoadMoreEffect(listState, canLoad = canLoadMore, onLoadMore = viewModel::loadMore)
 }
-
-/** [전체]일 때 목록 위 배너·포스터 줄(NOL 식). 장르 아이콘 줄은 위 [공연] | 장르 줄과 겹쳐 뺐다(사용자 결정 11-09). */
-fun LazyListScope.performanceShowcase(
-    state: PerformanceListUiState,
-    onOpenDetail: (Long) -> Unit,
-) {
-    // ★ 11-09 맨 위 큰 포스터 배너는 뺐다(사용자 결정) — '지금 공연 중'부터.
-    item(key = "showcase.now") {
-        PerformancePosterRow(stringResource(R.string.perf_now), state.items.filter { it.status == PerformanceStatus.ONGOING }.take(10), onOpenDetail)
-    }
-    // ★ 11-09 '곧 시작해요' 줄도 뺐다(사용자 결정).
-    // ★ 11-09 '전체 공연' 제목은 뺐다(사용자 결정) — '지금 공연 중' 바로 아래 목록.
-    item(key = "showcase.gap") { Spacer(Modifier.height(12.dp)) }
-}
-
-/** 쇼케이스를 보일 때 — 전체 장르·세부 전체·목록 있음. */
-fun PerformanceListUiState.showsShowcase(): Boolean =
-    genre == PerformanceListViewModel.ALL && detail == PerformanceDetailFilter.All && items.isNotEmpty()
 
 /** 목록 본문 — 빈 목록 안내 · 한 줄씩 · 끝(더 보기). */
 fun LazyListScope.performanceRows(

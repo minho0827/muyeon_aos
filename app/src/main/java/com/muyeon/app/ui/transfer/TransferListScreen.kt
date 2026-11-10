@@ -19,6 +19,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -51,6 +52,7 @@ import com.muyeon.app.ui.transfer.components.TransferViewerCardActions
 import kotlinx.coroutines.launch
 
 /** 양도양수 목록 — 제목줄(＋) · 지역 칩/필터 · 카드 목록(커서). 화면은 상태 연결과 조립만 한다. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransferListScreen(
     api: TransferApi,
@@ -73,6 +75,14 @@ fun TransferListScreen(
     var chatBusy by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.region, state.filter, com.muyeon.app.auth.accountEpoch()) { state.load(api, reset = true) }
+
+    // 당겨서 새로고침 — 화면 scope 에서 돌려 손을 떼도 요청이 끊기지 않는다. 실패해도 있던 목록은 그대로.
+    var refreshing by remember { mutableStateOf(false) }
+    fun refresh() {
+        if (refreshing) return
+        refreshing = true
+        scope.launch { try { state.load(api, reset = true) } finally { refreshing = false } }
+    }
 
     val nearEnd by remember {
         derivedStateOf {
@@ -124,7 +134,8 @@ fun TransferListScreen(
             state.items.isEmpty() && state.loadedOnce -> ListPhase.Empty
             else -> ListPhase.Items
         }
-        StableSwap(phase, Modifier.weight(1f).fillMaxWidth()) { p ->
+        PullToRefreshBox(refreshing, onRefresh = ::refresh, modifier = Modifier.weight(1f).fillMaxWidth()) {
+        StableSwap(phase, Modifier.fillMaxSize()) { p ->
           Box(Modifier.fillMaxSize()) {
             when (p) {
                 ListPhase.Loading -> TransferListLoading()
@@ -139,6 +150,7 @@ fun TransferListScreen(
                 }
             }
           }
+        }
         }
     }
 

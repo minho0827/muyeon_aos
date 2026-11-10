@@ -47,6 +47,17 @@ class SearchParamsTest {
         assertEquals(17, P.REGION.options.size)
     }
 
+    @Test fun `공연 - 빠른 칩은 공연 상태가 맨 앞, 장르 지역 순`() {
+        assertEquals(listOf(FilterKeys.STATUS, FilterKeys.GENRE, FilterKeys.REGION), P.QUICK_CHIPS)
+        // 빠른 칩 상태 칸 = 필터 시트 상태 칸(공연 예정·공연 중·공연 종료).
+        assertEquals(P.STATUS, P.SECTIONS.first { it.key == P.QUICK_CHIPS.first() })
+    }
+
+    @Test fun `캐스팅 - 빠른 칩은 그대로 장르 지역`() {
+        val casting = CastingSearchDomain(com.muyeon.app.ui.castingstage.data.CastingStageApi(null))
+        assertEquals(listOf(FilterKeys.GENRE, FilterKeys.REGION), casting.quickChips)
+    }
+
     // ── 캐스팅
 
     @Test fun `캐스팅 - 쿼리 키 이름(genres sidos feeRange)`() {

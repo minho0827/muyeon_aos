@@ -33,6 +33,8 @@ data class CastingDetail(
     val region: String?, val schedule: String?, val gender: String?, val height: String?, val headcount: Int,
     val videoRequired: Boolean, val awardPreferred: Boolean, val status: String?, val photos: List<String>,
     val details: Map<String, String>,
+    /** 올린 사람 회원 번호 — 내 공고면 하단이 [삭제][마감]. */
+    val authorId: Int? = null,
 ) {
     fun d(key: String): String? = details[key]
     val isExternal get() = d("source") == "WEB"

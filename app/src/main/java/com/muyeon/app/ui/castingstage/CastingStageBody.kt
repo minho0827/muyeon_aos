@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.castingstage
 
+import com.muyeon.app.util.runCatchingCancellable
+
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -130,10 +132,10 @@ fun CastingStageBody(
     val listState = state.listState
 
     LaunchedEffect(reloadKey) {
-        val i = async { runCatching { api.latest() } }
-        val c = async { runCatching { api.castings(null) } }
+        val i = async { runCatchingCancellable { api.latest() } }
+        val c = async { runCatchingCancellable { api.castings(null) } }
         // ★ 11-09 분류는 서버가 준다 — 실패·404 면 기본 목록(국내소식·콩쿠르·대회 뺌).
-        val k = async { runCatching { api.categories() } }
+        val k = async { runCatchingCancellable { api.categories() } }
         CastingStageSession.categories = StageCategory.resolve(k.await().getOrNull())
         val ri = i.await()
         val rc = c.await()
@@ -180,7 +182,7 @@ fun CastingStageBody(
                     // 10-27 공용 캡슐 탭(ui/common/MuyeonListKit) — 섹션 안이라 구분선 없음.
                     com.muyeon.app.ui.common.MuyeonPillTabs(GENRES.map { com.muyeon.app.ui.common.MuyeonPillTab(it, it) }, genre, { g ->
                         genre = g
-                        scope.launch { castings = runCatching { api.castings(g.takeIf { it != "전체" }) }.getOrDefault(emptyList()) }
+                        scope.launch { castings = runCatchingCancellable { api.castings(g.takeIf { it != "전체" }) }.getOrDefault(emptyList()) }
                     }, tagPrefix = "stage.genre", showDivider = false, compact = true)
                     if (castings.isEmpty()) {
                         Box(Modifier.fillMaxWidth().heightIn(min = 120.dp), Alignment.Center) {

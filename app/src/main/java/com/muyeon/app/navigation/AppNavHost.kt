@@ -81,7 +81,14 @@ fun AppNavHost(
         listOf(Screen.JobDetail to "JOB", Screen.SubDetail to "SUB").forEach { (screen, kind) ->
             composable(screen.route, arguments = listOf(navArgument("id") { type = NavType.StringType })) { e ->
                 val id = e.arguments?.getString("id")?.toIntOrNull() ?: 0
-                PostingDetailRoute(kind, id, onBack = { navController.popBackStack() }, onOpenWeb = onOpenWeb)
+                PostingDetailRoute(
+                    kind, id, onBack = { navController.popBackStack() }, onOpenWeb = onOpenWeb,
+                    // 작성자 [수정] — 대타는 대타 수정 폼(탭 위 화면), 채용은 내 공고 관리와 같은 채용 위저드.
+                    onEdit = {
+                        if (kind == "SUB") navController.navigate(Screen.SubEdit.build(id.toLong()))
+                        else com.muyeon.app.ui.jobposting.JobPostingActivity.startForm(context, id)
+                    },
+                )
             }
         }
         // 대타공고 설문 등록 — 올리면 닫고 대타공고 목록을 다시 받는다.
@@ -470,7 +477,7 @@ fun AppNavHost(
 
 /** 공고 상세 + 찜(채용·대타) — 찜 상태는 저장소에서 읽고 바꾼다. */
 @Composable
-private fun PostingDetailRoute(kind: String, id: Int, onBack: () -> Unit, onOpenWeb: (String) -> Unit) {
+private fun PostingDetailRoute(kind: String, id: Int, onBack: () -> Unit, onOpenWeb: (String) -> Unit, onEdit: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val target = if (kind == "SUB") com.muyeon.domain.model.scrap.ScrapTarget.SUB else com.muyeon.domain.model.scrap.ScrapTarget.JOB
     val getLiked = org.koin.compose.koinInject<com.muyeon.domain.usecase.scrap.GetLikedIdsUseCase>()
@@ -493,6 +500,9 @@ private fun PostingDetailRoute(kind: String, id: Int, onBack: () -> Unit, onOpen
         },
         onBack = onBack,
         onLogin = login,
+        onEdit = onEdit,
+        // 삭제 — 공고 목록(웹·탭)이 다시 읽게 결과 키를 싣고 닫는다.
+        onDeleted = { AppResults.publish(setOf(com.muyeon.app.result.ResultKeys.JOB_POSTINGS)); onBack() },
         onWriteResume = {
             val dancer = com.muyeon.app.webview.ActiveRole.current(context) == "DANCER"
             com.muyeon.app.ui.resume.ResumeActivity.startEdit(context, null, if (dancer) "dancer" else null)

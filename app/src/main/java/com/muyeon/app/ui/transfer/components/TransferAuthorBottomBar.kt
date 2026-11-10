@@ -39,8 +39,8 @@ import com.muyeon.app.ui.common.*
 import com.muyeon.app.ui.common.market.*
 import kotlinx.coroutines.launch
 
-/** 글쓴이 하단 바 — [수정] [상태 변경]. */
+/** 글쓴이 하단 바 — [삭제] [수정] [상태 변경]. ★ 11-10 [삭제] 추가(예전엔 '내 양도 글'에서만). */
 @Composable
-fun TransferAuthorBottomBar(onEdit: () -> Unit, onStatus: () -> Unit) {
-    MarketOwnerBar("수정", onEdit, "상태 변경", onStatus)
+fun TransferAuthorBottomBar(onDelete: () -> Unit, onEdit: () -> Unit, onStatus: () -> Unit) {
+    MarketOwnerDeleteBar(onDelete, "수정", onEdit, "상태 변경", onStatus)
 }

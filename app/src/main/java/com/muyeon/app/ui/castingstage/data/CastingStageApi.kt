@@ -1,11 +1,11 @@
 package com.muyeon.app.ui.castingstage.data
 
 import com.muyeon.app.BuildConfig
+import com.muyeon.app.util.runCatchingCancellable
 import com.muyeon.app.webview.withActiveType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.OkHttpClient
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -17,13 +17,21 @@ import com.muyeon.app.ui.castingstage.screens.*
 /** 캐스팅·무대 API — iOS Services/CastingStageService 와 같다. */
 
 class CastingStageApi(internal val token: String?) {
-    private val client = OkHttpClient()
+    private val client = com.muyeon.app.ui.common.NativeHttp.sharedClient
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
 
     private suspend fun get(path: String, query: Map<String, String?> = emptyMap()): String = call(path, "GET", query, null)
 
+    /**
+     * 요청 하나 — 결과는 withContext 안에서 Result 로 만든다. 취소는 Result 에 담지 않고 그대로 던진다
+     *  (당겨서 새로고침·화면 나감 때 '실패'로 보이지 않게). 공개 함수는 예전처럼 실패면 예외.
+     */
     private suspend fun call(path: String, method: String, query: Map<String, String?> = emptyMap(), body: JSONObject?): String =
+        request(path, method, query, body).getOrThrow()
+
+    private suspend fun request(path: String, method: String, query: Map<String, String?>, body: JSONObject?): Result<String> =
         withContext(Dispatchers.IO) {
+          runCatchingCancellable {
             val url = (apiBase + path).toHttpUrl().newBuilder().apply {
                 query.forEach { (k, v) -> if (!v.isNullOrEmpty()) addQueryParameter(k, v) }
             }.build()
@@ -46,6 +54,7 @@ class CastingStageApi(internal val token: String?) {
                 }
                 text
             }
+          }
         }
 
     /** 최신 호. 아직 호가 없으면 null. */
@@ -105,28 +114,29 @@ class CastingStageApi(internal val token: String?) {
             height = c.str("height"), headcount = c.optInt("headcount"), videoRequired = c.optBoolean("videoRequired"),
             awardPreferred = c.optBoolean("awardPreferred"), status = c.str("status"),
             photos = imgs.ifEmpty { listOfNotNull(c.str("imageUrl")) }, details = map,
+            authorId = c.optInt("authorId", 0).takeIf { it > 0 },
         )
     }
 
-    suspend fun applied(id: Int): Boolean = runCatching { JSONObject(get("/casting/$id/applied")).optBoolean("applied") }.getOrDefault(false)
+    suspend fun applied(id: Int): Boolean = runCatchingCancellable { JSONObject(get("/casting/$id/applied")).optBoolean("applied") }.getOrDefault(false)
 
     /** 지원 — 실패하면 서버 안내문(StageMessageException). */
     suspend fun apply(id: Int, resumeId: Int?) {
         call("/casting/$id/apply", "POST", body = JSONObject().apply { if (resumeId != null) put("resumeId", resumeId) })
     }
 
-    suspend fun dancerResumes(): List<StageResume> = runCatching {
+    suspend fun dancerResumes(): List<StageResume> = runCatchingCancellable {
         val a = org.json.JSONArray(get("/resumes", mapOf("roleIntent" to "DANCER")))
         (0 until a.length()).map { i -> a.getJSONObject(i).let { StageResume(it.optInt("id"), it.str("title"), it.optBoolean("isDefault")) } }
     }.getOrDefault(emptyList())
 
-    suspend fun scrappedIds(): Set<Int> = runCatching {
+    suspend fun scrappedIds(): Set<Int> = runCatchingCancellable {
         val a = org.json.JSONArray(get("/me/scraps", mapOf("targetType" to "CASTING")))
         (0 until a.length()).map { a.getJSONObject(it).optInt("targetId") }.toSet()
     }.getOrDefault(emptySet())
 
     suspend fun setScrap(id: Int, on: Boolean): Boolean =
-        runCatching { call("/casting/$id/scrap", if (on) "POST" else "DELETE", body = null); true }.getOrDefault(false)
+        runCatchingCancellable { call("/casting/$id/scrap", if (on) "POST" else "DELETE", body = null); true }.getOrDefault(false)
 
     suspend fun castingsPage(genre: String?, cursor: String?): StageCastingPage {
         val o = JSONObject(get("/casting/page", mapOf("genre" to genre, "feeRange" to "ALL", "cursor" to cursor, "limit" to "20")))
@@ -146,7 +156,7 @@ class CastingStageApi(internal val token: String?) {
 
     suspend fun issue(no: Int): StageNewsIssue = parseIssue(JSONObject(get("/stage-news/issues/$no")))
 
-    suspend fun issues(): List<StageIssueSummary> = runCatching {
+    suspend fun issues(): List<StageIssueSummary> = runCatchingCancellable {
         val a = org.json.JSONArray(get("/stage-news/issues"))
         (0 until a.length()).map { i -> a.getJSONObject(i).let { StageIssueSummary(it.optInt("issueNo"), it.optString("weekStart"), it.optString("headline"), it.optInt("itemCount")) } }
     }.getOrDefault(emptyList())
@@ -154,7 +164,7 @@ class CastingStageApi(internal val token: String?) {
     // ── 공연 공고 등록(공연팀) — POST /casting. 서버가 공연팀 인증·공고 한도·금칙어를 확인한다(iOS CastingStageService+Create).
 
     /** 계정 활동명(닉네임 → 이름). 못 받으면 빈 글자. */
-    suspend fun activityName(): String = runCatching {
+    suspend fun activityName(): String = runCatchingCancellable {
         val o = JSONObject(get("/auth/me"))
         o.str("nickname") ?: o.str("name") ?: ""
     }.getOrDefault("")

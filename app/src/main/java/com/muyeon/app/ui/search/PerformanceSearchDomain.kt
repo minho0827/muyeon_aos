@@ -14,7 +14,7 @@ import com.muyeon.domain.model.search.SearchQueryText
 import com.muyeon.domain.usecase.performance.CountPerformanceSearchUseCase
 import com.muyeon.domain.usecase.performance.SearchPerformancesUseCase
 
-/** 공연 검색 — `GET /performances/search`. 칩: 상태·장르·지역 · 정렬: 추천·시작·종료 임박·최근 등록. */
+/** 공연 검색 — `GET /performances/search`. 칩: [공연 상태▾][장르▾][지역▾] · 정렬: 추천·시작·종료 임박·최근 등록. */
 class PerformanceSearchDomain(
     private val searchUseCase: SearchPerformancesUseCase,
     private val countUseCase: CountPerformanceSearchUseCase,
@@ -24,7 +24,8 @@ class PerformanceSearchDomain(
     override val showCountRes = R.string.search_show_performance
     override val filterSections = SECTIONS
     override val sortOptions = SORTS
-    override val quickChips = listOf(FilterKeys.GENRE, FilterKeys.REGION)
+    // ★ 11-10 [공연 상태▾]를 맨 앞에(공연 예정·공연 중·공연 종료 — 필터 시트의 상태 칸과 같다).
+    override val quickChips = QUICK_CHIPS
 
     override suspend fun search(query: String, filter: SearchFilter, sort: String, cursor: String?): ApiResult<SearchPage<PerformanceSummary>> =
         searchUseCase(params(query, filter, sort), cursor)
@@ -53,6 +54,7 @@ class PerformanceSearchDomain(
         val GENRE = FilterSection(FilterKeys.GENRE, R.string.search_section_genre, PerformanceCategory.GENRES.map { FilterOption(it) })
         val REGION = FilterSection(FilterKeys.REGION, R.string.search_section_region, SearchRegions.options)
         val SECTIONS = listOf(STATUS, GENRE, REGION)
+        val QUICK_CHIPS = listOf(FilterKeys.STATUS, FilterKeys.GENRE, FilterKeys.REGION)
 
         val SORTS = listOf(
             SortOption("RECOMMENDED", R.string.search_sort_recommended),

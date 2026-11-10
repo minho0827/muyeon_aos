@@ -22,14 +22,12 @@ import com.muyeon.app.ui.performance.components.PerfCastingMode
 import com.muyeon.app.ui.performance.components.PerformanceDetailChips
 import com.muyeon.app.ui.performance.components.PerformanceListEffects
 import com.muyeon.app.ui.performance.components.performanceRows
-import com.muyeon.app.ui.performance.components.performanceShowcase
-import com.muyeon.app.ui.performance.components.showsShowcase
 import com.muyeon.app.ui.theme.AppColors
 import org.koin.androidx.compose.koinViewModel
 
 /**
  * ★ 2026-11-09 공연·캐스팅 통합 탭 — 공연 칸.
- *   검색창 위 바 · [공연][캐스팅] | 장르 줄 · ([전체]면) 배너·포스터 줄 · 세부 칩 · 목록.
+ *   검색창 위 바 · [공연][캐스팅] | 장르 줄 · 세부 칩 · 목록. ★ 11-10 [전체]도 다른 장르처럼 목록만('지금 공연 중' 줄 뺌, 사용자 결정).
  *
  * @param onSearch 위 검색창 — 검색 화면(공연 탭으로)
  * @param onMode [캐스팅] 알약
@@ -63,7 +61,6 @@ fun PerformanceHomeScreen(
             modifier = Modifier.fillMaxSize(),
         ) {
             LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(bottom = tabBarBottomPadding())) {
-                if (state.showsShowcase()) performanceShowcase(state, onOpenDetail)
                 // 장르는 위 줄 — 세부 분류·태그(전막 발레·축제 등)만 칩 한 줄로.
                 if (state.detailOptions.size > 1) {
                     item(key = "chips.detail") { PerformanceDetailChips(state.detailOptions, state.detail, viewModel::selectDetail) }

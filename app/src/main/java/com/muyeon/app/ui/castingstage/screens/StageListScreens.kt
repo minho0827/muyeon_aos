@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.castingstage.screens
 
+import com.muyeon.app.util.runCatchingCancellable
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -67,7 +69,7 @@ fun StageCastingListScreen(api: CastingStageApi, onBack: () -> Unit, onOpen: (In
     suspend fun more() {
         if (loading || done) return
         loading = true
-        runCatching { api.castingsPage(genre.takeIf { it != "전체" }, cursor) }
+        runCatchingCancellable { api.castingsPage(genre.takeIf { it != "전체" }, cursor) }
             .onSuccess { p -> items.addAll(p.items.filter { n -> items.none { it.id == n.id } }); cursor = p.nextCursor; done = p.nextCursor == null }
             .onFailure { done = true }
         loading = false
@@ -99,7 +101,7 @@ fun StageCastingListScreen(api: CastingStageApi, onBack: () -> Unit, onOpen: (In
 fun StageNewsListScreen(api: CastingStageApi, issueNo: Int, code: String?, onBack: () -> Unit, onOpen: (StageNewsItem, StageCategory) -> Unit) {
     var issue by remember { mutableStateOf<StageNewsIssue?>(null) }
     var failed by remember { mutableStateOf(false) }
-    LaunchedEffect(issueNo) { runCatching { api.issue(issueNo) }.onSuccess { issue = it }.onFailure { failed = true } }
+    LaunchedEffect(issueNo) { runCatchingCancellable { api.issue(issueNo) }.onSuccess { issue = it }.onFailure { failed = true } }
     // 보이는 소식 칸(서버 순서). 링크의 칸이 없거나 숨겨졌으면 호 전체를 보인다.
     val news = com.muyeon.app.ui.castingstage.CastingStageSession.categories.filter { it.kind == StageCategory.KIND_NEWS }
     val one = news.firstOrNull { it.code == code }

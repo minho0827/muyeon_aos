@@ -72,7 +72,7 @@ private fun SpaceDetail.toView() = SpaceDetailView(
  * 공간 상세 — iOS `SpaceDetailView.swift`(+Summary/+Sections) 1:1.
  *  Figma "MO 01_예약_숙박" 시안 구조를 그대로 두고 슬롯만 공간 데이터로 바꾼 화면.
  *  섹션은 components/, 예약 시트는 reserve/. 이 화면은 불러오기·찜·채팅 연결과 조립만 한다.
- *  하단 바는 [SpaceOwnerActions](본인 공간) / [SpaceChatOnlyBar](예약 내역에서 진입) / [SpaceBookingBar] 중 하나.
+ *  하단 바는 [SpaceOwnerActions](본인 공간 — 삭제·수정·예약 관리) / [SpaceChatOnlyBar](예약 내역에서 진입) / [SpaceBookingBar] 중 하나.
  */
 @Composable
 fun SpaceDetailScreen(
@@ -92,6 +92,8 @@ fun SpaceDetailScreen(
     /** 본인 공간 — [수정] / [예약 관리]. */
     onEdit: (Int) -> Unit = {},
     onManage: () -> Unit = {},
+    /** 본인 공간 [삭제] 뒤 — 부모가 결과 키를 싣고 닫는다. */
+    onDeleted: () -> Unit = onClose,
     /** 호스트의 다른 공간 카드. */
     onOpenSpace: (Int) -> Unit = {},
     /** 결제 완료 — 부모가 내 예약을 연다. */
@@ -103,6 +105,7 @@ fun SpaceDetailScreen(
     var showReserve by remember { mutableStateOf(false) }
     var selectedOption by remember { mutableStateOf<Int?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
+    var deleteOpen by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -186,7 +189,7 @@ fun SpaceDetailScreen(
             when {
                 space == null && loading -> MarketBottomBarSkeleton()
                 space == null -> BottomBarSpace()
-                space.isOwner -> SpaceOwnerActions(onEdit = { onEdit(space.id) }, onManage = onManage)
+                space.isOwner -> SpaceOwnerActions(onDelete = { deleteOpen = true }, onEdit = { onEdit(space.id) }, onManage = onManage)
                 hideReserve -> SpaceChatOnlyBar(space.toView().phone) { chat(space) }
                 else -> SpaceBookingBar(space.toView().phone, onChat = { chat(space) }) {
                     if (!api.isLoggedIn) message = loginRequired("openSpaceDetail", "spaceId" to spaceId, "then" to "reserve") else showReserve = true
@@ -205,6 +208,19 @@ fun SpaceDetailScreen(
                 onPaid = { showReserve = false; onPaid() },
             )
         }
+    }
+    // 내 공간 삭제 — '내 공간'과 같은 확인창 · 결제된 예약이 있으면 서버 문구 그대로.
+    if (deleteOpen) {
+        com.muyeon.app.ui.space.booking.DeleteSpaceDialog(
+            onConfirm = {
+                scope.launch {
+                    api.remove(spaceId)
+                        .onSuccess { android.widget.Toast.makeText(ctx, com.muyeon.app.R.string.owner_space_deleted, android.widget.Toast.LENGTH_SHORT).show(); onDeleted() }
+                        .onFailure { message = it.message ?: ctx.getString(com.muyeon.app.R.string.owner_delete_failed) }
+                }
+            },
+            onDismiss = { deleteOpen = false },
+        )
     }
     message?.let { msg -> com.muyeon.app.ui.common.market.MarketMessageDialog(msg) { message = null } }
 }

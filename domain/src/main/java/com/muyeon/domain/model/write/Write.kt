@@ -39,7 +39,8 @@ data class SubUpdate(
     val target: String,
     val fields: List<String>,
     val scheduleType: String?,
-    val classDate: String,
+    /** 날짜 없는 글이면 null(빈 글자를 보내지 않는다). */
+    val classDate: String?,
     val classTime: String?,
     val classCount: Int?,
     val region: String?,

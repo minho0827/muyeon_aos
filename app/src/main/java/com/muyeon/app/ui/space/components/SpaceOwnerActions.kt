@@ -39,8 +39,8 @@ import com.muyeon.app.ui.common.*
 import com.muyeon.app.ui.common.market.*
 import kotlinx.coroutines.launch
 
-/** 본인 공간 하단 바 — [수정] [예약 관리]. */
+/** 본인 공간 하단 바 — [삭제] [수정] [예약 관리]. ★ 11-10 [삭제] 추가(예전엔 '내 공간'에서만). */
 @Composable
-fun SpaceOwnerActions(onEdit: () -> Unit, onManage: () -> Unit) {
-    MarketOwnerBar("수정", onEdit, "예약 관리", onManage)
+fun SpaceOwnerActions(onDelete: () -> Unit, onEdit: () -> Unit, onManage: () -> Unit) {
+    MarketOwnerDeleteBar(onDelete, "수정", onEdit, "예약 관리", onManage)
 }

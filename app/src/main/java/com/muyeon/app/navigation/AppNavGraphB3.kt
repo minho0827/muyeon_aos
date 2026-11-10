@@ -19,7 +19,10 @@ internal fun NavGraphBuilder.b3Graph(navController: NavHostController) {
             onClose = { navController.popBackStack() },
             onCreated = {
                 AppResults.publish(setOf(ResultKeys.JOB_POSTINGS))
-                navController.navigate(Screen.SubDetail.build(id)) { popUpTo(Screen.SubEdit.route) { inclusive = true } }
+                // 그 공고 상세에서 열었으면 거기로 돌아간다(상세가 다시 읽는다) — 아니면 상세로 바꾼다.
+                val prev = navController.previousBackStackEntry
+                if (prev?.destination?.route == Screen.SubDetail.route && prev.arguments?.getString("id") == id.toString()) navController.popBackStack()
+                else navController.navigate(Screen.SubDetail.build(id)) { popUpTo(Screen.SubEdit.route) { inclusive = true } }
             },
         )
     }
