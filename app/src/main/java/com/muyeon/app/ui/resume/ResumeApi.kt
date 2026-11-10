@@ -29,6 +29,11 @@ data class VisibilitySettings(
     val sourceData: ResumeData?,
 )
 
+/** 403 VERIFICATION_REQUIRED — 인증(학원)을 마쳐야 열 수 있다. [path] 는 인증 화면 경로(서버 data.path). */
+class VerificationRequiredException(message: String, val path: String?) : IllegalStateException(message) {
+    companion object { const val CODE = "VERIFICATION_REQUIRED" }
+}
+
 class ResumeApi(internal val token: String?) {
 
     private val client = OkHttpClient()
@@ -236,6 +241,13 @@ class ResumeApi(internal val token: String?) {
                         val obj = runCatching { JSONObject(text) }.getOrNull()
                         if (obj?.optString("code") == RecruitChatLimitException.CODE) {
                             throw RecruitChatLimitException.from(serverMessage(text), obj.optJSONObject("data"))
+                        }
+                        // ★ 2026-11-10 레슨 요청으로 인증 없이 올린 공고의 지원자 상세(403) — 학원 인증 안내로 분기.
+                        if (res.code == 403 && obj?.optString("code") == VerificationRequiredException.CODE) {
+                            throw VerificationRequiredException(
+                                serverMessage(text) ?: "학원 인증을 마치면 지원자 이력서를 볼 수 있어요.",
+                                obj.optJSONObject("data")?.optStringOrNull("path")?.takeIf { it.startsWith("/") },
+                            )
                         }
                         throw IllegalStateException(serverMessage(text) ?: "요청에 실패했어요.")
                     }

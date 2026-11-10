@@ -46,7 +46,10 @@ fun ApplicantResumeScreen(
     kind: ApplicantPostingKind,
     onClose: () -> Unit,
     onOpenChat: (Int, String) -> Unit,   // (roomId, 상대 이름)
+    /** ★ 2026-11-10 학원 인증 화면 경로로(403 VERIFICATION_REQUIRED). */
+    onVerify: (String) -> Unit = {},
 ) {
+    var verifyRequired by remember { mutableStateOf<VerificationRequiredException?>(null) }
     var applicant by remember { mutableStateOf<Applicant?>(null) }
     var loading by remember { mutableStateOf(true) }
     var deciding by remember { mutableStateOf(false) }
@@ -62,7 +65,7 @@ fun ApplicantResumeScreen(
     LaunchedEffect(postingId, applicationId, kind) {
         api.applicant(postingId, applicationId, kind)
             .onSuccess { applicant = it }
-            .onFailure { errorMessage = it.message }
+            .onFailure { if (it is VerificationRequiredException) verifyRequired = it else errorMessage = it.message }
         loading = false
     }
 
@@ -133,6 +136,28 @@ fun ApplicantResumeScreen(
             return@Column
         }
         val a = applicant
+        verifyRequired?.takeIf { a == null }?.let { v ->
+            // 학원 인증 전 — 서버 문구 + [학원 인증하기](목록의 잠긴 줄과 같은 길).
+            Column(
+                Modifier.weight(1f).fillMaxWidth().padding(horizontal = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    v.message ?: "학원 인증을 마치면 지원자 이력서를 볼 수 있어요.",
+                    fontFamily = customFontFamily, fontSize = 15.sp, lineHeight = 22.sp,
+                    color = MuyeonColors.textSub, textAlign = TextAlign.Center,
+                )
+                Box(
+                    Modifier.clip(RoundedCornerShape(24.dp)).background(MuyeonColors.primary)
+                        .clickable { onVerify(v.path ?: "/my/memberType?verify=ACADEMY") }
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                ) {
+                    Text("학원 인증하기", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
+                }
+            }
+            return@Column
+        }
         if (a == null) {
             Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
                 Text(

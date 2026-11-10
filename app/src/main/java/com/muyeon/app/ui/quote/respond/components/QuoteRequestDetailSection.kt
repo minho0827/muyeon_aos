@@ -31,7 +31,7 @@ fun QuoteRequestDetailSection(
     val answers = remember(quote) { (quote.answers ?: emptyList()).filter { it.questionId != "region" } }
     val cells = remember(answers) {
         val details = answers.filter { it.questionId == "detail" }.mapNotNull { it.text }.toSet()
-        QuoteQuestions.describe(quote.categoryId, answers).map { (q, v) -> QuoteAnswerCell(q, v, v in details || v.length > WIDE_CHARS) }
+        QuoteQuestions.describe(quote, exclude = setOf("region")).map { (q, v) -> QuoteAnswerCell(q, v, v in details || v.length > WIDE_CHARS) }
     }
     val photos = remember(answers) { answers.flatMap { it.images ?: emptyList() } }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Dimensions.sectionGap - Dimensions.spacingS)) {

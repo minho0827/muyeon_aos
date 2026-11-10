@@ -90,12 +90,14 @@ fun JobPostingWizardScreen(
     onOpenMembership: () -> Unit = {},
     /** 공고 공개 한도(이미 멤버) — 내 공고 관리 목록으로 보낸다. */
     onOpenMyPostings: () -> Unit = {},
+    /** ★ 2026-11-10 레슨 요청 → '채용 공고 쓰기'의 미리 채우기 번호(GET /quotes/recruit-prefill/<id>). 새 공고 전용. */
+    prefillId: String? = null,
 ) {
     var form by remember { mutableStateOf(JobForm()) }
     // 미저장 이탈 가드 기준값 — 로드 직후(신규는 빈 폼) 스냅샷과 비교해 dirty 판정.
     var baseline by remember { mutableStateOf(JobForm()) }
     var step by remember { mutableIntStateOf(0) }
-    var loading by remember { mutableStateOf(jobId != null) }
+    var loading by remember { mutableStateOf(jobId != null || prefillId != null) }
     var saving by remember { mutableStateOf(false) }
     var uploadingCover by remember { mutableStateOf(false) }
     var uploadingDetail by remember { mutableStateOf(false) }
@@ -117,6 +119,11 @@ fun JobPostingWizardScreen(
 
     LaunchedEffect(jobId) {
         jobId?.let { api.loadJob(it).onSuccess { f -> form = f; baseline = f; existingDetailType = f.detailType } }
+        // ★ 2026-11-10 문진 답으로 빈 칸만 채운다(iOS JobWizardVM.loadRecruitPrefill). 실패(만료·권한·네트워크)는 조용히 빈 폼.
+        //  baseline 은 빈 폼 그대로 → 채워진 내용도 '작성 중'으로 보고 이탈 확인을 띄운다.
+        if (jobId == null && prefillId != null) {
+            api.recruitPrefillJob(prefillId).onSuccess { job -> form = applyRecruitPrefill(form, job) }
+        }
         loading = false
     }
     LaunchedEffect(Unit) { hasDetailEnt = LessonWizardApi(api.token).hasDetailImage() }
@@ -628,6 +635,28 @@ private fun applyJobAiDraft(f: JobForm, d: org.json.JSONObject): JobForm {
             note = if (f.pref.note.empty()) note ?: f.pref.note else f.pref.note,
         ),
     )
+}
+
+/**
+ * ★ 2026-11-10 레슨 요청 미리 채우기 — job { form{title,genre,target,region,regionCode,workTime,desc}, workDays[], fields[] } → 빈 칸만.
+ *  iOS applyRecruitPrefill 과 같다: AI 초안 규칙(허용 코드만·빈 칸만)을 쓰고, 모집 분야(fields)·지역은 따로 채운다.
+ *  ⚠️ AOS AI 초안의 fields 는 '우대 분야'(pref.fields)라 여기선 넘기지 않고 모집 분야(form.fields)로 넣는다.
+ */
+private fun applyRecruitPrefill(f: JobForm, job: org.json.JSONObject): JobForm {
+    val src = job.optJSONObject("form") ?: org.json.JSONObject()
+    val d = org.json.JSONObject(src.toString())
+    if (!d.has("description") && d.has("desc")) d.put("description", d.opt("desc"))
+    job.optJSONArray("workDays")?.let { d.put("workDays", it) }
+    d.remove("fields")
+    var out = applyJobAiDraft(f, d)
+    if (out.fields.isNullOrEmpty()) {
+        val fields = job.aiList("fields").filter { c -> com.muyeon.app.ui.resume.ResumeOptions.teachingFields.any { it.first == c } }
+        if (fields.isNotEmpty()) out = out.copy(fields = fields)
+    }
+    if (out.region.isNullOrBlank()) {
+        d.aiText("region")?.let { out = out.copy(region = it, regionCode = d.aiText("regionCode")) }
+    }
+    return out
 }
 
 /**

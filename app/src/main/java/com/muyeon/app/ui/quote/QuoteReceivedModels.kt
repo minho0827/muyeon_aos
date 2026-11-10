@@ -142,8 +142,19 @@ data class QuoteFull(
     val expiresAt: String? = null,
     /** 비회원(휴대폰 인증만 한 고객)의 요청 — 강사 화면 '비회원 요청' 표시. 없으면 false. */
     val guestRequest: Boolean = false,
+    /** ★ 2026-11-10 신청자 유형(null = 일반). */
+    val requesterType: String? = null,
+    /** ★ 2026-11-10 강사 화면 배지(예: '학원 요청') — guestRequest 배지 자리에 같은 모양으로. */
+    val requesterBadge: String? = null,
+    /** ★ 2026-11-10 서버가 만든 읽을 수 있는 답(세트 순서·라벨 포함). 있으면 로컬 describe 대신 이것. */
+    val describedAnswers: List<QuoteDescribedAnswer> = emptyList(),
 ) {
     val isDirect: Boolean get() = targetTeacherId != null
+
+    /** ★ 2026-11-10 학원 요청의 학원명 — 배지 옆에 따로 보여 준다(목록 제목 '첫 답'에서는 뺀다). */
+    val academyName: String?
+        get() = describedAnswers.firstOrNull { it.questionId == ACADEMY_NAME_QID }?.value?.ifBlank { null }
+            ?: answers?.firstOrNull { it.questionId == ACADEMY_NAME_QID }?.text?.ifBlank { null }
 
     companion object {
         fun from(o: JSONObject) = QuoteFull(
@@ -158,9 +169,27 @@ data class QuoteFull(
             targetTeacher = QuotePro.from(o.optJSONObject("targetTeacher")),
             expiresAt = o.stringOrNull("expiresAt"),
             guestRequest = o.optBoolean("guestRequest", false),
+            requesterType = o.stringOrNull("requesterType"),
+            requesterBadge = o.stringOrNull("requesterBadge")?.ifBlank { null },
+            describedAnswers = o.optJSONArray("describedAnswers")?.map { QuoteDescribedAnswer.from(it) }
+                ?.filter { it.questionId.isNotEmpty() } ?: emptyList(),
         )
     }
 }
+
+/** ★ 2026-11-10 GET /quotes/available · /quotes/:id 의 describedAnswers 한 줄. */
+data class QuoteDescribedAnswer(val questionId: String, val label: String, val value: String) {
+    companion object {
+        fun from(o: JSONObject) = QuoteDescribedAnswer(
+            questionId = o.stringOrNull("questionId").orEmpty(),
+            label = o.stringOrNull("label").orEmpty(),
+            value = o.stringOrNull("value").orEmpty(),
+        )
+    }
+}
+
+/** 학원 요청의 학원명 질문 id — 목록 제목('첫 답')에서 건너뛴다. */
+const val ACADEMY_NAME_QID = "academyName"
 
 /** 받은 견적 1건(강사가 보낸 응답). */
 data class QuoteResponseItem(

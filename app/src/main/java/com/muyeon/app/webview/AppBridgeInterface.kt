@@ -251,7 +251,9 @@ object NativeActionRouter {
                 val lid = d.optString("lessonId").toIntOrNull() ?: return true
                 com.muyeon.app.ui.lesson.LessonBrowseActivity.startDetail(activity, lid)
             }
-            "openJobPostingForm" -> com.muyeon.app.ui.jobposting.JobPostingActivity.startForm(activity, null)
+            "openJobPostingForm" -> com.muyeon.app.ui.jobposting.JobPostingActivity.startForm(
+                activity, null, prefillId = d.optString("prefill").ifBlank { null },
+            )
             // ★ 2026-11-08 앱 안 전용 — 구직 프로필 등록(웹 /profileManage?seek=1) — 지금 유형이 무용수면 무용수 이력서.
             //  2026-11-08 사용자 결정 — 이미 등록한 강사프로필/무용수 이력서가 있으면 이력서 관리, 없으면 등록(SeekProfileEntry).
             "openSeekProfile" -> {

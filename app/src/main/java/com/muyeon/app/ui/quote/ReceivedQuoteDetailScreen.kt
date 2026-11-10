@@ -364,7 +364,7 @@ fun ReceivedQuoteDetailScreen(
 @Composable
 private fun RequestHeaderCard(quote: QuoteFull?) {
     // 내가 작성한 견적 내용(문진 답변 전체 — 선택형 라벨 포함)
-    val details = remember(quote) { QuoteQuestions.describe(quote?.categoryId, quote?.answers ?: emptyList()) }
+    val details = remember(quote) { QuoteQuestions.describe(quote) }
     val photos = remember(quote) { (quote?.answers ?: emptyList()).flatMap { it.images ?: emptyList() } }
     val expiryLabel = if (quote?.status == "OPEN") QuoteUi.expiryLabel(quote.createdAt, quote.expiresAt) else null
 

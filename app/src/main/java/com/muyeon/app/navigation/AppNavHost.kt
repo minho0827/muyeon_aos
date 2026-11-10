@@ -252,6 +252,9 @@ fun AppNavHost(
                     }
                 },
                 onManagePostings = { onOpenWeb("/myPostings") },
+                // ★ 2026-11-10 잠긴 지원자 — 학원 인증(견적 완료·요청 응답과 같은 길: MainActivity.openPath → /my/memberType?verify=ACADEMY).
+                //  돌아오면 이 화면이 다시 읽는다(복귀 시 refresh · PROFILE 결과 키).
+                onVerify = { path -> context.findActivity()?.let { act -> com.muyeon.app.ui.main.MainActivity.openPath(act, path) } },
             )
         }
         // ★ 2026-11-08 설정(웹 /setting) — 로그아웃은 MY 와 같은 길(LogoutUseCase → 셸 onLoggedOut), 차단한 사용자는 앱 화면.

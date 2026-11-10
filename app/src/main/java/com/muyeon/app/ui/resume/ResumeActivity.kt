@@ -304,6 +304,8 @@ class ResumeActivity : ResultActivity() {
                         postingId = postingId, applicationId = applicationId, kind = applicationKind,
                         onClose = { back() },
                         onOpenChat = { roomId, name -> ChatActivity.startRoom(this@ResumeActivity, roomId, name) },
+                        // 학원 인증(MainActivity.openPath → /my/memberType?verify=ACADEMY) — 이 창은 닫히고 받은 지원 목록이 복귀 때 다시 읽는다.
+                        onVerify = { path -> com.muyeon.app.ui.main.MainActivity.openPath(this@ResumeActivity, path) },
                     )
                 }
             }

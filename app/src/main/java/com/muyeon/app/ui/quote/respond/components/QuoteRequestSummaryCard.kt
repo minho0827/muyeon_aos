@@ -35,6 +35,9 @@ fun QuoteRequestSummaryCard(
     modifier: Modifier = Modifier,
     meta: String? = null,
     guestRequest: Boolean = false,
+    /** ★ 2026-11-10 신청자 유형 배지('학원 요청') — 비회원 배지와 같은 모양. 학원명은 배지 옆. */
+    requesterBadge: String? = null,
+    academyName: String? = null,
 ) {
     val shape = RoundedCornerShape(Dimensions.cardRadius)
     Column(
@@ -50,6 +53,12 @@ fun QuoteRequestSummaryCard(
             Text(region?.ifBlank { null } ?: stringResource(R.string.quote_respond_region_none), style = AppTypography.Sub13, color = AppColors.TextSub)
         }
         if (meta != null) Text(meta, style = AppTypography.Sub13, color = AppColors.TextSub)
+        if (requesterBadge != null) {
+            Row(Modifier.padding(top = Dimensions.spacingXXS), horizontalArrangement = Arrangement.spacedBy(SUMMARY_GAP), verticalAlignment = Alignment.CenterVertically) {
+                LevelBadge(requesterBadge, CategoryColors.Level.Middle)
+                if (!academyName.isNullOrBlank()) Text(academyName, style = AppTypography.Sub13, color = AppColors.TextBody)
+            }
+        }
         // ★ 2026-11-05 비회원 레슨 요청 — 견적은 보낼 수 있고, 채팅은 고객이 가입한 뒤 열린다(웹 같은 문구).
         if (guestRequest) {
             Column(Modifier.padding(top = Dimensions.spacingXXS), verticalArrangement = Arrangement.spacedBy(SUMMARY_GAP)) {

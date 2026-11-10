@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,9 +17,11 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.muyeon.app.R
 import com.muyeon.app.common_components.dialog.ContentAlignment
@@ -46,8 +49,13 @@ fun ReceivedApplicationsScreen(
     onBack: () -> Unit,
     onOpenResume: (ReceivedApplication) -> Unit,
     onManagePostings: () -> Unit,
+    /** ★ 2026-11-10 잠긴 지원자 — 학원 인증 화면 경로로(돌아오면 다시 읽는다). */
+    onVerify: (String) -> Unit = {},
 ) {
     val s by viewModel.state.collectAsStateWithLifecycle()
+    var lockedTarget by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<ReceivedApplication?>(null) }
+    val lockedItems = if (s.trash) emptyList() else s.items.filter { it.locked }
+    fun verifyPath(a: ReceivedApplication?) = a?.verificationPath ?: lockedItems.firstNotNullOfOrNull { it.verificationPath } ?: DEFAULT_VERIFY_PATH
     val context = LocalContext.current
     val list = rememberLazyListState()
     // 이력서를 보고 돌아오면 열람 표시(새 지원 점)가 바뀐다 — 처음 한 번은 ViewModel 이 읽었다.
@@ -78,6 +86,20 @@ fun ReceivedApplicationsScreen(
             style = AppTypography.Body14, color = AppColors.TextBody,
             modifier = Modifier.padding(horizontal = Dimensions.gutter, vertical = Dimensions.spacingS),
         )
+        // ★ 2026-11-10 레슨 요청으로 인증 없이 올린 공고 — 학원 인증 전에는 인원만 알리고 인증으로 잇는다.
+        if (lockedItems.isNotEmpty()) {
+            Column(
+                Modifier.padding(horizontal = Dimensions.gutter, vertical = Dimensions.spacingS).fillMaxWidth()
+                    .background(AppColors.SurfaceMuted, androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                    .padding(Dimensions.spacingL),
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(Dimensions.spacingS),
+            ) {
+                Text(stringResource(R.string.received_locked_notice, lockedItems.size), style = AppTypography.Body14SemiBold, color = AppColors.TextHead)
+                androidx.compose.material3.OutlinedButton(
+                    onClick = { onVerify(verifyPath(null)) }, shape = androidx.compose.foundation.shape.CircleShape,
+                ) { Text(stringResource(R.string.received_verify_academy), style = AppTypography.Body14SemiBold, color = AppColors.TextBody) }
+            }
+        }
         PullToRefreshBox(s.isRefreshing, onRefresh = { viewModel.refresh(pull = true) }, modifier = Modifier.fillMaxSize()) {
             LazyColumn(Modifier.fillMaxSize(), state = list) {
                 when {
@@ -98,7 +120,11 @@ fun ReceivedApplicationsScreen(
                         ) {
                             ReceivedApplicationRow(
                                 a, s.trash,
-                                onClick = if (a.withdrawn || s.trash) null else ({ onOpenResume(a) }),
+                                onClick = when {
+                                    a.withdrawn || s.trash -> null
+                                    a.locked -> ({ lockedTarget = a })
+                                    else -> ({ onOpenResume(a) })
+                                },
                                 onRestore = { viewModel.restore(a) },
                                 showDivider = i < s.items.lastIndex,
                             )
@@ -116,4 +142,15 @@ fun ReceivedApplicationsScreen(
         onDismiss = { viewModel.askPurge(null) }, onLeftButtonClick = { viewModel.askPurge(null) },
         onRightButtonClick = viewModel::purge, showPopup = s.purgeTarget != null,
     )
+    CustomDialog(
+        title = stringResource(R.string.received_locked_title), content = stringResource(R.string.received_locked_body),
+        leftButtonText = stringResource(R.string.common_cancel), rightButtonText = stringResource(R.string.received_verify_academy),
+        buttonCount = 2, alignment = ContentAlignment.Middle,
+        onDismiss = { lockedTarget = null }, onLeftButtonClick = { lockedTarget = null },
+        onRightButtonClick = { val p = verifyPath(lockedTarget); lockedTarget = null; onVerify(p) },
+        showPopup = lockedTarget != null,
+    )
 }
+
+/** 서버가 경로를 안 줬을 때의 학원 인증(백엔드 verification.path 와 같은 값). */
+const val DEFAULT_VERIFY_PATH = "/my/memberType?verify=ACADEMY"

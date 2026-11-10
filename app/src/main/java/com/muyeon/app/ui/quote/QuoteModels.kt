@@ -7,7 +7,19 @@ package com.muyeon.app.ui.quote
 
 enum class QuoteAnswerType { SINGLE, MULTI, REGION, DATE, TEXT }
 
-data class QuoteOption(val id: String, val label: String)
+data class QuoteOption(
+    val id: String,
+    val label: String,
+    /** ★ 2026-11-10 강사 화면 요약 라벨(서버 설문 options[].short). 위저드는 label 을 쓴다. */
+    val short: String? = null,
+    /** ★ 2026-11-10 '무관' 같은 단독 선택지 — 고르면 다른 선택을 푼다(multi 에서만 의미). */
+    val exclusive: Boolean = false,
+    /** ★ 2026-11-10 선택지 아래 작은 설명(0단계 신청자 유형). */
+    val description: String? = null,
+)
+
+/** ★ 2026-11-10 앞 질문 답(optionIds)에 [anyOf] 중 하나가 있을 때만 묻는다(서버 visibleWhen). */
+data class QuoteVisibleWhen(val questionId: String, val anyOf: List<String>)
 
 data class QuoteQuestion(
     val id: String,
@@ -15,7 +27,19 @@ data class QuoteQuestion(
     val title: String,
     val options: List<QuoteOption> = emptyList(),
     val required: Boolean = true,
-)
+    // ★ 2026-11-10 서버 동적 설문 칸 — 하드코딩 질문(폴백)에선 비어 있다.
+    val subtitle: String? = null,
+    val placeholder: String? = null,
+    val short: String? = null,
+    val visibleWhen: QuoteVisibleWhen? = null,
+) {
+    /** 지금 답으로 이 질문을 물어야 하는지 — visibleWhen 이 없으면 항상. */
+    fun isVisible(answers: Map<String, QuoteAnswer>): Boolean {
+        val cond = visibleWhen ?: return true
+        val picked = answers[cond.questionId]?.selectedOptionIds ?: return false
+        return picked.any { it in cond.anyOf }
+    }
+}
 
 data class QuoteAnswer(
     val questionId: String,
@@ -24,6 +48,8 @@ data class QuoteAnswer(
     val region: String? = null,
     val regionCode: String? = null,
     val dateText: String? = null, // yyyy.MM.dd(E) 표시용 — 서버는 date 문자열
+    /** ★ 2026-11-10 서버로 보낼 날짜(yyyy-MM-dd). 없으면 dateText 를 보낸다(예전 동작). */
+    val dateValue: String? = null,
 ) {
     val isEmpty: Boolean
         get() = selectedOptionIds.isEmpty() && text.isNullOrEmpty() &&
@@ -84,7 +110,7 @@ object QuoteQuestions {
             QuoteOption("40s+", "40대 이상"))),
         QuoteQuestion("format", QuoteAnswerType.MULTI, "어떤 레슨 형태를 원하시나요?", listOf(
             QuoteOption("private", "개인 레슨"), QuoteOption("group", "그룹 레슨"), QuoteOption("academy", "학원에 다니며 배우기"),
-            QuoteOption("any", "무관"), QuoteOption("etc", "기타"))),
+            QuoteOption("any", "무관", exclusive = true), QuoteOption("etc", "기타"))),
         QuoteQuestion("days", QuoteAnswerType.MULTI, "선호하는 레슨 요일을 선택해 주세요.", listOf(
             QuoteOption("mon", "월요일"), QuoteOption("tue", "화요일"), QuoteOption("wed", "수요일"),
             QuoteOption("thu", "목요일"), QuoteOption("fri", "금요일"), QuoteOption("sat", "토요일"),
@@ -126,6 +152,19 @@ object QuoteQuestions {
         "when" to "레슨 시기", "region" to "지역", "method" to "진행 방식",
         "inquiry" to "문의", "detail" to "추가 요청",
     )
+
+    /**
+     * ★ 2026-11-10 강사 화면 답 목록 — 서버가 만든 describedAnswers(신청 당시 설문 문구·순서)가 있으면 그대로,
+     *  없거나 비면 기존 로컬 describe. [exclude] 의 질문 id 는 뺀다(예: 위 요약에 이미 보이는 region, 제목에 안 쓰는 academyName).
+     */
+    fun describe(quote: QuoteFull?, exclude: Set<String> = emptySet()): List<Pair<String, String>> {
+        val described = quote?.describedAnswers.orEmpty()
+        if (described.isNotEmpty()) {
+            return described.filter { it.questionId !in exclude && it.value.isNotEmpty() }.map { it.label to it.value }
+        }
+        val answers = (quote?.answers ?: emptyList()).filter { it.questionId !in exclude }
+        return describe(quote?.categoryId, answers)
+    }
 
     /**
      * 견적 답변을 (짧은 라벨, 값) 목록으로 복원 — iOS `QuoteQuestion.describe` 1:1.

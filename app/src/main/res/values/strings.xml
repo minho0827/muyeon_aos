@@ -376,6 +376,10 @@
     <string name="received_purged">받은 지원을 삭제했어요.</string>
     <string name="received_purge_q">이 지원 내역을 삭제할까요?</string>
     <string name="received_purge_body">삭제하면 다시 복원할 수 없어요.</string>
+    <string name="received_locked_notice">강사 %1$d명이 지원했어요 · 학원 인증하면 이력서를 볼 수 있어요</string>
+    <string name="received_verify_academy">학원 인증하기</string>
+    <string name="received_locked_title">학원 인증이 필요해요</string>
+    <string name="received_locked_body">학원 인증을 마치면 지원자 이력서를 볼 수 있어요.</string>
     <!-- ★ 2026-11-08 설정(웹 Setting · BlockedUsers) -->
     <string name="settings_title">설정</string>
     <string name="settings_section_noti">알림설정</string>

@@ -57,7 +57,7 @@ class ReceivedApplicationsViewModel(
 
     init {
         refresh()
-        viewModelScope.collectAppResults(ResultKeys.JOB_POSTINGS, ResultKeys.RESUME) { refresh() }
+        viewModelScope.collectAppResults(ResultKeys.JOB_POSTINGS, ResultKeys.RESUME, ResultKeys.PROFILE) { refresh() }
     }
 
     fun toggleTrash() {

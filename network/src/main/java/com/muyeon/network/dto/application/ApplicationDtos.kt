@@ -39,11 +39,18 @@ data class ReceivedApplicationDto(
     val viewedAt: String? = null, val createdAt: String? = null, val resultReason: String? = null, val postingStatus: String? = null,
     val postingConfirmedApplicationId: Long? = null, val acceptedPay: Double? = null, val effectivePay: Double? = null,
     val viaDispatch: Boolean? = null, val applicantCancels90d: Int? = null,
+    // ★ 2026-11-10 잠긴 지원자(학원 인증 전) — 없으면 종전 그대로. resume.id·title 은 null 일 수 있어 data 만 본다.
+    val locked: Boolean? = null, val verification: Map<String, Any?>? = null, val resume: Map<String, Any?>? = null,
 ) {
     fun toDomain() = if (id == null || kind == null) null else ReceivedApplication(
         id, kind, postingId, postingTitle?.takeIf { it.isNotBlank() }, applicantName?.takeIf { it.isNotBlank() },
         applicantImage?.takeIf { it.isNotBlank() }, status.orEmpty(), canceledBy, viewedAt, createdAt, resultReason, postingStatus,
         postingConfirmedApplicationId, acceptedPay?.toInt(), effectivePay?.toInt(), viaDispatch == true, applicantCancels90d,
+        locked = locked == true,
+        verificationPath = (verification?.get("path") as? String)?.takeIf { it.startsWith("/") },
+        resumeGenres = ((resume?.get("data") as? Map<*, *>)?.get("genres") as? List<*>).orEmpty()
+            .mapNotNull { (it as? String)?.takeIf { g -> g.isNotBlank() } },
+        resumeCareer = ((resume?.get("data") as? Map<*, *>)?.get("career") as? String)?.takeIf { it.isNotBlank() },
     )
 }
 

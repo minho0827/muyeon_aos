@@ -10,6 +10,13 @@ class NativeRoutesB3Test {
     private fun r(path: String) = NativeRoutes.resolve(path)
     private fun route(route: String) = Target.Route(route, auth = true)
 
+    /** ★ 2026-11-10 레슨 요청 [네, 강사 구해요] — ?prefill= 을 채용 공고 위저드로 넘긴다(예전엔 버려서 빈 폼). */
+    @Test fun jobCreateKeepsPrefill() {
+        assertEquals(Target.Action("openJobPostingForm", mapOf("prefill" to "abc123")), r("/jobs/create?prefill=abc123"))
+        assertEquals(Target.Action("openJobPostingForm"), r("/jobs/create"))
+        assertEquals(Target.Action("openJobPostingForm"), r("/jobs/create?prefill="))
+    }
+
     @Test fun subEdit() {
         assertEquals(route("subs/12/edit"), r("/subs/12/edit"))
         assertEquals(route("subs/12/edit"), r("/subs/12/edit/"))

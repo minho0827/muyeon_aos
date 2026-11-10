@@ -91,6 +91,16 @@ data class ReceivedApplication(
     val effectivePay: Int?,
     val viaDispatch: Boolean,
     val applicantCancels90d: Int?,
+    /**
+     * ★ 2026-11-10 레슨 요청으로 인증 없이 올린 채용 공고 — 학원 인증 전에는 이력서를 못 연다(서버 locked).
+     *  잠긴 줄은 이름 대신 '지원자 N', 이력서는 장르·경력만 온다. 누르면 인증 안내.
+     */
+    val locked: Boolean = false,
+    /** 잠금을 푸는 인증 화면 경로(서버 verification.path) — 없으면 기본 학원 인증. */
+    val verificationPath: String? = null,
+    val resumeGenres: List<String> = emptyList(),
+    /** 경력 버킷(NEW/Y1_3/…). */
+    val resumeCareer: String? = null,
 ) {
     val key: String get() = "$kind-$id"
     /** 지원자가 거둔 지원 — 열람 불가. */

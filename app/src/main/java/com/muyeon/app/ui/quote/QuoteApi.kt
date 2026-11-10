@@ -58,9 +58,22 @@ class QuoteApi(private val token: String?) {
 
     // MARK: - 요청 생성
 
-    /** 견적요청 생성. POST /quotes → { id } */
-    suspend fun createQuote(body: JSONObject): Result<Int> =
-        call("/quotes", "POST", body).map { it.asObject().optInt("id") }
+    /** 견적요청 생성. POST /quotes → { id, crossPosts? }(★ 2026-11-10 공고 같이 올리기 결과). */
+    suspend fun createQuote(body: JSONObject): Result<CreatedQuote> =
+        call("/quotes", "POST", body).map { CreatedQuote.from(it.asObject()) }
+
+    // MARK: - ★ 2026-11-10 레슨 요청 설문(서버 동적) — 본문 문자열 그대로(파싱·캐시는 QuestionnaireRepository).
+
+    /** 0단계. GET /quote-questionnaire/entry (선택적 인증 · X-Active-Type 으로 preselect). */
+    suspend fun questionnaireEntry(): Result<String> =
+        call("/quote-questionnaire/entry").map { it.raw }
+
+    /** 유형의 질문 세트. GET /quote-questionnaire?requesterType=&categoryId=&direct= */
+    suspend fun questionnaireSet(requesterType: String, categoryId: String, direct: Boolean): Result<String> =
+        call(
+            "/quote-questionnaire?requesterType=" + URLEncoder.encode(requesterType, "UTF-8") +
+                "&categoryId=" + URLEncoder.encode(categoryId, "UTF-8") + (if (direct) "&direct=1" else ""),
+        ).map { it.raw }
 
     /** ★ 2026-11-08 이번 달 레슨 요청 남은 횟수(+ teacherId 를 주면 그 강사와 이어서 이야기할 방). */
     suspend fun requestQuota(teacherId: Int? = null): Result<LessonRequestQuota> =

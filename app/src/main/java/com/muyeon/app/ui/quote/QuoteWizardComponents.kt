@@ -105,6 +105,8 @@ fun QuoteOptionRow(
     isSelected: Boolean,
     isMulti: Boolean,
     onTap: () -> Unit,
+    /** ★ 2026-11-10 라벨 아래 작은 설명(0단계 신청자 유형). */
+    description: String? = null,
 ) {
     Row(
         modifier = Modifier
@@ -122,14 +124,24 @@ fun QuoteOptionRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         OptionIndicator(isSelected, isMulti)
-        Text(
-            text = label,
-            fontFamily = customFontFamily,
-            fontWeight = FontWeight.Medium,
-            fontSize = 16.sp,
-            color = QuoteColors.c101116,
-            modifier = Modifier.weight(1f),
-        )
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = label,
+                fontFamily = customFontFamily,
+                fontWeight = FontWeight.Medium,
+                fontSize = 16.sp,
+                color = QuoteColors.c101116,
+            )
+            if (!description.isNullOrEmpty()) {
+                Text(
+                    text = description,
+                    fontFamily = customFontFamily,
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 13.sp,
+                    color = QuoteColors.c6D6E71,
+                )
+            }
+        }
     }
 }
 

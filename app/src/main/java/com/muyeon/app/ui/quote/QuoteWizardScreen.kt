@@ -11,7 +11,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -54,7 +56,8 @@ fun QuoteWizardScreen(
     val scroll = rememberScrollState()
 
     // 질문이 바뀔 때마다 '입력 중…' 0.9초 후 질문 노출 (iOS runTyping).
-    LaunchedEffect(vm.currentIndex) {
+    LaunchedEffect(vm.currentIndex, vm.loading) {
+        if (vm.loading) { showTyping = true; return@LaunchedEffect }
         showTyping = true
         scroll.animateScrollTo(scroll.maxValue)
         delay(900)
@@ -71,7 +74,7 @@ fun QuoteWizardScreen(
         Header(
             title = vm.title,
             progress = vm.progress,
-            stepText = "${vm.currentIndex + 1}/${vm.questions.size}",
+            stepText = "${vm.currentIndex + 1}/${maxOf(vm.questions.size, 1)}",
             onClose = onClose,
         )
 
@@ -83,7 +86,7 @@ fun QuoteWizardScreen(
                 .padding(top = 16.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            if (vm.currentIndex == 0) InfoCard(isDirect)
+            if (vm.currentIndex == 0 && !vm.loading) InfoCard(isDirect)
 
             // 채팅 로그(이미 답변한 질문들)
             vm.answeredQuestions.forEach { q ->
@@ -97,14 +100,29 @@ fun QuoteWizardScreen(
                 }
             }
 
-            // 현재 질문
-            CurrentQuestion(
-                vm = vm,
-                showTyping = showTyping,
-                onOpenRegionPicker = { showRegionPicker = true },
-            )
+            // 현재 질문 — ★ 2026-11-10 설문을 받는 중이면 '입력 중…' 말풍선만.
+            if (vm.loading || vm.currentQuestionOrNull == null) {
+                QuoteTypingBubble()
+            } else {
+                CurrentQuestion(
+                    vm = vm,
+                    showTyping = showTyping,
+                    onOpenRegionPicker = { showRegionPicker = true },
+                )
+            }
         }
 
+        // ★ 2026-11-10 마지막 단계 [무료견적 받기] 위 구석 작은 체크 한 줄 '☑ 채용 공고에도 올립니다'(서버 title) — 기본 체크, 로그인 회원만.
+        // 0단계뿐이거나 세트를 받기 전에는 보이지 않는다(마지막 질문에서 한 번만).
+        if (vm.isLastQuestion && !vm.loading && vm.questions.size > 1 && !token.isNullOrEmpty()) {
+            vm.crossPost.forEach { spec ->
+                CrossPostCheckLine(
+                    text = spec.title.ifEmpty { "채용 공고에도 올립니다" },
+                    checked = vm.isCrossPostOn(spec.kind),
+                    onToggle = { vm.setCrossPost(spec.kind, it) },
+                )
+            }
+        }
         if (vm.isLastQuestion && !submitNote.isNullOrEmpty()) {
             Text(
                 text = submitNote,
@@ -119,7 +137,7 @@ fun QuoteWizardScreen(
         BottomBar(
             text = if (vm.isLastQuestion) "무료견적 받기" else "다음",
             enabled = vm.canProceed,
-            onClick = { vm.goNextOrComplete { onComplete(vm.answers.toMap()) } },
+            onClick = { vm.goNextOrComplete { onComplete(vm.submitAnswers()) } },
         )
     }
 
@@ -205,12 +223,20 @@ private fun CurrentQuestion(
         AnimatedVisibility(visible = !showTyping, enter = fadeIn(), exit = fadeOut()) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 QuoteChatBubble(text = q.title, isQuestion = true)
+                // ★ 2026-11-10 서버 설문 부제(0단계 '알맞은 질문으로 안내해 드릴게요.' 등).
+                q.subtitle?.let {
+                    Text(
+                        it, fontFamily = customFontFamily, fontWeight = FontWeight.Normal, fontSize = 13.sp,
+                        color = QuoteColors.c6D6E71, modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
                 when (q.type) {
                     QuoteAnswerType.SINGLE, QuoteAnswerType.MULTI ->
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { // iOS VStack spacing 10
                             q.options.forEach { option ->
                                 QuoteOptionRow(
                                     label = option.label,
+                                    description = option.description,
                                     isSelected = vm.isSelected(option),
                                     isMulti = q.type == QuoteAnswerType.MULTI,
                                     onTap = { vm.toggleOption(option) },
@@ -238,7 +264,7 @@ private fun FreeTextInput(vm: QuoteWizardViewModel, q: QuoteQuestion) {
         else -> current.text ?: ""
     }
     var value by remember(q.id) { mutableStateOf(initial) }
-    val hint = when (q.type) {
+    val hint = q.placeholder ?: when (q.type) {
         QuoteAnswerType.DATE -> "예: 2026.08.20"
         else -> "내용을 입력해 주세요."
     }
@@ -290,7 +316,10 @@ private fun DateSelector(vm: QuoteWizardViewModel, q: QuoteQuestion) {
         millis?.let {
             val fmt = java.text.SimpleDateFormat("yyyy.MM.dd(E)", java.util.Locale.KOREAN)
             fmt.timeZone = java.util.TimeZone.getTimeZone("UTC") // DatePicker 는 UTC 자정 기준
-            vm.setDateText(fmt.format(java.util.Date(it)))
+            // ★ 2026-11-10 서버로는 yyyy-MM-dd(서버 설문 whenDate → when.date 로 합친다).
+            val iso = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+            iso.timeZone = java.util.TimeZone.getTimeZone("UTC")
+            vm.setDateText(fmt.format(java.util.Date(it)), iso.format(java.util.Date(it)))
         }
     }
     androidx.compose.material3.DatePicker(
@@ -342,5 +371,35 @@ private fun BottomBar(text: String, enabled: Boolean, onClick: () -> Unit) {
             enabled = enabled,
             onClick = onClick,
         )
+    }
+}
+
+/** ★ 2026-11-10 같이 올리기 체크 한 줄 — 작은 글씨, 오른쪽 구석(위저드 선택지 체크박스 색). */
+@Composable
+private fun CrossPostCheckLine(text: String, checked: Boolean, onToggle: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().background(QuoteColors.white).padding(start = 20.dp, end = 20.dp, top = 8.dp),
+        horizontalArrangement = Arrangement.End,
+    ) {
+        Row(
+            Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .toggleable(value = checked, role = androidx.compose.ui.semantics.Role.Checkbox, onValueChange = onToggle)
+                .padding(vertical = 4.dp, horizontal = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Box(
+                Modifier
+                    .size(16.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(if (checked) QuoteColors.f58232 else QuoteColors.white)
+                    .border(1.dp, if (checked) QuoteColors.f58232 else QuoteColors.cC5C4C4, RoundedCornerShape(4.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (checked) Icon(Icons.Filled.Check, null, tint = QuoteColors.white, modifier = Modifier.size(12.dp))
+            }
+            Text(text, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, color = QuoteColors.c6D6E71)
+        }
     }
 }

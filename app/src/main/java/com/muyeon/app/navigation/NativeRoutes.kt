@@ -50,7 +50,8 @@ object NativeRoutes {
             "/profileResume", "/resume" -> return Target.Action("openResumeList", mapOf("mode" to if (query["as"] == "dancer") "dancer" else "teacher"))
             "/lessonCalendar" -> return Target.Action("openLessonCalendar", query["lessonId"]?.let { mapOf("lessonId" to it) } ?: emptyMap())
             // ★ 2026-11-08 채용공고 작성 · 구직 프로필 등록 — 앱 화면이 있다(웹 창 대신).
-            "/jobs/create" -> return Target.Action("openJobPostingForm")
+            //  ★ 2026-11-10 레슨 요청 [네, 강사 구해요]·월 횟수 소진의 ?prefill=<id> 를 넘긴다(예전엔 쿼리를 버려 빈 폼이 열렸다).
+            "/jobs/create" -> return Target.Action("openJobPostingForm", query["prefill"]?.ifBlank { null }?.let { mapOf("prefill" to it) } ?: emptyMap())
             "/profileManage" -> if (query["seek"] == "1") return Target.Action("openSeekProfile")
             // ★ 2026-11-08 전체 메뉴 점검 — 앱 화면이 이미 있는데 웹으로 가던 주소.
             "/myLessons" -> return Target.Action("openLessonManage")

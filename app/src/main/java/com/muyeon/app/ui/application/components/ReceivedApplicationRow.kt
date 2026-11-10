@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -45,11 +46,13 @@ fun ReceivedApplicationRow(a: ReceivedApplication, trash: Boolean, onClick: (() 
     Column(Modifier.fillMaxWidth()) {
         Row(
             Modifier.fillMaxWidth().let { if (onClick != null) it.clickable(onClick = onClick) else it }
+                // ★ 2026-11-10 잠긴 지원자(학원 인증 전)는 흐리게 — 이름('지원자 N')·장르·경력만.
+                .alpha(if (a.locked) 0.5f else 1f)
                 .padding(horizontal = Dimensions.gutter, vertical = Dimensions.spacingL),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Dimensions.spacingM),
         ) {
-            Avatar(a.applicantImage, 48.dp)
+            Avatar(if (a.locked) null else a.applicantImage, 48.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Dimensions.spacingXS)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(Dimensions.spacingXS)) {
                     LevelBadge(stringResource(ApplicationLabels.kind(a.kind)), when (a.kind) {
@@ -61,7 +64,11 @@ fun ReceivedApplicationRow(a: ReceivedApplication, trash: Boolean, onClick: (() 
                     LevelBadge(stringResource(status), level)
                 }
                 Text(a.applicantName ?: stringResource(R.string.received_applicant), style = AppTypography.CardTitle16, color = AppColors.TextHead, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                val sub = buildList {
+                val sub = if (a.locked) {
+                    (a.resumeGenres.take(3) + listOfNotNull(a.resumeCareer?.let { c ->
+                        com.muyeon.app.ui.resume.ResumeOptions.careerLevels.firstOrNull { it.first == c }?.second
+                    })).joinToString(" · ").ifBlank { a.postingTitle ?: "" }
+                } else buildList {
                     add(a.postingTitle ?: stringResource(R.string.application_posting))
                     add(timeAgo(a.createdAt))
                     if (a.kind == ApplicationKind.SUB && (a.acceptedPay ?: 0) > 0) {
@@ -74,6 +81,7 @@ fun ReceivedApplicationRow(a: ReceivedApplication, trash: Boolean, onClick: (() 
             }
             when {
                 trash -> OutlinedButton(onClick = onRestore, shape = CircleShape) { Text(stringResource(R.string.received_restore), style = AppTypography.Body14SemiBold, color = AppColors.TextBody) }
+                a.locked -> Icon(painterResource(R.drawable.ic_web_arrow), null, tint = AppColors.TextHead, modifier = Modifier.size(18.dp).rotate(-90f))
                 a.withdrawn -> Text(stringResource(R.string.received_unavailable), style = AppTypography.Sub13, color = AppColors.TextSub)
                 else -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Dimensions.spacingS)) {
                     if (a.isNew) Box(Modifier.size(8.dp).background(AppColors.NewDot, CircleShape))

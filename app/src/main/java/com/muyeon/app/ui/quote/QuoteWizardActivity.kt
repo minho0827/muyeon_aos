@@ -119,13 +119,21 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
         targetTeacherId: String,
         seedAnswers: Map<String, QuoteAnswer>,
     ) {
-            val vm = remember(category.id) { QuoteWizardViewModel(category, seedAnswers, isDirect = targetTeacherId.isNotEmpty()) }
+            // ★ 2026-11-10 '설문이 바뀌었어요'(QUESTION_SET_INVALID 등) 뒤 처음부터 다시 — 키가 바뀌면 설문을 새로 받는다.
+            var restartKey by remember { mutableStateOf(0) }
+            val repo = remember { QuestionnaireRepository(this@QuoteWizardActivity, TokenManager.getAccessToken(this@QuoteWizardActivity)) }
+            val vm = remember(category.id, restartKey) {
+                QuoteWizardViewModel(category, seedAnswers, isDirect = targetTeacherId.isNotEmpty(), repo = repo)
+            }
             var showExit by remember { mutableStateOf(false) }
             // 단계: wizard → loading(매칭 로딩) → done(완료 안내). iOS 흐름 동일.
             var phase by remember { mutableStateOf("wizard") }
             // 제출 결과(null=진행중)와 로딩 애니메이션 종료를 둘 다 기다린 뒤에만 완료/실패를 판정한다.
             //  (예전엔 애니메이션이 먼저 끝나면 결과 미도착(null)을 성공으로 처리해 403 도 완료 화면이 떴다.)
-            var submitResult by remember { mutableStateOf<Result<Int>?>(null) }
+            var submitResult by remember { mutableStateOf<Result<CreatedQuote>?>(null) }
+            // ★ 2026-11-10 공고 같이 올리기 제출 결과(완료 화면).
+            var crossResults by remember { mutableStateOf<List<CrossPostResult>>(emptyList()) }
+            var questionnaireChanged by remember { mutableStateOf<String?>(null) }
             var loadingDone by remember { mutableStateOf(false) }
             // ★ 2026-11-07 강사 구인 확인 — 처음엔 "ASK"(의심되면 서버가 409 RECRUIT_CHECK 로 묻는다), 답한 뒤엔 "NO"/"YES".
             //  질문·공고 안내 팝업 문구(서버 message)와 다시 보낼 답변을 들고 있는다(웹 QuoteCreate 와 같다).
@@ -151,7 +159,9 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                 submitResult = null
                 loadingDone = false
                 phase = "loading"
-                submit(answers, category.id, targetTeacherId, recruitAnswer ?: "ASK") { r -> submitResult = r }
+                // 같이 올리기 — 마지막 단계 체크박스에서 체크된 종류만(비회원은 안 보낸다). 세트를 못 받았으면(폴백) 유형·세트 번호를 보내지 않는다.
+                val cross = if (TokenManager.getAccessToken(this@QuoteWizardActivity).isNullOrEmpty()) emptyList() else vm.checkedCrossPostKinds
+                submit(answers, category.id, targetTeacherId, recruitAnswer ?: "ASK", vm.requesterType, vm.questionSetId, cross) { r -> submitResult = r }
             }
 
             LaunchedEffect(phase, loadingDone, submitResult) {
@@ -175,6 +185,18 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                     phase = "wizard"
                     return@LaunchedEffect
                 }
+                // ★ 2026-11-10 설문이 바뀜(유형이 꺼짐·세트 버전 바뀜) — 안내 후 설문을 새로 받아 처음부터.
+                if (code == "REQUESTER_TYPE_UNAVAILABLE" || code == "QUESTION_SET_INVALID") {
+                    questionnaireChanged = apiErr.message
+                    phase = "wizard"
+                    return@LaunchedEffect
+                }
+                // ★ 2026-11-10 답이 세트와 안 맞음 — 서버 문구를 바로 보여 주고 문진으로.
+                if (code == "QUOTE_ANSWERS_INVALID") {
+                    Toast.makeText(this@QuoteWizardActivity, apiErr.message.ifEmpty { "답변을 다시 확인해 주세요." }, Toast.LENGTH_LONG).show()
+                    phase = "wizard"
+                    return@LaunchedEffect
+                }
                 if (code == "RECRUIT_CHECK" || code == "RECRUIT_REDIRECT") {
                     val m = r.exceptionOrNull()?.message
                     if (code == "RECRUIT_CHECK") recruitAsk = m?.ifEmpty { null } ?: RECRUIT_QUESTION
@@ -186,7 +208,8 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                     return@LaunchedEffect
                 }
                 if (!loadingDone) return@LaunchedEffect
-                r.onSuccess {
+                r.onSuccess { created ->
+                    crossResults = created.crossPosts
                     // 웹이 받은견적 목록으로 라우팅한다(iOS notifyWebQuoteSubmitted).
                     WebCallbacks.quoteSubmitted(this@QuoteWizardActivity)
                     phase = "done"
@@ -234,6 +257,10 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                         onViewQuotes = { openWebAndFinish("/myQuotes") },
                         onGoHome = { openWebAndFinish("/home") },
                         onClose = { finish() },
+                        crossPosts = crossResults,
+                        // 공고 상세(/jobs/:id)·학원 인증(/my/memberType?verify=ACADEMY → 학원 인증 화면)·공고 수정(/jobs/:id/edit)·
+                        //  공고 쓰기(/jobs/create) — 모두 앱 화면 표(NativeRoutes)가 받는다.
+                        onCrossPost = { cp -> cp.path?.let { openWebAndFinish(it) } },
                     )
                     if (askPush) {
                         com.muyeon.app.ui.onboarding.NotificationConsentSheet(onFinish = { g ->
@@ -272,6 +299,22 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                                 this@QuoteWizardActivity, id, com.muyeon.app.ui.lesson.LessonDetailSource.QUOTE_RECOMMEND,
                             )
                         },
+                    )
+                }
+                questionnaireChanged?.let { msg ->
+                    com.muyeon.app.ui.common.MuyeonDialog(
+                        title = "설문이 바뀌었어요",
+                        message = msg.ifEmpty { "새 질문으로 처음부터 다시 안내해 드릴게요." },
+                        actions = listOf(
+                            com.muyeon.app.ui.common.MuyeonDialogAction("다시 시작하기", com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY) {
+                                questionnaireChanged = null
+                                repo.clear()
+                                recruitAnswer = null
+                                restartKey += 1
+                            },
+                        ),
+                        force = true,
+                        onDismiss = { questionnaireChanged = null },
                     )
                 }
                 // ★ 2026-11-07 강사 구인 확인 — 의심되는 요청에만 서버가 묻는다. 답해야 보낸다(닫기 없음, 웹과 같음).
@@ -329,8 +372,9 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
 
     /**
      * ★ 2026-11-07 공고 작성 경로 — 서버 경로가 기대한 화면(fallback 으로 시작, 뒤는 ?쿼리만)이면 그대로, 아니면 고정 경로.
-     *  NativeWebRoute → WebViewActivity.consumeNativeRoute → __nativeGo(path) → navigate(path) 라 "?prefill=" 은 그대로 살아간다
-     *  (인코딩을 다시 하지 않음). 따옴표·역슬래시가 섞인 값은 JS 문자열을 깨므로 받지 않는다.
+     *  NativeWebRoute.openWebAndFinish → MainActivity.openPath → NativeRoutes 가 앱 화면으로 연다:
+     *  /jobs/create?prefill=<id> → 채용 공고 위저드(JobPostingActivity.startForm(prefillId) — GET /quotes/recruit-prefill/<id> 로 빈 칸만 채움),
+     *  /subs/create?prefill=<id> → 대타 위저드(SubWizard). 따옴표·역슬래시·공백이 섞인 값은 받지 않는다.
      */
     private fun recruitPath(paths: Map<String, String>?, key: String, fallback: String): String {
         val p = paths?.get(key)?.trim().orEmpty()
@@ -347,7 +391,10 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
         categoryId: String,
         targetTeacherId: String,
         recruitCheck: String,
-        onDone: (Result<Int>) -> Unit,
+        requesterType: String?,
+        questionSetId: Int?,
+        crossPost: List<String>,
+        onDone: (Result<CreatedQuote>) -> Unit,
     ) {
         val token = TokenManager.getAccessToken(this)
         if (token.isNullOrEmpty()) { onDone(Result.failure(ApiMessageException("로그인이 필요해요."))); return }
@@ -361,7 +408,7 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
             a.text?.takeIf { it.isNotEmpty() }?.let { o.put("text", it) }
             a.region?.takeIf { it.isNotEmpty() }?.let { o.put("region", it); region = it }
             a.regionCode?.takeIf { it.isNotEmpty() }?.let { o.put("regionCode", it); regionCode = it }
-            a.dateText?.takeIf { it.isNotEmpty() }?.let { o.put("date", it) }
+            (a.dateValue ?: a.dateText)?.takeIf { it.isNotEmpty() }?.let { o.put("date", it) }
             arr.put(o)
         }
         val body = JSONObject()
@@ -373,6 +420,11 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                 targetTeacherId.toIntOrNull()?.let { put("targetTeacherId", it) }
                 // ★ 2026-11-07 강사 구인 확인 — "ASK" | "NO" | "YES"(서버 risk/recruit-check).
                 put("recruitCheck", recruitCheck)
+                // ★ 2026-11-10 서버 설문 — 세트를 받았을 때만(폴백이면 빼서 서버가 예전 앱으로 보게).
+                requesterType?.let { put("requesterType", it) }
+                questionSetId?.let { put("questionSetId", it) }
+                // 체크된 종류만 [{kind}] — 마감일은 서버가 상시 모집('-')으로 둔다.
+                if (crossPost.isNotEmpty()) put("crossPost", JSONArray(crossPost.map { JSONObject().put("kind", it) }))
             }
 
         // QuoteApi 경유 — X-Active-Type 헤더 부착 + 4xx message(ApiMessageException) 보존.

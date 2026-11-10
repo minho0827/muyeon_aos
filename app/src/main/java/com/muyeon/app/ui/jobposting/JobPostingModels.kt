@@ -375,6 +375,12 @@ class JobPostingApi(internal val token: String?) {
 
     suspend fun loadJob(id: Int): Result<JobForm> = call("/jobs/$id").map { JobForm.from(JSONObject(it)) }
 
+    /** ★ 2026-11-10 레슨 요청 답으로 공고 미리 채우기. GET /quotes/recruit-prefill/:id → { sub, job } 중 job. */
+    suspend fun recruitPrefillJob(id: String): Result<JSONObject> =
+        call("/quotes/recruit-prefill/" + java.net.URLEncoder.encode(id, "UTF-8").replace("+", "%20")).mapCatching {
+            JSONObject(it).optJSONObject("job") ?: error("no job")
+        }
+
     /**
      * 공고 상세 원본 — 종류별 GET /{jobs|subs|casting}/:id (인증 헤더 포함).
      *  ⚠️ 대타(SUB)는 토큰이 있어야 올린 분 전용 dispatchStats 가 붙는다.

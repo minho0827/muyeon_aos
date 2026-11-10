@@ -583,10 +583,14 @@ class JobPostingActivity : com.muyeon.app.result.ResultActivity() {
         private const val EXTRA_ID = "id"
 
         fun listIntent(context: Context) = intent(context, "list")
-        fun formIntent(context: Context, jobId: Int?) = intent(context, "form").putExtra(EXTRA_ID, jobId ?: 0)
+        // ★ 2026-11-10 레슨 요청에서 온 미리 채우기 번호(?prefill=) — 새 공고일 때만.
+        private const val EXTRA_PREFILL = "prefill"
+        fun formIntent(context: Context, jobId: Int?, prefillId: String? = null) =
+            intent(context, "form").putExtra(EXTRA_ID, jobId ?: 0).putExtra(EXTRA_PREFILL, prefillId.orEmpty())
 
         fun startList(context: Context) = context.launchScreen(listIntent(context))
-        fun startForm(context: Context, jobId: Int?) = context.launchScreen(formIntent(context, jobId))
+        fun startForm(context: Context, jobId: Int?, prefillId: String? = null) =
+            context.launchScreen(formIntent(context, jobId, prefillId))
 
         private fun intent(context: Context, route: String) =
             Intent(context, JobPostingActivity::class.java).putExtra(EXTRA_ROUTE, route)
@@ -596,6 +600,7 @@ class JobPostingActivity : com.muyeon.app.result.ResultActivity() {
         super.onCreate(savedInstanceState)
         val route = intent.getStringExtra(EXTRA_ROUTE) ?: "list"
         val id = intent.getIntExtra(EXTRA_ID, 0)
+        val prefillId = intent.getStringExtra(EXTRA_PREFILL)?.ifBlank { null }?.takeIf { id == 0 }
 
         setEdgeContent {
             val nav = rememberNavController()
@@ -710,6 +715,7 @@ class JobPostingActivity : com.muyeon.app.result.ResultActivity() {
                 composable("form") {
                     JobPostingWizardScreen(
                         api, id.takeIf { it > 0 }, onClose = { back() }, onSaved = { back() },
+                        prefillId = prefillId,
                         onOpenMembership = { openMembership() },
                         onOpenMyPostings = { openMyPostings() },
                     )

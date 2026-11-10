@@ -157,6 +157,9 @@ fun QuoteSubmittedScreen(
     onViewQuotes: () -> Unit,
     onGoHome: () -> Unit,
     onClose: () -> Unit,
+    /** ★ 2026-11-10 공고 같이 올리기 결과 — 결과별 문구 + 버튼(path 가 있을 때만). */
+    crossPosts: List<CrossPostResult> = emptyList(),
+    onCrossPost: (CrossPostResult) -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize().background(QuoteColors.white)) {
         // navBar — 제목 18sp bold, X 18, p h20 v14
@@ -182,6 +185,8 @@ fun QuoteSubmittedScreen(
                 color = QuoteColors.c6D6E71, textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 8.dp),
             )
+
+            crossPosts.forEach { cp -> CrossPostResultCard(cp) { onCrossPost(cp) } }
 
             // 안내 3행 카드
             Column(
@@ -290,6 +295,42 @@ private fun InfoRow(icon: ImageVector, title: String, desc: String) {
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(title, fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = QuoteColors.c101116)
             Text(desc, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, color = QuoteColors.c6D6E71)
+        }
+    }
+}
+
+/**
+ * ★ 2026-11-10 공고 같이 올리기 결과 한 장 — 서버 message 그대로 + 상태별 버튼(계약 표).
+ *  OPEN [공고 보기] · DRAFT [내 공고에서 올리기] · FAILED [공고 쓰기].
+ *  (11-10 변경) 학원 인증은 설문에서 묻지 않아 OPEN("채용 공고도 함께 올렸어요.", /jobs/:id) 으로 온다 —
+ *  인증은 지원자 이력서를 열 때 받는다. PENDING_VERIFY 는 더 오지 않지만 옛 응답 대비로 남겨 둔다.
+ */
+@Composable
+private fun CrossPostResultCard(cp: CrossPostResult, onAction: () -> Unit) {
+    val button = when (cp.status) {
+        "OPEN" -> "공고 보기"
+        "PENDING_VERIFY" -> "학원 인증하기"
+        "DRAFT" -> "내 공고에서 올리기"
+        "FAILED" -> "공고 쓰기"
+        else -> null
+    }?.takeIf { !cp.path.isNullOrEmpty() }
+    val ok = cp.status == "OPEN"
+    Column(
+        Modifier
+            .padding(top = 24.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (ok) QuoteColors.cFFE4D2 else cF7F7F7s)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            cp.message.ifEmpty { if (ok) "채용 공고도 함께 올렸어요." else "채용 공고는 올리지 못했어요." },
+            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp, lineHeight = 21.sp,
+            color = QuoteColors.c101116,
+        )
+        if (button != null) {
+            QuotePrimaryButton(button, Modifier.fillMaxWidth(), filled = false, onClick = onAction)
         }
     }
 }

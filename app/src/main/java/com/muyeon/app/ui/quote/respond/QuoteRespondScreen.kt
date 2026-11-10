@@ -244,6 +244,8 @@ private fun Summary(q: QuoteFull, meta: String? = null, guest: Boolean = q.guest
     region = q.region,
     meta = meta,
     guestRequest = guest,
+    requesterBadge = q.requesterBadge,
+    academyName = q.academyName,
     modifier = Modifier.padding(horizontal = Dimensions.gutter),
 )
 

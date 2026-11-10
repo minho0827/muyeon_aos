@@ -508,7 +508,8 @@ private fun NeedsGenre(onGo: (() -> Unit)?) {
 /** 그리드 셀 — 카테고리·시간 / 문진 첫 답 요약 / 지역 (+첨부 썸네일, N 배지). */
 @Composable
 private fun GridCell(quote: QuoteFull, isNew: Boolean, onClick: () -> Unit) {
-    val details = remember(quote) { QuoteQuestions.describe(quote.categoryId, quote.answers ?: emptyList()) }
+    // ★ 2026-11-10 제목은 '첫 답' — 학원 요청의 학원명은 건너뛰고(아래 지역 줄 앞에 따로) 수업을 쓴다.
+    val details = remember(quote) { QuoteQuestions.describe(quote, exclude = setOf(ACADEMY_NAME_QID)) }
     val photo = (quote.answers ?: emptyList()).flatMap { it.images ?: emptyList() }.firstOrNull()
 
     Box {
@@ -537,6 +538,10 @@ private fun GridCell(quote: QuoteFull, isNew: Boolean, onClick: () -> Unit) {
                     Spacer(Modifier.width(4.dp))
                     QuotePill(GUEST_REQUEST_TAG, MuyeonColors.textSub)
                 }
+                quote.requesterBadge?.let {
+                    Spacer(Modifier.width(4.dp))
+                    QuotePill(it, MuyeonColors.textSub)
+                }
                 Spacer(Modifier.weight(1f))
                 Text(
                     QuoteUi.relativeTime(quote.createdAt),
@@ -551,7 +556,7 @@ private fun GridCell(quote: QuoteFull, isNew: Boolean, onClick: () -> Unit) {
                 maxLines = 2, overflow = TextOverflow.Ellipsis,
             )
             Text(
-                quote.region ?: "지역 미지정",
+                listOfNotNull(quote.academyName, quote.region ?: "지역 미지정").joinToString(" · "),
                 fontFamily = customFontFamily, fontWeight = FontWeight.Normal, fontSize = 12.sp,
                 lineHeight = 14.sp, color = MuyeonColors.textSub,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -678,7 +683,7 @@ private fun QuoteDeckScreen(state: QuoteBrowseState, initialIndex: Int, onClose:
 /** 견적요청 카드(데이터 중심) — iOS QuoteRequestCard 1:1. 항목 >6 이면 밀도 압축(compact). */
 @Composable
 fun QuoteRequestCard(quote: QuoteFull) {
-    val details = remember(quote) { QuoteQuestions.describe(quote.categoryId, quote.answers ?: emptyList()) }
+    val details = remember(quote) { QuoteQuestions.describe(quote) }
     val photos = (quote.answers ?: emptyList()).flatMap { it.images ?: emptyList() }
     val compact = details.size > 6
 
@@ -700,6 +705,19 @@ fun QuoteRequestCard(quote: QuoteFull) {
                 if (quote.guestRequest) {
                     Spacer(Modifier.width(6.dp))
                     QuotePill(GUEST_REQUEST_TAG, MuyeonColors.textSub)
+                }
+                // ★ 2026-11-10 신청자 유형 배지('학원 요청') + 학원명.
+                quote.requesterBadge?.let {
+                    Spacer(Modifier.width(6.dp))
+                    QuotePill(it, MuyeonColors.textSub)
+                    quote.academyName?.let { name ->
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            name, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp,
+                            lineHeight = 14.sp, color = MuyeonColors.textSub, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                    }
                 }
                 Spacer(Modifier.weight(1f))
                 Text(
@@ -830,6 +848,14 @@ internal fun QuoteRespondSheet(
                 lineHeight = 20.sp, color = MuyeonColors.textHead,
             )
             // 비회원 요청 — 보낼 때 채팅방이 없다는 안내(웹 시트 헤더와 같은 문구).
+            quote.requesterBadge?.let { badge ->
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    QuotePill(badge, MuyeonColors.textSub)
+                    quote.academyName?.let { name ->
+                        Text(name, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp, color = MuyeonColors.textSub)
+                    }
+                }
+            }
             if (quote.guestRequest) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     QuotePill(GUEST_REQUEST_TAG, MuyeonColors.textSub)
