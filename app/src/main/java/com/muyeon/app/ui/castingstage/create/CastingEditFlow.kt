@@ -66,7 +66,8 @@ data class CastingEdit(val id: Int, val original: CastingCreateForm)
 
 /**
  * 수정 규칙 — 서버 casting.service update 와 같다.
- *  받는 칸: title(2자 이상)·genre·gender·region·place·schedule·role·headcount·imageUrl·deadline(YYYY-MM-DD)·fee·age·applyMethod·contact·summary.
+ *  받는 칸: 등록 때 칸 전부(11-10~ rehearsal·height·major·feeRange·rehearsalFee·transportFee·requirements·regionCode·
+ *  awardPreferred·videoRequired 포함). "" 는 비우기, deadline 은 YYYY-MM-DD 또는 "-"(미정).
  */
 object CastingEditRules {
     private val ISO = Regex("^\\d{4}-\\d{2}-\\d{2}$")
@@ -117,6 +118,20 @@ object CastingEditRules {
 
     /** 서버 PATCH 가 받는 칸만 값으로. 비교·전송 둘 다 이 표를 쓴다. */
     private fun patchable(f: CastingCreateForm): Map<String, Any> = mapOf(
+        "regionCode" to f.regionCode.orEmpty(),
+        "rehearsal" to f.rehearsalText.orEmpty(),
+        "height" to f.height.trim(),
+        "major" to f.major.orEmpty(),
+        "feeRange" to f.feeRange.orEmpty(),
+        "rehearsalFee" to f.rehearsalFee,
+        "transportFee" to f.transportFee,
+        "requirements" to mapOf(
+            "video" to f.videoRequired, "photo" to f.photoRequired, "award" to f.awardRequired,
+            "career" to f.careerRequired, "intro" to f.introRequired,
+        ),
+        // 하위호환 칸(상세 화면이 읽는다) — 등록과 같이 같이 보낸다.
+        "awardPreferred" to f.awardRequired,
+        "videoRequired" to f.videoRequired,
         "title" to f.trimmedTitle,
         "genre" to f.genre.orEmpty(),
         "gender" to f.gender.orEmpty(),
@@ -126,8 +141,8 @@ object CastingEditRules {
         "role" to f.roles.joinToString(", "),
         "headcount" to (f.headcount.toIntOrNull() ?: 0).coerceIn(0, 500),
         "imageUrl" to f.imageUrl.orEmpty(),
-        // 미정·빈칸은 ""(서버는 YYYY-MM-DD 아니면 거절).
-        "deadline" to (f.deadline?.takeIf { !f.deadlineUndecided }?.toString() ?: ""),
+        // 미정은 "-", 빈칸은 ""(비우기).
+        "deadline" to (f.deadlineText ?: ""),
         "fee" to f.fee.trim(),
         "age" to f.age.trim(),
         "applyMethod" to f.applyMethod.trim(),
@@ -138,7 +153,9 @@ object CastingEditRules {
     /** 바뀐 칸만 담은 PATCH 본문(웹 CastingEdit 과 같다). 바뀐 게 없으면 빈 객체. */
     fun patchBody(original: CastingCreateForm, edited: CastingCreateForm): JSONObject {
         val before = patchable(original)
-        return JSONObject().apply { patchable(edited).forEach { (k, v) -> if (before[k] != v) put(k, v) } }
+        return JSONObject().apply {
+            patchable(edited).forEach { (k, v) -> if (before[k] != v) put(k, if (v is Map<*, *>) JSONObject(v) else v) }
+        }
     }
 
     /** 앱에서 먼저 막는 규칙(서버와 같은 문구). 통과하면 null. */

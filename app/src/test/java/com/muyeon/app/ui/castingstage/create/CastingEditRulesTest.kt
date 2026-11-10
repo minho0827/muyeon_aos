@@ -39,9 +39,15 @@ class CastingEditRulesTest {
         assertEquals(0, CastingEditRules.patchBody(o, o).length())
         val body = CastingEditRules.patchBody(o, o.copy(title = "정기공연 2", deadlineUndecided = true, deadline = null))
         assertEquals(setOf("title", "deadline"), body.keys().asSequence().toSet())
-        assertEquals("", body.getString("deadline"))
-        // 서버가 받지 않는 칸은 바꿔도 보내지 않는다.
-        assertEquals(0, CastingEditRules.patchBody(o, o.copy(height = "170cm", rehearsalFee = true)).length())
+        assertEquals("-", body.getString("deadline"))   // 미정
+        // 11-10~ 등록 칸 전부 고칠 수 있다.
+        val more = CastingEditRules.patchBody(o, o.copy(height = "170cm", rehearsalFee = true, feeRange = null, rehearsalEnd = LocalDate.of(2026, 12, 2)))
+        assertEquals(setOf("height", "rehearsalFee", "feeRange", "rehearsal"), more.keys().asSequence().toSet())
+        assertEquals("", more.getString("feeRange"))   // 비우기
+        assertEquals("2026-11-25 ~ 2026-12-02", more.getString("rehearsal"))
+        val req = CastingEditRules.patchBody(o, o.copy(photoRequired = true))
+        assertTrue(req.getJSONObject("requirements").getBoolean("photo"))
+        assertFalse(req.has("videoRequired"))
     }
 
     @Test fun freeTextScheduleIsKept() {
