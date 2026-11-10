@@ -92,12 +92,19 @@ class ChatRoomViewModel(
     /** 채택(매칭)된 견적 방인지 — 회원도 레슨 약속 제안을 보낼 수 있다(iOS isQuoteMatched). */
     val isQuoteMatched: Boolean get() = quoteContext?.matched == true
 
+    /** ★ 11-10 학원 채용 방(afterAccept=HIRE) — 채택 = 채용 확정. 일정 잡기·약속 제안이 없다(서버도 400). */
+    val isHire: Boolean get() = quoteContext?.isHire == true
+
+    /** ★ 11-10 채택 확인창이 학원 채용인지 — 사이클에서 누른 채택은 그 사이클 기준, 아니면 방 기준. */
+    val acceptIsHire: Boolean
+        get() = acceptTarget?.let { t -> t.isHire || (t.afterAccept == null && isHire) } ?: isHire
+
     /**
      * 회원으로서 예약을 잡는 견적 맥락 — 약속 제안 작성의 금액·예약금 안내에 쓴다(iOS memberBookingContext).
      *  여러 레슨이 있으면 회원 쪽 ACCEPTED 사이클을 우선한다.
      */
     val memberBookingContext: ChatQuoteContext?
-        get() = lessonCycles.firstOrNull { !it.isTeacher && it.progress.step == "ACCEPTED" }?.asContext
+        get() = lessonCycles.firstOrNull { !it.isTeacher && !it.isHire && it.progress.step == "ACCEPTED" }?.asContext
             ?: quoteContext?.takeIf { !it.isTeacher }
 
     // ── 상단 레슨 컨텍스트 판정 — iOS ChatRoomViewModel 과 같은 조건 ──
@@ -120,8 +127,8 @@ class ChatRoomViewModel(
      */
     val memberNeedsSchedule: Boolean
         get() {
-            if (lessonCycles.any { !it.isTeacher && it.progress.step == "ACCEPTED" }) return true
-            return lessonCycles.isEmpty() &&
+            if (lessonCycles.any { !it.isTeacher && !it.isHire && it.progress.step == "ACCEPTED" }) return true
+            return !isHire && lessonCycles.isEmpty() &&
                 quoteContext?.isTeacher == false &&
                 quoteContext?.matched == true &&
                 progress?.step == "ACCEPTED"
@@ -158,27 +165,28 @@ class ChatRoomViewModel(
     /**
      * 고객: 이 강사 채택. 성공하면 상태·시스템 메시지를 다시 읽는다(iOS acceptQuote → loadInitial).
      *  이미 채택됐거나 강사 측이면 요청하지 않고 실패로 돌려준다.
+     *  ★ 11-10 성공이면 (채택한 quoteId, 서버 응답) — 학원 채용의 같이 올린 공고 마감 질문에 쓴다. 실패는 null.
      */
-    suspend fun acceptQuote(): Boolean {
+    suspend fun acceptQuote(): Pair<Int, com.muyeon.app.ui.quote.AcceptQuoteResult>? {
         // 사이클에서 누른 채택이면 그 사이클의 견적(quoteId·responseId), 아니면 대표 견적.
         val target = acceptTarget
         acceptTarget = null
-        if (acceptBlockedFor(target)) return false
+        if (acceptBlockedFor(target)) return null
         val ids: Pair<Int, Int> = if (target != null) {
-            if (target.isTeacher || target.matched || target.isProposal || target.quoteId <= 0 || target.responseId <= 0) return false
+            if (target.isTeacher || target.matched || target.isProposal || target.quoteId <= 0 || target.responseId <= 0) return null
             target.quoteId to target.responseId
         } else {
-            val q = quoteContext ?: return false
-            if (q.isTeacher || q.matched) return false
+            val q = quoteContext ?: return null
+            if (q.isTeacher || q.matched) return null
             q.quoteId to q.responseId
         }
         return api.acceptQuote(ids.first, ids.second).fold(
-            onSuccess = {
+            onSuccess = { r ->
                 loadDetail()
                 fetchLatest().onSuccess { res -> merge(res.messages); scheduleGapFillIfNeeded() }
-                true
+                ids.first to r
             },
-            onFailure = { false },
+            onFailure = { null },
         )
     }
 

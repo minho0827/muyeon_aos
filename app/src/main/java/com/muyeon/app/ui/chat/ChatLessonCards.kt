@@ -74,8 +74,15 @@ fun LessonProgressCard(
     onPrimary: () -> Unit,
 ) {
     val isTeacher = context?.isTeacher ?: false
-    val memberWaiting = progress.step == "ACCEPTED" && !isTeacher && waitingProposal
+    // ★ 11-10 학원 채용(afterAccept=HIRE) — 3단계(요청 → 제안 → 채용 확정), 채택 뒤 버튼 없음.
+    val hire = context?.isHire == true
+    val memberWaiting = !hire && progress.step == "ACCEPTED" && !isTeacher && waitingProposal
     val acceptStep = progress.step != "DONE" && progress.step != "SCHEDULED" && progress.step != "ACCEPTED"
+    val dotCount = if (hire) 3 else 5
+    val stepIdx = if (hire) progress.stepIndex.coerceAtMost(2) else progress.stepIndex
+    val ctaLabel = if (hire) {
+        if (acceptStep && !isTeacher) "채택하기" else null
+    } else primaryCta(progress.step, isTeacher)
 
     Column(
         modifier
@@ -113,19 +120,20 @@ fun LessonProgressCard(
 
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                category ?: "레슨",
+                if (hire) hireCategory(category) else category ?: "레슨",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp,
                 lineHeight = 17.sp, color = MuyeonColors.textHead,
             )
+            context?.requesterBadge?.takeIf { it.isNotEmpty() }?.let { Chip(it, MuyeonColors.primary) }
             if (isProposal) Chip("약속", MuyeonColors.primary)
             if (isExpired) QuoteExpiredPill()
             Spacer(Modifier.weight(1f))
             // 5점 스테퍼 — 현재 단계까지 채움
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                repeat(5) { i ->
+                repeat(dotCount) { i ->
                     Box(
                         Modifier.size(6.dp).clip(CircleShape)
-                            .background(if (i <= progress.stepIndex) MuyeonColors.primary else Color(0xFFD1D1D6)),
+                            .background(if (i <= stepIdx) MuyeonColors.primary else Color(0xFFD1D1D6)),
                     )
                 }
             }
@@ -137,13 +145,17 @@ fun LessonProgressCard(
 
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                if (memberWaiting) WAITING_PROPOSAL_LINE else progressStatusLine(progress, context, isTeacher),
+                when {
+                    hire -> hireStatusLine(progress, context)
+                    memberWaiting -> WAITING_PROPOSAL_LINE
+                    else -> progressStatusLine(progress, context, isTeacher)
+                },
                 fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 16.sp,
                 color = MuyeonColors.secondary, maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            primaryCta(progress.step, isTeacher)?.takeIf { !memberWaiting && !(acceptBlocked && acceptStep) }?.let { label ->
+            ctaLabel?.takeIf { !memberWaiting && !(acceptBlocked && acceptStep) }?.let { label ->
                 Text(
                     label,
                     fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 12.sp,
@@ -161,6 +173,30 @@ fun LessonProgressCard(
 
 /** 대기 중 약속 제안이 있을 때 회원 진행 카드·배너 문구(iOS 와 같음). */
 internal const val WAITING_PROPOSAL_LINE = "일정 제안을 주고받는 중이에요"
+
+/** ★ 11-10 학원 채용 확정 뒤 한 줄(웹 HIRE_DONE_LINE 과 같다). */
+internal const val HIRE_DONE_LINE = "채용 확정 · 근무 조건은 채팅으로 이야기해 주세요"
+
+/** ★ 11-10 '발레 레슨' → '발레 강사 채용'(끝의 ' 레슨'을 떼고 붙인다. 비면 '강사 채용') — 웹 hireCategory. */
+internal fun hireCategory(category: String?): String {
+    val base = (category ?: "").replace(Regex("\\s*레슨$"), "").trim()
+    return if (base.isEmpty() || base == "강사") "강사 채용" else "$base 강사 채용"
+}
+
+/** ★ 11-10 사이클 목록 이름 — 전부 학원 채용이면 '채용', 섞이면 '레슨·채용', 아니면 '레슨'(웹 cyclesNoun). */
+internal fun cyclesNoun(cycles: List<ChatLessonCycle>): String {
+    val hire = cycles.count { it.isHire }
+    return when {
+        hire == 0 -> "레슨"
+        hire == cycles.size -> "채용"
+        else -> "레슨·채용"
+    }
+}
+
+/** ★ 11-10 학원 채용 진행 카드 한 줄 — 채택 전 '제안 N건 도착', 채택 뒤 채용 확정 안내. */
+private fun hireStatusLine(progress: ChatLessonProgress, context: ChatQuoteContext?): String =
+    if (progress.step.isNotEmpty() && progress.step != "RESPONDED") HIRE_DONE_LINE
+    else "제안 ${progress.responseCount ?: 1}건 도착" + (context?.priceText?.let { " · $it" } ?: "")
 
 /** iOS LessonProgressCard.statusLine — 단계·역할별 한 줄 상태. */
 private fun progressStatusLine(progress: ChatLessonProgress, context: ChatQuoteContext?, isTeacher: Boolean): String =

@@ -95,7 +95,7 @@ fun LessonContextArea(
             ) {
                 Icon(Icons.AutoMirrored.Filled.List, null, tint = MuyeonColors.primary, modifier = Modifier.size(15.dp))
                 Text(
-                    "진행 중인 레슨 ${cycles.size}건",
+                    "진행 중인 ${cyclesNoun(cycles)} ${cycles.size}건",   // ★ 11-10 학원 채용 섞이면 '채용'/'레슨·채용'
                     fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
                     lineHeight = 17.sp, color = MuyeonColors.textHead,
                 )
@@ -198,7 +198,7 @@ fun LessonContextArea(
                 Spacer(Modifier.weight(1f))
                 Text(
                     buildAnnotatedString {
-                        append("견적 ")
+                        append(if (vm.isHire) "제안 " else "견적 ")   // ★ 11-10 학원 채용은 '제안'
                         withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MuyeonColors.primary)) {
                             append("${vm.quoteCount}개")
                         }
@@ -268,7 +268,7 @@ fun LessonContextArea(
             ) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     Text(
-                        "이 강사와 진행할까요?",
+                        if (vm.isHire) "이 강사님과 함께할까요?" else "이 강사와 진행할까요?",
                         fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
                         lineHeight = 16.sp, color = MuyeonColors.textHead,
                     )
@@ -280,7 +280,24 @@ fun LessonContextArea(
                         )
                     }
                 }
-                CapsuleButton("이 강사로 진행하기", fontSize = 13, hPad = 12, vPad = 7, onClick = onAcceptQuote)
+                CapsuleButton(if (vm.isHire) "이 강사님 채택하기" else "이 강사로 진행하기", fontSize = 13, hPad = 12, vPad = 7, onClick = onAcceptQuote)
+            }
+        } else if (progress == null && vm.isQuoteMatched && vm.isHire) {
+            // ★ 11-10 학원 채용 확정 — 일정 단계가 없으니 안내만(버튼 없음).
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .background(MuyeonColors.primary.copy(alpha = 0.06f))
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(Icons.Filled.Verified, null, tint = MuyeonColors.primary, modifier = Modifier.size(15.dp))
+                Text(
+                    HIRE_DONE_LINE,
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
+                    lineHeight = 16.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
+                )
             }
         } else if (progress == null && vm.isQuoteMatched) {
             // 채택됐지만 일정 미확정 → 양쪽 모두 채팅 안에서 일정 진행.
@@ -413,7 +430,7 @@ fun LessonCyclesSheet(
     ) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
             Text(
-                "진행 중인 레슨 ${cycles.size}건",
+                "진행 중인 ${cyclesNoun(cycles)} ${cycles.size}건",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp,
                 lineHeight = 21.sp, color = MuyeonColors.textHead,
                 modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 4.dp),
@@ -472,7 +489,9 @@ fun LessonTimelineSheet(
     reviewDisabledStyle: Boolean = false,     // 강사 방향 — 후기 액션 미노출
     onDismiss: () -> Unit,
 ) {
-    val reviewAction = if (reviewDisabledStyle || progress.stepIndex < 4) null
+    // ★ 11-10 학원 채용(afterAccept=HIRE) — 요청 → 제안 → 채용 확정 3단계. 일정·후기 행이 없다.
+    val hire = context?.isHire == true
+    val reviewAction = if (hire || reviewDisabledStyle || progress.stepIndex < 4) null
     else onReview?.let { TimelineAction("후기 쓰기", it) }
 
     ModalBottomSheet(
@@ -482,14 +501,32 @@ fun LessonTimelineSheet(
     ) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
             Text(
-                "${category ?: "레슨"} 진행 현황",
+                "${if (hire) hireCategory(category) else category ?: "레슨"} 진행 현황",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp,
                 lineHeight = 21.sp, color = MuyeonColors.textHead,
                 modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 14.dp),
             )
+            if (hire && progress.stepIndex >= 2) {
+                Text(
+                    "학원 채용은 레슨 일정·예약금·후기가 없어요. 근무 일정과 조건은 채팅으로 이야기해 주세요.",
+                    fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp, color = MuyeonColors.secondary,
+                    modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 12.dp),
+                )
+            }
             Column(Modifier.padding(horizontal = 20.dp)) {
                 val startLabel = lessonProgressDateTime(progress.scheduleStartAt)
-                if (isProposal) {
+                if (hire) {
+                    TimelineRow(progress, 0, "학원 요청", lessonProgressDateTime(progress.requestedAt), null)
+                    TimelineRow(
+                        progress, 1,
+                        "제안 ${progress.responseCount ?: 1}건 도착" + (context?.priceText?.let { " · $it" } ?: ""),
+                        lessonProgressDateTime(progress.firstResponseAt),
+                        onQuoteDetail?.let { TimelineAction("제안 보기", it) },
+                    )
+                    TimelineRow(
+                        progress, 2, "채용 확정", lessonProgressDateTime(progress.acceptedAt), null, isLast = true,
+                    )
+                } else if (isProposal) {
                     // 약속잡기 — 견적/채택 단계 없이 '약속 확정 → 완료' 2단계.
                     TimelineRow(
                         progress, 3,

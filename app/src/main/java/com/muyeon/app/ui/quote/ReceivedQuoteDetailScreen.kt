@@ -99,7 +99,11 @@ fun ReceivedQuoteDetailScreen(
     var confirmRec by remember { mutableStateOf<RecommendedTeacher?>(null) }
     var dialogFor by remember { mutableStateOf<RecommendedTeacher?>(null) }
     var showWithdrawConfirm by remember { mutableStateOf(false) }
+    // ★ 11-10 채택 뒤 '채용 공고도 마감할까요?' — 다 물어본 뒤 채팅방(roomId)을 연다.
+    var crossPosts by remember { mutableStateOf<Pair<List<QuoteCrossPost>, Int>?>(null) }
     val scope = rememberCoroutineScope()
+    // ★ 11-10 학원 등 일반이 아닌 신청자의 요청 — 채택 = 채용 확정(일정·예약금·후기 없음), '견적' 대신 '제안'.
+    val isAcademyReq = quote?.requesterType.let { !it.isNullOrEmpty() && it != "GENERAL" }
 
     // 채택 완료 판정 — 서버가 quote.status 를 MATCHED 로 안 내려도 방어적으로 감지(iOS hasAccepted).
     val matched = quote?.status == "MATCHED"
@@ -163,7 +167,7 @@ fun ReceivedQuoteDetailScreen(
                 contentPadding = PaddingValues(vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                item { RequestHeaderCard(quote) }
+                item { RequestHeaderCard(quote, isAcademyReq) }
 
                 // 지정(1:1) 요청 — 누구에게 요청했는지 + 진행상황(응답 유무와 무관하게 표시).
                 val q = quote
@@ -247,6 +251,7 @@ fun ReceivedQuoteDetailScreen(
                                 }
                             },
                             onAccept = { confirmTarget = r },
+                            isAcademyReq = isAcademyReq,
                         )
                     }
                 }
@@ -266,7 +271,8 @@ fun ReceivedQuoteDetailScreen(
     confirmTarget?.let { target ->
         QuoteDialog(
             title = "${target.responder?.displayName ?: "이 강사"}님을 채택할까요?",
-            message = "채택하면 이 요청은 마감되고 다른 견적은 받을 수 없어요.",
+            message = if (isAcademyReq) "채택하면 이 요청은 마감되고 다른 제안은 받을 수 없어요. 근무 조건은 채팅으로 이야기해 주세요."
+                else "채택하면 이 요청은 마감되고 다른 견적은 받을 수 없어요.",
             confirmText = "채택하기",
             onConfirm = {
                 confirmTarget = null
@@ -274,16 +280,31 @@ fun ReceivedQuoteDetailScreen(
                     if (busyResponseId != null) return@launch
                     busyResponseId = target.id
                     api.acceptQuote(quoteId, target.id)
-                        .onSuccess { rid ->
+                        .onSuccess { res ->
                             load()
-                            toast = "채택 완료! 채팅방에서 레슨 일정을 정해 주세요."
-                            if (rid > 0) onOpenChat(rid)
+                            val rid = res.roomId
+                            // ★ 11-10 같이 올린 공고가 열려 있으면 그 질문 창이 채택 완료도 함께 알린다(토스트 생략).
+                            if (res.openCrossPosts.isNotEmpty()) {
+                                crossPosts = res.openCrossPosts to rid
+                            } else {
+                                toast = if (res.isHire) "채용을 확정했어요! 근무 조건은 채팅으로 이야기해 주세요."
+                                    else "채택 완료! 채팅방에서 레슨 일정을 정해 주세요."
+                                if (rid > 0) onOpenChat(rid)
+                            }
                         }
                         .onFailure { toast = "채택하지 못했어요. 잠시 후 다시 시도해 주세요." }
                     busyResponseId = null
                 }
             },
             onDismiss = { confirmTarget = null },
+        )
+    }
+
+    crossPosts?.let { (posts, rid) ->
+        CrossPostCloseDialog(
+            api = api, quoteId = quoteId, posts = posts,
+            onMessage = { toast = it },
+            onDone = { crossPosts = null; if (rid > 0) onOpenChat(rid) },
         )
     }
 
@@ -314,7 +335,10 @@ fun ReceivedQuoteDetailScreen(
     dialogFor?.let { teacher ->
         com.muyeon.app.ui.common.MuyeonDialog(
             title = "레슨 요청",
-            message = if (teacher.activeQuoteStatus == "MATCHED") "${teacher.displayName}님과 진행 중인 레슨이 있어요."
+            message = if (teacher.activeQuoteStatus == "MATCHED") {
+                if (isAcademyReq) "이미 채택한 강사님이에요. 채팅에서 이야기를 이어가 주세요."
+                else "${teacher.displayName}님과 진행 중인 레슨이 있어요."
+            }
                 else "${teacher.displayName}님과 진행 중인 요청/채팅이 있어요. 어떻게 할까요?",
             onDismiss = { dialogFor = null },
             actions = buildList {
@@ -362,7 +386,7 @@ fun ReceivedQuoteDetailScreen(
 // MARK: - 요청 요약 헤더
 
 @Composable
-private fun RequestHeaderCard(quote: QuoteFull?) {
+private fun RequestHeaderCard(quote: QuoteFull?, isAcademyReq: Boolean = false) {
     // 내가 작성한 견적 내용(문진 답변 전체 — 선택형 라벨 포함)
     val details = remember(quote) { QuoteQuestions.describe(quote) }
     val photos = remember(quote) { (quote?.answers ?: emptyList()).flatMap { it.images ?: emptyList() } }
@@ -371,10 +395,13 @@ private fun RequestHeaderCard(quote: QuoteFull?) {
     QuoteCard {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                QuoteUi.categoryTitle(quote?.categoryId),
+                // ★ 11-10 학원 요청은 '<장르> 강사 채용'(웹 MyQuoteDetail 과 같다)
+                if (isAcademyReq) "${QuoteUi.categoryLabel(quote?.categoryId).let { if (it == "레슨") "" else "$it " }}강사 채용"
+                else QuoteUi.categoryTitle(quote?.categoryId),
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp,
                 lineHeight = 21.sp, color = MuyeonColors.textHead,
             )
+            quote?.requesterBadge?.let { QuotePill(it, MuyeonColors.primary) }
             QuotePill(QuoteUi.statusLabel(quote?.status), QuoteUi.statusColor(quote?.status), filled = true)
             // 견적 만료 D-day — 진행중(OPEN)일 때만. (서버 만료 시각, 요청 생성 +30일 · KST 달력 일수)
             if (expiryLabel != null) {
@@ -444,11 +471,12 @@ private fun ResponseCard(
     onProfile: () -> Unit,
     onChat: () -> Unit,
     onAccept: () -> Unit,
+    isAcademyReq: Boolean = false,
 ) {
     val pro = r.responder
     val genres = (pro?.genres ?: emptyList()).take(3)
     val msg = (r.message ?: "").trim()
-    val cornerText = if (accepted) "✓ 채택한 강사" else if (isClosed) "마감" else "서비스 견적"
+    val cornerText = if (accepted) "✓ 채택한 강사" else if (isClosed) "마감" else if (isAcademyReq) "제안" else "서비스 견적"
     val mark = QuoteResponseMark.of(r.status, r.editedAt, r.withdrawnAt, r.withdrawReason)
 
     QuoteCard(borderColor = if (isNew) MuyeonColors.primary else null) {

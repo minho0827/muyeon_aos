@@ -51,6 +51,33 @@ data class LessonRequestQuota(
     val chatRoomId: Int?,
 )
 
+/** ★ 11-10 채택 응답 — 구서버는 roomId 만 준다(afterAccept=null → 레슨, openCrossPosts 비어 있음). */
+data class AcceptQuoteResult(
+    val roomId: Int,
+    val afterAccept: String?,                 // HIRE | LESSON
+    val openCrossPosts: List<QuoteCrossPost>,
+) {
+    val isHire: Boolean get() = afterAccept == "HIRE"
+
+    companion object {
+        fun from(o: JSONObject) = AcceptQuoteResult(
+            roomId = o.effectiveRoomId(),
+            afterAccept = o.stringOrNull("afterAccept"),
+            openCrossPosts = o.optJSONArray("openCrossPosts")?.let { arr ->
+                (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let(QuoteCrossPost::from) }
+                    .filter { it.id > 0 }
+            } ?: emptyList(),
+        )
+    }
+}
+
+/** ★ 11-10 레슨 요청과 같이 올린 공고(지금은 채용 공고 JOB 만). */
+data class QuoteCrossPost(val kind: String?, val id: Int, val title: String?) {
+    companion object {
+        fun from(o: JSONObject) = QuoteCrossPost(o.stringOrNull("kind"), o.optInt("id"), o.stringOrNull("title"))
+    }
+}
+
 class QuoteApi(private val token: String?) {
 
     private val client = OkHttpClient()
@@ -126,9 +153,17 @@ class QuoteApi(private val token: String?) {
     suspend fun startQuoteChat(quoteId: Int, responseId: Int): Result<Int> =
         call("/quotes/$quoteId/responses/$responseId/chat", "POST").map { it.asObject().effectiveRoomId() }
 
-    /** 견적 채택(1요청=1강사 → 요청 마감). POST /quotes/:id/responses/:rid/accept → { roomId } */
-    suspend fun acceptQuote(quoteId: Int, responseId: Int): Result<Int> =
-        call("/quotes/$quoteId/responses/$responseId/accept", "POST").map { it.asObject().effectiveRoomId() }
+    /**
+     * 견적 채택(1요청=1강사 → 요청 마감). POST /quotes/:id/responses/:rid/accept
+     *  → { chatRoomId, roomId, afterAccept, openCrossPosts[] }
+     *  ★ 11-10 afterAccept=HIRE(학원 요청) 이면 채용 확정 — openCrossPosts 는 같이 올려 아직 모집 중인 공고.
+     */
+    suspend fun acceptQuote(quoteId: Int, responseId: Int): Result<AcceptQuoteResult> =
+        call("/quotes/$quoteId/responses/$responseId/accept", "POST").map { AcceptQuoteResult.from(it.asObject()) }
+
+    /** ★ 11-10 같이 올린 채용 공고 마감(요청자만). POST /quotes/:id/cross-posts/:jobId/close → { kind, id, status } */
+    suspend fun closeCrossPost(quoteId: Int, jobId: Int): Result<Unit> =
+        call("/quotes/$quoteId/cross-posts/$jobId/close", "POST").map { }
 
     /** 내 견적요청 취소. PATCH /quotes/:id/cancel (진행중 OPEN → CANCELED). */
     suspend fun cancelQuote(quoteId: Int): Result<Unit> =

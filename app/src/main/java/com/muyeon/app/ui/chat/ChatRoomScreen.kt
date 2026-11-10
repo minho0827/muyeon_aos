@@ -103,6 +103,8 @@ fun ChatRoomScreen(
     }
     var showAttach by remember { mutableStateOf(false) }
     var showProposal by remember { mutableStateOf(false) }
+    // ★ 11-10 학원 채용 채택 뒤 '채용 공고도 마감할까요?' — (quoteId, 아직 모집 중인 같이 올린 공고)
+    var crossPosts by remember { mutableStateOf<Pair<Int, List<com.muyeon.app.ui.quote.QuoteCrossPost>>?>(null) }
     var showSurveyPicker by remember { mutableStateOf(false) }
     // 강사: 견적 상담 첫 채팅에 + 버튼 위 설문 안내(앱 설치 후 1회, iOS 와 같은 규칙).
     //  견적 정보(강사 측 여부)는 방을 연 뒤 늦게 도착하므로 그 값이 바뀔 때 본다.
@@ -210,7 +212,8 @@ fun ChatRoomScreen(
         when (prog.step) {
             "DONE" -> if (isTeacher) teacherReviewInfo = true else startReviewFlow()
             "SCHEDULED" -> prog.lessonId?.let { openLesson(it) }
-            "ACCEPTED" -> if (isTeacher) openProgressSchedule(prog) else showProposal = true
+            // ★ 11-10 학원 채용(HIRE)은 채택 = 채용 확정 — 일정 단계가 없다(서버도 약속 제안을 400 으로 막는다).
+            "ACCEPTED" -> if (vm.acceptIsHire) Unit else if (isTeacher) openProgressSchedule(prog) else showProposal = true
             // 채팅방을 나가지 않고 바로 채택 — 대화 종료·요청 마감이면 서버가 거절하므로 열지 않는다.
             else -> if (!isTeacher && !vm.acceptBlockedFor(vm.acceptTarget)) showAcceptConfirm = true
         }
@@ -603,8 +606,9 @@ fun ChatRoomScreen(
             showSurvey = vm.quoteContext?.isTeacher == true,
             // 채택된 견적 방은 회원·강사 모두, 그 밖의 방은 강사·학원 유형만 약속 제안 가능(iOS 와 같은 조건).
             //  최종 검증은 서버가 한다.
-            showProposal = vm.isQuoteMatched || vm.quoteContext?.isTeacher == true ||
-                ActiveRole.current(context) in setOf(ActiveRole.TEACHER, ActiveRole.ACADEMY),
+            //  ★ 11-10 학원 채용 방(HIRE)은 레슨 약속을 잡지 않는다(서버도 400).
+            showProposal = !vm.isHire && (vm.isQuoteMatched || vm.quoteContext?.isTeacher == true ||
+                ActiveRole.current(context) in setOf(ActiveRole.TEACHER, ActiveRole.ACADEMY)),
             onPickImages = { uris -> vm.sendImages(context, uris) },
             onPickVideo = { uri -> vm.sendVideo(context, uri) },
             onSurvey = { showSurveyPicker = true },
@@ -710,19 +714,36 @@ fun ChatRoomScreen(
     }
     // 강사 채택(고객)
     if (showAcceptConfirm) {
+        // ★ 11-10 학원 채용(HIRE)은 채용 확정 문구 — 사이클에서 누른 채택은 그 사이클 기준.
+        val hire = vm.acceptIsHire
         com.muyeon.app.ui.quote.QuoteDialog(
-            title = "이 강사로 진행할까요?",
-            message = "채택하면 이 요청은 마감되고 다른 견적은 받을 수 없어요.",
+            title = if (hire) "이 강사님과 함께할까요?" else "이 강사로 진행할까요?",
+            message = if (hire) "채택하면 이 요청은 마감되고 다른 제안은 받을 수 없어요. 근무 조건은 채팅으로 이야기해 주세요."
+                else "채택하면 이 요청은 마감되고 다른 견적은 받을 수 없어요.",
             confirmText = "채택하기",
             onConfirm = {
                 showAcceptConfirm = false
                 scope.launch {
-                    val ok = vm.acceptQuote()
-                    vm.toast = if (ok) "강사를 채택했어요. 채팅에서 일정을 확정해 주세요."
-                    else "채택에 실패했어요. 잠시 후 다시 시도해 주세요."
+                    val done = vm.acceptQuote()
+                    val res = done?.second
+                    when {
+                        res == null -> vm.toast = "채택에 실패했어요. 잠시 후 다시 시도해 주세요."
+                        // 같이 올린 공고가 열려 있으면 그 질문 창이 채택 완료도 함께 알린다(토스트와 겹치지 않게).
+                        res.openCrossPosts.isNotEmpty() -> crossPosts = done.first to res.openCrossPosts
+                        res.isHire -> vm.toast = "채용을 확정했어요! 근무 조건은 채팅으로 이야기해 주세요."
+                        else -> vm.toast = "강사를 채택했어요. 채팅에서 일정을 확정해 주세요."
+                    }
                 }
             },
             onDismiss = { showAcceptConfirm = false },
+        )
+    }
+    crossPosts?.let { (quoteId, posts) ->
+        com.muyeon.app.ui.quote.CrossPostCloseDialog(
+            api = remember { com.muyeon.app.ui.quote.QuoteApi(vm.tokenForCards) },
+            quoteId = quoteId, posts = posts,
+            onMessage = { vm.toast = it },
+            onDone = { crossPosts = null },
         )
     }
     // 후기 — 활성유형이 일반이 아니면 전환 안내.

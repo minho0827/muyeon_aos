@@ -258,7 +258,14 @@ data class ChatQuoteContext(
     val paymentMode: String? = null,    // DEPOSIT | FULL 등(예약금 방식) — 회원 약속 제안 작성의 예약금 안내용
     val depositAmount: Int? = null,
     val quoteCount: Int?,
+    // ★ 11-10 신청자 유형 — 학원 요청은 afterAccept=HIRE(채택 = 채용 확정, 일정·예약금·후기 없음). 구서버는 null.
+    val requesterType: String? = null,     // ACADEMY | GENERAL | null
+    val requesterBadge: String? = null,    // "학원 요청" 등
+    val afterAccept: String? = null,       // HIRE | LESSON
 ) {
+    /** ★ 11-10 학원 채용(채택 = 채용 확정) — 일정 잡기·약속 제안·후기가 없다. */
+    val isHire: Boolean get() = afterAccept == "HIRE"
+
     /** "회당 60,000원" 등 금액 요약(구조화 금액 우선, 없으면 자유 메모). */
     val priceText: String?
         get() {
@@ -284,6 +291,9 @@ data class ChatQuoteContext(
                 priceUnit = it.stringOrNull("priceUnit"), price = it.stringOrNull("price"),
                 paymentMode = it.stringOrNull("paymentMode"), depositAmount = it.intOrNull("depositAmount"),
                 quoteCount = it.intOrNull("quoteCount"),
+                requesterType = it.stringOrNull("requesterType"),
+                requesterBadge = it.stringOrNull("requesterBadge"),
+                afterAccept = it.stringOrNull("afterAccept"),
             )
         }
     }
@@ -312,9 +322,14 @@ data class ChatLessonCycle(
     val progress: ChatLessonProgress,
     val lessonSchedule: ChatLessonSchedule?,
     val kind: String?,           // "PROPOSAL"=약속잡기 레슨(견적 없음)
+    // ★ 11-10 신청자 유형(사이클별) — HIRE 사이클의 step 은 RESPONDED/ACCEPTED 뿐이다.
+    val requesterType: String? = null,
+    val requesterBadge: String? = null,
+    val afterAccept: String? = null,
 ) {
     val isTeacher: Boolean get() = role == "TEACHER"
     val isProposal: Boolean get() = kind == "PROPOSAL"
+    val isHire: Boolean get() = afterAccept == "HIRE"
 
     /** 방향 배지 — "누가 가르치고 누가 배우나"를 명확히. */
     val directionLabel: String
@@ -324,7 +339,7 @@ data class ChatLessonCycle(
         }
 
     /** 내 액션(강사로서 일정 확정)이 필요한 사이클인지 — 요약바 '할 일' 표시용. */
-    val needsMyAction: Boolean get() = isTeacher && progress.step == "ACCEPTED"
+    val needsMyAction: Boolean get() = isTeacher && !isHire && progress.step == "ACCEPTED"
 
     /** 내가 채택할 수 있는 새 견적(채택 전 RESPONDED, 회원 방향) — 요약바 '새 견적' 표시용(2026-10-29 서버부터). */
     val awaitsMyAccept: Boolean get() = !isTeacher && !isProposal && progress.step == "RESPONDED"
@@ -342,6 +357,8 @@ data class ChatLessonCycle(
             categoryId = categoryId, priceAmount = priceAmount,
             priceUnit = priceUnit, price = price, paymentMode = paymentMode,
             depositAmount = depositAmount, quoteCount = progress.responseCount,
+            requesterType = requesterType, requesterBadge = requesterBadge,
+            afterAccept = afterAccept ?: "LESSON",
         )
 
     companion object {
@@ -357,6 +374,9 @@ data class ChatLessonCycle(
             progress = ChatLessonProgress.from(o.optJSONObject("progress") ?: JSONObject()),
             lessonSchedule = ChatLessonSchedule.from(o.optJSONObject("lessonSchedule")),
             kind = o.stringOrNull("kind"),
+            requesterType = o.stringOrNull("requesterType"),
+            requesterBadge = o.stringOrNull("requesterBadge"),
+            afterAccept = o.stringOrNull("afterAccept"),
         )
     }
 }
