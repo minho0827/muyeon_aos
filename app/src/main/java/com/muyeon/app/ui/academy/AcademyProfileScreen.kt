@@ -28,12 +28,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import com.muyeon.app.BuildConfig
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
@@ -97,7 +95,6 @@ private suspend fun fetchAcademy(token: String?, id: Int): AcademyProfile? = wit
 }
 
 /** `/` 로 시작하는 상대경로만 baseURL 접두 — 절대 URL 이중접두 방지(CLAUDE.md 절대 규칙). */
-private fun absolutize(p: String) = if (p.startsWith("/")) BuildConfig.API_BASE_URL + p else p
 
 @Composable
 fun AcademyProfileScreen(token: String?, academyId: Int, onClose: () -> Unit, onOpenJob: (Int) -> Unit) {
@@ -144,20 +141,11 @@ fun AcademyProfileScreen(token: String?, academyId: Int, onClose: () -> Unit, on
 @Composable
 private fun AcademyBody(p: AcademyProfile, onOpenJob: (Int) -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        // 히어로 — 로고 있으면 240dp 이미지, 없으면 200dp 플레이스홀더
+        // 히어로 — 사진은 자르지 않고 전체(HeroImage). 없으면 건물 아이콘.
         Box(Modifier.fillMaxWidth(), Alignment.BottomStart) {
             val img = p.image?.takeIf { it.isNotEmpty() }
-            if (img != null) {
-                AsyncImage(
-                    model = absolutize(img), contentDescription = null,
-                    modifier = Modifier.fillMaxWidth().height(240.dp).background(cF7F7F7),
-                    contentScale = ContentScale.Crop,
-                    placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
-                )
-            } else {
-                Box(Modifier.fillMaxWidth().height(200.dp).background(cF7F7F7), Alignment.Center) {
-                    Icon(Icons.Default.Apartment, null, Modifier.size(60.dp), tint = cAFAFAF)
-                }
+            com.muyeon.app.ui.components.HeroImage(listOfNotNull(img)) {
+                Icon(Icons.Default.Apartment, null, Modifier.size(60.dp), tint = cAFAFAF)
             }
             p.region?.takeIf { it.isNotEmpty() }?.let { r ->
                 Text(

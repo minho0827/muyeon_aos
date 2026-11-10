@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -25,7 +26,7 @@ import com.muyeon.domain.model.teacher.TeacherCard
 @Composable
 fun ArtistCard(t: TeacherCard, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxWidth().border(1.dp, AppColors.Divider).clickable(onClick = onClick)) {
-        RemoteImage(t.image, Modifier.fillMaxWidth().aspectRatio(PHOTO_RATIO), fallbackRes = R.drawable.img_noimage_teacher, thumbnail = true)
+        RemoteImage(t.image, Modifier.fillMaxWidth().aspectRatio(PHOTO_RATIO), fallbackRes = R.drawable.img_noimage_teacher, thumbnail = true, alignment = Alignment.TopCenter)
         Column(Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
             // 이름·장르 줄은 값이 없어도 자리를 남긴다(카드 높이 맞춤).
             SlotText(t.name, AppTypography.Body15Medium, AppColors.TextHead)

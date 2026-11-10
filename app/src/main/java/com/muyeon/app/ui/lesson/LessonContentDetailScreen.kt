@@ -1,11 +1,10 @@
 package com.muyeon.app.ui.lesson
 
+import com.muyeon.app.ui.components.HeroImage
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -138,32 +137,10 @@ fun LessonContentDetailScreen(
                 )
             }
             else -> Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                // 대표 사진 — 자르지 않고 전체(HeroImage). 없으면 자리를 차지하지 않는다.
                 val images = d.images ?: emptyList()
                 if (images.isNotEmpty()) {
-                    val pager = rememberPagerState { images.size }
-                    Box(Modifier.fillMaxWidth().height(260.dp).background(Color(0xFFF2F2F7))) {
-                        HorizontalPager(pager, Modifier.fillMaxSize()) { i ->
-                            AsyncImage(
-                                QuoteUi.imageUrl(images[i]), null, contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize().clickable {
-                                    ImageViewerActivity.start(
-                                        ctx, JSONArray(images).toString(), pager.currentPage, false,
-                                    )
-                                },
-                                placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
-                            )
-                        }
-                        if (images.size > 1) {
-                            Text(
-                                "${pager.currentPage + 1} / ${images.size}",
-                                fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp,
-                                lineHeight = 15.sp, color = Color.White,
-                                modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)
-                                    .clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.45f))
-                                    .padding(horizontal = 10.dp, vertical = 4.dp),
-                            )
-                        }
-                    }
+                    HeroImage(images, onOpen = { i -> ImageViewerActivity.start(ctx, JSONArray(images).toString(), i, false) })
                 }
 
                 Column(

@@ -54,30 +54,9 @@ import com.muyeon.app.ui.space.*
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 
-/** 대표 이미지 캐러셀 — 탭 시 풀스크린 뷰어(ImageViewerActivity) 재사용. 사진이 있을 때만 부른다. */
+/** 대표 이미지 — 자르지 않고 전체(HeroImage), 탭 시 풀스크린 뷰어. 사진이 있을 때만 부른다. */
 @Composable
 internal fun SpaceGallery(images: List<String>) {
     val ctx = LocalContext.current
-    val pager = rememberPagerState { images.size }
-
-    Box(Modifier.fillMaxWidth().height(240.dp).background(Color(0xFFE5E5EA))) {
-        HorizontalPager(pager, Modifier.fillMaxSize()) { i ->
-            AsyncImage(
-                QuoteUi.imageUrl(images[i]), null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize().clickable {
-                    ImageViewerActivity.start(ctx, JSONArray(images).toString(), pager.currentPage, false)
-                },
-                placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
-            )
-        }
-        Text(
-            "${(pager.currentPage + 1).coerceAtMost(images.size)} / ${images.size}",
-            fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp,
-            lineHeight = 15.sp, color = Color.White, style = TabularNums,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)
-                .clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.45f))
-                .padding(horizontal = 10.dp, vertical = 4.dp),
-        )
-    }
+    com.muyeon.app.ui.components.HeroImage(images, onOpen = { i -> ImageViewerActivity.start(ctx, JSONArray(images).toString(), i, false) })
 }

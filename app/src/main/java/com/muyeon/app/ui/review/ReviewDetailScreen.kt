@@ -21,12 +21,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.quote.QuoteAvatar
@@ -133,11 +131,9 @@ fun ReviewDetailScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             imgs.forEach { s ->
-                                AsyncImage(
-                                    QuoteUi.imageUrl(s), null, contentScale = ContentScale.Crop,
-                                    modifier = Modifier.size(width = 240.dp, height = 300.dp)
-                                        .clip(RoundedCornerShape(12.dp)).background(com.muyeon.app.ui.common.MuyeonList.fillBg),
-                                        placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
+                                // 자르지 않고 전체(BlurFitImage) — 남는 곳은 같은 사진 흐리게
+                                com.muyeon.app.ui.components.BlurFitImage(
+                                    s, Modifier.size(width = 240.dp, height = 300.dp).clip(RoundedCornerShape(12.dp)),
                                 )
                             }
                         }

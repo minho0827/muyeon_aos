@@ -81,34 +81,14 @@ import java.util.TimeZone
 import org.json.JSONArray
 
 
-/** 사진 갤러리 — 좌우 넘김 + "1 / N", 탭하면 전체 화면(ImageViewerActivity). 사진이 없으면 기본 이미지. */
+/** 사진 갤러리 — 자르지 않고 전체(HeroImage) · 좌우 넘김 + "1 / N", 탭하면 전체 화면. 사진이 없으면 기본 이미지. */
 @Composable
-fun MarketGallery(images: List<String>, height: Dp = 280.dp, placeholderRes: Int? = null) {
+fun MarketGallery(images: List<String>, placeholderRes: Int? = null) {
     val ctx = LocalContext.current
-    Box(Modifier.fillMaxWidth().height(height).background(MuyeonList.ink100), Alignment.Center) {
-        if (images.isEmpty()) {
-            // ★ 2026-11-03 기능별 기본 썸네일(양도양수 = 건물 그림)을 주면 칸을 꽉 채운다
-            if (placeholderRes != null) Image(painterResource(placeholderRes), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-            else Image(painterResource(R.drawable.icon_no_image), null, Modifier.size(96.dp), contentScale = ContentScale.Fit)
-        } else {
-            val pager = rememberPagerState { images.size }
-            HorizontalPager(pager, Modifier.fillMaxSize()) { i ->
-                AsyncImage(
-                    MarketFormat.imageUrl(images[i]), null, contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().clickable {
-                        ImageViewerActivity.start(ctx, JSONArray(images).toString(), pager.currentPage, false)
-                    },
-                    placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
-                )
-            }
-            if (images.size > 1) {
-                Text(
-                    "${pager.currentPage + 1} / ${images.size}", style = ts(FontWeight.Medium, 12).merge(TabularNums), color = Color.White,
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp).clip(CircleShape)
-                        .background(Color.Black.copy(alpha = 0.45f)).padding(horizontal = 10.dp, vertical = 4.dp),
-                )
-            }
-        }
+    com.muyeon.app.ui.components.HeroImage(images, onOpen = { i -> ImageViewerActivity.start(ctx, JSONArray(images).toString(), i, false) }) {
+        // ★ 2026-11-03 기능별 기본 썸네일(양도양수 = 건물 그림)을 주면 칸을 꽉 채운다
+        if (placeholderRes != null) Image(painterResource(placeholderRes), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        else Image(painterResource(R.drawable.icon_no_image), null, Modifier.size(96.dp), contentScale = ContentScale.Fit)
     }
 }
 

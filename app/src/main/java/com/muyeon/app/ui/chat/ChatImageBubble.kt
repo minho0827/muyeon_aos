@@ -56,8 +56,13 @@ fun ChatImageBubble(
         )
     }
 
+    // 한 장이면 자르지 않고 전체(BlurFitImage). 여러 장 격자는 잘라 채운다.
     if (shown.size == 1) {
-        cell(shown[0], 0, 200.dp, corner = 12)
+        com.muyeon.app.ui.components.BlurFitImage(
+            shown[0],
+            Modifier.size(200.dp).clip(RoundedCornerShape(12.dp))
+                .combinedClickable(onClick = { open(0) }, onLongClick = onLongPress),
+        )
         return
     }
 

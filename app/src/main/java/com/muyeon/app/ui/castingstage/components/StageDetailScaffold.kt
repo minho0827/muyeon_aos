@@ -121,22 +121,18 @@ fun StageBottomButton(title: String, enabled: Boolean = true, busy: Boolean = fa
     }
 }
 
+/** 공고·소식 대표 사진 — 포스터도 자르지 않고 전체(HeroImage, 1:1 칸). 누르면 크게 보기. 없으면 기본 그림·아이콘. */
 @Composable
 internal fun StageHeroGallery(urls: List<String>, icon: ImageVector, tint: Color, bg: Color, placeholder: Int? = null) {
-    Box(Modifier.fillMaxWidth().height(300.dp).padding(horizontal = 16.dp).clip(RoundedCornerShape(18.dp)).background(bg), Alignment.Center) {
-        if (urls.isEmpty()) {
+    val ctx = LocalContext.current
+    com.muyeon.app.ui.components.HeroImage(
+        urls, Modifier.padding(horizontal = 16.dp).clip(RoundedCornerShape(18.dp)),
+        ratio = com.muyeon.app.ui.components.HeroRatio.SQUARE,
+        onOpen = { i -> com.muyeon.app.ui.common.ImageViewerActivity.start(ctx, org.json.JSONArray(urls.map { stageImageUrl(it) }).toString(), i, false) },
+    ) {
+        Box(Modifier.fillMaxSize().background(bg), Alignment.Center) {
             if (placeholder != null) androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(placeholder), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
             else Icon(icon, null, tint = tint, modifier = Modifier.size(48.dp))
-        } else {
-            val pager = rememberPagerState { urls.size }
-            HorizontalPager(pager, Modifier.fillMaxSize()) { i ->
-                AsyncImage(stageImageUrl(urls[i]), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit, placeholder = com.muyeon.app.ui.components.imageLoadingPainter())
-            }
-            if (urls.size > 1) {
-                Text("${pager.currentPage + 1} / ${urls.size}", style = Medium, fontSize = 13.sp, color = Color.White,
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(14.dp).clip(CircleShape)
-                        .background(Color.Black.copy(alpha = 0.45f)).padding(horizontal = 12.dp, vertical = 6.dp))
-            }
         }
     }
 }

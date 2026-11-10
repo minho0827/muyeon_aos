@@ -57,13 +57,10 @@ fun JobPostingPreviewScreen(form: JobForm, onClose: () -> Unit) {
         }
 
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            hero?.let {
-                AsyncImage(
-                    QuoteUi.imageUrl(it), null, contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxWidth().height(220.dp).background(Color(0xFFF7F7F7)),
-                    placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
-                )
-            } ?: PreviewPlaceholder("대표 이미지가 여기에 보여요", Modifier.fillMaxWidth().height(220.dp), square = true)
+            // 상세와 같은 칸(HeroImage) — 자르지 않고 전체
+            com.muyeon.app.ui.components.HeroImage(listOfNotNull(hero)) {
+                PreviewPlaceholder("대표 이미지가 여기에 보여요", Modifier.fillMaxSize(), square = true)
+            }
             Column(
                 Modifier.fillMaxWidth().padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),

@@ -205,12 +205,10 @@ fun PostingDetailScreen(
 internal fun DetailHeader(kind: String, d: JSONObject, summary: MyPosting?, status: String?, pending: Boolean = false) {
     // 대표 이미지가 없으면 상세 이미지 첫 장(웹 ImageCarousel 과 동일 폴백). 없으면 자리를 차지하지 않는다.
     val hero = d.stringOrNull("imageUrl") ?: d.stringOrNull("image") ?: d.stringList("images")?.firstOrNull()
-    hero?.let {
-        AsyncImage(
-            QuoteUi.imageUrl(it), null, contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxWidth().height(220.dp).background(Color(0xFFF7F7F7)),
-            placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
-        )
+    // 자르지 않고 전체(HeroImage). 누르면 크게 보기.
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    hero?.let { h ->
+        com.muyeon.app.ui.components.HeroImage(listOf(h), onOpen = { com.muyeon.app.ui.common.ImageViewerActivity.start(ctx, org.json.JSONArray(listOf(h)).toString(), 0, false) })
     }
     Column(
         Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 18.dp),

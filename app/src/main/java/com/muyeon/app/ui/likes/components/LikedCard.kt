@@ -38,7 +38,8 @@ fun LikedCard(
 ) {
     Column(modifier.clickable(onClick = onClick)) {
         Box(Modifier.fillMaxWidth().aspectRatio(3f / 4f).clip(RoundedCornerShape(10.dp))) {
-            RemoteImage(image, Modifier.matchParentSize(), fallbackRes = fallbackRes, thumbnail = true)
+            // 세로 칸 — 사람 사진 얼굴이 잘리지 않게 위쪽 기준
+            RemoteImage(image, Modifier.matchParentSize(), fallbackRes = fallbackRes, thumbnail = true, alignment = Alignment.TopCenter)
             closedLabel?.let {
                 Text(it, style = AppTypography.Caption12, color = AppColors.TextOnPrimary,
                     modifier = Modifier.align(Alignment.TopStart).padding(8.dp).background(AppColors.Scrim, RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 2.dp))

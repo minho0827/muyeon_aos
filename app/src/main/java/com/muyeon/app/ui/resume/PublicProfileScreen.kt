@@ -35,10 +35,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -397,15 +394,7 @@ private fun ProfileHero(p: PublicProfile) {
     val url = QuoteUi.imageUrl(p.image)
     Box(Modifier.fillMaxWidth().height(if (url != null) 360.dp else 240.dp).background(MuyeonColors.tileIdle)) {
         if (url != null) {
-            Box(Modifier.matchParentSize().background(Color.Black).clipToBounds()) {
-                AsyncImage(
-                    url, null, contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().scale(1.2f).blur(24.dp),
-                    placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
-                )
-                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.10f)))
-                AsyncImage(url, null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize(), placeholder = com.muyeon.app.ui.components.imageLoadingPainter())
-            }
+            com.muyeon.app.ui.components.BlurFitImage(url, Modifier.matchParentSize())
         } else {
             Icon(
                 Icons.Filled.Person, null, tint = MuyeonColors.hint,

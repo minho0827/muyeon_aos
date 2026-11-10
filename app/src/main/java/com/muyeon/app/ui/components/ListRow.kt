@@ -58,6 +58,7 @@ fun ListRow(
                     url = thumbUrl,
                     fallbackRes = thumbFallbackRes,
                     thumbnail = true,
+                    alignment = Alignment.TopCenter, // 세로 칸 — 사람 얼굴이 잘리지 않게 위쪽 기준
                     modifier = Modifier.size(THUMB_W, THUMB_H).clip(RoundedCornerShape(8.dp)),
                 )
             }
