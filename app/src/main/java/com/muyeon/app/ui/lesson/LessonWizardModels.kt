@@ -124,7 +124,10 @@ data class LessonWizardDraft(
     var images: List<String> = emptyList(),
     var detailType: String = "TEXT",
     var detailImages: List<String> = emptyList(),
+    /** 온라인(비대면) 레슨 — 서버에는 formats 의 "온라인" 으로 저장된다(LessonFormat). */
     var isOnline: Boolean = false,
+    /** 진행 방식(formats) — 수정 때 서버 값을 그대로 들고 와서 "온라인" 만 토글로 넣고 뺀다. */
+    var formats: List<String> = emptyList(),
     var place: String = "",
     var address: String = "",
     var addressDetail: String = "",
@@ -182,8 +185,8 @@ data class LessonWizardDraft(
         put("images", JSONArray(images))
         put("detailType", detailType)
         put("detailImages", JSONArray(detailImages))
-        put("isOnline", isOnline)
-        put("place", place)
+        put("formats", JSONArray(LessonFormat.applyOnline(formats, isOnline)))
+        put("place", LessonFormat.payloadPlace(place, isOnline))
         put("address", listOf(address, addressDetail).filter { it.isNotEmpty() }.joinToString(" "))
         put("region", region)
         put("regionCode", regionCode)
@@ -298,6 +301,7 @@ data class LessonProductDetail(
         repeatWeeks = 0,
         images = images ?: emptyList(),
         detailType = detailType ?: "TEXT", detailImages = detailImages ?: emptyList(),
+        isOnline = LessonFormat.isOnline(formats, place), formats = formats ?: emptyList(),
         place = place.orEmpty(), address = address.orEmpty(),
         region = region.orEmpty(), regionCode = regionCode.orEmpty(), lat = lat, lng = lng,
         days = if (scheduleDates.isNullOrEmpty()) schedule?.map { it.first }?.distinct() ?: emptyList() else emptyList(),
@@ -381,7 +385,7 @@ class LessonWizardApi(internal val token: String?) {
                 if (!res.isSuccessful) return@use emptyList()
                 val arr = JSONArray(res.body?.string().orEmpty().ifBlank { "[]" })
                 (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }
-                    .filter { it.optString("address").isNotBlank() && it.optString("place") != "온라인 레슨" }
+                    .filter { it.optString("address").isNotBlank() && it.optString("place") != LessonFormat.ONLINE_PLACE }
                     .distinctBy { it.optString("address").trim() }
                     .take(3)
                     .map { o ->

@@ -99,10 +99,7 @@ fun LessonWizardScreen(
         if (lessonId == null) bylines = api.affiliations(isAcademy)
         if (lessonId != null) {
             api.getProduct(lessonId).onSuccess { d ->
-                draft = d.toDraft().also {
-                    // iOS: 장소명이 '온라인 레슨'이거나 주소·좌표가 모두 없으면 온라인으로 판정.
-                    it.isOnline = d.place == "온라인 레슨" || (d.address.isNullOrEmpty() && d.lat == null)
-                }
+                draft = d.toDraft() // 온라인 판정은 LessonFormat.isOnline(formats·장소명)
             }
         }
         // AI 초안: 제목·소개·공지·취소 규정(AI 가 쓴 칸은 덮어쓴다), 장르는 비어 있을 때만 — iOS applyAiDraft 와 같다.

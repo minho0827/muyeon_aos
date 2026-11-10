@@ -410,12 +410,11 @@ private fun LessonInfoSections(d: LessonContentDetail, source: LessonDetailSourc
         stringResource(R.string.lesson_detail_duration) to d.duration?.takeIf { it > 0 }?.let { stringResource(R.string.lesson_detail_duration_value, it) },
         stringResource(R.string.lesson_detail_capacity) to d.maxParticipants?.takeIf { it > 0 }?.let { stringResource(R.string.lesson_detail_capacity_value, it) },
         stringResource(R.string.lesson_detail_price) to lessonPriceText(d),
+        // 진행 방식 — 온라인 레슨("온라인")도 여기서 보인다(2026-11-10).
+        stringResource(R.string.lesson_detail_formats) to LessonFormat.labels(d.formats),
     ) + if (source == LessonDetailSource.QUOTE_RECOMMEND) listOf(
         stringResource(R.string.lesson_detail_purposes) to d.purposes?.takeIf { it.isNotEmpty() }?.joinToString(", ") { id ->
             com.muyeon.app.ui.quote.QuoteCategory.find(d.genre)?.classOptions?.firstOrNull { it.id == id }?.label ?: id
-        },
-        stringResource(R.string.lesson_detail_formats) to d.formats?.takeIf { it.isNotEmpty() }?.joinToString(", ") { id ->
-            QuotePrefsOptions.formats.firstOrNull { it.first == id }?.second ?: id
         },
         stringResource(R.string.lesson_detail_ages) to d.ageGroups?.takeIf { it.isNotEmpty() }?.joinToString(", ") { id ->
             LessonBrowseOptions.ages.firstOrNull { it.first == id }?.second ?: id
