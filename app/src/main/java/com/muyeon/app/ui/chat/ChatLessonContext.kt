@@ -111,7 +111,8 @@ fun LessonContextArea(
                 }
                 if (cycles.any { it.awaitsMyAccept }) {
                     Text(
-                        "새 견적",
+                        // ★ 11-10 기다리는 게 전부 학원 채용이면 '새 제안'
+                        if (cycles.filter { it.awaitsMyAccept }.all { it.isHire }) "새 제안" else "새 견적",
                         fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 11.sp,
                         lineHeight = 13.sp, color = Color.White,
                         modifier = Modifier
