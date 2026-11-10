@@ -1,6 +1,5 @@
 package com.muyeon.app.ui.home
 
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -48,7 +47,7 @@ import com.muyeon.app.ui.home.components.HomeBannerPager
 import com.muyeon.app.ui.home.components.ArtistsHeading
 import com.muyeon.app.ui.home.components.HomeLegalFooter
 import com.muyeon.app.ui.home.components.HomeTopBar
-import com.muyeon.app.ui.home.components.LessonSection
+import com.muyeon.app.ui.lessonlist.components.LessonListRow
 import com.muyeon.app.ui.main.MainTab
 import com.muyeon.app.ui.quotefeed.QuoteFeedLabels
 import com.muyeon.app.ui.quotefeed.components.QuoteFeedSection
@@ -64,8 +63,8 @@ import org.koin.androidx.compose.koinViewModel
 /**
  * ★ 2026-11-08 홈 — 모든 회원·비회원 같은 화면(사용자 결정). 위 바 [舞踊緣][강사 | 레슨][🔔] + 밑줄 탭.
  *   강사: COREO 에이전시형 — 넓은 사진 띠 · ARTISTS · 2열 큰 세로 사진 그리드(끝없이 내려 받기).
- *   레슨: 뷰티컬리 — 추천 탭 · 장르 탭 모두 같은 섹션(추천 · 레슨을 찾는 회원들 · 체험 · 원데이 · 새로 열린 레슨).
- *         장르 탭은 칸마다 그 장르로 거른다. ★ 2026-11-09 배너·장르 그림 줄은 뺐다(장르는 위 탭 하나로 — 사용자 결정).
+ *   레슨: 추천 탭 · 장르 탭 모두 같은 배치 — ★ 11-10 '레슨을 찾는 회원들' 가로 줄 + 레슨 한 줄 목록(끝없이 내려 받기, 사용자 결정).
+ *         장르 탭은 그 장르로 거른다. ★ 2026-11-09 배너·장르 그림 줄은 뺐다(장르는 위 탭 하나로 — 사용자 결정).
  *   맨 아래 사업자 정보. 홈 칸 다시 누르기 = 강사 ↔ 레슨.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -98,11 +97,6 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
         )
     }
     val openLesson: (HomeLesson) -> Unit = { actions.openPath("/lessons/${it.id}") }
-    // 전체보기 — 장르 탭이면 그 장르 칩으로 연다.
-    val lessonList: (String, String) -> Unit = { title, type ->
-        val g = s.lessonGenre?.let { "&genre=${Uri.encode(it)}" }.orEmpty()
-        actions.openPath("/lessonList?title=${Uri.encode(title)}&type=$type$g")
-    }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     // 강사·레슨 그리드를 따로 둔다 — 토글을 오가도 각자 스크롤 자리를 지킨다.
@@ -112,6 +106,8 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
     // 홈 칸을 한 번 더 누르면 강사 ↔ 레슨(컬리 홈 칸처럼 — 사용자 요청 2026-11-08).
     TabReselectEffect(MainTab.HOME) { viewModel.setMode(if (s.mode == HomeMode.TEACHERS) HomeMode.LESSONS else HomeMode.TEACHERS) }
     CursorLoadMoreEffect(teacherGrid, canLoad = s.mode == HomeMode.TEACHERS && s.artists.cursor.canAutoLoad && !s.artists.isLoadingMore, onLoadMore = viewModel::loadMoreArtists)
+    // ★ 11-10 레슨 한 줄 목록도 끝에 다다르면 더 받는다(전체보기 레슨 목록과 같은 방식).
+    CursorLoadMoreEffect(lessonGrid, canLoad = s.mode == HomeMode.LESSONS && s.lessonFeed.cursor.canAutoLoad && !s.lessonFeed.isLoadingMore, onLoadMore = viewModel::loadMoreLessons)
 
     Column(Modifier.fillMaxSize().background(AppColors.Surface)) {
         HomeTopBar(
@@ -160,14 +156,9 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
                     GridCells.Fixed(2), Modifier.fillMaxSize(), lessonGrid,
                     contentPadding = PaddingValues(bottom = tabBarBottomPadding()),
                 ) {
-                    // 추천 탭 · 장르 탭 같은 칸들. 빈 칸은 그리지 않는다(LessonSection·QuoteFeedSection 이 빈 목록이면 안 그림).
-                    val p = s.preview
+                    // ★ 11-10 추천 탭 · 장르 탭 같은 배치 — 맨 위 '레슨을 찾는 회원들' 가로 줄(비면 안 그림) · 아래 레슨 한 줄 목록(끝없이 내려 받기).
+                    //   목록 줄은 전체보기 레슨 목록 '목록 보기'(LessonListRow) 그대로. 장르 칩·보기 전환은 홈에 없다(장르는 위 탭).
                     val category = s.lessonGenre?.let { LessonGenres.QUOTE_CATEGORY[it] }
-                    item(key = "popular", span = FULL) {
-                        LessonSection(stringResource(R.string.home_sec_recommend), stringResource(R.string.home_sec_popular_desc), p.popular, null, s.likedLessons,
-                            openLesson, viewModel::toggleLessonLike, onAll = { lessonList(recommendTitle(context), "popular") })
-                    }
-                    // ★ 2026-11-08 회원이 올린 레슨 요청 — 추천 레슨 바로 아래(같은 섹션 틀). 장르 탭은 그 장르 요청만, 전체보기도 그 장르 칩으로.
                     item(key = "quoteFeed", span = FULL) {
                         QuoteFeedSection(
                             s.quoteFeed,
@@ -176,35 +167,30 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
                             onAll = { actions.openPath(if (category != null) "/quoteFeed?category=$category" else "/quoteFeed") },
                         )
                     }
-                    item(key = "experience", span = FULL) {
-                        val t = stringResource(R.string.home_list_experience)
-                        LessonSection(stringResource(R.string.home_sec_experience), stringResource(R.string.home_sec_experience_desc), p.experience,
-                            stringResource(R.string.home_tag_experience), s.likedLessons, openLesson, viewModel::toggleLessonLike, onAll = { lessonList(t, "experience") })
-                    }
-                    item(key = "oneday", span = FULL) {
-                        val t = stringResource(R.string.home_list_oneday)
-                        LessonSection(stringResource(R.string.home_sec_oneday), stringResource(R.string.home_sec_oneday_desc), p.oneday,
-                            stringResource(R.string.home_tag_oneday), s.likedLessons, openLesson, viewModel::toggleLessonLike, onAll = { lessonList(t, "oneday") })
-                    }
-                    item(key = "newest", span = FULL) {
-                        LessonSection(stringResource(R.string.home_sec_newest), stringResource(R.string.home_sec_newest_desc), s.newest, null, s.likedLessons,
-                            openLesson, viewModel::toggleLessonLike, onAll = null)
-                    }
-                    // 칸이 다 비었을 때만 — 못 읽었으면 다시 시도, 아니면 '아직 없어요'(장르 탭은 장르 문구).
-                    if (s.previewLoaded && p.popular.isEmpty() && p.experience.isEmpty() && p.oneday.isEmpty() && s.newest.isEmpty() && s.quoteFeed.isEmpty()) {
-                        item(key = "empty", span = FULL) {
+                    val l = s.lessonFeed
+                    when {
+                        l.items.isEmpty() && l.isInitialLoading -> Unit
+                        // 못 읽었으면 다시 시도, 아니면 '아직 없어요'(장르 탭은 장르 문구).
+                        l.items.isEmpty() -> item(key = "empty", span = FULL) {
                             EmptyView(
                                 stringResource(when {
-                                    s.previewFailed -> R.string.home_lessons_failed
+                                    l.errorMessage != null -> R.string.home_lessons_failed
                                     s.lessonGenre != null -> R.string.home_lessons_genre_empty
                                     else -> R.string.home_lessons_empty
                                 }),
-                                buttonText = if (s.previewFailed) stringResource(R.string.common_retry) else null, onButton = viewModel::pullRefresh,
+                                buttonText = l.errorMessage?.let { stringResource(R.string.common_retry) }, onButton = viewModel::retryLessons,
                             )
                         }
+                        else -> items(l.items, key = { "lesson-${it.id}" }, span = { GridItemSpan(maxLineSpan) }, contentType = { "lessonRow" }) { lesson ->
+                            LessonListRow(lesson, lesson.id in s.likedLessons, onClick = { openLesson(lesson) }, onToggleLike = { viewModel.toggleLessonLike(lesson.id) })
+                        }
                     }
-                    item(key = "gap", span = FULL) { Spacer(Modifier.height(24.dp)) }
-                    footer(s, actions)
+                    item(key = "lessonMore", span = FULL) { CursorListFooter(l.isLoadingMore, l.moreError, l.cursor.needsTap || l.moreError != null, viewModel::loadMoreLessons) }
+                    // 사업자 정보는 목록 끝(더 받을 게 없을 때) — 강사 그리드와 같다.
+                    if (l.items.isEmpty() || !l.cursor.hasMore) {
+                        item(key = "gap", span = FULL) { Spacer(Modifier.height(24.dp)) }
+                        footer(s, actions)
+                    }
                 }
             }
         }
@@ -229,8 +215,6 @@ private fun Modifier.bleed(side: androidx.compose.ui.unit.Dp) = layout { m, c ->
 }
 
 private fun openProfile(actions: HomeActions, id: Long) = actions.native("openPublicProfile", mapOf("userId" to id.toString()))
-
-private fun recommendTitle(context: android.content.Context) = context.getString(R.string.home_list_popular)
 
 /** 맨 아래 — 사업자 정보(법적 고지, 두 모드 공통). 공지는 홈에서 뺐다(사용자 결정 2026-11-08 — 나중에 MY). */
 private fun LazyGridScope.footer(s: HomeUiState, actions: HomeActions) {

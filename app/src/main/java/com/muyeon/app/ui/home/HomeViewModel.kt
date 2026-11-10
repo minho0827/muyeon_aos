@@ -4,14 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.muyeon.app.navigation.collectAppResults
 import com.muyeon.app.result.ResultKeys
-import com.muyeon.domain.common.ApiResult
 import com.muyeon.domain.common.CursorState
 import com.muyeon.domain.common.KeyValueStore
 import com.muyeon.domain.common.TokenStore
 import com.muyeon.domain.common.fetchCursorPages
 import com.muyeon.domain.common.mergeCursorPage
 import com.muyeon.domain.model.home.HomeLesson
-import com.muyeon.domain.model.home.HomeLessonPreview
 import com.muyeon.domain.model.region.ActiveRegion
 import com.muyeon.domain.model.scrap.ScrapTarget
 import com.muyeon.domain.model.teacher.LessonGenres
@@ -26,7 +24,6 @@ import com.muyeon.domain.usecase.scrap.ToggleScrapResult
 import com.muyeon.domain.usecase.scrap.ToggleScrapUseCase
 import com.muyeon.app.ui.state.PagedList
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -52,11 +49,12 @@ data class HomeUiState(
     val artists: PagedList<TeacherCard> = PagedList(),
     // 레슨 — 위 탭(추천 또는 장르). ★ 2026-11-09 장르 탭도 추천과 같은 칸들(그 장르로 거른다) — 아래 값은 지금 탭 것.
     val lessonTab: String = LESSON_RECOMMEND,
-    val preview: HomeLessonPreview = HomeLessonPreview(emptyList(), emptyList(), emptyList()),
-    val newest: List<HomeLesson> = emptyList(),
-    val previewLoaded: Boolean = false,
-    /** 추천 묶음을 못 읽었다(칸이 다 비었을 때만 '다시 시도'). */
-    val previewFailed: Boolean = false,
+    /**
+     * ★ 11-10 '레슨을 찾는 회원들' 아래 레슨 한 줄 목록(끝없이 내려 받기 — 사용자 결정).
+     *   전체보기 레슨 목록과 같은 API(/lesson-products/page, type 없음) · 장르 = 지금 탭(추천 = 전체 장르).
+     *   추천 레슨·체험·원데이·새로 열린 칸은 이 목록으로 바꿨다.
+     */
+    val lessonFeed: PagedList<HomeLesson> = PagedList(),
     val likedLessons: Set<Long> = emptySet(),
     /**
      * ★ 2026-11-08 '레슨을 찾는 회원들' — 비회원·실패면 빈 목록(섹션 숨김, 웹과 같다).
@@ -83,7 +81,7 @@ sealed interface HomeEvent {
 /**
  * ★ 2026-11-08 홈(모든 회원·비회원 같은 화면) — 위 토글 [강사 | 레슨].
  *   강사: 에이전시형 큰 사진 그리드(커서, 장르 탭). 대표 지역은 가까운 순 정렬에만 쓴다(지역 고르기는 MY).
- *   레슨: 추천 탭 = 섹션(추천·레슨을 찾는 회원들·체험·원데이·새로 열린 레슨) / 장르 탭 = 같은 섹션을 그 장르로 거른 것.
+ *   레슨: 추천 탭 · 장르 탭 모두 '레슨을 찾는 회원들' 가로 줄 + 레슨 한 줄 목록(★ 11-10 — 장르 탭은 그 장르로 거른다).
  *         (★ 2026-11-09 배너·장르 그림 줄은 뺐다 — 장르는 위 탭 하나로.)
  *   토글·탭 선택은 기억한다(home.mode).
  */
@@ -130,7 +128,12 @@ class HomeViewModel(
         }
         viewModelScope.launch { HomeModeRequests.flow.collect { m -> HomeModeRequests.consumed(); setMode(m) } }
         viewModelScope.collectAppResults(ResultKeys.NOTIFICATIONS) { refreshUnread() }
-        viewModelScope.collectAppResults(ResultKeys.LESSONS) { loadLessonHome() }
+        // ★ 11-10 레슨이 바뀌었다는 결과(개설·예약 등) — 이미 받은 레슨 목록·스크롤은 그대로 둔다(상세 갔다 와도 처음부터 다시 받지 않게 — 사용자 결정).
+        //   목록이 비었거나 못 읽었을 때만 다시 받고, 아니면 찜·요청 칸만. 새로 받기는 당겨서 새로고침.
+        viewModelScope.collectAppResults(ResultKeys.LESSONS) {
+            val l = _state.value.lessonFeed
+            if (l.items.isEmpty() || l.errorMessage != null) loadLessonHome() else { loadLikes(); loadQuoteFeed() }
+        }
         // ★ 2026-11-09 계정 바뀜(로그아웃·다른 계정) — 앞 계정 찜·알림 점·요청 칸을 비우고 다시 받는다.
         onAccountChanged { c ->
             _state.update { it.copy(isLoggedIn = c.loggedIn, likedLessons = emptySet(), unread = 0, quoteFeed = emptyList(), quoteFeedPro = false) }
@@ -218,31 +221,55 @@ class HomeViewModel(
         if (tab == _state.value.lessonTab) return
         // 탭을 바꾸면 비우고 그 탭 것으로 다시 읽는다(다른 장르 카드가 잠깐 보이지 않게).
         _state.update {
-            it.copy(lessonTab = tab, preview = HomeLessonPreview(emptyList(), emptyList(), emptyList()), newest = emptyList(),
-                previewLoaded = false, previewFailed = false, quoteFeed = emptyList(), isRefreshing = false)
+            it.copy(lessonTab = tab, lessonFeed = PagedList(), quoteFeed = emptyList(), isRefreshing = false)
         }
         loadLessonHome()
     }
 
-    /** 지금 탭(추천 = 전체 · 장르 탭 = 그 장르)의 칸들 — 추천·체험·원데이(home-preview) · 새로 열린 레슨 · 레슨을 찾는 회원들. */
+    /** 지금 탭(추천 = 전체 · 장르 탭 = 그 장르) — 레슨을 찾는 회원들 · 레슨 한 줄 목록 첫 페이지(★ 11-10). */
     private fun loadLessonHome(pull: Boolean = false) {
         lessonsJob?.cancel()
         val tab = _state.value.lessonTab
         val genre = _state.value.lessonGenre
+        if (!pull) _state.update { it.copy(lessonFeed = it.lessonFeed.copy(isInitialLoading = it.lessonFeed.items.isEmpty(), errorMessage = null, moreError = null)) }
         lessonsJob = viewModelScope.launch {
-            val preview = async { lessons.preview(genre, regionFlow.value) }
-            val newest = async { lessons.newest(genre) }
-            val p = (preview.await() as? ApiResult.Success)?.data
-            val n = newest.await()
+            // 전체보기 레슨 목록(LessonListViewModel)과 같은 받기 — type 없음 · 장르는 홈 탭이 정한다(기억한 칩은 안 본다).
+            val f = fetchCursorPages(null, emptySet<Long>(), { it.id }) { c -> lessons.listPage(null, genre, regionFlow.value, c) }
             _state.update {
                 if (it.lessonTab != tab) return@update it.copy(isRefreshing = if (pull) false else it.isRefreshing)
-                it.copy(preview = p ?: it.preview, newest = n, previewLoaded = true, previewFailed = p == null,
-                    isRefreshing = if (pull) false else it.isRefreshing)
+                it.copy(
+                    isRefreshing = if (pull) false else it.isRefreshing,
+                    lessonFeed = it.lessonFeed.copy(
+                        items = mergeCursorPage(it.lessonFeed.items, f.items, replace = f.pages > 0) { l -> l.id },
+                        cursor = it.lessonFeed.cursor.applied(f),
+                        isInitialLoading = false, isLoadingMore = false, errorMessage = if (f.pages == 0) f.error else null, moreError = null,
+                    ),
+                )
             }
             loadLikes()
         }
         loadQuoteFeed()
     }
+
+    /** ★ 11-10 레슨 한 줄 목록 — 끝에 다다르면 다음 페이지(전체보기 레슨 목록과 같은 커서). */
+    fun loadMoreLessons() {
+        val l = _state.value.lessonFeed
+        if (l.isLoadingMore || l.isInitialLoading || !l.cursor.hasMore) return
+        _state.update { it.copy(lessonFeed = it.lessonFeed.copy(isLoadingMore = true, moreError = null, cursor = it.lessonFeed.cursor.retrying())) }
+        val tab = _state.value.lessonTab
+        val genre = _state.value.lessonGenre
+        lessonsJob = viewModelScope.launch {
+            val f = fetchCursorPages(l.cursor.nextCursor, l.items.mapTo(HashSet()) { it.id }, { it.id }) { c -> lessons.listPage(null, genre, regionFlow.value, c) }
+            _state.update {
+                if (it.lessonTab != tab) return@update it
+                it.copy(lessonFeed = it.lessonFeed.copy(items = mergeCursorPage(it.lessonFeed.items, f.items, false) { x -> x.id },
+                    cursor = it.lessonFeed.cursor.applied(f), isLoadingMore = false, moreError = f.error))
+            }
+        }
+    }
+
+    /** 레슨 목록 첫 페이지 실패 — 다시 시도. */
+    fun retryLessons() = loadLessonHome()
 
     /** '레슨을 찾는 회원들' — 실패해도 조용히(섹션만 숨김). 장르 탭은 그 장르(견적 categoryId)만. */
     private fun loadQuoteFeed() {

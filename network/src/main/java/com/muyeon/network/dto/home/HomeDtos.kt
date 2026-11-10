@@ -19,10 +19,13 @@ data class HomeLessonDto(
     val id: Long? = null, val title: String? = null, val images: List<String>? = null, val imageUrl: String? = null,
     val genre: String? = null, val region: String? = null, val place: String? = null, val scheduleText: String? = null,
     val price: Double? = null, val promotedUntil: String? = null, val status: String? = null,
+    // ★ 11-10 목록 줄 태그용.
+    val lessonKind: String? = null, val level: String? = null, val formats: List<String>? = null,
 ) {
     fun toDomain() = id?.let {
         HomeLesson(it, title.orEmpty(), (images?.firstOrNull { s -> s.isNotBlank() } ?: imageUrl)?.takeIf { s -> s.isNotBlank() }, genre,
-            (region ?: place)?.takeIf { s -> s.isNotBlank() }, scheduleText?.takeIf { s -> s.isNotBlank() }, price?.toInt(), promotedUntil, status)
+            (region ?: place)?.takeIf { s -> s.isNotBlank() }, scheduleText?.takeIf { s -> s.isNotBlank() }, price?.toInt(), promotedUntil, status,
+            lessonKind?.takeIf { s -> s.isNotBlank() }, level?.takeIf { s -> s.isNotBlank() }, formats?.filter { s -> s.isNotBlank() }?.takeIf { f -> f.isNotEmpty() })
     }
 }
 

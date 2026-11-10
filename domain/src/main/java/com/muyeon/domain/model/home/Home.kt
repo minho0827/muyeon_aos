@@ -13,6 +13,13 @@ data class HomeLesson(
     val price: Int?,
     val promotedUntil: String?,
     val status: String?,
+    // ★ 11-10 목록 줄 태그(유형·난이도·진행 방식) — /lesson-products/page 에 있다. 없으면 null.
+    /** REGULAR · ONEDAY · EXPERIENCE. */
+    val lessonKind: String? = null,
+    /** 난이도 — 운영값은 한글('입문'·'초급' …). */
+    val level: String? = null,
+    /** 진행 방식 코드(private · group · academy · 온라인). */
+    val formats: List<String>? = null,
 )
 
 /** 홈 레슨 미리보기 세 묶음. */
