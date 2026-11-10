@@ -133,6 +133,8 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
             var submitResult by remember { mutableStateOf<Result<CreatedQuote>?>(null) }
             // ★ 2026-11-10 공고 같이 올리기 제출 결과(완료 화면).
             var crossResults by remember { mutableStateOf<List<CrossPostResult>>(emptyList()) }
+            // ★ 11-10 요청에 쓴 세트의 완료 문구(null → 기본 문구).
+            var completion by remember { mutableStateOf<QuestionnaireCompletion?>(null) }
             var questionnaireChanged by remember { mutableStateOf<String?>(null) }
             var loadingDone by remember { mutableStateOf(false) }
             // ★ 2026-11-07 강사 구인 확인 — 처음엔 "ASK"(의심되면 서버가 409 RECRUIT_CHECK 로 묻는다), 답한 뒤엔 "NO"/"YES".
@@ -210,6 +212,7 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                 if (!loadingDone) return@LaunchedEffect
                 r.onSuccess { created ->
                     crossResults = created.crossPosts
+                    completion = vm.questionSet?.completion
                     // 웹이 받은견적 목록으로 라우팅한다(iOS notifyWebQuoteSubmitted).
                     WebCallbacks.quoteSubmitted(this@QuoteWizardActivity)
                     phase = "done"
@@ -258,6 +261,7 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                         onGoHome = { openWebAndFinish("/home") },
                         onClose = { finish() },
                         crossPosts = crossResults,
+                        completion = completion,
                         // 공고 상세(/jobs/:id)·학원 인증(/my/memberType?verify=ACADEMY → 학원 인증 화면)·공고 수정(/jobs/:id/edit)·
                         //  공고 쓰기(/jobs/create) — 모두 앱 화면 표(NativeRoutes)가 받는다.
                         onCrossPost = { cp -> cp.path?.let { openWebAndFinish(it) } },

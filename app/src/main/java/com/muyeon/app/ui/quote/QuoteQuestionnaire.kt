@@ -58,6 +58,26 @@ data class CrossPostSpec(
     val fields: List<CrossPostField>,
 )
 
+/** ★ 11-10 완료 화면 안내 카드 한 장. icon: bell·compare·badge·doc(모르면 bell). */
+data class CompletionTip(val icon: String, val title: String, val body: String?)
+
+/** ★ 11-10 유형별 완료 화면 문구(계약 6절). null 이면 기존 기본 문구. */
+data class QuestionnaireCompletion(val title: String, val body: String, val tips: List<CompletionTip>) {
+    companion object {
+        fun from(o: JSONObject?): QuestionnaireCompletion? {
+            if (o == null) return null
+            val tips = o.optJSONArray("tips").objects().mapNotNull { t ->
+                val title = t.str("title") ?: return@mapNotNull null
+                CompletionTip(icon = t.str("icon") ?: "bell", title = title, body = t.str("body"))
+            }
+            val title = o.str("title")
+            val body = o.str("body")
+            if (title == null && body == null && tips.isEmpty()) return null
+            return QuestionnaireCompletion(title.orEmpty(), body.orEmpty(), tips)
+        }
+    }
+}
+
 data class QuestionnaireSet(
     val setId: Int?,
     val version: Int?,
@@ -67,6 +87,8 @@ data class QuestionnaireSet(
     /** 질문 id → 미리 채울 답(text·region). */
     val prefill: Map<String, QuoteAnswer>,
     val crossPost: List<CrossPostSpec>,
+    /** ★ 11-10 완료 화면 문구 — null 이면 기본. */
+    val completion: QuestionnaireCompletion? = null,
 ) {
     companion object {
         fun from(o: JSONObject): QuestionnaireSet {
@@ -105,6 +127,7 @@ data class QuestionnaireSet(
                 questions = questions,
                 prefill = prefill,
                 crossPost = cross,
+                completion = runCatching { QuestionnaireCompletion.from(o.optJSONObject("completion")) }.getOrNull(),
             )
         }
     }

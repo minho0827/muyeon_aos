@@ -16,7 +16,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Scale
@@ -160,6 +162,8 @@ fun QuoteSubmittedScreen(
     /** ★ 2026-11-10 공고 같이 올리기 결과 — 결과별 문구 + 버튼(path 가 있을 때만). */
     crossPosts: List<CrossPostResult> = emptyList(),
     onCrossPost: (CrossPostResult) -> Unit = {},
+    /** ★ 11-10 유형별 완료 문구 — null 이면 아래 기본 문구 그대로. */
+    completion: QuestionnaireCompletion? = null,
 ) {
     Column(Modifier.fillMaxSize().background(QuoteColors.white)) {
         // navBar — 제목 18sp bold, X 18, p h20 v14
@@ -175,12 +179,12 @@ fun QuoteSubmittedScreen(
         ) {
             CheckMark(Modifier.padding(top = 28.dp))
             Text(
-                "요청을 보냈어요!",
+                completion?.title?.ifEmpty { null } ?: "요청을 보냈어요!",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp,
                 color = QuoteColors.c101116, modifier = Modifier.padding(top = 20.dp),
             )
             Text(
-                "강사들이 견적을 준비 중이에요.\n견적이 도착하면 알림으로 알려드릴게요.",
+                completion?.body?.ifEmpty { null } ?: "강사들이 견적을 준비 중이에요.\n견적이 도착하면 알림으로 알려드릴게요.",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
                 color = QuoteColors.c6D6E71, textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 8.dp),
@@ -196,6 +200,12 @@ fun QuoteSubmittedScreen(
                     .border(1.dp, QuoteColors.cEAEAEA, RoundedCornerShape(16.dp))
                     .padding(horizontal = 16.dp),
             ) {
+              if (completion != null && completion.tips.isNotEmpty()) {
+                completion.tips.forEachIndexed { i, tip ->
+                    if (i > 0) Divider(color = QuoteColors.cEAEAEA)
+                    InfoRow(completionIcon(tip.icon), tip.title, tip.body)
+                }
+              } else {
                 InfoRow(Icons.Outlined.Notifications, "견적이 도착하면 알려드려요",
                     "새로운 견적이 오면 알림으로 바로 알려드려요.")
                 Divider(color = QuoteColors.cEAEAEA)
@@ -204,6 +214,7 @@ fun QuoteSubmittedScreen(
                 Divider(color = QuoteColors.cEAEAEA)
                 InfoRow(Icons.Outlined.ChatBubbleOutline, "마음에 드는 강사와 바로 채팅하세요",
                     "궁금한 점을 물어보고\n레슨을 확정할 수 있어요.")
+              }
             }
 
             // CTA 2종
@@ -280,8 +291,16 @@ private fun Sparkle(x: Int, y: Int, size: Int) {
     )
 }
 
+/** 서버 completion.tips[].icon → 기존 아이콘(모르면 bell). */
+private fun completionIcon(icon: String): ImageVector = when (icon) {
+    "compare" -> Icons.Outlined.Scale
+    "badge" -> Icons.Outlined.Badge
+    "doc" -> Icons.Outlined.Description
+    else -> Icons.Outlined.Notifications
+}
+
 @Composable
-private fun InfoRow(icon: ImageVector, title: String, desc: String) {
+private fun InfoRow(icon: ImageVector, title: String, desc: String?) {
     Row(
         Modifier.fillMaxWidth().padding(vertical = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -294,7 +313,7 @@ private fun InfoRow(icon: ImageVector, title: String, desc: String) {
         }
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(title, fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = QuoteColors.c101116)
-            Text(desc, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, color = QuoteColors.c6D6E71)
+            if (!desc.isNullOrEmpty()) Text(desc, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, color = QuoteColors.c6D6E71)
         }
     }
 }

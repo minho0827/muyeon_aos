@@ -21,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -322,12 +323,41 @@ private fun DateSelector(vm: QuoteWizardViewModel, q: QuoteQuestion) {
             vm.setDateText(fmt.format(java.util.Date(it)), iso.format(java.util.Date(it)))
         }
     }
-    androidx.compose.material3.DatePicker(
-        state = state,
-        title = null,
-        headline = null,
-        showModeToggle = false,
-    )
+    // ★ 2026-11-10 인라인 캘린더는 최소 폭(약 360dp)이 위저드 좌우 여백보다 넓어 작은 폰에서 토요일 칸이 잘렸다
+    //  (실기기 S20 FE). 지역 질문처럼 '선택값 + 버튼 → 날짜 창'으로 바꾼다 — 창은 화면 폭을 다 쓴다.
+    var open by remember { mutableStateOf(false) }
+    val shown = millis?.let {
+        val f = java.text.SimpleDateFormat("yyyy.MM.dd(E)", java.util.Locale.KOREAN)
+        f.timeZone = java.util.TimeZone.getTimeZone("UTC")
+        f.format(java.util.Date(it))
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (shown != null) {
+            Text(text = shown, fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+        }
+        androidx.compose.material3.OutlinedButton(
+            onClick = { open = true },
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(12.dp),
+        ) {
+            Text(text = if (shown == null) "날짜 선택하기" else "날짜 다시 선택", fontFamily = customFontFamily, fontSize = 16.sp, color = Color(0xFF111111))
+        }
+    }
+    if (open) {
+        androidx.compose.material3.DatePickerDialog(
+            onDismissRequest = { open = false },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { open = false }) { Text("확인", fontFamily = customFontFamily) }
+            },
+        ) {
+            androidx.compose.material3.DatePicker(
+                state = state,
+                title = null,
+                headline = null,
+                showModeToggle = false,
+            )
+        }
+    }
 }
 
 /**
