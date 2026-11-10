@@ -61,10 +61,11 @@ fun QuoteCardBubble(json: String, showProviderProfile: Boolean, onOpenProvider: 
     val teacherId = d.optInt("id").takeIf { it > 0 }
     val attachment = d.optJSONObject("attachment")
     val isAcademy = attachment?.optString("type") == "ACADEMY" || d.optString("profileType") == "ACADEMY"
+    // ★ 11-10 JSON null 은 optString 이 "null" 글자를 돌려준다 — 경력·지역이 빈 강사 카드에 'null · null' 이 찍히던 것.
     val sub = listOf(
-        ResumeOptions.careerLabel(d.optString("career")),
-        d.optString("region"),
-    ).filter { it.isNotEmpty() }.joinToString(" · ")
+        ResumeOptions.careerLabel(d.optString("career").takeIf { it != "null" } ?: ""),
+        d.optString("region").takeIf { it != "null" } ?: "",
+    ).filter { it.isNotEmpty() && it != "null" }.joinToString(" · ")
 
     Column(
         Modifier.widthIn(max = 280.dp).clip(RoundedCornerShape(16.dp))
