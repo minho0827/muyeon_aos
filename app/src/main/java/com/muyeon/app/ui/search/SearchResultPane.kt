@@ -57,8 +57,8 @@ fun <T : Any> SearchResultPane(domain: SearchDomain<T>, query: String, onOpen: (
     LaunchedEffect(listState.isScrollInProgress) { if (listState.isScrollInProgress) focusManager.clearFocus() }
 
     LaunchedEffect(query) { vm.setQuery(query) }
-    // 조건이 바뀌면 맨 위부터.
-    LaunchedEffect(state.query, state.filter, state.sort) { listState.scrollToItem(0) }
+    // 조건이 바뀌면 맨 위부터 — 결과 상세에서 돌아올 때는 보던 자리 그대로(11-10, 예전엔 돌아올 때도 맨 위로 갔다).
+    com.muyeon.app.ui.common.OnValueChanged(Triple(state.query, state.filter, state.sort)) { listState.scrollToItem(0) }
     CursorLoadMoreEffect(listState, canLoad = state.cursor.canAutoLoad && !state.isLoadingMore && !state.isLoading, onLoadMore = vm::loadMore)
 
     Column(modifier.fillMaxSize()) {

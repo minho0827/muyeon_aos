@@ -59,12 +59,14 @@ import com.muyeon.app.ui.components.EmptyView
 @Composable
 fun StageCastingListScreen(api: CastingStageApi, onBack: () -> Unit, onOpen: (Int) -> Unit, onCreate: (() -> Unit)? = null, reloadKey: Int = 0) {
     val genres = listOf("전체", "발레", "한국무용", "현대무용", "실용무용", "뮤지컬", "행사")
-    var genre by remember { mutableStateOf("전체") }
-    val items = remember { mutableStateListOf<StageCasting>() }
-    var cursor by remember { mutableStateOf<String?>(null) }
-    var loading by remember { mutableStateOf(false) }
-    var done by remember { mutableStateOf(false) }
-    val state = rememberLazyListState()
+    // ★ 11-10 목록·스크롤은 화면 밖(ViewModel)에 둔다 — 상세에서 돌아오면 다시 받지 않아 보던 자리 그대로.
+    val data = com.muyeon.app.ui.common.rememberRetained("stage.castingList") { StageCastingListData() }
+    var genre by data::genre
+    val items = data.items
+    var cursor by data::cursor
+    var loading by data::loading
+    var done by data::done
+    val state = data.listState
 
     suspend fun more() {
         if (loading || done) return
@@ -74,7 +76,12 @@ fun StageCastingListScreen(api: CastingStageApi, onBack: () -> Unit, onOpen: (In
             .onFailure { done = true }
         loading = false
     }
-    LaunchedEffect(genre, reloadKey) { items.clear(); cursor = null; done = false; more() }
+    LaunchedEffect(genre, reloadKey) {
+        // 같은 조건으로 이미 받았으면(돌아옴) 그대로. 장르를 바꾸거나 새 공고를 올렸을 때만 처음부터.
+        if (data.loadedFor == genre to reloadKey) return@LaunchedEffect
+        data.loadedFor = genre to reloadKey
+        items.clear(); cursor = null; done = false; state.scrollToItem(0); more()
+    }
     val nearEnd by remember { derivedStateOf { (state.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) >= items.size - 3 } }
     LaunchedEffect(nearEnd) { if (nearEnd && items.isNotEmpty()) more() }
 
@@ -99,16 +106,21 @@ fun StageCastingListScreen(api: CastingStageApi, onBack: () -> Unit, onOpen: (In
 /** 한 호의 소식 목록 — code 가 있으면 그 칸만, null 이면 모든 칸(지난 호 보기). */
 @Composable
 fun StageNewsListScreen(api: CastingStageApi, issueNo: Int, code: String?, onBack: () -> Unit, onOpen: (StageNewsItem, StageCategory) -> Unit) {
-    var issue by remember { mutableStateOf<StageNewsIssue?>(null) }
-    var failed by remember { mutableStateOf(false) }
-    LaunchedEffect(issueNo) { runCatchingCancellable { api.issue(issueNo) }.onSuccess { issue = it }.onFailure { failed = true } }
+    // 받은 호는 화면 밖에 둔다(돌아와도 다시 받지 않아 스크롤 그대로).
+    val data = com.muyeon.app.ui.common.rememberRetained("stage.newsList.$issueNo") { StageNewsListData() }
+    var issue by data::issue
+    var failed by data::failed
+    LaunchedEffect(issueNo) {
+        if (issue != null) return@LaunchedEffect
+        runCatchingCancellable { api.issue(issueNo) }.onSuccess { issue = it }.onFailure { failed = true }
+    }
     // 보이는 소식 칸(서버 순서). 링크의 칸이 없거나 숨겨졌으면 호 전체를 보인다.
     val news = com.muyeon.app.ui.castingstage.CastingStageSession.categories.filter { it.kind == StageCategory.KIND_NEWS }
     val one = news.firstOrNull { it.code == code }
     val cats = if (one != null) listOf(one) else news
     Column(Modifier.fillMaxSize().background(Color.White).statusBarsPadding().navigationBarsPadding()) {
         StageListBar(one?.label ?: "무대 소식 #${issueNo.toString().padStart(3, '0')}", onBack)
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 40.dp)) {
+        LazyColumn(Modifier.fillMaxSize(), state = data.listState, contentPadding = PaddingValues(bottom = 40.dp)) {
             val i = issue
             if (i == null) {
                 item { Box(Modifier.fillMaxWidth().padding(40.dp), Alignment.Center) {
@@ -137,11 +149,12 @@ fun StageNewsListScreen(api: CastingStageApi, issueNo: Int, code: String?, onBac
 
 @Composable
 fun StageIssuesScreen(api: CastingStageApi, onBack: () -> Unit, onOpen: (Int) -> Unit) {
-    var rows by remember { mutableStateOf<List<StageIssueSummary>?>(null) }
-    LaunchedEffect(Unit) { rows = api.issues() }
+    val data = com.muyeon.app.ui.common.rememberRetained("stage.issues") { StageIssuesData() }
+    var rows by data::rows
+    LaunchedEffect(Unit) { if (rows == null) rows = api.issues() }
     Column(Modifier.fillMaxSize().background(Color.White).statusBarsPadding().navigationBarsPadding()) {
         StageListBar("지난 무대 소식", onBack)
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LazyColumn(Modifier.fillMaxSize(), state = data.listState, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             val list = rows
             if (list == null) item { Box(Modifier.fillMaxWidth().padding(40.dp), Alignment.Center) { CircularProgressIndicator(color = Brand) } }
             else if (list.isEmpty()) item { EmptyView(stringResource(R.string.stage_issues_empty)) }
@@ -162,4 +175,27 @@ fun StageIssuesScreen(api: CastingStageApi, onBack: () -> Unit, onOpen: (Int) ->
             }
         }
     }
+}
+
+/** 캐스팅 전체 목록이 쥔 것 — 화면 밖(rememberRetained)에 둔다. */
+class StageCastingListData {
+    var genre by mutableStateOf("전체")
+    val items = mutableStateListOf<StageCasting>()
+    var cursor by mutableStateOf<String?>(null)
+    var loading by mutableStateOf(false)
+    var done by mutableStateOf(false)
+    val listState = androidx.compose.foundation.lazy.LazyListState()
+    /** 마지막으로 받은 (장르, reloadKey). */
+    var loadedFor: Pair<String, Int>? = null
+}
+
+class StageNewsListData {
+    var issue by mutableStateOf<StageNewsIssue?>(null)
+    var failed by mutableStateOf(false)
+    val listState = androidx.compose.foundation.lazy.LazyListState()
+}
+
+class StageIssuesData {
+    var rows by mutableStateOf<List<StageIssueSummary>?>(null)
+    val listState = androidx.compose.foundation.lazy.LazyListState()
 }

@@ -74,7 +74,15 @@ fun TransferListScreen(
     var showFilter by remember { mutableStateOf(false) }
     var chatBusy by remember { mutableStateOf(false) }
 
-    LaunchedEffect(state.region, state.filter, com.muyeon.app.auth.accountEpoch()) { state.load(api, reset = true) }
+    LaunchedEffect(state.region, state.filter, com.muyeon.app.auth.accountEpoch()) {
+        // 같은 조건으로 이미 받았으면(다른 화면에서 돌아옴) 그대로 — 다시 받으면 첫 쪽만 남아 스크롤이 맨 위로 갔다.
+        val sig = state.region to state.filter
+        if (state.loadedFor == sig) return@LaunchedEffect
+        val changed = state.loadedFor != null
+        state.loadedFor = sig
+        state.load(api, reset = true)
+        if (changed) state.listState.scrollToItem(0)
+    }
 
     // 당겨서 새로고침 — 화면 scope 에서 돌려 손을 떼도 요청이 끊기지 않는다. 실패해도 있던 목록은 그대로.
     var refreshing by remember { mutableStateOf(false) }

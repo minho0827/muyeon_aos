@@ -91,6 +91,22 @@ class CastingStageBodyState internal constructor(
     fun scrollToTop() { scope.launch { listState.animateScrollToItem(0) } }
 }
 
+/** 본문이 받은 내용 — [rememberRetained] 로 화면 밖에 둔다(돌아와도 남는다). */
+@Stable
+class CastingStageBodyData {
+    var issue by mutableStateOf<StageNewsIssue?>(null)
+    var castings by mutableStateOf<List<StageCasting>>(emptyList())
+    var genre by mutableStateOf("전체")
+    var loading by mutableStateOf(true)
+    var failed by mutableStateOf(false)
+    /** 마지막으로 받은 reloadKey — 없으면 null. */
+    var loadedKey: Int? = null
+}
+
+@Composable
+private fun rememberCastingStageBodyData(): CastingStageBodyData =
+    com.muyeon.app.ui.common.rememberRetained("castingStage.body.${com.muyeon.app.auth.accountEpoch()}") { CastingStageBodyData() }
+
 @Composable
 fun rememberCastingStageBodyState(): CastingStageBodyState {
     val listState = rememberLazyListState()
@@ -123,15 +139,19 @@ fun CastingStageBody(
     /** 바뀌면 다시 불러온다 — 공고를 새로 올린 뒤. */
     reloadKey: Int = 0,
 ) {
-    var issue by remember { mutableStateOf<StageNewsIssue?>(null) }
-    var castings by remember { mutableStateOf<List<StageCasting>>(emptyList()) }
-    var genre by remember { mutableStateOf("전체") }
-    var loading by remember { mutableStateOf(true) }
-    var failed by remember { mutableStateOf(false) }
+    // ★ 11-10 받은 내용은 화면 밖(ViewModel)에 둔다 — 상세·전체보기에서 돌아오면 다시 받지 않아 스크롤 위치가 그대로.
+    val data = rememberCastingStageBodyData()
+    var issue by data::issue
+    var castings by data::castings
+    var genre by data::genre
+    var loading by data::loading
+    var failed by data::failed
     val scope = rememberCoroutineScope()
     val listState = state.listState
 
     LaunchedEffect(reloadKey) {
+        // 이미 이 키로 받았으면(다른 화면에서 돌아옴) 그대로 둔다. 새 공고를 올리면 reloadKey 가 바뀐다.
+        if (data.loadedKey == reloadKey) return@LaunchedEffect
         val i = async { runCatchingCancellable { api.latest() } }
         val c = async { runCatchingCancellable { api.castings(null) } }
         // ★ 11-09 분류는 서버가 준다 — 실패·404 면 기본 목록(국내소식·콩쿠르·대회 뺌).
@@ -143,6 +163,7 @@ fun CastingStageBody(
         castings = rc.getOrNull().orEmpty()
         failed = ri.isFailure && rc.isFailure
         loading = false
+        data.loadedKey = reloadKey
     }
 
     val categories = CastingStageSession.categories

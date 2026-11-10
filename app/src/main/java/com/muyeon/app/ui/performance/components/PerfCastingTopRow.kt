@@ -53,8 +53,8 @@ fun PerfCastingHeader(
 ) {
     Column(Modifier.fillMaxWidth().background(AppColors.Surface)) {
         val listState = rememberLazyListState()
-        // 칸을 바꾸면 줄 맨 앞(알약)으로 — 분류 목록이 통째로 바뀐다.
-        LaunchedEffect(mode) { listState.scrollToItem(0) }
+        // 칸을 바꾸면 줄 맨 앞(알약)으로 — 분류 목록이 통째로 바뀐다. 다른 화면에서 돌아올 때는 그대로(11-10).
+        com.muyeon.app.ui.common.OnValueChanged(mode) { listState.scrollToItem(0) }
         LazyRow(
             state = listState,
             modifier = Modifier.fillMaxWidth().height(52.dp),

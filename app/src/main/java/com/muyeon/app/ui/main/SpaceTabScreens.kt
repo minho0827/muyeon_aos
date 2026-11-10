@@ -34,7 +34,7 @@ fun SpaceRentTab(header: @Composable (actions: @Composable androidx.compose.foun
     val context = LocalContext.current
     val api = remember { SpaceApi(context) }
     var message by remember { mutableStateOf<String?>(null) }
-    var reloadTick by remember { mutableIntStateOf(0) }
+    var reloadTick by androidx.compose.runtime.saveable.rememberSaveable { mutableIntStateOf(0) }
     // 공간 화면(등록 위저드·상세)이 SPACE 를 들고 닫히면 목록·찜을 다시 읽는다(MainActivity → AppResults).
     LaunchedEffect(Unit) { collectAppResults(ResultKeys.SPACE) { reloadTick++ } }
     SpaceListScreen(
@@ -52,7 +52,8 @@ fun SpaceRentTab(header: @Composable (actions: @Composable androidx.compose.foun
 fun TransferTab(header: @Composable (actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit) -> Unit) {
     val context = LocalContext.current
     val api = remember { TransferApi(context) }
-    val listState = remember { TransferListState() }
+    // ★ 11-10 목록·스크롤은 화면 밖(ViewModel)에 둔다 — 다른 탭·화면에 갔다 와도 보던 자리 그대로.
+    val listState = com.muyeon.app.ui.common.rememberRetained("transfer.list.${com.muyeon.app.auth.accountEpoch()}") { TransferListState() }
     val chatConsent = remember { TransferChatConsent(api) }
     val myId = remember { api.http.myUserId() }
     var message by remember { mutableStateOf<String?>(null) }

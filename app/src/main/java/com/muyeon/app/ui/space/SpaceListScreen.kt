@@ -69,17 +69,19 @@ fun SpaceListScreen(
     reloadTick: Int = 0,
 ) {
     val scope = rememberCoroutineScope()
-    var categories by remember { mutableStateOf<List<SpaceCategory>>(emptyList()) }
+    // ★ 11-10 목록·필터·스크롤은 화면 밖(ViewModel)에 둔다 — 다른 탭·화면에 갔다 와도 다시 받지 않아 보던 자리 그대로.
+    val data = com.muyeon.app.ui.common.rememberRetained("space.list.${com.muyeon.app.auth.accountEpoch()}") { SpaceListData() }
+    var categories by data::categories
     var categoryId by rememberSaveable { mutableIntStateOf(0) }
     var sido by rememberSaveable { mutableStateOf<String?>(null) }
     var date by rememberSaveable { mutableStateOf<String?>(null) }
     var headcount by rememberSaveable { mutableStateOf<Int?>(null) }
     var sort by rememberSaveable { mutableStateOf("recent") }
-    var filter by remember { mutableStateOf(SpaceFilter()) }
-    var items by remember { mutableStateOf<List<SpaceListItem>>(emptyList()) }
-    var scrapped by remember { mutableStateOf<Set<Int>>(emptySet()) }
-    var loading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var filter by data::filter
+    var items by data::items
+    var scrapped by data::scrapped
+    var loading by data::loading
+    var error by data::error
     var sheet by remember { mutableStateOf<String?>(null) }
 
     var refreshing by remember { mutableStateOf(false) }
@@ -95,8 +97,16 @@ fun SpaceListScreen(
         loading = false
     }
 
-    LaunchedEffect(Unit) { api.categories().onSuccess { categories = it } }
-    LaunchedEffect(categoryId, sido, date, headcount, sort, filter, reloadTick, com.muyeon.app.auth.accountEpoch()) { load() }
+    LaunchedEffect(Unit) { if (categories.isEmpty()) api.categories().onSuccess { categories = it } }
+    LaunchedEffect(categoryId, sido, date, headcount, sort, filter, reloadTick, com.muyeon.app.auth.accountEpoch()) {
+        // 같은 조건으로 이미 받았으면(돌아옴) 그대로. 조건을 바꾸면 처음부터 + 맨 위로.
+        val sig = listOf(categoryId, sido, date, headcount, sort, filter, reloadTick)
+        if (data.loadedFor == sig) return@LaunchedEffect
+        val conditionChanged = data.loadedFor != null && data.loadedFor?.dropLast(1) != sig.dropLast(1)
+        data.loadedFor = sig
+        load()
+        if (conditionChanged) data.listState.scrollToItem(0)
+    }
 
     // 당겨서 새로고침 — 화면 scope 에서 돌려 손을 떼도 요청이 끊기지 않는다.
     fun refresh() {
@@ -140,7 +150,7 @@ fun SpaceListScreen(
                     }
                     ListPhase.Empty, ListPhase.Error -> EmptyView(error ?: stringResource(R.string.space_list_empty),
                         buttonText = error?.let { stringResource(R.string.common_retry) }, onButton = ::refresh)
-                    ListPhase.Items -> LazyColumn(Modifier.fillMaxSize(),
+                    ListPhase.Items -> LazyColumn(Modifier.fillMaxSize(), state = data.listState,
                         contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = if (onBack == null) com.muyeon.app.ui.main.tabBarBottomPadding() else 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(items, key = { it.id }) { s ->
                             SpaceCard(s, onClick = { onOpen(s.id, date) }) { SpaceCardHeart(s.id in scrapped) { toggleScrap(s) } }
@@ -160,4 +170,17 @@ fun SpaceListScreen(
         "sort" -> SpaceSortSheet(sort, onApply = { sort = it }, onDismiss = close)
         "filter" -> SpaceFilterSheet(filter, onApply = { filter = it; close() }, onDismiss = close)
     }
+}
+
+/** 공간 목록이 쥔 것 — 화면 밖(rememberRetained)에 둔다. 조건(지역·날짜 …)은 rememberSaveable. */
+class SpaceListData {
+    var categories by mutableStateOf<List<SpaceCategory>>(emptyList())
+    var filter by mutableStateOf(SpaceFilter())
+    var items by mutableStateOf<List<SpaceListItem>>(emptyList())
+    var scrapped by mutableStateOf<Set<Int>>(emptySet())
+    var loading by mutableStateOf(true)
+    var error by mutableStateOf<String?>(null)
+    val listState = androidx.compose.foundation.lazy.LazyListState()
+    /** 마지막으로 받은 조건(+ reloadTick). */
+    var loadedFor: List<Any?>? = null
 }

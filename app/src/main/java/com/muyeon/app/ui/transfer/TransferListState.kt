@@ -52,6 +52,8 @@ class TransferListState {
     var loadedOnce by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
     val listState = LazyListState()
+    /** 마지막으로 받은 조건(지역, 필터) — 같으면 돌아와도 다시 받지 않는다. */
+    var loadedFor: Pair<String?, TransferFilter>? = null
     private var cursor: String? = null
     private var generation = 0
 

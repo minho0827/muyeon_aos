@@ -41,6 +41,8 @@ fun PerformanceListScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     PerformanceListEffects(viewModel, listState, canLoadMore = state.cursor.canAutoLoad && !state.isLoadingMore, onLogin = onLogin)
+    // 장르·세부 칩을 바꾸면 새 목록 맨 위부터(11-10). 다른 화면에서 돌아올 때는 보던 자리 그대로.
+    com.muyeon.app.ui.common.OnValueChanged(state.genre to state.detail.key) { listState.scrollToItem(0) }
 
     Column(Modifier.fillMaxSize().background(AppColors.Surface)) {
         if (header != null) header() else MainTopBar(title = stringResource(R.string.tab_performance), chat = true)
