@@ -141,7 +141,7 @@ internal fun StageIssueSlide(issue: StageNewsIssue, onClick: () -> Unit) {
 @Composable
 internal fun StagePhotoSlide(url: String?, kicker: String, title: String, sub: String?, onClick: () -> Unit) {
     Box(Modifier.fillMaxSize().clip(RoundedCornerShape(18.dp)).background(Color(0xFF3A2A20)).clickable(onClick = onClick)) {
-        stageImageUrl(url)?.let { AsyncImage(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+        stageImageUrl(url)?.let { AsyncImage(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, placeholder = com.muyeon.app.ui.components.imageLoadingPainter()) }
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.7f))))
         Column(Modifier.align(Alignment.BottomStart).padding(start = 18.dp, end = 60.dp, bottom = 50.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(kicker, style = Medium, fontSize = 13.sp, color = Color.White.copy(alpha = 0.9f))

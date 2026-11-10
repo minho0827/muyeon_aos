@@ -144,6 +144,7 @@ private fun RecommendCard(item: LessonContentItem, onClick: () -> Unit) {
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
+                    placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                 )
             }
         }

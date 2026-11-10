@@ -246,6 +246,7 @@ private fun BrowseCard(item: BrowseFeedItem, onClick: () -> Unit) {
                 QuoteUi.imageUrl(item.thumbnail), null, contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxWidth().aspectRatio(1f)
                     .clip(RoundedCornerShape(12.dp)).background(Color(0xFFF2F2F7)),
+                    placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
             )
             if (item.isReview) {
                 Row(

@@ -184,6 +184,7 @@ fun QuoteAvatar(image: String?, name: String, size: Dp = 52.dp, modifier: Modifi
             AsyncImage(
                 model = url, contentDescription = null,
                 contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(),
+                placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
             )
         } else {
             Text(

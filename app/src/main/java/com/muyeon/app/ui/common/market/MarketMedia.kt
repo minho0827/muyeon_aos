@@ -98,6 +98,7 @@ fun MarketGallery(images: List<String>, height: Dp = 280.dp, placeholderRes: Int
                     modifier = Modifier.fillMaxSize().clickable {
                         ImageViewerActivity.start(ctx, JSONArray(images).toString(), pager.currentPage, false)
                     },
+                    placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                 )
             }
             if (images.size > 1) {
@@ -118,6 +119,6 @@ fun MarketThumb(path: String?, modifier: Modifier, placeholderRes: Int? = null) 
         val url = MarketFormat.imageUrl(path)
         if (url == null && placeholderRes != null) Image(painterResource(placeholderRes), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         else if (url == null) Image(painterResource(R.drawable.icon_no_image), null, Modifier.size(40.dp), contentScale = ContentScale.Fit)
-        else AsyncImage(url, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        else AsyncImage(url, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, placeholder = com.muyeon.app.ui.components.imageLoadingPainter())
     }
 }

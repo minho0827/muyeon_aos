@@ -152,6 +152,7 @@ private fun AcademyBody(p: AcademyProfile, onOpenJob: (Int) -> Unit) {
                     model = absolutize(img), contentDescription = null,
                     modifier = Modifier.fillMaxWidth().height(240.dp).background(cF7F7F7),
                     contentScale = ContentScale.Crop,
+                    placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                 )
             } else {
                 Box(Modifier.fillMaxWidth().height(200.dp).background(cF7F7F7), Alignment.Center) {

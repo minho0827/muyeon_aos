@@ -771,6 +771,7 @@ private fun CoverUpload(imageUrl: String?, uploading: Boolean, onPick: () -> Uni
                 QuoteUi.imageUrl(imageUrl), null, contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(12.dp))
                     .clickable(onClick = onPick),
+                    placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
             )
         } else {
             Column(
@@ -862,6 +863,7 @@ internal fun DetailImages(
                     AsyncImage(
                         QuoteUi.imageUrl(path), null, contentScale = ContentScale.Crop,
                         modifier = Modifier.size(side).clip(RoundedCornerShape(10.dp)),
+                        placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                     )
                     Icon(
                         Icons.Filled.Close, "삭제", tint = Color.White,

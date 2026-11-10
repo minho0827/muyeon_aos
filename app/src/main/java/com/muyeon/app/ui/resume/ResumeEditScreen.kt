@@ -506,6 +506,7 @@ fun ResumeEditScreen(
                                     AsyncImage(
                                         QuoteUi.imageUrl(image), null, contentScale = ContentScale.Crop,
                                         modifier = Modifier.fillMaxSize(),
+                                        placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                                     )
                                 } else {
                                     Icon(Icons.Filled.Person, null, tint = MuyeonColors.hint, modifier = Modifier.size(40.dp))
@@ -582,6 +583,7 @@ fun ResumeEditScreen(
                                                     QuoteUi.imageUrl(url), null, contentScale = ContentScale.Crop,
                                                     modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp))
                                                         .background(MuyeonColors.tileIdle),
+                                                        placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                                                 )
                                                 Box(
                                                     Modifier.align(Alignment.TopEnd).padding(4.dp).size(18.dp)
@@ -1062,7 +1064,7 @@ private fun ResumeDraftPreview(form: ResumeEditForm, mode: ResumeMode, onClose: 
                 ) {
                     val img = form.image
                     if (img != null) {
-                        AsyncImage(QuoteUi.imageUrl(img), null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                        AsyncImage(QuoteUi.imageUrl(img), null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(), placeholder = com.muyeon.app.ui.components.imageLoadingPainter())
                     } else {
                         Icon(Icons.Filled.Person, null, tint = MuyeonColors.hint, modifier = Modifier.size(24.dp))
                     }
@@ -1100,6 +1102,7 @@ private fun ResumeDraftPreview(form: ResumeEditForm, mode: ResumeMode, onClose: 
                                     QuoteUi.imageUrl(url), null, contentScale = ContentScale.Crop,
                                     modifier = Modifier.weight(1f).height(104.dp).clip(RoundedCornerShape(10.dp))
                                         .background(MuyeonColors.tileIdle),
+                                        placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                                 )
                             }
                             repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }

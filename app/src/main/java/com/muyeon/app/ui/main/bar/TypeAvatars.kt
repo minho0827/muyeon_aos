@@ -74,7 +74,7 @@ fun TypeAvatars(types: List<String>, active: String, images: Map<String, String>
                 contentAlignment = Alignment.Center,
             ) {
                 val url = images[t]
-                if (url != null) AsyncImage(QuoteUi.imageUrl(url), null, contentScale = ContentScale.Crop, modifier = Modifier.size(size))
+                if (url != null) AsyncImage(QuoteUi.imageUrl(url), null, contentScale = ContentScale.Crop, modifier = Modifier.size(size), placeholder = com.muyeon.app.ui.components.imageLoadingPainter())
                 else Icon(typeIcon(t), null, tint = if (on && selected) AppColors.TextHead else AppColors.TextHint, modifier = Modifier.size(size * 0.62f))
             }
         }

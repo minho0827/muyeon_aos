@@ -130,7 +130,7 @@ internal fun StageHeroGallery(urls: List<String>, icon: ImageVector, tint: Color
         } else {
             val pager = rememberPagerState { urls.size }
             HorizontalPager(pager, Modifier.fillMaxSize()) { i ->
-                AsyncImage(stageImageUrl(urls[i]), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+                AsyncImage(stageImageUrl(urls[i]), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit, placeholder = com.muyeon.app.ui.components.imageLoadingPainter())
             }
             if (urls.size > 1) {
                 Text("${pager.currentPage + 1} / ${urls.size}", style = Medium, fontSize = 13.sp, color = Color.White,

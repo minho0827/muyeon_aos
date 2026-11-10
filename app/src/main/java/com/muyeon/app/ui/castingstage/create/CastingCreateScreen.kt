@@ -363,7 +363,7 @@ private fun PosterCard(imageUrl: String?, uploading: Boolean, onPick: () -> Unit
     FormCard("공연 포스터/대표 이미지", Icons.Filled.AddPhotoAlternate) {
         stageImageUrl(imageUrl)?.let { url ->
             Box {
-                AsyncImage(url, null, Modifier.width(120.dp).height(160.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop)
+                AsyncImage(url, null, Modifier.width(120.dp).height(160.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop, placeholder = com.muyeon.app.ui.components.imageLoadingPainter())
                 Icon(Icons.Filled.Cancel, "이미지 지우기", tint = Color.White,
                     modifier = Modifier.align(Alignment.TopEnd).padding(4.dp).size(22.dp).clickable(onClick = onRemove))
             }

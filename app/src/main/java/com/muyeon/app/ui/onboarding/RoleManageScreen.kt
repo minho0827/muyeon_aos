@@ -321,7 +321,7 @@ private fun HeroHeader(heroImageUrl: String?) {
         contentAlignment = Alignment.BottomCenter,
     ) {
         QuoteUi.imageUrl(heroImageUrl)?.let {
-            AsyncImage(it, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            AsyncImage(it, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(), placeholder = com.muyeon.app.ui.components.imageLoadingPainter())
         }
         // 하단으로 갈수록 어두워져 흰 문구가 읽힌다.
         Box(

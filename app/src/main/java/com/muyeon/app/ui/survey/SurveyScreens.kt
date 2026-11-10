@@ -184,6 +184,7 @@ fun SurveyResponseScreen(
                                         AsyncImage(
                                             QuoteUi.imageUrl(it), null, contentScale = ContentScale.Crop,
                                             modifier = Modifier.size(36.dp).clip(RoundedCornerShape(6.dp)),
+                                            placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                                         )
                                     }
                                     if (on) {
@@ -301,6 +302,7 @@ private fun QuestionBlock(
                             AsyncImage(
                                 QuoteUi.imageUrl(it), null, contentScale = ContentScale.Crop,
                                 modifier = Modifier.size(40.dp).clip(RoundedCornerShape(6.dp)),
+                                placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                             )
                         }
                         Text(

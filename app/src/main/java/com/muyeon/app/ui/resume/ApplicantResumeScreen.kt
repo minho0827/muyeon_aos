@@ -237,6 +237,7 @@ private fun ResumeBody(a: Applicant) {
                 AsyncImage(
                     it, null, contentScale = ContentScale.Crop,
                     modifier = Modifier.size(88.dp).clip(RoundedCornerShape(12.dp)),
+                    placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                 )
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {

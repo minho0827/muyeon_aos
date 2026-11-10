@@ -42,7 +42,7 @@ internal fun StageCastingCard(c: StageCasting, onClick: () -> Unit) {
             Alignment.Center,
         ) {
             val url = stageImageUrl(c.imageUrl)
-            if (url != null) AsyncImage(url, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            if (url != null) AsyncImage(url, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, placeholder = com.muyeon.app.ui.components.imageLoadingPainter())
             // 웹 캐스팅 공고와 같은 '사진 없음' 그림(muyeon-noimage-casting.png, 10-26)
             else androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(com.muyeon.app.R.drawable.stage_noimage_casting), null,
                 Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
@@ -62,7 +62,7 @@ internal fun StageNewsCard(n: StageNewsItem, cat: StageCategory, onClick: () -> 
     Column(Modifier.width(230.dp).clickable(onClick = onClick), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Box(Modifier.width(230.dp).height(140.dp).clip(RoundedCornerShape(14.dp)).background(StageTintBg), Alignment.Center) {
             Icon(StageNewsIcon, null, tint = StageTint, modifier = Modifier.size(34.dp))
-            stageImageUrl(n.imageUrl)?.let { AsyncImage(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+            stageImageUrl(n.imageUrl)?.let { AsyncImage(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, placeholder = com.muyeon.app.ui.components.imageLoadingPainter()) }
         }
         val when_ = StageDate.short(n.eventDate)
         if (when_ != null) Text("일정 $when_", style = Bold, fontSize = 14.sp, color = Blue, modifier = Modifier.padding(top = 4.dp))

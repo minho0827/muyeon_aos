@@ -121,6 +121,7 @@ fun ReviewDetailScreen(
                                     QuoteUi.imageUrl(s), null, contentScale = ContentScale.Crop,
                                     modifier = Modifier.size(width = 240.dp, height = 300.dp)
                                         .clip(RoundedCornerShape(12.dp)).background(com.muyeon.app.ui.common.MuyeonList.fillBg),
+                                        placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                                 )
                             }
                         }

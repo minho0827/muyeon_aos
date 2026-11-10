@@ -197,7 +197,7 @@ fun ReplyQuote(q: ReplyQuoteModel, onMine: Boolean, onClick: (Int) -> Unit, stan
         Box(Modifier.width(2.dp).fillMaxHeight().background(accent))
         Spacer(Modifier.width(8.dp))
         q.imageUrl?.let {
-            AsyncImage(QuoteUi.imageUrl(it), null, contentScale = ContentScale.Crop, modifier = Modifier.size(32.dp).clip(RoundedCornerShape(4.dp)))
+            AsyncImage(QuoteUi.imageUrl(it), null, contentScale = ContentScale.Crop, modifier = Modifier.size(32.dp).clip(RoundedCornerShape(4.dp)), placeholder = com.muyeon.app.ui.components.imageLoadingPainter())
             Spacer(Modifier.width(6.dp))
         }
         Column {

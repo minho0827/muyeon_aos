@@ -13,7 +13,7 @@ import com.muyeon.app.ui.format.ImageUrls
 fun PerformanceDetailImages(images: List<String>, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxWidth()) {
         images.forEach { src ->
-            AsyncImage(model = ImageUrls.resolve(src), contentDescription = null, contentScale = ContentScale.FillWidth, modifier = Modifier.fillMaxWidth())
+            AsyncImage(model = ImageUrls.resolve(src), contentDescription = null, contentScale = ContentScale.FillWidth, modifier = Modifier.fillMaxWidth(), placeholder = com.muyeon.app.ui.components.imageLoadingPainter())
         }
     }
 }

@@ -61,6 +61,7 @@ fun JobPostingPreviewScreen(form: JobForm, onClose: () -> Unit) {
                 AsyncImage(
                     QuoteUi.imageUrl(it), null, contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxWidth().height(220.dp).background(Color(0xFFF7F7F7)),
+                    placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                 )
             } ?: PreviewPlaceholder("대표 이미지가 여기에 보여요", Modifier.fillMaxWidth().height(220.dp), square = true)
             Column(
@@ -202,6 +203,7 @@ internal fun PostingImageStack(images: List<String>) {
                 QuoteUi.imageUrl(img), null, contentScale = ContentScale.FillWidth,
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                     .background(Color(0xFFF7F7F7)),
+                    placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
             )
         }
     }

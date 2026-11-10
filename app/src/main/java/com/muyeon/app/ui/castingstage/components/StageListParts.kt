@@ -57,7 +57,7 @@ internal fun StageListRow(image: String?, icon: ImageVector, tint: Color, bg: Co
             if (placeholder != null && stageImageUrl(image) == null)
                 androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(placeholder), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             else Icon(icon, null, tint = tint, modifier = Modifier.size(28.dp))
-            stageImageUrl(image)?.let { AsyncImage(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+            stageImageUrl(image)?.let { AsyncImage(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, placeholder = com.muyeon.app.ui.components.imageLoadingPainter()) }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             kicker?.let { Text(it, style = Bold, fontSize = 14.sp, color = Blue) }

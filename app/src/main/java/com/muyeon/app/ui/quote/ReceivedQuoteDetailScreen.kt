@@ -416,7 +416,7 @@ private fun RequestHeaderCard(quote: QuoteFull?) {
 fun QuoteThumb(url: String?) {
     Box(Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFF0F0F0))) {
         if (url != null) {
-            AsyncImage(url, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            AsyncImage(url, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(), placeholder = com.muyeon.app.ui.components.imageLoadingPainter())
         }
     }
 }

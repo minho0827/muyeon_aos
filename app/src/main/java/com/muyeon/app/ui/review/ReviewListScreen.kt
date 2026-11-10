@@ -315,6 +315,7 @@ private fun ReviewCard(item: ReviewList.Item, onHelpful: (Int) -> Unit) {
                     AsyncImage(
                         QuoteUi.imageUrl(url), null, contentScale = ContentScale.Crop,
                         modifier = Modifier.size(84.dp).clip(RoundedCornerShape(8.dp)),
+                        placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                     )
                 }
             }

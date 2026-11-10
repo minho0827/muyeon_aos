@@ -22,8 +22,8 @@ import com.muyeon.app.ui.format.ImageUrls
 fun BlurFitImage(url: String?, modifier: Modifier = Modifier) {
     val resolved = ImageUrls.resolve(url)
     Box(modifier.background(Color.Black).clipToBounds()) {
-        AsyncImage(resolved, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().scale(1.2f).blur(24.dp))
+        AsyncImage(resolved, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().scale(1.2f).blur(24.dp), placeholder = com.muyeon.app.ui.components.imageLoadingPainter())
         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.10f)))
-        AsyncImage(resolved, null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
+        AsyncImage(resolved, null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize(), placeholder = com.muyeon.app.ui.components.imageLoadingPainter())
     }
 }

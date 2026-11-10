@@ -133,6 +133,7 @@ private fun LogoChip(l: VerifiedLogo, onClick: () -> Unit, onError: () -> Unit) 
             logoUrl(l.logoUrl), l.org, contentScale = ContentScale.Fit,
             onError = { onError() },
             modifier = Modifier.height(32.dp).widthIn(min = 32.dp, max = 84.dp),
+            placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
         )
     }
 }
@@ -168,7 +169,7 @@ private fun LogoSheetRow(l: VerifiedLogo) {
         Box(
             Modifier.size(40.dp),
             Alignment.Center,
-        ) { AsyncImage(logoUrl(l.logoUrl), l.org, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize()) }
+        ) { AsyncImage(logoUrl(l.logoUrl), l.org, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize(), placeholder = com.muyeon.app.ui.components.imageLoadingPainter()) }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(l.org, fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = MuyeonColors.textHead, maxLines = 1, overflow = TextOverflow.Ellipsis)
             l.title.takeIf { it.isNotBlank() }?.let { Text(it, fontFamily = customFontFamily, fontSize = 13.sp, color = MuyeonColors.body, maxLines = 2, overflow = TextOverflow.Ellipsis) }
@@ -192,6 +193,7 @@ fun SectionVerifiedLine(logos: List<VerifiedLogo>) {
                     logoUrl(l.logoUrl), l.org, contentScale = ContentScale.Fit,
                     onError = { failed = failed + l.id },
                     modifier = Modifier.size(20.dp),
+                    placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                 )
                 Text(
                     listOf(l.org, l.title).filter { it.isNotBlank() }.joinToString(" · "),

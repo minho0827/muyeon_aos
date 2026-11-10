@@ -528,6 +528,7 @@ private fun GridCell(quote: QuoteFull, isNew: Boolean, onClick: () -> Unit) {
                     QuoteUi.imageUrl(photo), null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxWidth().height(84.dp).clip(RoundedCornerShape(10.dp)),
+                    placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -755,6 +756,7 @@ fun QuoteRequestCard(quote: QuoteFull) {
                             AsyncImage(
                                 QuoteUi.imageUrl(url), null,
                                 contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(),
+                                placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                             )
                             if (i == 2 && photos.size > 3) {
                                 Box(

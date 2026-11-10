@@ -119,6 +119,7 @@ fun LinkPreviewCard(url: String, onOpen: (String) -> Unit) {
                 AsyncImage(
                     img, null, contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxWidth().height(130.dp),
+                    placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                 )
             }
             Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {

@@ -29,6 +29,8 @@ object AppColors {
     val Surface: Color = Palette.White
     val SurfaceMuted: Color = Palette.Gray50
     val Placeholder: Color = Palette.Gray100
+    /** 사진 불러오는 중 회색 상자(인스타그램처럼) — ImageLoading.kt 한 곳에서 쓴다. */
+    val ImagePlaceholder: Color = Color(0xFFEFEFF1)
 
     // === Line ===
     val Divider: Color = Palette.Gray100

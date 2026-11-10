@@ -385,9 +385,10 @@ private fun ProfileHero(p: PublicProfile) {
                 AsyncImage(
                     url, null, contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize().scale(1.2f).blur(24.dp),
+                    placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                 )
                 Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.10f)))
-                AsyncImage(url, null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
+                AsyncImage(url, null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize(), placeholder = com.muyeon.app.ui.components.imageLoadingPainter())
             }
         } else {
             Icon(
@@ -481,6 +482,7 @@ private fun ProfileBody(p: PublicProfile, reviews: ReviewList?, isSelf: Boolean,
                     AsyncImage(
                         QuoteUi.imageUrl(url), null, contentScale = ContentScale.FillWidth,
                         modifier = Modifier.fillMaxWidth(),
+                        placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                     )
                 }
             }
@@ -711,7 +713,7 @@ private fun PortfolioGrid(imgs: List<String>, allowSave: Boolean) {
                     .clickable { ImageViewerActivity.start(ctx, JSONArray(urls).toString(), idx, allowSave) },
                 contentAlignment = Alignment.Center,
             ) {
-                AsyncImage(QuoteUi.imageUrl(path), null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                AsyncImage(QuoteUi.imageUrl(path), null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(), placeholder = com.muyeon.app.ui.components.imageLoadingPainter())
                 if (idx == visible.size - 1 && more > 0) {
                     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)))
                     Text(

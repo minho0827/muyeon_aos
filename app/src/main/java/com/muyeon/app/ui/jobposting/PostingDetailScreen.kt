@@ -209,6 +209,7 @@ internal fun DetailHeader(kind: String, d: JSONObject, summary: MyPosting?, stat
         AsyncImage(
             QuoteUi.imageUrl(it), null, contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxWidth().height(220.dp).background(Color(0xFFF7F7F7)),
+            placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
         )
     }
     Column(

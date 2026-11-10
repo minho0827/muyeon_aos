@@ -202,6 +202,7 @@ fun ReviewWriteScreen(
                             AsyncImage(
                                 QuoteUi.imageUrl(url), null, contentScale = ContentScale.Crop,
                                 modifier = Modifier.size(72.dp).clip(RoundedCornerShape(10.dp)),
+                                placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                             )
                             Icon(
                                 Icons.Filled.Close, "삭제", tint = Color.White,

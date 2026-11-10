@@ -379,7 +379,7 @@ fun MuyeonHighlightCard(title: String, items: List<MuyeonHighlightItem>, side: S
             ) {
                 Box(Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)).background(MuyeonColors.primary.copy(alpha = 0.1f)), Alignment.Center) {
                     Icon(item.icon, null, tint = MuyeonColors.primary, modifier = Modifier.size(22.dp))
-                    item.imageUrl?.let { AsyncImage(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+                    item.imageUrl?.let { AsyncImage(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, placeholder = com.muyeon.app.ui.components.imageLoadingPainter()) }
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(item.title, style = pt(FontWeight.Bold, 16), color = MuyeonColors.textHead, maxLines = 1, overflow = TextOverflow.Ellipsis)

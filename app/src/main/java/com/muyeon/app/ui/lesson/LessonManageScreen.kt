@@ -307,7 +307,7 @@ private fun LessonCard(
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.size(72.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFF2F2F7))) {
                 l.images?.firstOrNull()?.let {
-                    AsyncImage(QuoteUi.imageUrl(it), null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                    AsyncImage(QuoteUi.imageUrl(it), null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(), placeholder = com.muyeon.app.ui.components.imageLoadingPainter())
                 }
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {

@@ -128,6 +128,8 @@ fun ImagePickerBottomSheet(
                                     .fillMaxWidth()
                                     .aspectRatio(3f / 4f)
                                     .clip(RoundedCornerShape(8.dp))
+                                    // 불러오는 중 회색 상자(앱 공통 사진 자리와 같은 색)
+                                    .background(com.muyeon.app.ui.theme.AppColors.ImagePlaceholder)
                                     .clickable {
                                         selectedUri = uri
                                         showConfirmDialog = true

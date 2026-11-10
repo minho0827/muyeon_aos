@@ -148,6 +148,7 @@ fun LessonContentDetailScreen(
                                         ctx, JSONArray(images).toString(), pager.currentPage, false,
                                     )
                                 },
+                                placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                             )
                         }
                         if (images.size > 1) {
@@ -264,6 +265,7 @@ fun LessonContentDetailScreen(
                                             ctx, JSONArray(detailImages).toString(), i, false,
                                         )
                                     },
+                                    placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                             )
                         }
                     }
@@ -305,6 +307,7 @@ fun LessonContentDetailScreen(
                                         QuoteUi.imageUrl(s.thumbnail), null, contentScale = ContentScale.Crop,
                                         modifier = Modifier.size(150.dp).clip(RoundedCornerShape(10.dp))
                                             .background(Color(0xFFF2F2F7)),
+                                            placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                                     )
                                     Text(
                                         s.cardTitle,

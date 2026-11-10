@@ -52,6 +52,7 @@ fun ChatImageBubble(
                 .then(if (corner > 0) Modifier.clip(RoundedCornerShape(corner.dp)) else Modifier)
                 .background(Color(0xFFF2F2F7))
                 .combinedClickable(onClick = { open(index) }, onLongClick = onLongPress),
+                placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
         )
     }
 

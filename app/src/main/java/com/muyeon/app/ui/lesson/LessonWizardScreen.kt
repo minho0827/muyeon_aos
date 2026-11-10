@@ -630,6 +630,7 @@ private fun StepPreview(d: LessonWizardDraft) {
             AsyncImage(
                 QuoteUi.imageUrl(d.images.first()), null, contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(12.dp)),
+                placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
             )
         }
         Text(
@@ -790,6 +791,7 @@ private fun PhotoStrip(images: List<String>, uploading: Boolean, onAdd: () -> Un
                 AsyncImage(
                     QuoteUi.imageUrl(url), null, contentScale = ContentScale.Crop,
                     modifier = Modifier.size(78.dp).clip(RoundedCornerShape(10.dp)),
+                    placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
                 )
                 Icon(
                     Icons.Filled.Close, "삭제", tint = Color.White,

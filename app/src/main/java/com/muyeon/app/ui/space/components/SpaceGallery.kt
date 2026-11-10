@@ -68,6 +68,7 @@ internal fun SpaceGallery(images: List<String>) {
                 modifier = Modifier.fillMaxSize().clickable {
                     ImageViewerActivity.start(ctx, JSONArray(images).toString(), pager.currentPage, false)
                 },
+                placeholder = com.muyeon.app.ui.components.imageLoadingPainter(),
             )
         }
         Text(
