@@ -320,6 +320,20 @@ fun ResumeEditScreen(
             errorMessage = "이력서 이름을 입력해 주세요."
             return
         }
+        // ★ 2026-11-13 강사 프로필은 활동 지역·희망 근무 지역·학력이 비면 저장하지 않는다(웹·iOS와 같은 문구).
+        //  지원용 이력서·무용수 프로필은 막지 않는다. 서버도 이 세 칸이 비면 공개를 미룬다(seek-profile-minimum.ts).
+        if (isSeekProfile && !mode.isDancer) {
+            val missing = listOfNotNull(
+                if (activeRegions.none { it.first.isNotBlank() }) "활동 지역" else null,
+                if (desired.region.isNullOrBlank()) "희망 근무 지역" else null,
+                // 학력은 학교 이름이 있는 줄만 저장된다 — 그래서 학교 이름으로 본다.
+                if (educations.none { it.school.isNotBlank() }) "학력" else null,
+            )
+            if (missing.isNotEmpty()) {
+                errorMessage = "${missing.joinToString(", ")}을 입력해 주세요."
+                return
+            }
+        }
         // 이력서는 입력 중에도 저장한다. 공개 요건은 서버가 검사해 공개만 보류한다.
         saving = true
         scope.launch {
