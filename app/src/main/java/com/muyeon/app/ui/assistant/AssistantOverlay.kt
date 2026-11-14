@@ -129,7 +129,8 @@ object AssistantOverlay {
     private const val TAG_VIEW = "muyeon.assistant.overlay"
     private const val PREFS = "muyeon.assistant"
     private const val KEY_Y = "fabBottomDp"
-    private val SKIP = setOf("SplashActivity", "LoginActivity", "IpConnectActivity", "QrScannerActivity", "ImageViewerActivity")
+    private val SKIP = setOf("SplashActivity", "LoginActivity", "IpConnectActivity", "QrScannerActivity", "ImageViewerActivity",
+        "QuickReviewActivity")   // ★ 2026-11-14 빠른 후기 — 체크 목록·아래 버튼과 겹쳐서 숨긴다
 
     /** 채팅방 안 — 보내기 버튼과 겹쳐서 숨긴다(10-23 요청). ChatRoomScreen 이 켜고 끈다(겹쳐 열려도 세어서). */
     var chatRooms by mutableIntStateOf(0)
