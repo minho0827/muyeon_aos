@@ -411,6 +411,8 @@ class ChatRoomViewModel(
             contactRevealed = contact.revealed,
             cyclesCount = lessonCycles.size,
             hasQuote = quoteContext != null,
+            // ★ 11-14 시작 시각을 모르면 막지 않는다(서버가 시작 전 완료를 한 번 더 막는다).
+            lessonStarted = (dealStartMillis ?: 0L) <= System.currentTimeMillis(),
         )
     }
 

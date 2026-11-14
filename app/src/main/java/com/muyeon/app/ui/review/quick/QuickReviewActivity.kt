@@ -4,6 +4,10 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -48,6 +52,16 @@ class QuickReviewActivity : com.muyeon.app.result.ResultActivity() {
             val api = remember { ReviewApi(TokenManager.getAccessToken(this)) }
             val c = remember { QuickReviewCoordinator(teacherId, teacherName, lessonLine, api) }
             val scope = rememberCoroutineScope()
+            // ★ 2026-11-14 이미 남긴 후기가 있으면 빠른 후기 대신 '후기 수정'(긴 폼, 기존 내용 채움) — 강사당 후기 1개라
+            //  빠른 후기가 예전 글·사진·3축 점수를 통째로 바꿨다. 확인 중에는 빈 화면, 조회 실패면 빠른 후기(서버 409 가 한 번 더 막는다).
+            var checked by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                if (api.list(teacherId).getOrNull()?.myReview != null) {
+                    com.muyeon.app.ui.resume.ResumeActivity.startReviewWrite(this@QuickReviewActivity, teacherId, teacherName, null)
+                    finish()
+                } else checked = true
+            }
+            if (!checked) return@setEdgeContent
             NavHost(
                 nav, startDestination = "rating",
                 popEnterTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popEnter,

@@ -21,11 +21,12 @@ class ChatDealBarResolverTest {
     private fun input(
         pair: String? = "MEMBER_TEACHER", role: String? = "customer", step: String? = "RESPONDED",
         lessonId: Int? = 7, canAccept: Boolean = true, waiting: Boolean = false, awaitingMe: Boolean = false,
-        revealed: Boolean = false, locked: Boolean = false, cycles: Int = 1,
+        revealed: Boolean = false, locked: Boolean = false, cycles: Int = 1, started: Boolean = true,
     ) = DealBarInput(
         pair = pair, myRole = role, locked = locked, step = step, title = "발레 레슨", priceText = "회당 50,000원",
         scheduleText = "11/26(목) 오후 3:00", lessonId = lessonId, canAccept = canAccept, proposalWaiting = waiting,
         proposalAwaitingMe = awaitingMe, contactRevealed = revealed, cyclesCount = cycles, hasQuote = true,
+        lessonStarted = started,
     )
 
     private fun actions(i: DealBarInput) = ChatDealBarResolver.resolve(i)?.actions
@@ -83,5 +84,9 @@ class ChatDealBarResolverTest {
         val m = ChatDealBarResolver.resolve(input(step = "ACCEPTED", revealed = true, cycles = 3))!!
         assertTrue(m.actions.size <= 3)
         assertEquals(3, m.cyclesCount)
+    }
+
+    @Test fun `강사 - 레슨 시작 전에는 레슨 완료가 없다`() {
+        assertEquals(listOf(VIEW_LESSON, CALL), actions(input(role = "pro", step = "SCHEDULED", revealed = true, started = false)))
     }
 }

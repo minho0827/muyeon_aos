@@ -59,6 +59,7 @@ class QuickReviewCoordinator(
                 durationBucket = null,
                 tags = tags.toList(),
                 images = images,
+                quick = true,
             ),
         )
         submitting = false

@@ -51,6 +51,8 @@ data class DealBarInput(
     val contactRevealed: Boolean,
     val cyclesCount: Int,
     val hasQuote: Boolean,         // 예전 서버 추정용
+    /** ★ 2026-11-14 레슨 시작 시각이 지났는가 — [레슨 완료]는 시작 뒤에만(시작 전 오탭 → 회원 후기 요청 방지). */
+    val lessonStarted: Boolean = true,
 )
 
 object ChatDealBarResolver {
@@ -93,7 +95,11 @@ object ChatDealBarResolver {
     private fun teacherActions(i: DealBarInput, step: String): List<DealAction> = when (step) {
         "RESPONDED" -> listOf(DealAction.VIEW_MY_QUOTE)
         "ACCEPTED" -> listOfNotNull(scheduleAction(i), DealAction.CALL.takeIf { i.contactRevealed })
-        "SCHEDULED" -> if (i.lessonId != null) listOfNotNull(DealAction.VIEW_LESSON, DealAction.COMPLETE_LESSON, DealAction.CALL.takeIf { i.contactRevealed }) else emptyList()
+        "SCHEDULED" -> if (i.lessonId != null) listOfNotNull(
+            DealAction.VIEW_LESSON,
+            DealAction.COMPLETE_LESSON.takeIf { i.lessonStarted },
+            DealAction.CALL.takeIf { i.contactRevealed },
+        ) else emptyList()
         "DONE" -> listOfNotNull(DealAction.VIEW_LESSON.takeIf { i.lessonId != null })
         else -> emptyList()
     }

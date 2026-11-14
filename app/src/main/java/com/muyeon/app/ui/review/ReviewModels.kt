@@ -165,8 +165,11 @@ data class ReviewSubmit(
     val durationBucket: String?,
     val tags: List<String>,
     val images: List<String>,
+    /** ★ 2026-11-14 빠른 후기 — 서버가 이미 쓴 후기를 덮어쓰지 않는다(있으면 409). 긴 폼은 false(보내지 않음). */
+    val quick: Boolean = false,
 ) {
     fun toJson(): JSONObject = JSONObject()
+        .apply { if (quick) put("quick", true) }
         .put("teacherId", teacherId)
         .put("ratings", JSONObject().apply { ratings.forEach { (k, v) -> put(k, v) } })
         .putOpt("revisit", revisit)
