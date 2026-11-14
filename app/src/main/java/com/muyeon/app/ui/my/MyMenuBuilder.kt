@@ -43,6 +43,9 @@ object MyMenuBuilder {
             m.base(type).map { g -> g.flatMap { if (it.bridge == B_NOTIFICATIONS) listOf(it) + m.support else listOf(it) }.toMutableList() }.toMutableList()
         }
 
+        // ★ 2026-11-14 '받은 견적'(서버 옛 이름) → 여는 화면 제목과 같은 '레슨 요청 내역'.
+        groups.forEach { g -> g.replaceAll { if (it.bridge == B_MY_QUOTES) it.copy(title = str(R.string.my_menu_my_quotes)) else it } }
+
         // 2) 강사·원장·무용수 보정
         var final = groups.map { group ->
             if (!isLessonProvider && !isDancer) group

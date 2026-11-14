@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.muyeon.app.R
 import com.muyeon.app.ui.components.ChipOption
@@ -48,6 +49,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun SeekScreen(actions: RecruitActions, vm: SeekViewModel = koinViewModel()) {
     val s by vm.state.collectAsStateWithLifecycle()
+    LifecycleResumeEffect(Unit) { vm.onResume(); onPauseOrDispose { } }
     RecruitEventsEffect(vm.events, actions)
     val grid = rememberLazyGridState()
     TabReselectEffect(MainTab.SEEK) { grid.animateScrollToItem(0) }

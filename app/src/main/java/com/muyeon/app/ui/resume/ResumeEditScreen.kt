@@ -145,7 +145,7 @@ fun ResumeEditScreen(
         key = "resumeEdit:${resumeId ?: 0}:$isSeekProfile",
     ) {
         ResumeEditForm(
-            if (isSeekProfile) (if (mode.isDancer) "무용수 프로필" else "강사프로필") else mode.defaultResumeTitle,
+            if (isSeekProfile) (if (mode.isDancer) "무용수 이력서" else "강사프로필") else mode.defaultResumeTitle,
             loading = resumeId != null,
         )
     }
@@ -445,7 +445,7 @@ fun ResumeEditScreen(
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         QuoteNavBar(
-            title = if (isSeekProfile) (if (mode.isDancer) "무용수 프로필 등록/수정" else "강사프로필 등록/수정") else mode.navTitle, // iOS ResumeEditView 머리글과 같다
+            title = if (isSeekProfile) (if (mode.isDancer) "무용수 이력서 등록/수정" else "강사프로필 등록/수정") else mode.navTitle, // iOS ResumeEditView 머리글과 같다
             onBack = onClose,
             trailing = {
                 Row(verticalAlignment = Alignment.CenterVertically) {

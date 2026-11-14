@@ -42,7 +42,7 @@ fun VerificationCompleteScreen(role: String, onStart: () -> Unit) {
         "DANCER" -> listOf("무용수 이력서 등록", "프로필·포트폴리오 등록", "캐스팅 공고 지원")
         "ACADEMY" -> listOf("강사 채용 공고 등록", "지원자 이력서 열람·관리", "대타 공고 등록")
         "SPACE" -> listOf("연습실·공연 공간 등록", "공간 예약 접수·관리")
-        "TEAM" -> listOf("공연·오디션 공고 등록", "무용수 프로필 열람·캐스팅 제안")
+        "TEAM" -> listOf("공연·오디션 공고 등록", "무용수 이력서 열람·캐스팅 제안")
         else -> listOf("새로운 기능을 이용할 수 있어요.")
     }
 

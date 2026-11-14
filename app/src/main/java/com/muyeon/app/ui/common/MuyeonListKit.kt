@@ -236,11 +236,17 @@ fun <T> MuyeonPillTabs(
                     Modifier.weight(1f).padding(horizontal = MuyeonList.gutter, vertical = vPad),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    leadingPills.forEach { Removable(it) }
                     tabs.forEach { tab -> Pill(tab, Modifier.weight(1f)) }
                 }
             }
             trailing?.invoke(this)
+        }
+        // ★ 2026-11-14 한 줄 고정에서는 적용 칩을 탭 아래 줄로(iOS 같음) — 한 줄에 같이 두면 칩·탭 글자가 '…'로 잘렸다.
+        if (!scrollable && leadingPills.isNotEmpty()) {
+            Row(
+                Modifier.padding(start = MuyeonList.gutter, end = MuyeonList.gutter, bottom = vPad),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) { leadingPills.forEach { Removable(it) } }
         }
         if (showDivider) HorizontalDivider(color = MuyeonList.ink200, thickness = 1.dp)
     }

@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.muyeon.app.R
 import com.muyeon.app.ui.components.ChipOption
@@ -45,6 +46,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun SubsScreen(actions: RecruitActions, vm: SubsViewModel = koinViewModel()) {
     val s by vm.state.collectAsStateWithLifecycle()
+    LifecycleResumeEffect(Unit) { vm.onResume(); onPauseOrDispose { } }
     val list = rememberLazyListState()
     TabReselectEffect(MainTab.SUBS) { list.animateScrollToItem(0) }
     var sheet by remember { mutableStateOf(false) }

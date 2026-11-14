@@ -41,6 +41,13 @@ class SubsViewModel(private val subs: SubListUseCase, observeRegion: ObserveActi
         onAccountChanged { refresh() }
     }
 
+    /** ★ 2026-11-14 화면이 다시 보일 때 — 받은 지 30초가 지났으면 다시 받는다(구인 HireViewModel 과 같은 규칙). */
+    fun onResume() {
+        val at = loadedAt
+        if (at != null && System.currentTimeMillis() - at > 30_000L) refresh()
+    }
+    private var loadedAt: Long? = null
+
     fun selectGenre(g: String?) { _state.update { it.copy(filter = it.filter.copy(genre = g)) }; refresh() }
     fun applyFilter(f: SubFilter) { _state.update { it.copy(filter = f) }; refresh() }
 
@@ -50,7 +57,7 @@ class SubsViewModel(private val subs: SubListUseCase, observeRegion: ObserveActi
         val f = _state.value.filter
         job = viewModelScope.launch {
             when (val r = subs(region.value, f)) {
-                is ApiResult.Success -> _state.update { it.copy(items = r.data, loading = false, isRefreshing = false, errorMessage = null) }
+                is ApiResult.Success -> { _state.update { it.copy(items = r.data, loading = false, isRefreshing = false, errorMessage = null) }; loadedAt = System.currentTimeMillis() }
                 is ApiResult.Error -> _state.update { it.copy(loading = false, isRefreshing = false, errorMessage = r.message) }
             }
         }

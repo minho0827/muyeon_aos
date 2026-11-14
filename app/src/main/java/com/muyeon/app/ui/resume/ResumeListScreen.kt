@@ -187,7 +187,7 @@ private fun CreateCard(isDancer: Boolean, onCreate: () -> Unit) {
 @Composable
 private fun NoticeBox(isDancer: Boolean, modifier: Modifier = Modifier) {
     val lines = if (isDancer) listOf(
-        "기본 이력서가 공연팀·기획자에게 보이는 무용수 프로필이 돼요.",
+        "기본 이력서가 공연팀·기획자에게 공개돼요.",
         "공연에 지원할 때 제출할 이력서를 고를 수 있어요.",
         "지원에 쓴 이력서는 삭제할 수 없어요. 내용 수정이나 비공개로 관리해 주세요.",
     ) else listOf(
@@ -281,7 +281,7 @@ private fun ResumeRow(
                 )
                 if (item.isDefault) {
                     Text(
-                        if (isDancer) "기본 · 무용수 프로필에 보여요" else "기본 · 강사프로필에 보여요",
+                        if (isDancer) "기본 · 공연팀·기획자에게 보여요" else "기본 · 강사프로필에 보여요",
                         fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 11.sp,
                         lineHeight = 13.sp, color = MuyeonColors.primary,
                         modifier = Modifier

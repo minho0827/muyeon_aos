@@ -73,7 +73,16 @@ class HireViewModel(
         onAccountChanged { _state.update { s -> s.copy(forMe = emptyList(), applied = emptySet(), viewed = emptySet(), liked = emptySet()) }; loadSide() }
     }
 
-    fun onResume() = loadSide()
+    /**
+     * 화면이 다시 보일 때(iOS onResume 1:1).
+     *  ★ 2026-11-14 목록을 받은 지 30초가 지났으면 목록도 다시 받는다 — 종전엔 처음 한 번만 받아,
+     *   다른 사람이 새로 올린 공고가 당겨서 새로고침해야 보였다. 받는 동안 보던 목록은 그대로 둔다(깜빡임 없음).
+     */
+    fun onResume() {
+        val at = loadedAt
+        if (at != null && System.currentTimeMillis() - at > STALE_AFTER_MS) refresh() else loadSide()
+    }
+    private var loadedAt: Long? = null
 
     fun setGrid(grid: Boolean) { prefs.putString(K_VIEW, if (grid) "half" else "basic"); _state.update { it.copy(grid = grid) } }
 
@@ -89,6 +98,7 @@ class HireViewModel(
                 it.copy(isRefreshing = false, list = it.list.copy(items = if (r.pages > 0) r.items else it.list.items, cursor = it.list.cursor.applied(r),
                     isInitialLoading = false, errorMessage = if (r.pages == 0) r.error else null, moreError = null))
             }
+            if (r.pages > 0) loadedAt = System.currentTimeMillis()
         }
         loadSide()
     }
@@ -129,5 +139,8 @@ class HireViewModel(
 
     private fun set(id: Long, liked: Boolean) = _state.update { it.copy(liked = if (liked) it.liked + id else it.liked - id) }
 
-    private companion object { const val K_VIEW = "recruit.hire.view" }
+    private companion object {
+        const val K_VIEW = "recruit.hire.view"
+        const val STALE_AFTER_MS = 30_000L
+    }
 }

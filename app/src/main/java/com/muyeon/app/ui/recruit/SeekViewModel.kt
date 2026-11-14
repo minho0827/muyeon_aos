@@ -52,6 +52,13 @@ class SeekViewModel(
 
     init { refresh() }
 
+    /** ★ 2026-11-14 화면이 다시 보일 때 — 받은 지 30초가 지났으면 다시 받는다(구인 HireViewModel 과 같은 규칙). */
+    fun onResume() {
+        val at = loadedAt
+        if (at != null && System.currentTimeMillis() - at > 30_000L) refresh()
+    }
+    private var loadedAt: Long? = null
+
     fun applyFilter(f: SeekFilter) { _state.update { it.copy(filter = f, list = PagedList()) }; refresh() }
 
     fun refresh(pull: Boolean = false) {
@@ -64,6 +71,7 @@ class SeekViewModel(
                 it.copy(isRefreshing = false, list = it.list.copy(items = if (r.pages > 0) r.items else it.list.items, cursor = it.list.cursor.applied(r),
                     isInitialLoading = false, errorMessage = if (r.pages == 0) r.error else null, moreError = null))
             }
+            if (r.pages > 0) loadedAt = System.currentTimeMillis()
             loadLikes()
         }
     }

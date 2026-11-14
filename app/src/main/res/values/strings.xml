@@ -411,7 +411,7 @@
     <string name="blocked_unblocking">해제 중…</string>
     <string name="blocked_unblocked">%1$s님 차단을 해제했어요.</string>
     <!-- ★ 2026-11-08 무용수 프로필 열람(웹 DancerList · DancerDetail) -->
-    <string name="dancer_list_title">무용수 프로필 열람</string>
+    <string name="dancer_list_title">무용수 이력서 열람</string>
     <string name="dancer_detail_title">무용수 상세 프로필</string>
     <string name="dancer_major_default">무용</string>
     <string name="dancer_title">%1$s 무용수</string>
@@ -722,10 +722,10 @@
     <string name="my_menu_academy_teachers">소속 강사 관리</string>
     <string name="my_menu_team_postings">공연 공고 등록 / 수정</string>
     <string name="my_menu_received_applications">받은 지원 (지원자 관리)</string>
-    <string name="my_menu_dancers">무용수 프로필 열람</string>
+    <string name="my_menu_dancers">무용수 이력서 열람</string>
     <string name="my_menu_dancer_resume">무용수 이력서 관리</string>
     <string name="my_menu_quote_request">레슨 요청하기</string>
-    <string name="my_menu_my_quotes">받은 제안</string>
+    <string name="my_menu_my_quotes">레슨 요청 내역</string>
     <string name="my_menu_recommend_blocks">추천 제외한 강사</string>
     <string name="my_menu_credentials">경력·자격 확인</string>
     <string name="my_menu_space_bookings">공간 예약 내역</string>
@@ -979,7 +979,7 @@
     <string name="write_menu_open">글쓰기</string>
     <string name="write_job">채용공고 쓰기</string>
     <string name="write_seek">강사프로필 등록</string>
-    <string name="write_seek_dancer">무용수 프로필 등록</string>
+    <string name="write_seek_dancer">무용수 이력서 등록</string>
     <string name="write_sub">대타공고 쓰기</string>
     <string name="write_casting">공연 공고 쓰기</string>
     <string name="recruit_deadline_always">상시 모집</string>
