@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
@@ -47,14 +46,12 @@ fun JobCardView(card: JobCard, grid: Boolean, status: String?, liked: Boolean, o
     Column(modifier.fillMaxWidth().clip(shape).border(1.dp, AppColors.Divider, shape).clickable(onClick = onClick)) {
         Box {
             val frame = Modifier.fillMaxWidth().aspectRatio(if (grid) 79f / 64f else 2f)
-            // ★ 2026-11-14 사진 없는 공고 — 정사각 '이미지 없음' 그림을 넓은 칸에 꽉 채우면 가운데 네모 테두리만 크게 잘려 보였다.
-            //  같은 연보라 바탕 위에 그림을 작게 가운데 둔다(iOS 같음).
+            // ★ 2026-11-14 사진 없는 공고 — 장르별 '○○ 강사 구해요!' 그림. 사진을 못 불러와도 같은 그림(깨진 칸을 보이지 않는다).
+            val fallback = RecruitLabels.jobThumb(card.genre)
             if (card.image.isNullOrBlank()) {
-                Box(frame.background(NO_IMAGE_BG), Alignment.Center) {
-                    Image(painterResource(R.drawable.img_noimage), null, Modifier.fillMaxHeight(0.7f).aspectRatio(1f), contentScale = ContentScale.Fit)
-                }
+                Image(painterResource(fallback), null, frame, contentScale = ContentScale.Crop)
             } else {
-                RemoteImage(card.image, frame, fallbackRes = R.drawable.img_noimage, thumbnail = true)
+                RemoteImage(card.image, frame, fallbackRes = fallback, thumbnail = true)
             }
             if (HomeLabels.isRecent(card.createdAt)) Badge(stringResource(R.string.home_new), NEW_BG, Modifier.align(Alignment.TopStart).padding(10.dp))
             RecruitLabels.deadline(card.deadline)?.let { d ->
@@ -86,6 +83,5 @@ private fun Badge(text: String, bg: Color, modifier: Modifier) =
 
 // 웹 JobBoard NewBadge · DeadlineBadge 색.
 private val NEW_BG = Color(0xE6F58232)
-private val NO_IMAGE_BG = Color(0xFFF4F1F8)
 private val URGENT_BG = Color(0xEBE2362D)
 private val DIM_BG = Color.Black.copy(alpha = 0.55f)

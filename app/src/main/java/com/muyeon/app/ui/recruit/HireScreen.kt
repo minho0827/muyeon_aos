@@ -78,16 +78,7 @@ fun HireScreen(actions: RecruitActions, vm: HireViewModel = koinViewModel()) {
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = tabBarBottomPadding()),
                 horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (s.forMe.isNotEmpty()) item(key = "forMe", span = full) {
-                    Column(Modifier.padding(top = 16.dp)) {
-                        Text(stringResource(R.string.recruit_for_me), style = AppTypography.Section16, color = AppColors.TextHead)
-                        LazyRow(contentPadding = PaddingValues(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            items(s.forMe, key = { "m${it.id}" }) { j ->
-                                JobCardView(j, true, null, j.id in s.liked, { open(j.id) }, { vm.toggleLike(j.id) }, Modifier.width(200.dp))
-                            }
-                        }
-                    }
-                }
+                // ★ 2026-11-14 '나에게 맞는 공고' 줄 없앰(사용자 요청) — 전체 목록만 보여 준다.
                 item(key = "bar", span = full) {
                     Row(Modifier.fillMaxWidth().padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                         ViewModeToggle(s.grid, vm::setGrid)

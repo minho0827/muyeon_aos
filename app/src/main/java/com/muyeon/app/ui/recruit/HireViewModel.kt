@@ -120,7 +120,8 @@ class HireViewModel(
         if (!tokens.isLoggedIn) { _state.update { it.copy(forMe = emptyList(), applied = emptySet(), viewed = emptySet(), liked = emptySet()) }; return }
         val type = ActiveType.visible(activeType.current())
         viewModelScope.launch {
-            val forMe = if (type == ActiveType.TEACHER || type == ActiveType.DANCER) jobs.forMe() else emptyList()
+            // ★ 2026-11-14 '나에게 맞는 공고' 줄을 없애 더는 부르지 않는다.
+            val forMe = emptyList<com.muyeon.domain.model.recruit.JobCard>()
             _state.update { it.copy(forMe = forMe, applied = jobs.appliedIds(), viewed = jobs.viewedIds(), liked = getLikedIds(ScrapTarget.JOB)) }
         }
     }

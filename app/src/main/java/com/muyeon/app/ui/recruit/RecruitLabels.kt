@@ -11,6 +11,18 @@ import java.time.temporal.ChronoUnit
  *   경력·분야 이름은 LessonLabels, 급여 이름은 HomeLabels.salary 를 같이 쓴다.
  */
 object RecruitLabels {
+    /** ★ 2026-11-14 사진 없는 채용 공고 썸네일 — 장르별 '○○ 강사 구해요!' 그림(drawable-nodpi). 웹 jobThumb·iOS 같은 규칙. */
+    fun jobThumb(genre: String?): Int = when (genre?.trim()) {
+        "발레" -> com.muyeon.app.R.drawable.job_thumb_ballet
+        "바레" -> com.muyeon.app.R.drawable.job_thumb_barre
+        "한국무용" -> com.muyeon.app.R.drawable.job_thumb_korean
+        "현대무용" -> com.muyeon.app.R.drawable.job_thumb_modern
+        "실용무용" -> com.muyeon.app.R.drawable.job_thumb_practical
+        "발레핏" -> com.muyeon.app.R.drawable.job_thumb_balletfit
+        "뮤지컬" -> com.muyeon.app.R.drawable.job_thumb_musical
+        else -> com.muyeon.app.R.drawable.job_thumb_default
+    }
+
     val CAREERS = listOf("NEW", "Y1_3", "Y3_5", "Y5_10", "Y10")
     val SALARIES = listOf("W1_2", "W2_3", "W3_4", "W4_5", "W5_6", "W6_8", "W8_UP", "NEGOTIABLE")
     val FIELDS = listOf("BASIC", "HOBBY", "MAJOR", "EXAM", "REPERTOIRE", "CONCOURS", "AUDITION", "PILATES", "STRETCH", "OTHER")
