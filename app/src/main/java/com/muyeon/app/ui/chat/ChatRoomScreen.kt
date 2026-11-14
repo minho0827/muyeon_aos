@@ -1,14 +1,12 @@
 package com.muyeon.app.ui.chat
 
 import com.muyeon.app.ui.chat.dealbar.DealAction
-import android.app.Activity
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import com.muyeon.app.webview.ActiveRole
-import com.muyeon.app.webview.NativeWebRoute
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
@@ -342,15 +340,31 @@ fun ChatRoomScreen(
     }
 
     // 강사 쪽 견적 채팅방은 강사·학원 유형에서만 연다(알림·채팅 목록 어디서 들어오든 — 웹·iOS 와 같은 규칙).
-    //  AOS 는 유형 전환이 웹에 있으므로, 전환 버튼은 웹 채팅방(같은 전환 화면 + 전환 후 그 방)으로 넘긴다.
-    //  웹에서 전환하면 syncActiveType 브릿지로 ActiveRole 도 갱신된다.
+    //  ★ 2026-11-14 예전엔 전환 버튼이 웹 /chat/:id 로 넘겼는데, 그 주소가 다시 이 네이티브 방을 열어
+    //   유형은 그대로인 채 같은 안내만 반복됐다. 이제 이 자리에서 서버에 강사 유형을 저장하고 바로 방을 보여 준다.
+    var roleEpoch by remember { mutableIntStateOf(0) }
+    var switching by remember { mutableStateOf(false) }
     if (vm.quoteContext?.isTeacher == true &&
-        ActiveRole.current(context) !in setOf(ActiveRole.TEACHER, ActiveRole.ACADEMY)
+        roleEpoch >= 0 && ActiveRole.current(context) !in setOf(ActiveRole.TEACHER, ActiveRole.ACADEMY)
     ) {
         ProviderSwitchGate(
             onBack = onBack,
             onSwitch = {
-                (context as? Activity)?.let { NativeWebRoute.openWebAndFinish(it, "/chat/${vm.roomId}") }
+                if (switching) return@ProviderSwitchGate
+                switching = true
+                scope.launch {
+                    val type = listOf(ActiveRole.TEACHER, ActiveRole.ACADEMY)
+                        .firstOrNull { ActiveRole.saveOnServer(context, it) }
+                    switching = false
+                    if (type != null) {
+                        ActiveRole.store(context, type)
+                        android.widget.Toast.makeText(context, "${ActiveRole.label(type)} 유형으로 바꿨어요", android.widget.Toast.LENGTH_SHORT).show()
+                        roleEpoch++
+                        vm.reloadMessagesAndContext()
+                    } else {
+                        android.widget.Toast.makeText(context, "강사 유형으로 바꾸지 못했어요. MY에서 강사 유형을 먼저 추가해 주세요.", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                }
             },
         )
         return
