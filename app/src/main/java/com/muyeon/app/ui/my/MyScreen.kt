@@ -88,7 +88,8 @@ fun MyScreen(
             ) { state ->
             MemberMyHome(
                 state = state,
-                onHeader = onRoleManage,
+                // ★ 2026-11-14 주황 머리(이름 줄) = 개인정보 관리. 회원유형은 목록 맨 위 '회원유형 변경 / 수정'.
+                onHeader = { onOpenWeb(MyMenuBuilder.PROFILE_EDIT_PATH) },
                 onMenu = { item ->
                     when {
                         item.bridge == MyActions.MEMBER_TYPE -> onRoleManage()

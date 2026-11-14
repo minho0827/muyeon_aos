@@ -712,7 +712,7 @@
     <string name="my_menu_reservations">예약 내역</string>
     <string name="my_menu_membership">멤버십</string>
     <string name="my_menu_likes">찜/관심</string>
-    <string name="my_menu_member_type">회원유형 설정 / 인증</string>
+    <string name="my_menu_member_type">회원유형 변경 / 수정</string>
     <string name="my_menu_notifications">알림함</string>
     <string name="my_menu_inquiries">1:1 문의</string>
     <string name="my_menu_feedback">의견 남기기</string>

@@ -117,7 +117,27 @@ object MyMenuBuilder {
             }
             if (at != null) final[at.first].add(at.second + 1, chat) else final.last().add(chat)
         }
-        return final
+        return memberTypeOnTop(final, str(R.string.my_menu_member_type))
+    }
+
+    /** ★ 2026-11-14 개인정보 관리 경로 — 주황 머리(이름 줄)를 누르면 여기로 간다. */
+    const val PROFILE_EDIT_PATH = "/profileEdit"
+
+    /**
+     * ★ 2026-11-14 '회원유형 변경 / 수정'을 맨 위(예전 '개인정보 관리' 자리)로 — 일반 회원이 유형 바꾸는 곳을 못 찾아
+     *  탈퇴 후 재가입하던 문제. 개인정보 관리는 주황 머리를 누르면 열린다(목록엔 중복으로 두지 않는다).
+     *  서버 메뉴 순서·이름과 상관없이 여기서 맞춘다(iOS memberTypeOnTop 1:1).
+     */
+    fun memberTypeOnTop(groups: List<List<MyMenuItem>>, title: String): List<List<MyMenuItem>> {
+        val row = MyMenuItem(title, "myinfo", bridge = MyActions.MEMBER_TYPE)
+        val out = groups.map { g -> g.filter { it.bridge != MyActions.MEMBER_TYPE }.toMutableList() }.toMutableList()
+        val gi = out.indexOfFirst { g -> g.any { it.path == PROFILE_EDIT_PATH } }
+        when {
+            gi >= 0 -> out[gi][out[gi].indexOfFirst { it.path == PROFILE_EDIT_PATH }] = row
+            out.isNotEmpty() -> out[0].add(0, row)
+            else -> out.add(mutableListOf(row))
+        }
+        return out.filter { it.isNotEmpty() }
     }
 
     /** 비공개 공고 안내의 유형 이름(웹 PENDING_ROLE_LABEL). */
