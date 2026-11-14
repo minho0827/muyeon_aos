@@ -31,7 +31,10 @@ fun ComponentActivity.applyEdgeToEdge() {
  *   안쪽 화면이 이미 statusBarsPadding·imePadding 을 쓰면 그 여백은 여기서 먼저 소비돼 두 번 들어가지 않는다.
  */
 fun ComponentActivity.setEdgeContent(background: Color = Color.White, content: @Composable () -> Unit) {
+    // ★ 2026-11-14 무용연 테마를 씌운다 — 없으면 색을 안 준 시스템 부품이 안드로이드 기본 보라로 보였다.
     setContent {
-        Box(Modifier.fillMaxSize().background(background).windowInsetsPadding(WindowInsets.safeDrawing)) { content() }
+        com.muyeon.app.theme.MuyeonTheme {
+            Box(Modifier.fillMaxSize().background(background).windowInsetsPadding(WindowInsets.safeDrawing)) { content() }
+        }
     }
 }
