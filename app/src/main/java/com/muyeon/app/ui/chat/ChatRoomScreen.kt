@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.chat
 
+import com.muyeon.app.ui.chat.dealbar.DealAction
 import android.app.Activity
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -126,6 +127,7 @@ fun ChatRoomScreen(
     var showAcceptConfirm by remember { mutableStateOf(false) }
     var showReviewSwitch by remember { mutableStateOf(false) }
     var teacherReviewInfo by remember { mutableStateOf(false) }
+    var showLessonComplete by remember { mutableStateOf(false) }   // ★ 11-14 강사 [레슨 완료] 확인창
 
     LaunchedEffect(vm.roomId) { vm.start() }
 
@@ -196,11 +198,18 @@ fun ChatRoomScreen(
         prog.lessonId?.let { openLesson(it) }
     }
 
-    /** 고객 [후기 쓰기] — 채팅을 닫고 웹 강사 상세의 후기 폼(?review=1)으로 이동한다. */
+    /**
+     * 고객 [후기 보내기] — ★ 2026-11-14 채팅방을 닫지 않고 빠른 후기(얼굴 → 사유 → 글 → 완료)를 띄운다.
+     *  돌아오면 상단 바를 다시 읽는다. 긴 후기 폼은 빠른 후기의 '자세히 쓰기'.
+     */
     fun openReviewPage() {
         val teacherId = vm.opponentId
         if (teacherId == 0) return
-        (context as? Activity)?.let { NativeWebRoute.openWebAndFinish(it, "/teachers/$teacherId?review=1") }
+        quoteLauncher.launch(
+            com.muyeon.app.ui.review.quick.QuickReviewActivity.intent(
+                context, teacherId, vm.title.ifBlank { "강사" }, vm.dealLessonLine,
+            ),
+        )
     }
 
     /** 후기 진입 — 활성유형이 일반이 아니면 전환 안내를 먼저 띄운다. */
@@ -347,6 +356,24 @@ fun ChatRoomScreen(
         return
     }
 
+    /** ★ 2026-11-14 상단 고정 바 버튼 — 기존 동작(채택 확인·약속 작성·레슨 상세·후기)을 그대로 쓴다. */
+    fun onDealAction(a: com.muyeon.app.ui.chat.dealbar.DealAction) {
+        when (a) {
+            DealAction.VIEW_QUOTES, DealAction.VIEW_MY_QUOTE -> onQuoteHeader()
+            DealAction.ACCEPT, DealAction.HIRE -> {
+                vm.acceptTarget = vm.dealCycle?.takeIf { !it.isProposal && !it.isTeacher && !it.matched }
+                if (!vm.acceptBlockedFor(vm.acceptTarget)) showAcceptConfirm = true
+            }
+            DealAction.SCHEDULE -> showProposal = true
+            DealAction.CHECK_PROPOSAL -> vm.pendingProposalMessageId?.let { id -> jumpToReply(id) }
+            DealAction.VIEW_LESSON -> vm.dealLessonId?.let { openLesson(it) }
+            DealAction.COMPLETE_LESSON -> if (vm.dealLessonId != null) showLessonComplete = true
+            DealAction.REVIEW -> startReviewFlow()
+            DealAction.CALL -> vm.contact.phone?.let { com.muyeon.app.ui.chat.dealbar.dialPhone(context, it) }
+            DealAction.ACADEMY_INFO -> openOpponentProfile()
+        }
+    }
+
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         RoomNavBar(
             vm, onBack,
@@ -360,26 +387,13 @@ fun ChatRoomScreen(
             onBlock = { confirmBlock = true },
         )
 
-        // 상단 레슨 컨텍스트(진행 카드·헤더·배너·CTA) — iOS 와 같이 상단바와 메시지 목록 사이.
-        LessonContextArea(
+        // ★ 2026-11-14 상단 고정 바(당근 거래 바) — 역할별 할 일 버튼. 판정은 ChatDealBarResolver, 동작은 onDealAction.
+        com.muyeon.app.ui.chat.dealbar.ChatDealBarArea(
             vm = vm,
+            onAction = { onDealAction(it) },
             onOpenCycles = { showCyclesSheet = true },
-            onCycleTimeline = { timelineCycle = it },
-            // 채택 전(RESPONDED) 사이클의 [채택하기]는 그 사이클의 견적을 채택한다(대표 견적 아님).
-            onCyclePrimary = { vm.acceptTarget = it; handleProgressPrimary(it.progress, it.isTeacher) },
-            onLegacyTimeline = { showLegacyTimeline = true },
-            onLegacyPrimary = { vm.acceptTarget = null; handleProgressPrimary(it, vm.quoteContext?.isTeacher == true) },
             onProposalChanged = { vm.reloadContext() },
             onOpenProposalPayment = openProposalPayment,
-            onMemberSchedule = { showProposal = true },
-            onQuoteHeader = { onQuoteHeader() },
-            onOpenLesson = { openLesson(it) },
-            onAcceptQuote = { vm.acceptTarget = null; showAcceptConfirm = true },
-            onMatchedAction = {
-                // iOS 와 같은 분기 — 이 배너는 progress 가 없을 때만 보이므로 실제로는 약속 제안 작성이 열린다.
-                val p = vm.progress
-                if (vm.isTeacherSide && p != null) openProgressSchedule(p) else showProposal = true
-            },
         )
 
         // 메시지 목록 빈 곳을 누르면 키보드를 내린다(iOS 와 같다, PACERA c5611acf).
@@ -487,6 +501,12 @@ fun ChatRoomScreen(
                     }
                     items(vm.pending.size, key = { "pending-" + vm.pending[it].localId }) { i ->
                         PendingBubble(vm.pending[i]) { vm.retry(vm.pending[i]) }
+                    }
+                    // ★ 2026-11-14 대화 시작 전 안내 — 두 사람이 아직 글을 주고받지 않았을 때만.
+                    if (vm.initialLoaded && !vm.locked && vm.pending.isEmpty() &&
+                        com.muyeon.app.ui.chat.dealbar.chatHasNoConversation(vm.messages.map { it.type })
+                    ) {
+                        item(key = "empty-notice") { com.muyeon.app.ui.chat.dealbar.ChatEmptyNotice(vm.pair, vm.myRole) }
                     }
                 }
             }
@@ -713,6 +733,26 @@ fun ChatRoomScreen(
         )
     }
     // 강사 채택(고객)
+    // ★ 2026-11-14 강사 [레슨 완료] 확인 → PATCH /lessons/schedules/:id/complete → 회원에게 후기 요청이 간다.
+    if (showLessonComplete) {
+        val lessonId = vm.dealLessonId
+        com.muyeon.app.ui.chat.dealbar.LessonCompleteConfirmDialog(
+            opponentName = vm.title.ifBlank { "회원" },
+            lessonLine = vm.dealLessonLine,
+            beforeStart = (vm.dealStartMillis ?: 0L) > System.currentTimeMillis(),
+            onConfirm = {
+                showLessonComplete = false
+                if (lessonId != null) scope.launch {
+                    com.muyeon.app.ui.lesson.LessonApi(vm.tokenForCards).complete(lessonId).fold(
+                        onSuccess = { vm.toast = "레슨 완료로 바꿨어요"; vm.reloadMessagesAndContext() },
+                        onFailure = { vm.toast = it.message ?: "레슨 완료로 바꾸지 못했어요" },
+                    )
+                }
+            },
+            onDismiss = { showLessonComplete = false },
+        )
+    }
+
     if (showAcceptConfirm) {
         // ★ 11-10 학원 채용(HIRE)은 채용 확정 문구 — 사이클에서 누른 채택은 그 사이클 기준.
         val hire = vm.acceptIsHire
@@ -930,6 +970,8 @@ private fun RoomNavBar(
             Icon(Icons.AutoMirrored.Filled.ArrowBack, "뒤로", tint = MuyeonColors.textHead, modifier = Modifier.size(18.dp))
         }
         Row(Modifier.align(Alignment.CenterEnd).padding(end = 4.dp)) {
+            // ★ 2026-11-14 연락처가 공개된 방(채택·일정 확정)만 전화 버튼
+            vm.contact.phone?.let { com.muyeon.app.ui.chat.dealbar.ChatHeaderCallButton(it) }
             // 방별 알림 음소거 토글
             Box(Modifier.size(44.dp).clickable { vm.toggleMute(!vm.muted) }, contentAlignment = Alignment.Center) {
                 Icon(

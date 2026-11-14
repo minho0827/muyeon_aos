@@ -72,6 +72,10 @@ class ChatRoomViewModel(
     var lockReason by mutableStateOf<String?>(null)                        // CANCELED | MATCHED_OTHER | EXPIRED
     var reRequest by mutableStateOf<ChatReRequest?>(null)                  // 잠긴 방 '이 강사님께 다시 레슨 요청하기'(요청자에게만)
     var locksAt by mutableStateOf<String?>(null)                           // 이대로면 대화가 끝나는 시각(ISO UTC) — 상단 카운트다운
+    // ★ 2026-11-14 상단 고정 바·첫 안내·전화 버튼(서버 pair·myRole·contact)
+    var pair by mutableStateOf<String?>(null)
+    var myRole by mutableStateOf<String?>(null)
+    var contact by mutableStateOf(ChatContact.HIDDEN)
 
     /** 상단 'D-N 후 대화 종료' 일수 — 열린 방이고 locksAt 이 있을 때만(잠긴 방은 안내 띠가 대신한다). */
     fun lockDaysLeft(nowMillis: Long = System.currentTimeMillis()): Int? =
@@ -333,7 +337,81 @@ class ChatRoomViewModel(
             lockReason = d.lockReason
             reRequest = d.reRequest
             locksAt = d.locksAt
+            pair = d.pair
+            myRole = d.myRole
+            contact = d.contact
         }
+    }
+
+    // ── ★ 2026-11-14 상단 고정 바(ChatDealBar) 입력 — 판정은 ChatDealBarResolver, 여기는 값만 모은다 ──
+
+    /** 바가 따르는 대표 사이클 — 내 할 일(일정 확정·채택)이 있는 사이클 우선, 없으면 첫 사이클. */
+    val dealCycle: ChatLessonCycle?
+        get() = lessonCycles.firstOrNull { it.needsMyAction || it.awaitsMyAccept } ?: lessonCycles.firstOrNull()
+
+    /**
+     * 내가 답할 약속 제안이 있는가 — 최신 LESSON_PROPOSAL 카드가 대기(PROPOSED·결제 대기)이고 상대가 보냈다.
+     *  proposerId 가 없는 옛 카드는 강사가 보낸 것(서버와 같은 해석).
+     */
+    val proposalAwaitingMe: Boolean
+        get() {
+            val m = messages.lastOrNull { it.type == "LESSON_PROPOSAL" } ?: return false
+            val o = runCatching { org.json.JSONObject(m.content) }.getOrNull() ?: return false
+            val st = o.optString("status")
+            if (st != "PROPOSED" && st != "AWAITING_PAYMENT") return false
+            val proposer = if (o.has("proposerId")) o.optInt("proposerId") else m.senderId
+            return proposer != currentUserId
+        }
+
+    /** 최신 대기 중 약속 제안 카드 id(바 [약속 확인하기] → 그 카드로 스크롤). */
+    val pendingProposalMessageId: Int?
+        get() = messages.lastOrNull { m ->
+            m.type == "LESSON_PROPOSAL" && runCatching { org.json.JSONObject(m.content).optString("status") }
+                .getOrNull().let { it == "PROPOSED" || it == "AWAITING_PAYMENT" }
+        }?.id
+
+    /** 바에 쓸 레슨 일정 시각 문자열 — "11/26(목) 오후 3:00". */
+    private fun shortWhen(iso: String?): String? {
+        val t = com.muyeon.app.ui.quote.QuoteUi.parseDate(iso) ?: return null
+        return java.text.SimpleDateFormat("M/d(E) a h:mm", java.util.Locale.KOREAN).format(java.util.Date(t))
+    }
+
+    /** 대표 레슨의 시작 시각(ms) — 레슨 완료 확인창의 '시작 전' 경고. */
+    val dealStartMillis: Long?
+        get() = com.muyeon.app.ui.quote.QuoteUi.parseDate(
+            dealCycle?.lessonSchedule?.startAt ?: dealCycle?.progress?.scheduleStartAt ?: progress?.scheduleStartAt ?: lessonSchedule?.startAt,
+        )
+
+    /** 대표 레슨 id(일정 보기·레슨 완료). */
+    val dealLessonId: Int?
+        get() = dealCycle?.let { it.progress.lessonId ?: it.lessonSchedule?.lessonId } ?: progress?.lessonId ?: lessonSchedule?.lessonId
+
+    /** 확인창 문구용 레슨 한 줄 — "발레 레슨 11/26(목) 오후 3:00". */
+    val dealLessonLine: String
+        get() = listOfNotNull(dealCycle?.title ?: contextCategory ?: "레슨", shortWhen(dealCycle?.lessonSchedule?.startAt ?: progress?.scheduleStartAt))
+            .joinToString(" ")
+
+    fun dealBarInput(): com.muyeon.app.ui.chat.dealbar.DealBarInput {
+        val c = dealCycle
+        val ctx = c?.asContext ?: quoteContext
+        val step = c?.progress?.step ?: progress?.step ?: if (quoteContext != null) "RESPONDED" else null
+        val startIso = c?.lessonSchedule?.startAt ?: c?.progress?.scheduleStartAt ?: progress?.scheduleStartAt ?: lessonSchedule?.startAt
+        return com.muyeon.app.ui.chat.dealbar.DealBarInput(
+            pair = pair,
+            myRole = myRole ?: c?.let { if (it.isTeacher) "pro" else "customer" } ?: quoteContext?.let { if (it.isTeacher) "pro" else "customer" },
+            locked = locked,
+            step = step,
+            title = c?.title ?: contextCategory,
+            priceText = ctx?.priceText,
+            scheduleText = shortWhen(startIso),
+            lessonId = dealLessonId,
+            canAccept = if (c != null) !c.isTeacher && !c.matched && !c.isProposal && !acceptBlockedFor(c) else canAcceptQuote,
+            proposalWaiting = proposalWaiting,
+            proposalAwaitingMe = proposalAwaitingMe,
+            contactRevealed = contact.revealed,
+            cyclesCount = lessonCycles.size,
+            hasQuote = quoteContext != null,
+        )
     }
 
     /**

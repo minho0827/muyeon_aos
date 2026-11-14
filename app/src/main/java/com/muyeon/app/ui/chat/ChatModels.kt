@@ -400,6 +400,10 @@ data class ChatRoomDetail(
     val lockReason: String? = null,            // CANCELED | MATCHED_OTHER | EXPIRED
     val reRequest: ChatReRequest? = null,      // 잠긴 방 + 내가 끝난 요청의 요청자일 때만(강사 탈퇴면 null) — '다시 레슨 요청하기'
     val locksAt: String? = null,               // 이대로면 대화가 끝나는 시각(ISO UTC) — 상단 'D-N 후 대화 종료'
+    // ★ 2026-11-14 상단 고정 바·첫 안내(서버 room-pair) — 예전 서버는 null.
+    val pair: String? = null,                  // MEMBER_TEACHER | ACADEMY_TEACHER | PROPOSAL | RECRUIT | SPACE | TRANSFER | DIRECT
+    val myRole: String? = null,                // customer | pro | null
+    val contact: ChatContact = ChatContact.HIDDEN,
 ) {
     companion object {
         /** 잠긴 방 안내 띠 문구. */
@@ -428,7 +432,22 @@ data class ChatRoomDetail(
             lockReason = o.stringOrNull("lockReason"),
             reRequest = ChatReRequest.from(o.optJSONObject("reRequest")),
             locksAt = o.stringOrNull("locksAt"),
+            pair = o.stringOrNull("pair"),
+            myRole = o.stringOrNull("myRole"),
+            contact = ChatContact.from(o.optJSONObject("contact")),
         )
+    }
+}
+
+/** ★ 2026-11-14 상대 연락처 공개(채택하면 서로 공개, 서버 common/contact-disclosure). 공개가 아니면 phone=null. */
+data class ChatContact(val revealed: Boolean, val phone: String?, val reason: String?) {
+    companion object {
+        val HIDDEN = ChatContact(false, null, null)
+        fun from(o: JSONObject?): ChatContact {
+            if (o == null) return HIDDEN
+            val phone = o.stringOrNull("phone")?.takeIf { it.isNotBlank() }
+            return if (o.optBoolean("revealed", false) && phone != null) ChatContact(true, phone, o.stringOrNull("reason")) else HIDDEN
+        }
     }
 }
 
