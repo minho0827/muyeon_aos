@@ -272,6 +272,8 @@ fun MyQuoteRow(quote: MyQuoteSummary, onClick: () -> Unit) {
     // 만료(cron flip 전 gap 포함) → '견적 마감'
     val effectiveStatus = when {
         quote.status == "EXPIRED" || (quote.expired == true && quote.status == "OPEN") -> "EXPIRED"
+        // ★ 2026-11-14 지정 강사가 답 없이 닫음 = 정중히 사양(목록에서 '완료'로 보이지 않게).
+        quote.status == "CLOSED" && quote.isDirect && (quote.responseCount ?: 0) == 0 -> "DECLINED"
         else -> quote.status ?: "OPEN"
     }
     // 지정(1:1) 요청이면 대상 강사 기준, 아니면 응답자(브로드캐스트) 기준.

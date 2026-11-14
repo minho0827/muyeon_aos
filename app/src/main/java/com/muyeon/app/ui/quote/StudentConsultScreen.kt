@@ -201,11 +201,18 @@ fun StudentConsultScreen(
         )
     }
 
+    val declinedToast = androidx.compose.ui.res.stringResource(com.muyeon.app.R.string.quote_decline_done)
     respondFor?.let { quote ->
         QuoteRespondSheet(
             quote = quote,
             attachmentRole = attachmentRole,
             onDismiss = { respondFor = null },
+            // ★ 2026-11-14 다이렉트 요청 정중히 거절 → 시트 닫고 다시 읽기.
+            onDeclined = {
+                respondFor = null
+                toast = declinedToast
+                scope.launch { load() }
+            },
         ) { amount, deposit, message, attachmentType ->
             val ok = api.sendQuoteResponse(quote.id, amount, deposit, message, attachmentType).isSuccess
             if (ok) {

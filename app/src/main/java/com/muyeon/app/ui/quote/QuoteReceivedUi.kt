@@ -62,13 +62,14 @@ object QuoteUi {
         "CLOSED" -> "완료"
         "CANCELED" -> "취소됨"
         "EXPIRED" -> "견적 마감"
+        "DECLINED" -> "강사님이 사양했어요"   // ★ 2026-11-14 지정 강사가 정중히 거절(iOS 같은 글자)
         else -> s ?: ""
     }
 
     fun statusColor(s: String?): Color = when (s) {
         "MATCHED" -> MuyeonColors.green          // 채택/매칭 완료 = 초록(진행중과 구분)
         "OPEN" -> MuyeonColors.orange            // 견적 받는 중 = 주황(대기 상태 시인성)
-        "CANCELED", "EXPIRED" -> MuyeonColors.textSub
+        "CANCELED", "EXPIRED", "DECLINED" -> MuyeonColors.textSub
         else -> MuyeonColors.primary
     }
 

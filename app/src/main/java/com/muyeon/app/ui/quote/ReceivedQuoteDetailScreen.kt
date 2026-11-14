@@ -84,6 +84,7 @@ fun ReceivedQuoteDetailScreen(
     /** 값이 바뀌면 다시 읽는다 — 채팅에서 돌아오면 부모가 결과로 올린다(화면은 composition 에 남아 있다). */
     reloadSignal: Int = 0,
 ) {
+    val declinedProgress = stringResource(R.string.quote_declined_progress)  // ★ 2026-11-14 거절된 지정 요청 진행 글자
     var quote by remember { mutableStateOf<QuoteFull?>(null) }
     var responses by remember { mutableStateOf<List<QuoteResponseItem>>(emptyList()) }
     var recommendations by remember { mutableStateOf<List<RecommendedTeacher>>(emptyList()) }
@@ -177,6 +178,7 @@ fun ReceivedQuoteDetailScreen(
                             hasAccepted -> "매칭 완료"
                             responses.isNotEmpty() -> "견적 도착"
                             q.status == "EXPIRED" -> "응답 없음"
+                            q.decline != null -> declinedProgress
                             else -> "응답 대기중"
                         }
                         DirectTeacherCard(q.targetTeacher, progress) { onOpenProfile(q.targetTeacher.id ?: 0) }
@@ -198,14 +200,17 @@ fun ReceivedQuoteDetailScreen(
                 }
 
                 if (responses.isEmpty() && !isLoading) {
-                    if (quote?.isDirect == true) {
+                    if (quote?.isDirect == true && quote?.decline == null) {
                         // 지정 요청: 그 강사의 응답만 기다림 — 브로드캐스트 추천 미노출.
                         item {
                             EmptyView(stringResource(R.string.quote_received_direct_waiting), content = stringResource(R.string.quote_received_direct_waiting_desc))
                         }
                     } else {
+                        // ★ 2026-11-14 지정 강사가 정중히 거절 — 사유 안내 + 아래 비슷한 강사 추천(원터치 재요청).
+                        val declined = quote?.decline
                         item {
-                            EmptyView(stringResource(R.string.quote_received_responses_empty), content = stringResource(R.string.quote_received_responses_empty_desc))
+                            if (declined != null) QuoteDeclinedNotice(declined)
+                            else EmptyView(stringResource(R.string.quote_received_responses_empty), content = stringResource(R.string.quote_received_responses_empty_desc))
                         }
                         // 무한 대기 방지 — 요청 조건과 비슷한 강사 추천(원터치 재요청)
                         if (recommendations.isNotEmpty()) {
@@ -402,7 +407,8 @@ private fun RequestHeaderCard(quote: QuoteFull?, isAcademyReq: Boolean = false) 
                 lineHeight = 21.sp, color = MuyeonColors.textHead,
             )
             quote?.requesterBadge?.let { QuotePill(it, MuyeonColors.primary) }
-            QuotePill(QuoteUi.statusLabel(quote?.status), QuoteUi.statusColor(quote?.status), filled = true)
+            val shown = if (quote?.decline != null) "DECLINED" else quote?.status
+            QuotePill(QuoteUi.statusLabel(shown), QuoteUi.statusColor(shown), filled = true)
             // 견적 만료 D-day — 진행중(OPEN)일 때만. (서버 만료 시각, 요청 생성 +30일 · KST 달력 일수)
             if (expiryLabel != null) {
                 Spacer(Modifier.weight(1f))

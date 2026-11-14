@@ -663,11 +663,18 @@ private fun QuoteDeckScreen(state: QuoteBrowseState, initialIndex: Int, onClose:
         )
     }
 
+    val declinedToast = androidx.compose.ui.res.stringResource(com.muyeon.app.R.string.quote_decline_done)
     respondFor?.let { quote ->
         QuoteRespondSheet(
             quote = quote,
             attachmentRole = state.attachmentRole,
             onDismiss = { respondFor = null },
+            // ★ 2026-11-14 다이렉트 요청 정중히 거절 → 시트 닫고 다시 읽기(덱 카드도 빠진다).
+            onDeclined = {
+                respondFor = null
+                state.toast = declinedToast
+                scope.launch { state.load() }
+            },
             onSend = { amount, deposit, message, attachmentType ->
                 val sent = state.respond(quote.id, amount, deposit, message, attachmentType)
                 if (sent) {
@@ -807,6 +814,8 @@ internal fun QuoteRespondSheet(
     onDismiss: () -> Unit,
     /** 메시지 칸 처음 값 — 견적 응답 화면은 자동 인사 템플릿으로 미리 채운다(웹 QuoteRespond 프리필). 모아보기는 빈칸. */
     initialMessage: String = "",
+    /** ★ 2026-11-14 다이렉트 요청이면 아래에 "죄송해요, 다음에 뵐게요"(사유 골라 정중히 거절). null 이면 안 보인다. */
+    onDeclined: (() -> Unit)? = null,
     // (금액, 예약금, 메시지, attachmentType) → 발송 성공 여부. 실패면 시트를 열어둔 채 버튼을 되살린다.
     onSend: suspend (Int?, Int?, String, String) -> Boolean,
 ) {
@@ -900,6 +909,9 @@ internal fun QuoteRespondSheet(
                 fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp,
                 color = MuyeonColors.textSub,
             )
+            if (quote.isDirect && onDeclined != null) {
+                com.muyeon.app.ui.quote.respond.decline.QuoteDeclineAction(quote, onDeclined = { onDismiss(); onDeclined() })
+            }
         }
 
             Text(

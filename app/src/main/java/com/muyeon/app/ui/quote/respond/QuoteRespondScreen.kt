@@ -117,8 +117,12 @@ fun QuoteRespondScreen(state: QuoteRespondState, actions: QuoteRespondActions) {
                     Summary(phase.detail.quote)
                     phase.withdrawn?.let { WithdrawnSection(it) }
                     QuoteRequestDetailSection(phase.detail.quote, Modifier.padding(horizontal = Dimensions.gutter), onOpenPhoto = actions.onOpenPhoto)
+                    // ★ 2026-11-14 다이렉트(나를 지정한) 요청이면 [죄송해요, 다음에 뵐게요] — 사유를 골라 정중히 거절.
                     QuoteRespondButtons(
-                        listOf(SheetAction(stringResource(R.string.quote_respond_send), true) { state.composing = true }),
+                        listOfNotNull(
+                            if (phase.detail.quote.isDirect) SheetAction(stringResource(R.string.quote_decline_button), false) { state.declining = true } else null,
+                            SheetAction(stringResource(R.string.quote_respond_send), true) { state.composing = true },
+                        ),
                         Modifier.padding(horizontal = Dimensions.gutter),
                     )
                 }
@@ -129,6 +133,19 @@ fun QuoteRespondScreen(state: QuoteRespondState, actions: QuoteRespondActions) {
     (phase as? QuoteRespondPhase.Gone)?.let { GoneDialog(it.reason, state, actions) }
 
     val request = (phase as? QuoteRespondPhase.Request)?.detail
+    if (state.declining && request != null) {
+        val done = stringResource(R.string.quote_decline_done)
+        val failed = stringResource(R.string.quote_decline_failed)
+        val scope = androidx.compose.runtime.rememberCoroutineScope()
+        com.muyeon.app.ui.quote.respond.decline.QuoteDeclineSheet(
+            academy = request.quote.isAcademyRequest, busy = state.busy,
+            onSubmit = { r, detail ->
+                // 닫힐 때 QuoteBrowseActivity 기본 결과(QUOTES)로 목록이 다시 읽힌다.
+                scope.launch { state.decline(r, detail, done, failed) }
+            },
+            onDismiss = { state.declining = false },
+        )
+    }
     if (state.composing && request != null) {
         val fallback = stringResource(R.string.quote_respond_send_failed)
         QuoteRespondSheet(

@@ -88,6 +88,8 @@ enum class QuoteRespondGone(@StringRes val title: Int, @StringRes val body: Int,
 enum class QuoteRespondClosed(@StringRes val title: Int, @StringRes val body: Int) {
     MATCHED(R.string.quote_respond_closed_matched_title, R.string.quote_respond_closed_matched_body),
     EXPIRED(R.string.quote_respond_closed_expired_title, R.string.quote_respond_closed_expired_body),
+    /** ★ 2026-11-14 내가 정중히 거절한 다이렉트 요청. */
+    DECLINED(R.string.quote_respond_closed_declined_title, R.string.quote_respond_closed_declined_body),
 }
 
 /** 내가 보낸 견적서 상태 배지 — 웹 QUOTE_RESPONSE_STATUS_PRO(라벨 · .level 색). */

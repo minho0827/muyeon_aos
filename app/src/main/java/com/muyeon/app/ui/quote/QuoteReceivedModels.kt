@@ -148,8 +148,13 @@ data class QuoteFull(
     val requesterBadge: String? = null,
     /** ★ 2026-11-10 서버가 만든 읽을 수 있는 답(세트 순서·라벨 포함). 있으면 로컬 describe 대신 이것. */
     val describedAnswers: List<QuoteDescribedAnswer> = emptyList(),
+    /** ★ 2026-11-14 지정 강사가 정중히 거절 — 요청자 본인에게만 사유 문장(서버가 정중한 말로 만든다). */
+    val decline: QuoteDeclineNotice? = null,
 ) {
     val isDirect: Boolean get() = targetTeacherId != null
+
+    /** ★ 11-10 학원 등 일반이 아닌 신청자 요청(iOS isAcademyRequest 같은 규칙) — 거절 사유 '급여' 표기. */
+    val isAcademyRequest: Boolean get() = requesterType != null && requesterType != "GENERAL"
 
     /** ★ 2026-11-10 학원 요청의 학원명 — 배지 옆에 따로 보여 준다(목록 제목 '첫 답'에서는 뺀다). */
     val academyName: String?
@@ -173,9 +178,15 @@ data class QuoteFull(
             requesterBadge = o.stringOrNull("requesterBadge")?.ifBlank { null },
             describedAnswers = o.optJSONArray("describedAnswers")?.map { QuoteDescribedAnswer.from(it) }
                 ?.filter { it.questionId.isNotEmpty() } ?: emptyList(),
+            decline = o.optJSONObject("decline")?.let { d ->
+                QuoteDeclineNotice(d.stringOrNull("reasonCode"), d.stringOrNull("message"))
+            },
         )
     }
 }
+
+/** ★ 2026-11-14 강사가 정중히 거절한 사유(요청자에게 보이는 문장). */
+data class QuoteDeclineNotice(val reasonCode: String?, val message: String?)
 
 /** ★ 2026-11-10 GET /quotes/available · /quotes/:id 의 describedAnswers 한 줄. */
 data class QuoteDescribedAnswer(val questionId: String, val label: String, val value: String) {

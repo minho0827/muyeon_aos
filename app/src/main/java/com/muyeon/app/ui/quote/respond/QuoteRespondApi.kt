@@ -16,6 +16,7 @@ import org.json.JSONObject
  *   - GET  /chat/my/auto-message    (자동 인사 템플릿 — 메시지 미리 채우기) — chat-templates.controller
  *   - GET  /auth/me                 (보유 회원유형 — '강사 유형으로 전환하고 견적 보내기')
  *   - POST /quotes/:id/responses    (견적 보내기 → { roomId })
+ *   - POST /quotes/:id/decline      (★ 11-14 다이렉트 요청 정중히 거절)
  */
 class QuoteRespondApi(context: Context) {
     private val http = NativeHttp(context)
@@ -51,6 +52,13 @@ class QuoteRespondApi(context: Context) {
         return http.call("/quotes/$quoteId/responses", "POST", body).map { text ->
             runCatching { JSONObject(text).jInt("roomId") }.getOrNull()?.takeIf { it > 0 }
         }
+    }
+
+    /** ★ 2026-11-14 다이렉트 요청 정중히 거절 — { reasonCode, reasonDetail? }(기타일 때만 글). */
+    suspend fun decline(quoteId: Int, reason: com.muyeon.app.ui.quote.respond.decline.QuoteDeclineReason, detail: String): Result<Unit> {
+        val body = JSONObject().put("reasonCode", reason.code)
+        if (reason == com.muyeon.app.ui.quote.respond.decline.QuoteDeclineReason.OTHER) body.put("reasonDetail", detail.trim())
+        return http.call("/quotes/$quoteId/decline", "POST", body).map { }
     }
 
     companion object {

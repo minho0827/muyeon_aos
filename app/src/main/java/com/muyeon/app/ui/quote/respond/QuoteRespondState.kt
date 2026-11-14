@@ -40,6 +40,8 @@ class QuoteRespondState(
     var autoMessage by mutableStateOf("")
         private set
     var composing by mutableStateOf(false)
+    /** ★ 2026-11-14 다이렉트 요청 거절 사유 시트. */
+    var declining by mutableStateOf(false)
     var busy by mutableStateOf(false)
     var toast by mutableStateOf<String?>(null)
 
@@ -71,10 +73,22 @@ class QuoteRespondState(
         if (mine != null && mine.status != com.muyeon.app.ui.quote.owner.WITHDRAWN) return QuoteRespondPhase.Sent(d, mine)
         val closed = when {
             d.quote.status == "MATCHED" -> QuoteRespondClosed.MATCHED
+            // ★ 2026-11-14 나를 지정한 요청이 답 없이 CLOSED = 내가 정중히 거절했다(만료·취소는 EXPIRED·CANCELED).
+            d.quote.status == "CLOSED" && d.quote.isDirect && mine == null -> QuoteRespondClosed.DECLINED
             d.expired || d.quote.status == "EXPIRED" || d.quote.status == "CLOSED" -> QuoteRespondClosed.EXPIRED
             else -> null
         }
         return closed?.let { QuoteRespondPhase.Closed(d, it) } ?: QuoteRespondPhase.Request(d, mine)
+    }
+
+    /** ★ 2026-11-14 다이렉트 요청 정중히 거절 → 요청이 닫혀 '거절한 요청' 화면으로 다시 읽는다. */
+    suspend fun decline(reason: com.muyeon.app.ui.quote.respond.decline.QuoteDeclineReason, detail: String, done: String, failed: String) {
+        if (busy) return
+        busy = true
+        api.decline(quoteId, reason, detail)
+            .onSuccess { declining = false; toast = done; load() }
+            .onFailure { toast = (it as? ApiMessageError)?.message?.ifBlank { null } ?: failed }
+        busy = false
     }
 
     /**
