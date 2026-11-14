@@ -74,6 +74,9 @@ fun QuoteRespondScreen(state: QuoteRespondState, actions: QuoteRespondActions) {
     }
     val phase = state.phase
     val reload = rememberLaunch { state.load() }
+    // ★ 2026-11-14 거절 보내기·다시 읽기는 화면 범위에서 — 사유 시트 안에서 만든 범위는 시트가 닫히는 순간 취소돼
+    //   거절은 됐는데 화면이 '거절한 요청'으로 안 바뀌었다(실기기에서 발견).
+    val screenScope = androidx.compose.runtime.rememberCoroutineScope()
     val title = stringResource(if (phase is QuoteRespondPhase.Sent) R.string.quote_respond_title_sent else R.string.quote_respond_title)
 
     Column(Modifier.fillMaxSize().background(AppColors.Surface).navigationBarsPadding()) {
@@ -118,6 +121,7 @@ fun QuoteRespondScreen(state: QuoteRespondState, actions: QuoteRespondActions) {
                     phase.withdrawn?.let { WithdrawnSection(it) }
                     QuoteRequestDetailSection(phase.detail.quote, Modifier.padding(horizontal = Dimensions.gutter), onOpenPhoto = actions.onOpenPhoto)
                     // ★ 2026-11-14 다이렉트(나를 지정한) 요청이면 [죄송해요, 다음에 뵐게요] — 사유를 골라 정중히 거절.
+                    //  버튼 글자는 짧게 '죄송해요, 다음에'(나란히 두어도 한 줄).
                     QuoteRespondButtons(
                         listOfNotNull(
                             if (phase.detail.quote.isDirect) SheetAction(stringResource(R.string.quote_decline_button), false) { state.declining = true } else null,
@@ -136,12 +140,11 @@ fun QuoteRespondScreen(state: QuoteRespondState, actions: QuoteRespondActions) {
     if (state.declining && request != null) {
         val done = stringResource(R.string.quote_decline_done)
         val failed = stringResource(R.string.quote_decline_failed)
-        val scope = androidx.compose.runtime.rememberCoroutineScope()
         com.muyeon.app.ui.quote.respond.decline.QuoteDeclineSheet(
             academy = request.quote.isAcademyRequest, busy = state.busy,
             onSubmit = { r, detail ->
                 // 닫힐 때 QuoteBrowseActivity 기본 결과(QUOTES)로 목록이 다시 읽힌다.
-                scope.launch { state.decline(r, detail, done, failed) }
+                screenScope.launch { state.decline(r, detail, done, failed) }
             },
             onDismiss = { state.declining = false },
         )

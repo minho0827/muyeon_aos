@@ -8,7 +8,7 @@ import com.muyeon.app.R
  *  글자는 여기. 고른 사유는 요청자(원장·회원)에게 정중한 문장으로 전해진다. 순서 = 실제로 많이 안 맞는 순.
  */
 enum class QuoteDeclineReason(val code: String, @StringRes private val label: Int, @StringRes val hint: Int? = null) {
-    CLASS_MISMATCH("CLASS_MISMATCH", R.string.quote_decline_reason_class, R.string.quote_decline_reason_class_hint),
+    CLASS_MISMATCH("CLASS_MISMATCH", R.string.quote_decline_reason_class),
     SCHEDULE("SCHEDULE", R.string.quote_decline_reason_schedule),
     REGION("REGION", R.string.quote_decline_reason_region),
     PRICE("PRICE", R.string.quote_decline_reason_price),
