@@ -21,10 +21,11 @@ object DemoContent {
     fun isDemoTitle(title: String?) = title?.trimStart()?.startsWith("[예시]") == true
 }
 
-/** 홈 '강사' — 에이전시형 강사 그리드(커서). 예시 강사는 뺀다. */
+/** 홈 '강사' — 에이전시형 강사 그리드(커서). */
 class HomeArtistsUseCase(private val teachers: TeacherRepository) {
     suspend fun page(genre: String?, region: ActiveRegion?, cursor: String?): ApiResult<CursorPage<TeacherCard>> =
-        teachers.teachersPage(genre?.takeIf { it != ALL }, region, cursor, PAGE).map { p -> p.copy(items = p.items.filterNot(DemoContent::isDemo)) }
+        // ★ 2026-11-14 예시 강사(23·6·isDemoProfile)도 보인다(사용자 요청) — 서버가 운영 예시 강사를 맨 앞에 두는 규칙과 맞춘다(iOS 같음).
+        teachers.teachersPage(genre?.takeIf { it != ALL }, region, cursor, PAGE)
 
     companion object {
         const val ALL = "ALL"
