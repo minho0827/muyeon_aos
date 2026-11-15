@@ -19,8 +19,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.muyeon.app.R
-import com.muyeon.app.common_components.dialog.ContentAlignment
-import com.muyeon.app.common_components.dialog.CustomDialog
 import com.muyeon.app.ui.common.MuyeonPillTab
 import com.muyeon.app.ui.common.MuyeonPillTabs
 import com.muyeon.app.ui.components.ChipOption
@@ -102,9 +100,4 @@ fun DancerListScreen(onBack: () -> Unit, onOpen: (Long) -> Unit, onLogin: () -> 
             }
         }
     }
-    CustomDialog(
-        title = stringResource(R.string.dancer_read_notice), content = null, leftButtonText = null,
-        rightButtonText = stringResource(R.string.common_confirm), buttonCount = 1, alignment = ContentAlignment.Middle,
-        onDismiss = viewModel::dismissNotice, onRightButtonClick = viewModel::dismissNotice, showPopup = s.readNotice,
-    )
 }

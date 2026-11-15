@@ -42,8 +42,6 @@ data class DancerListUiState(
     val errorMessage: String? = null,
     val moreError: String? = null,
     val likedIds: Set<Long> = emptySet(),
-    /** 상세를 볼 수 없는 유형이 눌렀다 — 안내 팝업. */
-    val readNotice: Boolean = false,
 )
 
 sealed interface DancerEvent {
@@ -58,14 +56,14 @@ sealed interface DancerEvent {
 
 /**
  * 무용수 프로필 열람 — 웹 pages/muyeon/dancers/DancerList.js. 전공 칩 + 성별·영상·수상 칩, 커서 목록, 찜.
- *   상세는 공연팀·학원·강사만(웹 dancer.read) — 그 밖이면 안내. 전공·성별·영상 칩은 기억한다(웹 usePersistedState).
+ *   상세는 누구나 연다(공연팀·학원·강사는 전체, 그 밖은 서버가 소개만). 전공·성별·영상 칩은 기억한다(웹 usePersistedState).
  */
 class DancerListViewModel(
     private val dancers: DancersUseCase,
     private val getLikedIds: GetLikedIdsUseCase,
     private val toggleScrap: ToggleScrapUseCase,
     observeScrap: ObserveScrapChangesUseCase,
-    private val activeType: ActiveTypeStore,
+    @Suppress("unused") activeType: ActiveTypeStore,
     private val tokens: TokenStore,
     private val prefs: KeyValueStore,
 ) : ViewModel() {
@@ -127,16 +125,13 @@ class DancerListViewModel(
         }
     }
 
-    /** 줄 누르기 — 볼 수 있는 유형이면 상세, 비회원이면 로그인, 그 밖이면 안내(웹 gate("dancer.read")). */
+    /**
+     * 줄 누르기 — 바로 상세. ★ 2026-11-15 서버가 일반회원·무용수·비회원에게도 '소개만'(limited) 내려 주므로
+     *  예전 유형 확인(비회원 로그인·안내 팝업)은 없앴다. 제안·채팅 버튼만 상세에서 유형을 본다.
+     */
     fun open(id: Long) {
-        when {
-            !tokens.isLoggedIn -> _events.tryEmit(DancerEvent.LoginRequired)
-            activeType.current() in DancersUseCase.READ_TYPES -> _events.tryEmit(DancerEvent.OpenDetail(id))
-            else -> _state.update { it.copy(readNotice = true) }
-        }
+        _events.tryEmit(DancerEvent.OpenDetail(id))
     }
-
-    fun dismissNotice() = _state.update { it.copy(readNotice = false) }
 
     fun toggleLike(id: Long) {
         val was = id in _state.value.likedIds
@@ -174,6 +169,12 @@ data class DancerDetailUiState(
     val liked: Boolean = false,
     /** 공연팀이면 [캐스팅 제안 보내기], 아니면 [채팅하기]. */
     val isTeam: Boolean = false,
+    /** 지금 유형이 공연팀·학원·강사인가 — 아니면 아래 버튼을 그리지 않는다(소개만 보는 회원). */
+    val canContact: Boolean = false,
+    /** 로그인했나 — 신고·차단 메뉴는 로그인한 회원만. */
+    val loggedIn: Boolean = false,
+    /** 내 프로필인가(서버 self 또는 토큰 속 내 번호). */
+    val isSelf: Boolean = false,
     val castingCalls: List<CastingCallOption> = emptyList(),
     val pickCall: Boolean = false,
     val confirmChat: Boolean = false,
@@ -195,9 +196,10 @@ class DancerDetailViewModel(
     private val toggleScrap: ToggleScrapUseCase,
     private val report: ReportUseCase,
     private val block: BlockUserUseCase,
-    activeType: ActiveTypeStore,
+    private val activeType: ActiveTypeStore,
+    private val tokens: TokenStore,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(DancerDetailUiState(isTeam = activeType.current() == "TEAM"))
+    private val _state = MutableStateFlow(viewerState(DancerDetailUiState()))
     val state: StateFlow<DancerDetailUiState> = _state.asStateFlow()
     private val _events = MutableSharedFlow<DancerEvent>(extraBufferCapacity = 8)
     val events: SharedFlow<DancerEvent> = _events.asSharedFlow()
@@ -211,11 +213,27 @@ class DancerDetailViewModel(
         }
     }
 
+    /** 보는 사람 기준 값(유형·로그인·본인) — 계정이 바뀌면 다시 맞춘다. */
+    private fun viewerState(s: DancerDetailUiState): DancerDetailUiState {
+        val type = activeType.current()
+        val me = tokens.myUserId()
+        return s.copy(
+            isTeam = type == "TEAM",
+            canContact = type in DancersUseCase.READ_TYPES,
+            loggedIn = tokens.isLoggedIn,
+            isSelf = s.profile?.self == true || (me != null && me == id),
+        )
+    }
+
+    /**
+     * 상세 읽기. ★ 2026-11-15 유형을 미리 막지 않는다 — 일반회원·무용수·비회원은 서버가 소개만(limited) 준다.
+     *  구직 공개 전인 무용수 등 서버가 거절하면 그 문구를 그대로 보여 준다.
+     */
     fun load() {
-        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        _state.update { viewerState(it).copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             when (val r = dancers.detail(id)) {
-                is ApiResult.Success -> _state.update { it.copy(profile = r.data, isLoading = false) }
+                is ApiResult.Success -> _state.update { viewerState(it.copy(profile = r.data, isLoading = false)) }
                 is ApiResult.Error -> _state.update { it.copy(isLoading = false, errorMessage = r.message) }
             }
         }

@@ -18,5 +18,7 @@ interface TeacherApi {
         @Query("sort") sort: String?,
         @Query("cursor") cursor: String?,
         @Query("limit") limit: Int,
+        /** ★ 2026-11-15 홈 '강사 · 무용수' 그리드 — "1"이면 구직 공개한 무용수도 섞는다(카드에 role). */
+        @Query("withDancers") withDancers: String? = null,
     ): Response<CursorPageDto<TeacherCardDto>>
 }

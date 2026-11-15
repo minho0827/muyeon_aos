@@ -17,6 +17,8 @@ data class TeacherCardDto(
     val career: String? = null,
     val isDemoProfile: Boolean? = null,
     val promotedUntil: String? = null,
+    /** ★ 11-15 withDancers=1 일 때만 온다("TEACHER"|"DANCER"). */
+    val role: String? = null,
 ) {
     fun toDomain(): TeacherCard? {
         val tid = id ?: return null
@@ -30,6 +32,7 @@ data class TeacherCardDto(
             career = career?.takeIf { it.isNotBlank() },
             isDemoProfile = isDemoProfile == true,
             promotedUntil = promotedUntil,
+            role = if (role == "DANCER") "DANCER" else "TEACHER",
         )
     }
 }

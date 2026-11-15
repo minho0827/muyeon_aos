@@ -12,7 +12,7 @@ import com.squareup.moshi.Moshi
 class TeacherRepositoryImpl(private val api: TeacherApi, private val moshi: Moshi) : TeacherRepository {
     override suspend fun teachersPage(genre: String?, region: ActiveRegion?, cursor: String?, limit: Int): ApiResult<CursorPage<TeacherCard>> =
         safeApiCall(moshi) {
-            api.page(null, genre, null, region?.name, region?.kind, null, cursor, limit)
+            api.page(null, genre, null, region?.name, region?.kind, null, cursor, limit, withDancers = "1") // 홈 전용
         }.map { CursorPage(it.items.orEmpty().mapNotNull { d -> d.toDomain() }, it.next) }
 
     override suspend fun lessonTeachersPage(

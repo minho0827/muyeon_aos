@@ -56,6 +56,7 @@ import com.muyeon.app.ui.main.tabBarBottomPadding
 import com.muyeon.app.ui.theme.AppColors
 import com.muyeon.domain.model.home.HomeLesson
 import com.muyeon.domain.model.teacher.LessonGenres
+import com.muyeon.domain.model.teacher.TeacherCard
 import kotlinx.coroutines.launch
 import com.muyeon.domain.usecase.home.HomeArtistsUseCase
 import org.koin.androidx.compose.koinViewModel
@@ -134,7 +135,7 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
                         // 맨 위 넘기는 배너 — 사진 있는 강사(부스트 먼저, 서버 순서) 최대 10명.
                         HomeBannerPager(
                             a.items.filter { it.image != null }.take(BANNER_COUNT).map { t ->
-                                HomeBanner(t.id, t.image!!, t.name, t.genres.joinToString(" · ").ifBlank { null }) { openProfile(actions, t.id) }
+                                HomeBanner(t.id, t.image!!, t.name, t.genres.joinToString(" · ").ifBlank { null }) { openArtist(actions, t) }
                             },
                             onAll = null, modifier = Modifier.bleed(16.dp),
                         )
@@ -146,7 +147,7 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
                             EmptyView(stringResource(if (a.errorMessage != null) R.string.home_artists_failed else R.string.home_artists_empty),
                                 buttonText = a.errorMessage?.let { stringResource(R.string.common_retry) }, onButton = viewModel::pullRefresh)
                         }
-                        else -> items(a.items, key = { it.id }) { t -> ArtistCard(t, onClick = { openProfile(actions, t.id) }) }
+                        else -> items(a.items, key = { it.id }) { t -> ArtistCard(t, onClick = { openArtist(actions, t) }) }
                     }
                     item(key = "more", span = FULL) { CursorListFooter(a.isLoadingMore, a.moreError, a.cursor.needsTap || a.moreError != null, viewModel::loadMoreArtists) }
                     if (!a.cursor.hasMore && a.items.isNotEmpty()) footer(s, actions)
@@ -215,6 +216,9 @@ private fun Modifier.bleed(side: androidx.compose.ui.unit.Dp) = layout { m, c ->
 }
 
 private fun openProfile(actions: HomeActions, id: Long) = actions.native("openPublicProfile", mapOf("userId" to id.toString()))
+/** ★ 2026-11-15 홈 그리드의 무용수 카드는 무용수 상세로(구직 목록 SeekScreen 과 같은 길). */
+private fun openArtist(actions: HomeActions, t: TeacherCard) =
+    if (t.isDancer) actions.openPath("/dancers/${t.id}") else openProfile(actions, t.id)
 
 /** 맨 아래 — 사업자 정보(법적 고지, 두 모드 공통). 공지는 홈에서 뺐다(사용자 결정 2026-11-08 — 나중에 MY). */
 private fun LazyGridScope.footer(s: HomeUiState, actions: HomeActions) {
