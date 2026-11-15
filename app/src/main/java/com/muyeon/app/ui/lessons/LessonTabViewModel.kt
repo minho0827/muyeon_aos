@@ -120,6 +120,8 @@ class LessonTabViewModel(
         refresh()
         loadLikes()
         viewModelScope.launch { observeScrap(ScrapTarget.TEACHER).collect { c -> setLiked(c.id, c.liked) } }
+        // ★ 11-16 레슨 받는 무용수 카드의 찜은 무용수 찜(무용수 상세 하트와 같은 곳) — 그쪽 변화도 받는다.
+        viewModelScope.launch { observeScrap(ScrapTarget.DANCER).collect { c -> setLiked(c.id, c.liked) } }
         // 대표 지역이 바뀌면(웹 지역 고르기·처음 위치 찾기) 다시 받는다.
         viewModelScope.launch { regionFlow.drop(1).collect { r -> _state.update { it.copy(region = r, items = emptyList(), cursor = CursorState.Initial) }; refresh() } }
         // 견적을 보내고 오면 다시(웹 useResultRefresh QUOTES).
@@ -201,11 +203,14 @@ class LessonTabViewModel(
         _events.tryEmit(LessonTabEvent.RequestLesson(LessonGenres.QUOTE_CATEGORY[g].orEmpty(), t.id))
     }
 
-    fun toggleLike(id: Long) {
+    /** ★ 11-16 카드 종류대로 찜한다 — 무용수 카드는 무용수 찜(무용수 상세·MY 찜의 무용수와 같은 곳). */
+    fun toggleLike(teacher: TeacherCard) {
+        val id = teacher.id
+        val target = if (teacher.isDancer) ScrapTarget.DANCER else ScrapTarget.TEACHER
         val was = id in _state.value.likedIds
         if (tokens.isLoggedIn) setLiked(id, !was)
         viewModelScope.launch {
-            when (val r = toggleScrap(ScrapTarget.TEACHER, id, was)) {
+            when (val r = toggleScrap(target, id, was)) {
                 is ToggleScrapResult.Done -> _events.tryEmit(LessonTabEvent.ScrapToast(r.liked))
                 is ToggleScrapResult.Failed -> { setLiked(id, was); _events.tryEmit(LessonTabEvent.Message(r.message)) }
                 ToggleScrapResult.LoginRequired -> _events.tryEmit(LessonTabEvent.LoginRequired)
@@ -218,7 +223,8 @@ class LessonTabViewModel(
     private fun loadLikes() {
         val epoch = com.muyeon.app.auth.accountEpochNow()
         viewModelScope.launch {
-            val ids = getLikedIds(ScrapTarget.TEACHER)
+            // 강사 찜 + 무용수 찜(레슨 받는 무용수 카드) — 같은 사람 id 라 합쳐도 겹치지 않는다.
+            val ids = getLikedIds(ScrapTarget.TEACHER) + getLikedIds(ScrapTarget.DANCER)
             if (epoch == com.muyeon.app.auth.accountEpochNow()) _state.update { it.copy(likedIds = ids) }
         }
     }

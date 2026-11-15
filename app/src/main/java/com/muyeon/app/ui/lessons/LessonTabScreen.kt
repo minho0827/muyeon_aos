@@ -152,7 +152,7 @@ fun LessonTabScreen(
                                 liked = t.id in state.likedIds,
                                 showDm = state.showDm,
                                 onClick = { viewModel.openProfile(t) },
-                                onToggleLike = { viewModel.toggleLike(t.id) },
+                                onToggleLike = { viewModel.toggleLike(t) },
                                 onRequest = { viewModel.requestLesson(t) },
                                 // 그리드 바깥 여백(왼쪽 칸은 왼쪽만, 오른쪽 칸은 오른쪽만 20).
                                 modifier = Modifier.padding(start = if (left) Dimensions.gutter else 0.dp, end = if (right) Dimensions.gutter else 0.dp),
