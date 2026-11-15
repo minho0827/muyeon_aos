@@ -123,7 +123,7 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
             var restartKey by remember { mutableStateOf(0) }
             val repo = remember { QuestionnaireRepository(this@QuoteWizardActivity, TokenManager.getAccessToken(this@QuoteWizardActivity)) }
             val vm = remember(category.id, restartKey) {
-                QuoteWizardViewModel(category, seedAnswers, isDirect = targetTeacherId.isNotEmpty(), repo = repo)
+                QuoteWizardViewModel(category, seedAnswers, isDirect = targetTeacherId.isNotEmpty(), repo = repo, targetTeacherId = targetTeacherId.ifEmpty { null })
             }
             var showExit by remember { mutableStateOf(false) }
             // 단계: wizard → loading(매칭 로딩) → done(완료 안내). iOS 흐름 동일.
@@ -481,7 +481,7 @@ private fun QuoteExitSheet(
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                if (isDirect) "지금 한 번만 작성하면\n선택한 강사님께 바로 견적 요청이 전달돼요."
+                if (isDirect) "지금 한 번만 작성하면\n선택한 선생님께 바로 견적 요청이 전달돼요."
                 else "지금 한 번만 작성하면\n평균 4개 이상의 견적을 받을 수 있어요.",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Normal, fontSize = 15.sp,
                 color = QuoteColors.c6D6E71, textAlign = TextAlign.Center,

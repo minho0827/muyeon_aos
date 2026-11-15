@@ -26,6 +26,8 @@ class QuoteWizardViewModel(
     private val isDirect: Boolean = false,
     /** 서버 설문. null 이면 처음부터 하드코딩 설문(미리보기·테스트용). */
     private val repo: QuestionnaireRepository? = null,
+    /** ★ 2026-11-16 지정 요청 대상 — 0단계를 그 회원 기준으로 받는다(무용수 ← 학원 요청 없음). */
+    private val targetTeacherId: String? = null,
 ) : ViewModel() {
 
     val answers = mutableStateMapOf<String, QuoteAnswer>()
@@ -56,7 +58,7 @@ class QuoteWizardViewModel(
 
     private suspend fun loadEntry() {
         loading = true
-        val entry = repo?.entry()
+        val entry = repo?.entry(targetTeacherId)
         if (entry == null) { applyFallback(); loading = false; return }
         val q = entry.question
         if (entry.skip || q == null) {

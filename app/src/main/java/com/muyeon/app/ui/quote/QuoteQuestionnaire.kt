@@ -170,9 +170,10 @@ data class CreatedQuote(val id: Int, val crossPosts: List<CrossPostResult>) {
 class QuestionnaireRepository(context: Context, private val token: String?) {
     private val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    suspend fun entry(): QuestionnaireEntry? {
-        val key = "entry"
-        val raw = QuoteApi(token).questionnaireEntry().getOrNull()?.also { prefs.edit().putString(key, it).apply() }
+    suspend fun entry(targetTeacherId: String? = null): QuestionnaireEntry? {
+        // 대상마다 0단계가 다를 수 있어 캐시 키를 나눈다.
+        val key = targetTeacherId?.let { "entry:t$it" } ?: "entry"
+        val raw = QuoteApi(token).questionnaireEntry(targetTeacherId).getOrNull()?.also { prefs.edit().putString(key, it).apply() }
             ?: prefs.getString(key, null)
         return raw?.let { runCatching { QuestionnaireEntry.from(JSONObject(it)) }.getOrNull() }
     }

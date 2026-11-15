@@ -93,8 +93,8 @@ class QuoteApi(private val token: String?) {
     // MARK: - ★ 2026-11-10 레슨 요청 설문(서버 동적) — 본문 문자열 그대로(파싱·캐시는 QuestionnaireRepository).
 
     /** 0단계. GET /quote-questionnaire/entry (선택적 인증 · X-Active-Type 으로 preselect). */
-    suspend fun questionnaireEntry(): Result<String> =
-        call("/quote-questionnaire/entry").map { it.raw }
+    suspend fun questionnaireEntry(targetTeacherId: String? = null): Result<String> =
+        call("/quote-questionnaire/entry" + (targetTeacherId?.let { "?targetTeacherId=$it" } ?: "")).map { it.raw }
 
     /** 유형의 질문 세트. GET /quote-questionnaire?requesterType=&categoryId=&direct= */
     suspend fun questionnaireSet(requesterType: String, categoryId: String, direct: Boolean): Result<String> =

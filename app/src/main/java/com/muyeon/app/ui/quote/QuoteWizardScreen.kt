@@ -182,12 +182,12 @@ private fun Header(title: String, progress: Float, stepText: String, onClose: ()
     }
 }
 
-/** 첫 질문 안내 카드 — 여러 명: "…평균 4개 이상의 견적을…", 지정 견적: "…선택한 강사님께 바로 견적 요청이 전달돼요." */
+/** 첫 질문 안내 카드 — 여러 명: "…평균 4개 이상의 견적을…", 지정 견적: "…선택한 선생님께 바로 견적 요청이 전달돼요." */
 @Composable
 private fun InfoCard(isDirect: Boolean) {
     val text = buildAnnotatedString {
         withStyle(SpanStyle(color = QuoteColors.c6D6E71)) { append("몇 가지 정보만 알려 주시면 ") }
-        withStyle(SpanStyle(color = QuoteColors.f58232)) { append(if (isDirect) "선택한 강사님께 바로" else "평균 4개 이상") }
+        withStyle(SpanStyle(color = QuoteColors.f58232)) { append(if (isDirect) "선택한 선생님께 바로" else "평균 4개 이상") }
         withStyle(SpanStyle(color = QuoteColors.c6D6E71)) { append(if (isDirect) " 견적 요청이 전달돼요." else "의 견적을 받을 수 있어요.") }
     }
     Column(
