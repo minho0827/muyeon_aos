@@ -65,7 +65,8 @@ data class LessonTabUiState(
 }
 
 sealed interface LessonTabEvent {
-    data class OpenProfile(val userId: Long) : LessonTabEvent
+    /** @param isDancer ★ 2026-11-16 레슨 받는 무용수 카드(role DANCER) — 무용수 상세로 연다. */
+    data class OpenProfile(val userId: Long, val isDancer: Boolean = false) : LessonTabEvent
     data class RequestLesson(val category: String, val teacherId: Long) : LessonTabEvent
     data class ScrapToast(val added: Boolean) : LessonTabEvent
     data class Message(val text: String) : LessonTabEvent
@@ -191,7 +192,7 @@ class LessonTabViewModel(
     }
 
     // ── 카드 ──
-    fun openProfile(t: TeacherCard) = _events.tryEmit(LessonTabEvent.OpenProfile(t.id))
+    fun openProfile(t: TeacherCard) = _events.tryEmit(LessonTabEvent.OpenProfile(t.id, t.isDancer))
 
     /** 레슨 문의 — 첫 장르로 문의 카테고리(웹 requestLesson). 예시 프로필은 막는다. */
     fun requestLesson(t: TeacherCard) {

@@ -3,6 +3,7 @@ package com.muyeon.domain.usecase.quotefeed
 import com.muyeon.domain.common.ActiveTypeStore
 import com.muyeon.domain.common.ApiResult
 import com.muyeon.domain.common.TokenStore
+import com.muyeon.domain.model.member.LessonProviders
 import com.muyeon.domain.model.quotefeed.QuoteFeedItem
 import com.muyeon.domain.model.quotefeed.QuoteFeedPage
 import com.muyeon.domain.repository.QuoteFeedRepository
@@ -11,9 +12,28 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.After
 import org.junit.Test
 
 class QuoteFeedUseCaseTest {
+    @After fun resetProviders() = LessonProviders.reset()
+
+    @Test fun `무용수 — 명부에 무용수가 있으면 강사용 목록, 없으면 회원 목록`() = runTest {
+        val repo = Repo(listOf(item(1, "ballet")))
+        val uc = QuoteFeedUseCase(repo, tokens("t"), type("DANCER"))
+        assertFalse(uc.canBrowseAll)
+        uc.section(null)
+        assertEquals(0, repo.homeCalls)
+        assertEquals(1, repo.homePageCalls.size)
+
+        LessonProviders.update(listOf("TEACHER", "ACADEMY", "DANCER"))
+        assertTrue(uc.canBrowseAll)
+        uc.section(null)
+        assertEquals(1, repo.homeCalls)
+        uc.page(null, null)
+        assertEquals(1, repo.availableCalls)
+    }
+
     private fun item(id: Long, cat: String) = QuoteFeedItem(id, cat, null, emptyList(), emptyList(), emptyList(), null, false, false, false)
 
     private class Repo(val list: List<QuoteFeedItem>, val homePageMissing: Boolean = false) : QuoteFeedRepository {

@@ -54,6 +54,7 @@ import org.koin.androidx.compose.koinViewModel
  * 강사 탭 — 주황 위 바 "강사" + 오른쪽 이용 안내(?) · 안내 배너 · 장르 칩 · 보기 전환/필터 · 강사 카드(그리드/목록).
  *
  * @param onOpenProfile 강사 프로필(기존 앱 화면)
+ * @param onOpenDancer ★ 2026-11-16 레슨 받는 무용수 카드(role DANCER) → 무용수 상세(홈 그리드와 같은 길)
  * @param onRequestLesson 레슨 견적요청(기존 앱 견적 위저드) — (카테고리, 강사 id)
  * @param onLogin 비회원 찜 — 웹 로그인 창
  */
@@ -62,6 +63,7 @@ import org.koin.androidx.compose.koinViewModel
 fun LessonTabScreen(
     onOpenProfile: (Long) -> Unit,
     onRequestLesson: (String, Long) -> Unit,
+    onOpenDancer: (Long) -> Unit = onOpenProfile,
     onLogin: () -> Unit,
     viewModel: LessonTabViewModel = koinViewModel(),
 ) {
@@ -78,7 +80,7 @@ fun LessonTabScreen(
     LaunchedEffect(viewModel) {
         viewModel.events.collect { e ->
             when (e) {
-                is LessonTabEvent.OpenProfile -> onOpenProfile(e.userId)
+                is LessonTabEvent.OpenProfile -> if (e.isDancer) onOpenDancer(e.userId) else onOpenProfile(e.userId)
                 is LessonTabEvent.RequestLesson -> onRequestLesson(e.category, e.teacherId)
                 is LessonTabEvent.ScrapToast -> Toast.makeText(context, if (e.added) R.string.common_scrap_added else R.string.common_scrap_removed, Toast.LENGTH_SHORT).show()
                 is LessonTabEvent.Message -> Toast.makeText(context, e.text, Toast.LENGTH_SHORT).show()

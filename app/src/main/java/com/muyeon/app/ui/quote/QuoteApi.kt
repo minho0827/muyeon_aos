@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.quote
 
+import com.muyeon.domain.model.member.LessonProviders
 import com.muyeon.app.util.optStringOrNull
 
 import com.muyeon.app.webview.withActiveType
@@ -248,17 +249,20 @@ class QuoteApi(private val token: String?) {
      * 첨부할 내 프로필 종류 — iOS `RoleGate.activeType == "ACADEMY" ? ACADEMY : TEACHER`.
      *  AOS 에는 activeType 캐시가 없어 GET /auth/me 로 읽고,
      *  활동유형이 GENERAL 이면 보유 역할로 보정한다(학원만 보유한 계정의 403 방지).
+     *  ★ 2026-11-16 레슨 제공 유형 명부([LessonProviders]) 기준 — 무용수 제공자는 개인 이력서("TEACHER")를 붙인다.
      */
     suspend fun myAttachmentType(): String = call("/auth/me").map { res ->
         val o = res.asObject()
+        o.optJSONArray("lessonProviderTypes").let { a -> LessonProviders.update(a?.let { (0 until it.length()).map { i -> it.optString(i) } }) }
         val active = o.optString("activeType")
-        when (active) {
-            "ACADEMY", "TEACHER" -> active
-            else -> {
-                val types = o.optJSONArray("memberTypes")
-                val has = (0 until (types?.length() ?: 0)).map { i -> types?.optString(i).orEmpty() }
-                if (has.contains("TEACHER")) "TEACHER" else if (has.contains("ACADEMY")) "ACADEMY" else "TEACHER"
-            }
+        if (LessonProviders.canProvide(active)) LessonProviders.attachmentType(active)
+        else {
+            val types = o.optJSONArray("memberTypes")
+            val has = (0 until (types?.length() ?: 0)).map { i -> types?.optString(i).orEmpty() }
+            // 보유 유형 중 첫 제공자(강사 → 학원 → 그 밖 명부 순)
+            val pick = listOf("TEACHER", "ACADEMY").firstOrNull { it in has && LessonProviders.canProvide(it) }
+                ?: has.firstOrNull { LessonProviders.canProvide(it) }
+            LessonProviders.attachmentType(pick)
         }
     }.getOrDefault("TEACHER")
 

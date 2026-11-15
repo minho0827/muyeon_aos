@@ -25,7 +25,7 @@ fun QuoteRespondHost(activity: Activity, quoteId: Int, compose: Boolean, reloadS
     val state = remember {
         QuoteRespondState(
             QuoteRespondApi(activity), quoteId,
-            isProvider = { QuoteRespondApi(activity).isLoggedIn && ActiveRole.current(activity) in PROVIDER_TYPES },
+            isProvider = { QuoteRespondApi(activity).isLoggedIn && QuoteRespondRoles.isProvider(ActiveRole.current(activity)) },
             autoCompose = compose,
         )
     }
@@ -80,5 +80,3 @@ fun QuoteRespondHost(activity: Activity, quoteId: Int, compose: Boolean, reloadS
     }
     QuoteRespondScreen(state, actions)
 }
-
-private val PROVIDER_TYPES = setOf(ActiveRole.TEACHER, ActiveRole.ACADEMY)

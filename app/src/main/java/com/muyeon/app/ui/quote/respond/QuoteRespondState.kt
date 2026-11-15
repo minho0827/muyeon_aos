@@ -20,7 +20,7 @@ sealed interface QuoteRespondPhase {
 
 /**
  * 견적 응답 화면 상태 — 기존 견적 화면(QuoteBrowseState)과 같은 꼴(Compose 상태 + suspend 함수).
- * @param isProvider 지금 견적을 보낼 수 있는가(로그인 + 강사·학원 활동 중) — 웹 `isLoggedIn && canReceiveQuoteAs(activeType)`.
+ * @param isProvider 지금 견적을 보낼 수 있는가(로그인 + 레슨 제공 유형 활동 중) — 웹 `isLoggedIn && canReceiveQuoteAs(activeType)`.
  * @param autoCompose 가입·로그인하고 돌아왔다(웹 초안 quoteRespond:id) — 요청이 열려 있으면 작성 시트를 바로 연다.
  */
 class QuoteRespondState(
@@ -33,7 +33,7 @@ class QuoteRespondState(
         private set
     var provider by mutableStateOf(false)
         private set
-    /** 강사·학원 중 이미 가진 유형(일반 유형으로 활동 중) — '○○ 유형으로 전환하고 견적 보내기'. */
+    /** 레슨 제공 유형 중 이미 가진 유형(일반 유형으로 활동 중) — '○○ 유형으로 전환하고 견적 보내기'. */
     var switchTo by mutableStateOf<String?>(null)
         private set
     /** 자동 인사 템플릿 — 작성 시트의 메시지 칸을 미리 채운다(웹 callGetMyChatAutoMessage). */
@@ -50,7 +50,7 @@ class QuoteRespondState(
     suspend fun load() {
         provider = isProvider()
         if (!provider) {
-            switchTo = if (api.isLoggedIn) api.heldTypes().let { held -> listOf("TEACHER", "ACADEMY").firstOrNull { it in held } } else null
+            switchTo = if (api.isLoggedIn) QuoteRespondRoles.switchTarget(api.heldTypes()) else null
             api.getPublicQuote(quoteId)
                 .onSuccess { d -> phase = d?.let { QuoteRespondPhase.Public(it) } ?: QuoteRespondPhase.Gone(QuoteRespondGone.DELETED) }
                 .onFailure { phase = QuoteRespondPhase.Gone(QuoteRespondApi.classify(it, QuoteRespondGone.DELETED)) }

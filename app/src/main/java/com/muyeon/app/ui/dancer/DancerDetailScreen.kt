@@ -31,6 +31,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,6 +71,7 @@ import com.muyeon.app.ui.resume.RecruitChatLimitException
 import com.muyeon.app.ui.resume.ResumeOptions
 import com.muyeon.app.ui.resume.VerifiedLogoRow
 import com.muyeon.domain.model.dancer.DancerProfile
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 
 /**
@@ -77,6 +79,7 @@ import org.json.JSONObject
  *   히어로 사진(뒤로·더보기 동그라미 버튼) · 이름·찜 · 확인 배지 · 지역/장르/성별 칩 · 한 줄 소개
  *   / 소개글 · 기본 정보 · 레슨 가능 시간 · 경력 · 학력 · 경력·자격 · 공연 이력 · 수상 이력 · 포트폴리오 · 영상 · 레슨 후기.
  *   아래 버튼: 공연팀 [캐스팅 제안 보내기], 학원·강사 [채팅하기]. 신고·차단은 오른쪽 위 더보기(로그인한 회원만).
+ *   ★ 2026-11-16 레슨 받는 무용수(서버 lessonProvider)면 그 밖 회원·비회원에게 강사 상세와 같은 레슨 버튼([DancerLessonCtaBar]).
  *   소개만 받은 응답(limited — 일반회원·무용수·비회원)이면 키·몸무게 등이 없어 그 줄이 빠지고, 아래 버튼도 그리지 않는다.
  */
 @Composable
@@ -95,6 +98,8 @@ fun DancerDetailScreen(
     val context = LocalContext.current
     var limit by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
+    var dancerGate by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     LaunchedEffect(viewModel) {
         viewModel.events.collect { e ->
             when (e) {
@@ -138,6 +143,7 @@ fun DancerDetailScreen(
                     Spacer(Modifier.height(20.dp))
                 }
                 // 하단 CTA — 공연팀·학원·강사가 전체 프로필을 볼 때만(소개만·내 프로필이면 없음).
+                val lessonCta = d.lessonCta(s.isSelf)
                 if (!d.limited && s.canContact && !s.isSelf) {
                     ProfileCtaBar {
                         CtaButton(
@@ -145,6 +151,17 @@ fun DancerDetailScreen(
                             filled = true, enabled = !s.busy, keepFilledWhenDisabled = true, modifier = Modifier.weight(1f),
                         ) { if (s.isTeam) viewModel.startOffer() else viewModel.askChat(true) }
                     }
+                } else if (lessonCta != null) {
+                    // ★ 2026-11-16 레슨 받는 무용수 — 강사 상세와 같은 [문의하기]·[레슨 문의]/[받은 견적 보기](소개만 보는 회원·비회원도).
+                    DancerLessonCtaBar(
+                        lessonCta,
+                        onChat = { rid -> onOpenChat(rid, d.name) },
+                        onReceived = { qid -> com.muyeon.app.ui.quote.LessonInquiry.openReceived(context, qid.toInt()) },
+                        onRequest = {
+                            if (com.muyeon.app.webview.ActiveRole.isDancer(context)) dancerGate = true
+                            else scope.launch { com.muyeon.app.ui.quote.LessonInquiry.start(context, d.id.toInt(), com.muyeon.app.ui.quote.LessonInquiry.categoryOf(d.genres)) }
+                        },
+                    )
                 }
             }
         }
@@ -197,6 +214,14 @@ fun DancerDetailScreen(
         CustomDialog(
             title = stringResource(m), content = null, leftButtonText = null, rightButtonText = stringResource(R.string.common_confirm),
             buttonCount = 1, alignment = ContentAlignment.Middle, onDismiss = viewModel::dismissDone, onRightButtonClick = viewModel::dismissDone, showPopup = true,
+        )
+    }
+    if (dancerGate) {
+        val p = s.profile
+        com.muyeon.app.ui.quote.DancerCustomerGateDialog(
+            scope = scope,
+            onSwitched = { p?.let { scope.launch { com.muyeon.app.ui.quote.LessonInquiry.start(context, it.id.toInt(), com.muyeon.app.ui.quote.LessonInquiry.categoryOf(it.genres)) } } },
+            onDismiss = { dancerGate = false },
         )
     }
     if (limit) RecruitChatLimitDialog(RecruitChatLimitException(null, null, null, null), onUpgrade = { limit = false; onMembership() }, onDismiss = { limit = false })
@@ -296,5 +321,33 @@ private fun DancerSections(d: DancerProfile, isSelf: Boolean, onReviews: () -> U
 private fun Lines(text: String) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         text.replace("\r", "").split("\n").map { it.trim() }.filter { it.isNotEmpty() }.forEach { BodyText(it) }
+    }
+}
+
+/** ★ 2026-11-16 레슨 버튼 재료 — 무용수 레슨 추가 기능(DancerLessonProviderAddon). */
+data class DancerLessonCta(
+    /** 이미 있는 채팅방 — 있으면 [문의하기]. */
+    val chatRoomId: Long?,
+    /** 내가 보낸 요청에 답이 왔다 — [받은 견적 보기]. */
+    val receivedQuoteId: Long?,
+)
+
+/** 서버가 레슨 받는 무용수라고 할 때만(내 프로필 아님). 강사 상세(PublicProfileScreen) CTA 와 같은 규칙. */
+fun DancerProfile.lessonCta(isSelf: Boolean): DancerLessonCta? =
+    if (!lessonProvider || isSelf) null
+    else DancerLessonCta(chatRoomId?.takeIf { it > 0 }, myQuote?.takeIf { it.hasResponse && it.quoteId > 0 }?.quoteId)
+
+/** 레슨 버튼 줄 — [문의하기](방이 있을 때) + [레슨 문의] 또는 [받은 견적 보기]. */
+@Composable
+fun DancerLessonCtaBar(cta: DancerLessonCta, onChat: (Long) -> Unit, onReceived: (Long) -> Unit, onRequest: () -> Unit) {
+    ProfileCtaBar {
+        cta.chatRoomId?.let { rid ->
+            CtaButton(stringResource(R.string.dancer_lesson_chat), filled = false, modifier = Modifier.weight(1f)) { onChat(rid) }
+        }
+        val received = cta.receivedQuoteId
+        CtaButton(
+            stringResource(if (received != null) R.string.dancer_lesson_received else R.string.dancer_lesson_inquiry),
+            filled = true, modifier = Modifier.weight(1f),
+        ) { if (received != null) onReceived(received) else onRequest() }
     }
 }

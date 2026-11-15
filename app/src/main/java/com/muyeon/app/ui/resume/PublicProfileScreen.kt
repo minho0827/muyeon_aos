@@ -333,23 +333,11 @@ fun PublicProfileScreen(
             onDismiss = { reportOpen = false },
         )
     }
-    // 무용수 활동유형 → 레슨 문의 차단 안내. 일반 전환에 성공하면 이어서 견적 요청(iOS RoleGate.dancerLessonCustomerGate).
+    // 무용수 활동유형 → 레슨 문의 차단 안내. 일반 전환에 성공하면 이어서 견적 요청(공용 부품 — 무용수 상세와 같다).
     if (dancerGate) {
-        MuyeonDialog(
-            title = "회원유형 안내",
-            message = "무용수 유형에서는 레슨을 요청하거나 예약할 수 없어요. 일반 유형으로 전환하면 계속할 수 있어요.",
-            actions = listOf(
-                MuyeonDialogAction("${ActiveRole.label("GENERAL")} 유형으로 전환하고 계속", MuyeonDialogKind.PRIMARY) {
-                    dancerGate = false
-                    scope.launch {
-                        if (ActiveRole.saveOnServer(ctx, "GENERAL")) {
-                            ActiveRole.store(ctx, "GENERAL")
-                            onRequestQuote(profile?.let(::quoteCategoryOf))
-                        }
-                    }
-                },
-                MuyeonDialogAction("취소", MuyeonDialogKind.CANCEL) { dancerGate = false },
-            ),
+        com.muyeon.app.ui.quote.DancerCustomerGateDialog(
+            scope = scope,
+            onSwitched = { onRequestQuote(profile?.let(::quoteCategoryOf)) },
             onDismiss = { dancerGate = false },
         )
     }
@@ -565,8 +553,7 @@ private fun BasicInfoSection(p: PublicProfile) {
 }
 
 /** 강사 대표 장르 → 견적 종류 id(ballet·korean …). 모르는 장르면 null(종류 고르기 화면). */
-private fun quoteCategoryOf(p: PublicProfile): String? =
-    p.genres?.firstNotNullOfOrNull { com.muyeon.domain.model.teacher.LessonGenres.QUOTE_CATEGORY[it] }
+private fun quoteCategoryOf(p: PublicProfile): String? = com.muyeon.app.ui.quote.LessonInquiry.categoryOf(p.genres)
 
 /** 경력 요약 — 최근 2건 + "외 N건" · "경력 X"(iOS careerSummary). */
 @Composable

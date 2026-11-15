@@ -153,7 +153,7 @@ fun QuoteRespondScreen(state: QuoteRespondState, actions: QuoteRespondActions) {
         val fallback = stringResource(R.string.quote_respond_send_failed)
         QuoteRespondSheet(
             quote = request.quote,
-            attachmentRole = if (com.muyeon.app.webview.ActiveRole.isAcademy(context)) "ACADEMY" else "TEACHER",
+            attachmentRole = QuoteRespondRoles.attachmentRole(com.muyeon.app.webview.ActiveRole.current(context)),
             onDismiss = { state.composing = false },
             onSend = { amount, deposit, message, attachmentType ->
                 state.send(amount, deposit, message, attachmentType, fallback) { rid -> actions.onOpenChat(rid, true) }
@@ -200,7 +200,11 @@ private fun PublicBody(state: QuoteRespondState, data: PublicQuoteDetail, action
     val main = when {
         !state.isLoggedIn -> listOf(SheetAction(stringResource(if (data.closed) R.string.quote_respond_public_join else R.string.quote_respond_public_join_send), true, actions.onLogin))
         switchTo != null -> {
-            val role = stringResource(if (switchTo == "ACADEMY") R.string.quote_respond_role_academy else R.string.quote_respond_role_teacher)
+            val role = stringResource(when (switchTo) {
+                "ACADEMY" -> R.string.quote_respond_role_academy
+                "DANCER" -> R.string.quote_respond_role_dancer
+                else -> R.string.quote_respond_role_teacher
+            })
             listOf(SheetAction(stringResource(R.string.quote_respond_public_switch, role), true) { if (!state.busy) actions.onSwitch(switchTo) })
         }
         else -> listOf(

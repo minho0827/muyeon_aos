@@ -133,6 +133,7 @@ fun MainScreen(
                 composable(Screen.TabLessons.route) {
                     LessonTabScreen(
                         onOpenProfile = { id -> onNativeAction("openPublicProfile", mapOf("userId" to id.toString())) },
+                        onOpenDancer = { id -> onOpenPath("/dancers/$id") },
                         onRequestLesson = { category, teacherId ->
                             onNativeAction("openQuoteWizard", mapOf("category" to category, "targetTeacherId" to teacherId.toString()))
                         },

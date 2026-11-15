@@ -236,22 +236,15 @@ class ResumeActivity : ResultActivity() {
                         // 지정 견적요청 — 이 강사에게만(iOS presentQuoteWizardDirect targetTeacherId)
                         // ★ 2026-11-08 이 강사와 이미 대화 중이면 위저드 대신 그 채팅방(서버도 409 QUOTE_CHAT_EXISTS 로 막지만 위저드가 떴다 닫히지 않게 미리).
                         //  확인에 실패하면 그대로 위저드 — 서버가 판정한다.
+                        //  ★ 2026-11-16 흐름은 공용 함수(LessonInquiry) — 무용수 상세도 같이 쓴다.
                         onRequestQuote = { category ->
-                            scope.launch {
-                                val token = com.muyeon.app.utils.TokenManager.getAccessToken(this@ResumeActivity)
-                                val roomId = if (token.isNullOrEmpty()) null
-                                    else com.muyeon.app.ui.quote.QuoteApi(token).requestQuota(userId).getOrNull()?.chatRoomId
-                                if (roomId != null) ChatActivity.startRoom(this@ResumeActivity, roomId)
-                                else QuoteWizardActivity.start(this@ResumeActivity, category, userId.toString())
-                            }
+                            scope.launch { com.muyeon.app.ui.quote.LessonInquiry.start(this@ResumeActivity, userId, category) }
                         },
                         onOpenReviews = { nav.navigate("reviews") },
                         onEditMyReview = { nav.navigate("myReviewEdit") },
                         onDeletedMyReview = { addResultKeys(ResultKeys.REVIEWS) },
                         // 이미 요청·응답 존재 → 받은 견적 상세(iOS presentReceivedQuotes)
-                        onOpenReceivedQuotes = { qid ->
-                            com.muyeon.app.ui.quote.QuoteHubActivity.start(this@ResumeActivity, isPro = false, quoteId = qid)
-                        },
+                        onOpenReceivedQuotes = { qid -> com.muyeon.app.ui.quote.LessonInquiry.openReceived(this@ResumeActivity, qid) },
                     )
                     chatLimit?.let { e ->
                         RecruitChatLimitDialog(

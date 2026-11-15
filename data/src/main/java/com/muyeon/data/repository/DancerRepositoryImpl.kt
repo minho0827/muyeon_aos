@@ -8,6 +8,7 @@ import com.muyeon.domain.common.CursorPaging
 import com.muyeon.domain.model.dancer.CastingCallOption
 import com.muyeon.domain.model.dancer.DancerCard
 import com.muyeon.domain.model.dancer.DancerFilter
+import com.muyeon.domain.model.dancer.DancerMyQuote
 import com.muyeon.domain.model.dancer.DancerProfile
 import com.muyeon.domain.repository.DancerRepository
 import com.muyeon.network.api.DancerApi
@@ -69,6 +70,12 @@ class DancerRepositoryImpl(private val api: DancerApi, private val moshi: Moshi)
                 listOf(head, c.str("period")?.let { "($it)" }.orEmpty()).filter { it.isNotBlank() }.joinToString(" ")
             }.filter { it.isNotBlank() }.joinToString("\n").takeIf { it.isNotBlank() },
             badgesJson = d.optJSONObject("badges")?.toString(),
+            lessonProvider = d.optBoolean("lessonProvider", false),
+            lessonEnabled = d.optBoolean("lessonEnabled", false),
+            myQuote = d.optJSONObject("myQuote")?.let { q ->
+                q.optLong("quoteId").takeIf { it > 0 }?.let { DancerMyQuote(it, q.optBoolean("hasResponse", false)) }
+            },
+            chatRoomId = d.optLong("chatRoomId").takeIf { !d.isNull("chatRoomId") && it > 0 },
         )
     }
 

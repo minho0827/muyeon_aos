@@ -52,7 +52,21 @@ data class DancerProfile(
     val careers: String? = null,
     /** 확인 배지 원문(JSON 글) — 화면에서 CredentialBadges 로 읽는다. 없으면 null. */
     val badgesJson: String? = null,
+    /**
+     * ★ 2026-11-16 레슨 제공(무용수 레슨 추가 기능, DancerLessonProviderAddon) — 서버가 이 무용수에게 레슨 문의를 받게 했나.
+     *  소개만 받은 응답(limited)에도 온다. true 면 상세 아래에 [레슨 문의]/[받은 견적 보기]를 그린다.
+     */
+    val lessonProvider: Boolean = false,
+    /** 무용수가 레슨 받기를 켜 두었나(서버 원문, 표시용). */
+    val lessonEnabled: Boolean = false,
+    /** 내가 이 무용수에게 보낸 레슨 요청(없으면 null). */
+    val myQuote: DancerMyQuote? = null,
+    /** 이 무용수와 이미 있는 채팅방(없으면 null) — 있으면 [문의하기]. */
+    val chatRoomId: Long? = null,
 )
+
+/** 내가 이 무용수에게 보낸 레슨 요청 — 답(견적)이 왔으면 [받은 견적 보기]. */
+data class DancerMyQuote(val quoteId: Long, val hasResponse: Boolean)
 
 /** 캐스팅 제안 때 고르는 내 캐스팅 공고. */
 data class CastingCallOption(val id: Long, val title: String, val genre: String?, val region: String?)

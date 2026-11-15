@@ -7,7 +7,8 @@ import com.muyeon.domain.model.my.PendingRole
 import com.squareup.moshi.JsonClass
 
 @JsonClass(generateAdapter = true)
-data class MeDto(val name: String? = null)
+/** @param lessonProviderTypes ★ 2026-11-16 레슨 제공 유형(서버가 안 주면 null → 기본 강사·학원). */
+data class MeDto(val name: String? = null, val lessonProviderTypes: List<String>? = null)
 
 @JsonClass(generateAdapter = true)
 data class CountDto(val count: Int? = null)

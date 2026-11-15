@@ -345,7 +345,7 @@ fun ResumeEditScreen(
                 basic = basic.copy(photo = image),
                 oneLiner = oneLiner, intro = intro,
                 image = image ?: "", images = images, genres = genres,
-                targets = if (mode.isDancer) loadedData.targets else targets,
+                targets = if (mode.showsLessonFields) targets else loadedData.targets,
                 gender = if (mode.isDancer) gender else loadedData.gender,
                 height = if (mode.isDancer) height else loadedData.height,
                 weight = if (mode.isDancer) weight else loadedData.weight,
@@ -395,7 +395,7 @@ fun ResumeEditScreen(
         if (genres.isEmpty()) {
             d.aiList("genres").filter { it in ResumeOptions.genres }.takeIf { it.isNotEmpty() }?.let { genres = it }
         }
-        if (!mode.isDancer) {
+        if (mode.showsLessonFields) {
             if (careerBucket.isBlank()) {
                 d.aiText("career")?.takeIf { c -> ResumeOptions.careerLevels.any { it.first == c } }?.let { careerBucket = it }
             }
@@ -639,13 +639,13 @@ fun ResumeEditScreen(
                     }
                 }
 
-                // 전공 / 수업 대상 / 경력 구간 / 활동 지역 (무용수는 수업 대상·경력 구간 제외)
+                // 전공 / 수업 대상 / 경력 구간 / 활동 지역 (레슨 항목이 없는 모드 — 명부에 없는 무용수 — 는 수업 대상·경력 구간 제외)
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     SectionTitle(if (mode.isDancer) "전공 · 장르" else "전문 분야")
                     MultiChips(ResumeOptions.genres.map { it to it }, genres) { v ->
                         genres = if (genres.contains(v)) genres - v else genres + v
                     }
-                    if (!mode.isDancer) {
+                    if (mode.showsLessonFields) {
                         // 대타는 "유아를 볼 수 있는가"가 지원 여부를 가른다. 웹 이력서엔 진작 있던 항목인데
                         //  앱에만 없어, 앱으로 쓴 이력서는 '내 조건에 맞는 공고만'이 걸러 주질 못했다.
                         SectionTitle("수업 대상", Modifier.padding(top = 8.dp))
@@ -706,7 +706,7 @@ fun ResumeEditScreen(
                     }
                 }
 
-                if (!mode.isDancer) {
+                if (mode.showsLessonFields) {
                     // 레슨 가능 시간
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         SectionTitle("레슨 가능 시간")
@@ -734,7 +734,7 @@ fun ResumeEditScreen(
                     PeriodPickerRow("기간", item.period) { v -> educations = educations.replaced(i) { it.copy(period = v) } }
                 }
 
-                if (!mode.isDancer) {
+                if (mode.showsLessonFields) {
                     // 경력(반복) — 기간 병합 총계로 버킷 자동 산출. (레거시 classes 값은 항목 안에 보존)
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         RepeatSection(
@@ -768,7 +768,7 @@ fun ResumeEditScreen(
                 if (mode.isDancer) {
                     LinesSection("무용단 경력", companyCareer, "한 줄에 하나씩 입력\n예) 국립발레단 준단원 2019~2022") { companyCareer = it }
                 }
-                if (!mode.isDancer) {
+                if (mode.showsLessonFields) {
                     LinesSection("자격증", certificates, "한 줄에 하나씩 입력\n예) ABT Ballet Teaching Certificate 2021.06") {
                         certificates = it
                     }
@@ -782,7 +782,7 @@ fun ResumeEditScreen(
                     }
                 }
 
-                if (!mode.isDancer) {
+                if (mode.showsLessonFields) {
                     // 희망 근무 조건 — 시안 표 형식
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         SectionTitle("희망 근무 조건")
@@ -1127,7 +1127,7 @@ private fun ResumeDraftPreview(form: ResumeEditForm, mode: ResumeMode, onClose: 
             }
             PreviewSection("전공", listOf(form.genres.joinToString(", ")))
             PreviewSection("활동 지역", listOf(form.activeRegions.joinToString(", ") { it.first }))
-            if (!mode.isDancer) {
+            if (mode.showsLessonFields) {
                 PreviewSection("수업 대상", listOf(form.targets.joinToString(", ") { ResumeOptions.targetLabel(it) }))
                 PreviewSection(
                     "레슨 가능 시간",
@@ -1135,7 +1135,7 @@ private fun ResumeDraftPreview(form: ResumeEditForm, mode: ResumeMode, onClose: 
                 )
             }
             PreviewSection("학력", form.educations.map { e -> listOf(e.school, e.major, e.period).filter { it.isNotEmpty() }.joinToString(" · ") })
-            if (!mode.isDancer) {
+            if (mode.showsLessonFields) {
                 val summary = buildList {
                     merged?.let { add("총 경력  ${ResumePeriod.label(it)}") }
                     val bucket = merged?.let { ResumePeriod.careerBucket(it) } ?: form.careerBucket
@@ -1151,11 +1151,10 @@ private fun ResumeDraftPreview(form: ResumeEditForm, mode: ResumeMode, onClose: 
             if (mode.isDancer) {
                 PreviewSection("무용단 경력", listOf(form.companyCareer))
                 PreviewSection("영상 포트폴리오", listOf(form.videoUrl))
-            } else {
-                PreviewSection("자격증", form.certificates.lines())
             }
+            if (mode.showsLessonFields) PreviewSection("자격증", form.certificates.lines())
             PreviewSection("수상 경력", form.awards.lines())
-            if (!mode.isDancer) {
+            if (mode.showsLessonFields) {
                 PreviewSection(
                     "희망 조건",
                     listOf(
