@@ -2,6 +2,7 @@ package com.muyeon.app.ui.my
 
 import com.muyeon.app.R
 import com.muyeon.domain.model.member.ActiveType
+import com.muyeon.domain.model.member.LessonProviders
 import com.muyeon.domain.model.menu.AppMenuItem
 import com.muyeon.domain.model.my.MyPageInfo
 
@@ -25,7 +26,8 @@ object MyMenuBuilder {
         val type = ActiveType.visible(activeType)
         val isGeneral = type == ActiveType.GENERAL
         val isDancer = type == ActiveType.DANCER
-        val isLessonProvider = type == ActiveType.TEACHER || type == ActiveType.ACADEMY
+        // ★ 2026-11-16 레슨 제공 유형은 명부(LessonProviders) 기준 — 서버가 무용수를 넣으면 무용수도 강사와 같은 레슨 메뉴.
+        val isLessonProvider = LessonProviders.canProvide(type)
         val m = Menus(str)
 
         // 1) 서버 또는 기본
@@ -54,7 +56,7 @@ object MyMenuBuilder {
             if (!isLessonProvider && !isDancer) group
             else group.filter { item ->
                 if ((isDancer || isLessonProvider) && item.path == "/receivedApplications") false
-                else if (isDancer) !item.dancerBlocked() else item.bridge != "quoteBrowse"
+                else if (isDancer && !isLessonProvider) !item.dancerBlocked() else item.bridge != "quoteBrowse"
             }.map { item ->
                 when {
                     item.bridge == B_LESSON_HUB || item.path == "/lessonHub" ->
@@ -74,11 +76,13 @@ object MyMenuBuilder {
             val ai = g.indexOfFirst { it.path == "/myApplications" }
             if (pi >= 0 && ai >= 0 && pi > ai) g.add(ai, g.removeAt(pi))
         }
-        if (type == ActiveType.ACADEMY) {
+        // 학원은 늘, 그 밖 제공 유형(강사 말고 — 명부의 무용수 등)은 메뉴에 레슨 관리가 없으면 끼워 넣는다.
+        if (type == ActiveType.ACADEMY || (isLessonProvider && type != ActiveType.TEACHER)) {
             val hubG = final.indexOfFirst { g -> g.any { it.bridge == B_LESSON_HUB } }
             val jobG = final.indexOfFirst { g -> g.any { it.bridge == B_JOB_POSTINGS || it.path == "/myPostings" } }
             if (hubG < 0) {
-                val hub = MyMenuItem(str(R.string.my_menu_academy_hub), "filled-note", "/lessonHub", B_LESSON_HUB, str(R.string.my_desc_academy_hub))
+                val hub = if (type == ActiveType.ACADEMY) MyMenuItem(str(R.string.my_menu_academy_hub), "filled-note", "/lessonHub", B_LESSON_HUB, str(R.string.my_desc_academy_hub))
+                else MyMenuItem(str(R.string.my_menu_lesson_hub), "filled-note", "/lessonHub", B_LESSON_HUB)
                 if (jobG >= 0) final[jobG].add(0, hub) else final.add(1.coerceAtMost(final.size), mutableListOf(hub))
             } else if (hubG == jobG) {
                 val g = final[hubG]
@@ -178,6 +182,7 @@ object MyMenuBuilder {
         else -> this
     }
 
+    /** 레슨 제공 유형 명부에 없는 무용수에게서 빼는 레슨 메뉴(명부에 있으면 강사와 같다). */
     private val DANCER_BLOCKED_BRIDGES = setOf("quoteRequest", "myQuotes", "quoteBrowse", B_LESSON_HUB, "lessonSlotManage")
     private val DANCER_BLOCKED_PATHS = Regex("^/(quoteRequest|availableQuotes|quoteSettings|lessonHub|myLessons|lessonSettings|lessonGenres|lessonSlots)(/|\\?|$)")
     private fun MyMenuItem.dancerBlocked() = bridge in DANCER_BLOCKED_BRIDGES || DANCER_BLOCKED_PATHS.containsMatchIn(path.orEmpty())

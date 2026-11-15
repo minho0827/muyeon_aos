@@ -1,6 +1,6 @@
 package com.muyeon.app.ui.my
 
-import com.muyeon.domain.model.member.ActiveType
+import com.muyeon.domain.model.member.LessonProviders
 
 /**
  * MY 메뉴 브리지 이름 → 앱 화면 액션(웹 MyHome onClick 과 같은 표 — 액션·데이터 키는 iOS·웹 계약 그대로).
@@ -17,8 +17,8 @@ object MyActions {
         "myJobPostings" -> Native("openMyJobPostings")
         "lessonCalendar" -> Native("openLessonCalendar")
         "quoteBrowse" -> Native("openQuoteBrowse")
-        // 제안을 받는 쪽(강사·원장)이면 isPro — 웹 canReceiveQuoteAs.
-        "myQuotes" -> Native("openMyQuotes", mapOf("isPro" to (activeType == ActiveType.TEACHER || activeType == ActiveType.ACADEMY).toString()))
+        // 제안을 받는 쪽(레슨 제공 유형 명부)이면 isPro — 웹 canReceiveQuoteAs.
+        "myQuotes" -> Native("openMyQuotes", mapOf("isPro" to LessonProviders.canProvide(activeType).toString()))
         "quoteRequest" -> Native("openQuoteWizard")
         "lessonSlotManage" -> Native("openLessonSlotManage")
         "lessonQuoteHub" -> Native("openLessonQuoteHub", mapOf("role" to activeType))

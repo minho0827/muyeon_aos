@@ -152,6 +152,8 @@ class SplashActivity : ComponentActivity() {
 
         LaunchedEffect(Unit) {
             val gate = AppGateApi.fetch()
+            // ★ 2026-11-16 레슨 제공 유형 명부 — 조회 실패(null)면 지난 값을 그대로 둔다.
+            if (gate != null) com.muyeon.app.webview.ActiveRole.storeLessonProviders(this@SplashActivity, gate.lessonProviderTypes)
             val action = gate?.update?.action ?: "NONE"
             notice = gate?.notice
             if (action == "FORCE" || action == "OPTIONAL") {

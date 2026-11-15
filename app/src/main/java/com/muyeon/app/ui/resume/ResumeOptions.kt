@@ -92,6 +92,13 @@ enum class ResumeMode(val raw: String) {
     /** 서버 태그(resumes.service.normalizeRole) — 목록 필터/저장 공통. */
     val roleIntent: String get() = if (this == DANCER) "DANCER" else "TEACHER"
 
+    /**
+     * ★ 2026-11-16 레슨 항목(수업 대상·경력 구간·레슨 가능 시간·경력+총 경력·자격증·희망 조건)을 보일까 — 한 규칙.
+     *  강사는 늘, 무용수는 레슨 제공 유형 명부(LessonProviders)에 무용수가 있을 때만. 무용수 전용 항목은 그대로 둔다.
+     */
+    val showsLessonFields: Boolean
+        get() = this == TEACHER || com.muyeon.domain.model.member.LessonProviders.showsLessonFields(roleIntent)
+
     companion object {
         fun from(s: String?) = if (s == "dancer") DANCER else TEACHER
     }

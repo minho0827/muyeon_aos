@@ -339,13 +339,13 @@ fun ChatRoomScreen(
             .collect { if (it <= 1) vm.loadMore() }
     }
 
-    // 강사 쪽 견적 채팅방은 강사·학원 유형에서만 연다(알림·채팅 목록 어디서 들어오든 — 웹·iOS 와 같은 규칙).
+    // 강사 쪽 견적 채팅방은 레슨 제공 유형(강사·학원, 명부의 무용수)에서만 연다(알림·채팅 목록 어디서 들어오든 — 웹·iOS 와 같은 규칙).
     //  ★ 2026-11-14 예전엔 전환 버튼이 웹 /chat/:id 로 넘겼는데, 그 주소가 다시 이 네이티브 방을 열어
     //   유형은 그대로인 채 같은 안내만 반복됐다. 이제 이 자리에서 서버에 강사 유형을 저장하고 바로 방을 보여 준다.
     var roleEpoch by remember { mutableIntStateOf(0) }
     var switching by remember { mutableStateOf(false) }
     if (vm.quoteContext?.isTeacher == true &&
-        roleEpoch >= 0 && ActiveRole.current(context) !in setOf(ActiveRole.TEACHER, ActiveRole.ACADEMY)
+        roleEpoch >= 0 && !ActiveRole.isLessonProvider(context)
     ) {
         ProviderSwitchGate(
             onBack = onBack,
@@ -353,7 +353,7 @@ fun ChatRoomScreen(
                 if (switching) return@ProviderSwitchGate
                 switching = true
                 scope.launch {
-                    val type = listOf(ActiveRole.TEACHER, ActiveRole.ACADEMY)
+                    val type = ActiveRole.providerSwitchOrder()
                         .firstOrNull { ActiveRole.saveOnServer(context, it) }
                     switching = false
                     if (type != null) {
@@ -638,11 +638,11 @@ fun ChatRoomScreen(
     if (showAttach) {
         ChatAttachSheet(
             showSurvey = vm.quoteContext?.isTeacher == true,
-            // 채택된 견적 방은 회원·강사 모두, 그 밖의 방은 강사·학원 유형만 약속 제안 가능(iOS 와 같은 조건).
+            // 채택된 견적 방은 회원·강사 모두, 그 밖의 방은 레슨 제공 유형만 약속 제안 가능(iOS 와 같은 조건).
             //  최종 검증은 서버가 한다.
             //  ★ 11-10 학원 채용 방(HIRE)은 레슨 약속을 잡지 않는다(서버도 400).
             showProposal = !vm.isHire && (vm.isQuoteMatched || vm.quoteContext?.isTeacher == true ||
-                ActiveRole.current(context) in setOf(ActiveRole.TEACHER, ActiveRole.ACADEMY)),
+                ActiveRole.isLessonProvider(context)),
             onPickImages = { uris -> vm.sendImages(context, uris) },
             onPickVideo = { uri -> vm.sendVideo(context, uri) },
             onSurvey = { showSurveyPicker = true },

@@ -1,6 +1,7 @@
 package com.muyeon.data.repository
 
 import com.muyeon.data.common.safeApiCall
+import com.muyeon.domain.model.member.LessonProviders
 import com.muyeon.domain.model.my.MyMembership
 import com.muyeon.domain.model.my.PendingPostings
 import com.muyeon.domain.repository.MyPageRepository
@@ -9,7 +10,10 @@ import com.squareup.moshi.Moshi
 
 /** 부가 정보라 실패는 조용히 기본값(웹 MyHome 도 catch 후 무시한다). */
 class MyPageRepositoryImpl(private val api: MyApi, private val moshi: Moshi) : MyPageRepository {
-    override suspend fun myName(): String? = safeApiCall(moshi) { api.me() }.getOrNull()?.name?.takeIf { it.isNotBlank() }
+    override suspend fun myName(): String? = safeApiCall(moshi) { api.me() }.getOrNull()
+        // ★ 2026-11-16 같은 응답의 레슨 제공 유형으로 명부를 맞춘다(조회 실패면 그대로 둔다).
+        ?.also { LessonProviders.update(it.lessonProviderTypes) }
+        ?.name?.takeIf { it.isNotBlank() }
     override suspend fun notiUnread(): Int = safeApiCall(moshi) { api.notiUnread() }.getOrNull()?.string()?.trim()?.toDoubleOrNull()?.toInt() ?: 0
     override suspend fun quoteUnread(): Int = safeApiCall(moshi) { api.quoteUnread() }.getOrNull()?.count ?: 0
     override suspend fun membership(): MyMembership? = safeApiCall(moshi) { api.membership() }.getOrNull()?.toDomain()

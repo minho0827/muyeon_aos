@@ -73,7 +73,7 @@ class QuoteHubActivity : ResultActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val isPro = intent.getBooleanExtra(EXTRA_IS_PRO, false)
-        // 보낸 견적(강사측)은 강사·학원 전용 — 무용수 유형이면 안내 후 종료. 받은 견적(고객측) 조회는 허용.
+        // 보낸 견적(제공측)은 레슨 제공 유형 전용 — 명부에 없는 무용수면 안내 후 종료. 받은 견적(고객측) 조회는 허용.
         if (isPro && !ActiveRole.allowLessonProvider(this)) { finish(); return }
         val initialTab = intent.getIntExtra(EXTRA_TAB, 0)
         val deepQuoteId = intent.getIntExtra(EXTRA_QUOTE_ID, 0)

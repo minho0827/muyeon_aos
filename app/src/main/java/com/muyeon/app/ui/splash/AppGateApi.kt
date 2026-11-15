@@ -46,7 +46,8 @@ data class AppGateNotice(
             ?.let { if (it.startsWith("http")) it else BuildConfig.API_BASE_URL + it }
 }
 
-data class AppGateResult(val update: AppGateUpdate?, val notice: AppGateNotice?)
+/** @param lessonProviderTypes ★ 2026-11-16 레슨 제공 유형(서버가 안 주면 null → 기본 강사·학원). */
+data class AppGateResult(val update: AppGateUpdate?, val notice: AppGateNotice?, val lessonProviderTypes: List<String>? = null)
 
 object AppGateApi {
 
@@ -98,7 +99,8 @@ object AppGateApi {
                     "update=${u?.action ?: "nil"} notice=" +
                         (n?.let { "id ${it.id} '${it.title}' dismiss=${it.dismissType} img=${it.imageUrl ?: "없음"}" } ?: "없음"),
                 )
-                AppGateResult(u, n)
+                val providers = root.optJSONArray("lessonProviderTypes")?.let { a -> (0 until a.length()).map { a.optString(it) } }
+                AppGateResult(u, n, providers)
             }
         } catch (e: Exception) {
             android.util.Log.d("AppGate", "조회 실패 — 그대로 진입: ${e.message}")

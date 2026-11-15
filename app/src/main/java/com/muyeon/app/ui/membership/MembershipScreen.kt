@@ -367,8 +367,9 @@ fun MembershipScreen(api: MembershipApi, onClose: () -> Unit) {
     val tierPlans = plans.filter { it.tier == selectedTier }.sortedBy { it.durationDays ?: 0 }
     val tierLimits = tierPlans.firstOrNull()?.limits
     // 무용수 활동 중에는 레슨 활동 불가(2026-09-26) — 레슨·자동견적 혜택 줄은 뺀다.
+    //  ★ 2026-11-16 레슨 제공 유형 명부에 무용수가 있으면 강사와 같이 보인다.
     val context = androidx.compose.ui.platform.LocalContext.current
-    val isDancer = remember { com.muyeon.app.webview.ActiveRole.isDancer(context) }
+    val isDancer = remember { com.muyeon.app.webview.ActiveRole.isDancer(context) && !com.muyeon.app.webview.ActiveRole.isLessonProvider(context) }
     val isLoggedIn = remember { !TokenManager.getAccessToken(context).isNullOrEmpty() }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {

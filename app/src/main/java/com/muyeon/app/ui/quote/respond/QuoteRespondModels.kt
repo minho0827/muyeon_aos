@@ -7,6 +7,7 @@ import com.muyeon.app.ui.common.jInt
 import com.muyeon.app.ui.common.jObjects
 import com.muyeon.app.ui.common.jStr
 import com.muyeon.app.ui.quote.QuoteFull
+import com.muyeon.domain.model.member.LessonProviders
 import org.json.JSONObject
 
 /**
@@ -102,5 +103,22 @@ enum class MyResponseBadge(@StringRes val label: Int, val level: com.muyeon.app.
 
     companion object {
         fun of(status: String?) = when (status) { "SENT" -> SENT; "ACCEPTED" -> ACCEPTED; "REJECTED" -> REJECTED; "WITHDRAWN" -> WITHDRAWN; else -> OTHER }
+    }
+}
+
+/**
+ * ★ 2026-11-16 견적 응답의 유형 규칙 — 레슨 제공 유형 명부([LessonProviders])만 읽는다.
+ */
+object QuoteRespondRoles {
+    /** 지금 활성유형으로 견적을 보낼 수 있나. */
+    fun isProvider(activeType: String?): Boolean = LessonProviders.canProvide(activeType)
+
+    /** 견적에 붙일 내 프로필 — 학원은 "ACADEMY", 강사·무용수는 "TEACHER"(개인 이력서). */
+    fun attachmentRole(activeType: String?): String = LessonProviders.attachmentType(activeType)
+
+    /** 일반 유형으로 활동 중일 때 '○○ 유형으로 전환하고 견적 보내기' 대상 — 강사 → 학원 → 그 밖 제공 유형 순. */
+    fun switchTarget(held: List<String>): String? {
+        val order = listOf("TEACHER", "ACADEMY") + LessonProviders.types.sorted()
+        return order.distinct().firstOrNull { it in held && LessonProviders.canProvide(it) }
     }
 }

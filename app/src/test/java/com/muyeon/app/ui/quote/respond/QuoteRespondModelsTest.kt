@@ -1,7 +1,9 @@
 package com.muyeon.app.ui.quote.respond
 
 import com.muyeon.app.navigation.NativeRoutes
+import com.muyeon.domain.model.member.LessonProviders
 import org.json.JSONObject
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -10,6 +12,26 @@ import org.junit.Test
 
 /** 견적 응답 — 서버 응답 변환(내가 보낸 견적 고르기 · 공개 상세) · 경로 표. */
 class QuoteRespondModelsTest {
+    @After fun resetProviders() = LessonProviders.reset()
+
+    @Test fun `무용수 — 명부에 있으면 견적을 보내고 개인 이력서(TEACHER)를 붙인다`() {
+        assertFalse(QuoteRespondRoles.isProvider("DANCER"))
+        LessonProviders.update(listOf("TEACHER", "ACADEMY", "DANCER"))
+        assertTrue(QuoteRespondRoles.isProvider("DANCER"))
+        assertEquals("TEACHER", QuoteRespondRoles.attachmentRole("DANCER"))
+        assertEquals("TEACHER", QuoteRespondRoles.attachmentRole("TEACHER"))
+        assertEquals("ACADEMY", QuoteRespondRoles.attachmentRole("ACADEMY"))
+        assertFalse(QuoteRespondRoles.isProvider("GENERAL"))
+    }
+
+    @Test fun `전환 대상 — 강사·학원 먼저, 무용수는 명부에 있을 때만`() {
+        assertNull(QuoteRespondRoles.switchTarget(listOf("GENERAL", "DANCER")))
+        assertEquals("TEACHER", QuoteRespondRoles.switchTarget(listOf("DANCER", "TEACHER")))
+        LessonProviders.update(listOf("TEACHER", "ACADEMY", "DANCER"))
+        assertEquals("DANCER", QuoteRespondRoles.switchTarget(listOf("GENERAL", "DANCER")))
+        assertEquals("ACADEMY", QuoteRespondRoles.switchTarget(listOf("DANCER", "ACADEMY")))
+    }
+
     private val detail = """
         {"quote":{"id":12,"categoryId":"ballet","region":"서울 강남구","status":"OPEN","expired":true,"guestRequest":true,"answers":[]},
          "responses":[{"id":3,"responderId":7,"status":"SENT","priceAmount":50000,"priceUnit":"PER_SESSION","paymentMode":"DEPOSIT","depositAmount":10000,"chatRoomId":0,"message":"안녕하세요"},

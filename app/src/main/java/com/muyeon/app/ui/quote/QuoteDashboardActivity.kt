@@ -48,7 +48,7 @@ class QuoteDashboardActivity : ResultActivity() {
     override val defaultResultKeys = setOf(ResultKeys.QUOTES, ResultKeys.LESSONS)
 
     companion object {
-        private const val EXTRA_ROLE = "role"          // TEACHER | ACADEMY | (그 외 = 일반회원)
+        private const val EXTRA_ROLE = "role"          // 레슨 제공 유형(TEACHER | ACADEMY | 명부의 DANCER) | (그 외 = 일반회원)
 
         fun intent(context: Context, role: String?): Intent =
             Intent(context, QuoteDashboardActivity::class.java).putExtra(EXTRA_ROLE, role ?: "")
@@ -59,8 +59,8 @@ class QuoteDashboardActivity : ResultActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val role = intent.getStringExtra(EXTRA_ROLE).orEmpty()
-        val isPro = role == "TEACHER" || role == "ACADEMY"
-        // 레슨 운영 허브는 강사·학원 전용 — 무용수 유형이면 안내 후 종료(2026-09-26 정책).
+        val isPro = com.muyeon.domain.model.member.LessonProviders.canProvide(role)
+        // 레슨 운영 허브는 레슨 제공 유형(명부) 전용 — 명부에 없는 무용수면 안내 후 종료(2026-09-26 정책).
         if (isPro && !ActiveRole.allowLessonProvider(this)) { finish(); return }
 
         setEdgeContent {
@@ -107,7 +107,7 @@ class QuoteDashboardActivity : ResultActivity() {
                     PersonalLessonManagementScreen(
                         quoteApi = api,
                         productApi = productApi,
-                        roleLabel = if (role == "ACADEMY") "학원" else "강사",
+                        roleLabel = if (role == "ACADEMY") "학원" else ActiveRole.label(role), // 강사·무용수
                         onClose = { finish() },
                         onOpenSent = { sentDetail = it },
                         onAutoReply = { autoLauncher.launch(QuoteAutoTemplatesActivity.intent(this)) },

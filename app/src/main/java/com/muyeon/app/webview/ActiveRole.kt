@@ -4,6 +4,7 @@ import android.content.Context
 import android.widget.Toast
 import com.muyeon.app.BuildConfig
 import com.muyeon.app.utils.TokenManager
+import com.muyeon.domain.model.member.LessonProviders
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -43,7 +44,31 @@ object ActiveRole {
     @Volatile private var appContext: Context? = null
 
     fun bind(context: Context) {
-        if (appContext == null) appContext = context.applicationContext
+        if (appContext == null) {
+            val app = context.applicationContext
+            appContext = app
+            val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            // 지난번 서버가 알려 준 레슨 제공 유형 — 스플래시를 건너뛰고 복원된 화면에서도 같은 규칙을 쓴다.
+            prefs.getString(KEY_PROVIDERS, null)?.let { LessonProviders.update(it.split(',')) }
+            LessonProviders.onChanged = { now -> prefs.edit().putString(KEY_PROVIDERS, now.joinToString(",")).apply() }
+        }
+    }
+
+    private const val KEY_PROVIDERS = "lessonProviderTypes"
+
+    /**
+     * ★ 2026-11-16 서버가 알려 준 레슨 제공 유형(/auth/me·/app-gate 의 lessonProviderTypes)을 명부에 반영한다(저장은 bind 의 onChanged).
+     *  값이 없으면(null) 기본(강사·학원)으로 돌아간다.
+     */
+    fun storeLessonProviders(context: Context, types: List<String>?) {
+        bind(context)
+        LessonProviders.update(types)
+    }
+
+    /** JSON 응답(/auth/me·/app-gate)에서 lessonProviderTypes 를 읽어 반영한다. 칸이 없으면 기본값. */
+    fun storeLessonProviders(context: Context, json: JSONObject?) {
+        val arr = json?.optJSONArray("lessonProviderTypes")
+        storeLessonProviders(context, arr?.let { a -> (0 until a.length()).map { a.optString(it) } })
     }
 
     /** 로컬 값이 바뀔 때마다 오른다 — 응답이 늦게 온 서버 동기화가 그사이 바꾼 값을 덮지 않게 한다. */
@@ -193,8 +218,15 @@ object ActiveRole {
 
     fun isAcademy(context: Context): Boolean = current(context) == ACADEMY
 
-    /** 무용수 유형 활성 여부 — 레슨 관련 활동 전면 차단 기준(2026-09-26 정책). */
+    /** 무용수 유형 활성 여부 — 고객측(레슨 요청·예약) 차단 기준(2026-09-26 정책). */
     fun isDancer(context: Context): Boolean = current(context) == DANCER
+
+    /** ★ 2026-11-16 지금 활성유형이 레슨 제공자인가 — [LessonProviders] 명부 기준. */
+    fun isLessonProvider(context: Context): Boolean = LessonProviders.canProvide(current(context))
+
+    /** 제공측으로 전환할 때 시도할 순서 — 강사 → 학원 → 그 밖 명부 유형. */
+    fun providerSwitchOrder(): List<String> =
+        (listOf(TEACHER, ACADEMY) + LessonProviders.types.sorted()).distinct().filter { LessonProviders.canProvide(it) }
 
     /** 고객측(레슨 요청·예약) 게이트 — 무용수면 안내 토스트 후 false. */
     fun allowLessonCustomer(context: Context): Boolean {
@@ -203,9 +235,12 @@ object ActiveRole {
         return false
     }
 
-    /** 제공측(레슨 운영·견적 응답) 게이트 — 무용수면 안내 토스트 후 false. */
+    /**
+     * 제공측(레슨 운영·견적 응답) 게이트 — 무용수인데 명부에 무용수가 없으면 안내 토스트 후 false.
+     *  ★ 2026-11-16 명부([LessonProviders])에 무용수가 있으면 강사와 같이 통과한다.
+     */
     fun allowLessonProvider(context: Context): Boolean {
-        if (!isDancer(context)) return true
+        if (!isDancer(context) || isLessonProvider(context)) return true
         Toast.makeText(context, DANCER_PROVIDER_BLOCK, Toast.LENGTH_LONG).show()
         return false
     }
