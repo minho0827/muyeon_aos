@@ -30,7 +30,7 @@ fun ArtistCard(t: TeacherCard, onClick: () -> Unit, modifier: Modifier = Modifie
         Column(Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
             // 이름·장르 줄은 값이 없어도 자리를 남긴다(카드 높이 맞춤).
             SlotText(t.name, AppTypography.Body15Medium, AppColors.TextHead)
-            SlotText(t.genres.joinToString(" · "), AppTypography.Caption12, AppColors.TextHint, Modifier.padding(top = 2.dp))
+            SlotText(((if (t.isDancer) listOf("무용수") else emptyList()) + t.genres).joinToString(" · "), AppTypography.Caption12, AppColors.TextHint, Modifier.padding(top = 2.dp))
         }
     }
 }

@@ -16,7 +16,11 @@ data class TeacherCard(
     val isDemoProfile: Boolean,
     /** 상위노출권(부스트) 만료 시각. 지금보다 뒤면 '추천' 표시. */
     val promotedUntil: String?,
-)
+    /** ★ 2026-11-15 홈 그리드에 섞여 오는 무용수면 "DANCER" — 누르면 무용수 상세로 연다. */
+    val role: String = "TEACHER",
+) {
+    val isDancer: Boolean get() = role == "DANCER"
+}
 
 /**
  * 레슨 장르 칩 — 웹 mock JOB_GENRES. 바레·발레핏은 장르가 아니라 분야(field) 코드로 거른다(웹 GENRE_FIELD).

@@ -62,6 +62,13 @@ class DancerRepositoryImpl(private val api: DancerApi, private val moshi: Moshi)
             availableTimeSlots = d.strings("availableTimeSlots"),
             hasVideo = d.optBoolean("hasVideo"),
             self = d.optBoolean("self"),
+            limited = d.optBoolean("limited", false),
+            genres = d.strings("genres"),
+            careers = d.optJSONArray("careers").objects().map { c ->
+                val head = listOfNotNull(c.str("academy"), c.str("position")).joinToString(" ")
+                listOf(head, c.str("period")?.let { "($it)" }.orEmpty()).filter { it.isNotBlank() }.joinToString(" ")
+            }.filter { it.isNotBlank() }.joinToString("\n").takeIf { it.isNotBlank() },
+            badgesJson = d.optJSONObject("badges")?.toString(),
         )
     }
 

@@ -6,15 +6,27 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,36 +35,49 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.muyeon.app.R
 import com.muyeon.app.common_components.dialog.ContentAlignment
 import com.muyeon.app.common_components.dialog.CustomDialog
-import com.muyeon.app.ui.common.MuyeonBottomButton
+import com.muyeon.app.theme.customFontFamily
+import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.components.ActionSheet
 import com.muyeon.app.ui.components.EmptyView
-import com.muyeon.app.ui.components.HeartButton
-import com.muyeon.app.ui.components.ImageCarousel
-import com.muyeon.app.ui.components.LevelBadge
-import com.muyeon.app.ui.components.MainTopBar
-import com.muyeon.app.ui.components.ReadArea
-import com.muyeon.app.ui.components.ReadField
-import com.muyeon.app.ui.components.ReadSectionTitle
 import com.muyeon.app.ui.components.ReportSheet
 import com.muyeon.app.ui.components.SheetAction
-import com.muyeon.app.ui.dancer.components.LessonTimeGrid
+import com.muyeon.app.ui.resume.BodyText
+import com.muyeon.app.ui.resume.CircleIconButton
+import com.muyeon.app.ui.resume.CredentialBadgeRow
+import com.muyeon.app.ui.resume.CredentialBadges
+import com.muyeon.app.ui.resume.CtaButton
+import com.muyeon.app.ui.resume.GrayChip
+import com.muyeon.app.ui.resume.InfoRows
+import com.muyeon.app.ui.resume.LineList
+import com.muyeon.app.ui.resume.PortfolioGrid
+import com.muyeon.app.ui.resume.ProfileCtaBar
+import com.muyeon.app.ui.resume.ProfileFavoriteButton
+import com.muyeon.app.ui.resume.ProfileHeroImage
+import com.muyeon.app.ui.resume.ProfileLessonTimeGrid
+import com.muyeon.app.ui.resume.ProfileSection
+import com.muyeon.app.ui.resume.ProfileVideoSection
 import com.muyeon.app.ui.resume.RecruitChatLimitDialog
 import com.muyeon.app.ui.resume.RecruitChatLimitException
 import com.muyeon.app.ui.resume.ResumeOptions
-import com.muyeon.app.ui.theme.AppColors
-import com.muyeon.app.ui.theme.AppTypography
-import com.muyeon.app.ui.theme.CategoryColors
-import com.muyeon.app.ui.theme.Dimensions
+import com.muyeon.app.ui.resume.VerifiedLogoRow
+import com.muyeon.domain.model.dancer.DancerProfile
+import org.json.JSONObject
 
 /**
- * 무용수 상세 — 웹 /dancers/:id. 사진 · 배지·이름·한 줄 소개·지역 · 찜 / 소개글 · 기본 정보 · 레슨 가능 시간 · 경력 · 레슨 후기(전체 보기).
- *   아래 버튼: 공연팀 [캐스팅 제안 보내기], 학원·강사 [채팅하기]. 맨 아래 허위 프로필 신고 · 차단.
+ * 무용수 상세 — 웹 /dancers/:id. ★ 2026-11-15 강사 상세(PublicProfileScreen)와 같은 모양으로 바꿨다(부품: ui/resume/ProfileDetailParts.kt).
+ *   히어로 사진(뒤로·더보기 동그라미 버튼) · 이름·찜 · 확인 배지 · 지역/장르/성별 칩 · 한 줄 소개
+ *   / 소개글 · 기본 정보 · 레슨 가능 시간 · 경력 · 학력 · 경력·자격 · 공연 이력 · 수상 이력 · 포트폴리오 · 영상 · 레슨 후기.
+ *   아래 버튼: 공연팀 [캐스팅 제안 보내기], 학원·강사 [채팅하기]. 신고·차단은 오른쪽 위 더보기(로그인한 회원만).
+ *   소개만 받은 응답(limited — 일반회원·무용수·비회원)이면 키·몸무게 등이 없어 그 줄이 빠지고, 아래 버튼도 그리지 않는다.
  */
 @Composable
 fun DancerDetailScreen(
@@ -60,7 +85,8 @@ fun DancerDetailScreen(
     onBack: () -> Unit,
     onLogin: () -> Unit,
     onOpenImage: (List<String>, Int) -> Unit,
-    onOpenUrl: (String) -> Unit,
+    /** 영상 링크는 강사 상세와 같은 부품(ProfileVideoSection)이 직접 연다 — 부르는 쪽 호환으로 남겨 둔다. */
+    @Suppress("UNUSED_PARAMETER") onOpenUrl: (String) -> Unit,
     onReviews: () -> Unit,
     onOpenChat: (Long, String) -> Unit,
     onMembership: () -> Unit,
@@ -68,6 +94,7 @@ fun DancerDetailScreen(
     val s by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var limit by remember { mutableStateOf(false) }
+    var menuOpen by remember { mutableStateOf(false) }
     LaunchedEffect(viewModel) {
         viewModel.events.collect { e ->
             when (e) {
@@ -81,68 +108,66 @@ fun DancerDetailScreen(
             }
         }
     }
-    Column(Modifier.fillMaxSize().background(AppColors.Surface).navigationBarsPadding()) {
-        MainTopBar(title = stringResource(R.string.dancer_detail_title), primary = false, onBack = onBack)
-        val d = s.profile
+    // 위 바(MainTopBar)가 없어졌다 — 흰 바탕에 맞게 상태바 아이콘을 어둡게(MainTopBar primary=false 와 같다).
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        DisposableEffect(Unit) {
+            (view.context as? android.app.Activity)?.window?.let { w ->
+                androidx.core.view.WindowCompat.getInsetsController(w, view).isAppearanceLightStatusBars = true
+            }
+            onDispose { }
+        }
+    }
+    val d = s.profile
+    Box(Modifier.fillMaxSize().background(MuyeonColors.surface).statusBarsPadding().navigationBarsPadding()) {
         when {
-            s.isLoading -> Unit
-            d == null -> EmptyView(s.errorMessage ?: stringResource(R.string.dancer_not_found),
-                buttonText = stringResource(R.string.common_retry), onButton = viewModel::load)
-            else -> {
+            s.isLoading -> CircularProgressIndicator(color = MuyeonColors.primary, modifier = Modifier.align(Alignment.Center))
+            d == null -> Column(Modifier.fillMaxSize().padding(top = 52.dp)) {
+                EmptyView(s.errorMessage ?: stringResource(R.string.dancer_not_found),
+                    buttonText = stringResource(R.string.common_retry), onButton = viewModel::load)
+            }
+            else -> Column(Modifier.fillMaxSize()) {
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                    ImageCarousel(d.images, onOpen = { onOpenImage(d.images, it) }, fallbackRes = R.drawable.img_noimage_teacher)
-                    Column(Modifier.fillMaxWidth().padding(Dimensions.gutter), verticalArrangement = Arrangement.spacedBy(Dimensions.spacingS)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(Dimensions.spacingXS)) {
-                                d.major?.let { LevelBadge(it, CategoryColors.Level.High) }
-                                d.gender?.let { LevelBadge(it, CategoryColors.Level.Middle) }
-                                if (d.hasVideo) LevelBadge(stringResource(R.string.dancer_video), CategoryColors.Level.Row)
-                                if (d.awards != null) LevelBadge(stringResource(R.string.dancer_award), CategoryColors.Level.Row)
-                            }
-                            HeartButton(s.liked, viewModel::toggleLike, size = Dimensions.heartCircle)
-                        }
-                        Text(d.name.ifBlank { stringResource(R.string.dancer_default_name) }, style = AppTypography.Title20, color = AppColors.TextHead)
-                        d.oneLiner?.let { Text(it, style = AppTypography.Body14, color = AppColors.TextSub) }
-                        d.region?.let { Text(it, style = AppTypography.Sub13, color = AppColors.TextHint) }
-                    }
-                    Column(Modifier.fillMaxWidth().padding(horizontal = Dimensions.gutter), verticalArrangement = Arrangement.spacedBy(Dimensions.spacingL)) {
-                        if (d.intro != null) {
-                            ReadSectionTitle(stringResource(R.string.dancer_sec_intro))
-                            ReadArea(d.intro)
-                        }
-                        ReadSectionTitle(stringResource(R.string.dancer_sec_basic))
-                        ReadField(stringResource(R.string.dancer_birth), d.birth)
-                        ReadField(stringResource(R.string.dancer_major), d.major)
-                        ReadField(stringResource(R.string.dancer_body), listOfNotNull(d.gender, d.height, d.weight).joinToString(" · ").ifBlank { null })
-                        ReadField(stringResource(R.string.dancer_region), d.region)
-                        ReadArea(d.education, label = stringResource(R.string.dancer_education))
-                        if (d.availableDays.isNotEmpty() || d.availableTimeSlots.isNotEmpty()) {
-                            ReadSectionTitle(stringResource(R.string.dancer_sec_lesson_time))
-                            LessonTimeGrid(d.availableDays, d.availableTimeSlots)
-                        }
-                        val career = d.career?.let(ResumeOptions::careerLabel)?.takeIf { it.isNotBlank() }
-                        if (listOf(career, d.companyCareer, d.awards, d.performances, d.videoUrl).any { it != null }) {
-                            ReadSectionTitle(stringResource(R.string.dancer_sec_career))
-                            ReadField(stringResource(R.string.dancer_career), career)
-                            ReadArea(d.companyCareer, label = stringResource(R.string.dancer_company_career))
-                            ReadArea(d.awards, label = stringResource(R.string.dancer_awards))
-                            ReadArea(d.performances, label = stringResource(R.string.dancer_performances))
-                            d.videoUrl?.let { url -> ReadField(stringResource(R.string.dancer_video_portfolio), url, linkText = stringResource(R.string.dancer_video_open), onLink = { onOpenUrl(url) }) }
-                        }
-                        ReadSectionTitle(stringResource(R.string.dancer_sec_reviews))
-                        Text(stringResource(R.string.dancer_reviews_all), style = AppTypography.Body14SemiBold, color = AppColors.Primary,
-                            modifier = Modifier.clickable(onClick = onReviews).padding(vertical = Dimensions.spacingXS))
-                        Row(Modifier.fillMaxWidth().padding(vertical = Dimensions.spacingXL), horizontalArrangement = Arrangement.Center) {
-                            Text(stringResource(R.string.dancer_report), style = AppTypography.Sub13, color = AppColors.TextSub,
-                                modifier = Modifier.clickable { viewModel.showReport(true) }.padding(Dimensions.spacingS))
-                            if (!d.self) Text(stringResource(R.string.dancer_block), style = AppTypography.Sub13, color = AppColors.TextSub,
-                                modifier = Modifier.clickable { viewModel.askBlock(true) }.padding(Dimensions.spacingS))
-                        }
+                    ProfileHeroImage(
+                        d.images.firstOrNull(),
+                        stringResource(R.string.dancer_title, d.major ?: stringResource(R.string.dancer_major_default)),
+                        onClick = { onOpenImage(d.images, 0) },
+                    )
+                    DancerHeader(d, liked = s.liked, showLike = !s.isSelf, onLike = viewModel::toggleLike)
+                    DancerSections(d, isSelf = s.isSelf, onReviews = onReviews)
+                    Spacer(Modifier.height(20.dp))
+                }
+                // 하단 CTA — 공연팀·학원·강사가 전체 프로필을 볼 때만(소개만·내 프로필이면 없음).
+                if (!d.limited && s.canContact && !s.isSelf) {
+                    ProfileCtaBar {
+                        CtaButton(
+                            stringResource(if (s.isTeam) R.string.dancer_offer else R.string.dancer_chat),
+                            filled = true, enabled = !s.busy, keepFilledWhenDisabled = true, modifier = Modifier.weight(1f),
+                        ) { if (s.isTeam) viewModel.startOffer() else viewModel.askChat(true) }
                     }
                 }
-                MuyeonBottomButton(
-                    stringResource(if (s.isTeam) R.string.dancer_offer else R.string.dancer_chat), "dancer.cta", loading = s.busy,
-                ) { if (s.isTeam) viewModel.startOffer() else viewModel.askChat(true) }
+            }
+        }
+
+        // 뒤로 / ⋯ — 스크롤과 무관하게 화면 위에 고정(강사 상세와 같다).
+        CircleIconButton(
+            Icons.AutoMirrored.Filled.ArrowBack, "뒤로",
+            modifier = Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 8.dp),
+            onClick = onBack,
+        )
+        if (d != null && s.loggedIn && !s.isSelf) {
+            Box(Modifier.align(Alignment.TopEnd).padding(end = 16.dp, top = 8.dp)) {
+                CircleIconButton(Icons.Filled.MoreHoriz, "더보기", iconSize = 18.dp) { menuOpen = true }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.dancer_report), fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.danger) },
+                        onClick = { menuOpen = false; viewModel.showReport(true) },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.dancer_block), fontFamily = customFontFamily, fontSize = 14.sp) },
+                        onClick = { menuOpen = false; viewModel.askBlock(true) },
+                    )
+                }
             }
         }
     }
@@ -175,4 +200,101 @@ fun DancerDetailScreen(
         )
     }
     if (limit) RecruitChatLimitDialog(RecruitChatLimitException(null, null, null, null), onUpgrade = { limit = false; onMembership() }, onDismiss = { limit = false })
+}
+
+/** 이름·찜 · 확인 배지 · 칩(지역·장르·성별) · 확인 기관 로고 · 한 줄 소개 — 강사 상세 본문 머리와 같은 크기·간격. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DancerHeader(d: DancerProfile, liked: Boolean, showLike: Boolean, onLike: () -> Unit) {
+    val badges = remember(d.badgesJson) { d.badgesJson?.let { runCatching { CredentialBadges.from(JSONObject(it)) }.getOrNull() } }
+    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+        Row(Modifier.fillMaxWidth().padding(top = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                d.name.ifBlank { stringResource(R.string.dancer_default_name) },
+                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp,
+                lineHeight = 26.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f, fill = false),
+            )
+            Spacer(Modifier.weight(1f))
+            if (showLike) ProfileFavoriteButton(liked, onLike)
+        }
+        CredentialBadgeRow(badges)
+        val genreChip = d.genres.takeIf { it.isNotEmpty() }?.take(2)?.joinToString(", ") ?: d.major
+        val chips = listOfNotNull(d.region, genreChip, d.gender)
+        if (chips.isEmpty()) {
+            Spacer(Modifier.height(8.dp))
+        } else {
+            FlowRow(
+                Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) { chips.forEach { GrayChip(it) } }
+        }
+        badges?.logos?.takeIf { it.isNotEmpty() }?.let { VerifiedLogoRow(it, Modifier.padding(top = 10.dp)) }
+        d.oneLiner?.let {
+            Text(
+                it,
+                fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
+                lineHeight = 20.sp, color = MuyeonColors.textSub,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+    }
+}
+
+/** 본문 섹션 — 강사 상세 ProfileSections 와 같은 섹션 틀·글자. 값이 없는 줄·섹션은 그리지 않는다(소개만 응답이면 저절로 빠진다). */
+@Composable
+private fun DancerSections(d: DancerProfile, isSelf: Boolean, onReviews: () -> Unit) {
+    Column(Modifier.fillMaxWidth()) {
+        d.intro?.replace("\r", "")?.takeIf { it.isNotEmpty() }?.let {
+            ProfileSection(stringResource(R.string.dancer_sec_intro)) {
+                Text(it, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 22.sp, color = MuyeonColors.body)
+            }
+        }
+        val basic = listOf(
+            stringResource(R.string.dancer_major) to (d.genres.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: d.major),
+            stringResource(R.string.dancer_birth) to d.birth,
+            stringResource(R.string.dancer_body) to listOfNotNull(d.gender, d.height, d.weight).joinToString(" · ").ifBlank { null },
+            stringResource(R.string.dancer_region) to d.region,
+            stringResource(R.string.dancer_career) to d.career?.let(ResumeOptions::careerLabel)?.takeIf { it.isNotBlank() },
+        )
+        if (basic.any { !it.second.isNullOrBlank() }) {
+            ProfileSection(stringResource(R.string.dancer_sec_basic)) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { InfoRows(basic) }
+            }
+        }
+        if (d.availableDays.isNotEmpty() || d.availableTimeSlots.isNotEmpty()) {
+            ProfileSection(stringResource(R.string.dancer_sec_lesson_time)) {
+                ProfileLessonTimeGrid(d.availableDays.map { it.take(1) }, d.availableTimeSlots)
+            }
+        }
+        d.careers?.let { ProfileSection(stringResource(R.string.dancer_sec_career)) { Lines(it) } }
+        d.education?.let { ProfileSection(stringResource(R.string.dancer_education)) { Lines(it) } }
+        d.companyCareer?.let { cc ->
+            ProfileSection("경력 · 자격") {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { InfoRows(listOf("무용단 경력" to cc)) }
+            }
+        }
+        d.performances?.let { ProfileSection("공연 이력") { Lines(it) } }
+        d.awards?.let { ProfileSection("수상 이력") { LineList(it) } }
+        d.images.drop(1).takeIf { it.isNotEmpty() }?.let { imgs ->
+            ProfileSection("포트폴리오") { PortfolioGrid(imgs, allowSave = isSelf) }
+        }
+        ProfileVideoSection(d.videoUrl)
+        ProfileSection(stringResource(R.string.dancer_sec_reviews)) {
+            Text(
+                stringResource(R.string.dancer_reviews_all),
+                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                lineHeight = 16.sp, color = MuyeonColors.primary,
+                modifier = Modifier.clickable(onClick = onReviews),
+            )
+        }
+    }
+}
+
+/** 줄바꿈으로 이어 붙인 글 → 한 줄씩(강사 상세 학력·공연 이력과 같은 글자, 간격 6). */
+@Composable
+private fun Lines(text: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        text.replace("\r", "").split("\n").map { it.trim() }.filter { it.isNotEmpty() }.forEach { BodyText(it) }
+    }
 }

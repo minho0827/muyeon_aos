@@ -3,21 +3,15 @@ package com.muyeon.app.ui.resume
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Slideshow
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Phone
@@ -37,17 +31,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.muyeon.app.theme.customFontFamily
-import com.muyeon.app.ui.common.ImageViewerActivity
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.common.MuyeonDialog
 import com.muyeon.app.ui.common.MuyeonDialogAction
@@ -59,7 +49,6 @@ import com.muyeon.app.ui.review.ReviewList
 import com.muyeon.app.ui.review.ReviewOptions
 import com.muyeon.app.webview.ActiveRole
 import kotlinx.coroutines.launch
-import org.json.JSONArray
 import java.util.Locale
 
 /**
@@ -181,19 +170,10 @@ fun PublicProfileScreen(
                         }
                         Spacer(Modifier.weight(1f))
                         if (!preview) {
-                            Box(
-                                Modifier.size(40.dp).clip(CircleShape).clickable {
-                                    val next = !scrapped
-                                    scrapped = next
-                                    scope.launch { api.setScrap(userId, next).onFailure { scrapped = !next } }
-                                },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    if (scrapped) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, "찜",
-                                    tint = if (scrapped) MuyeonColors.primary else MuyeonColors.hint,
-                                    modifier = Modifier.size(22.dp),
-                                )
+                            ProfileFavoriteButton(scrapped) {
+                                val next = !scrapped
+                                scrapped = next
+                                scope.launch { api.setScrap(userId, next).onFailure { scrapped = !next } }
                             }
                         }
                     }
@@ -255,13 +235,7 @@ fun PublicProfileScreen(
             // 하단 CTA(iOS ctaBar) — 채용 시점은 무료 [채팅하기] 하나,
             //  일반은 기존 채팅방이 있을 때만 [문의하기] + [레슨 문의](이미 받은 견적이 있으면 [받은 견적 보기]).
             if (!hideCta && !isSelf) {
-                Row(
-                    Modifier.fillMaxWidth()
-                        .shadow(8.dp, ambientColor = Color.Black.copy(alpha = 0.05f), spotColor = Color.Black.copy(alpha = 0.05f))
-                        .background(MuyeonColors.surface)
-                        .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
+                ProfileCtaBar {
                     if (p.isDemoProfile == true && !recruitMode) {
                         CtaButton("문의하기", filled = false, enabled = false, modifier = Modifier.weight(1f)) {}
                         CtaButton("레슨 견적 요청하기", filled = true, enabled = false, modifier = Modifier.weight(1f)) {}
@@ -391,27 +365,7 @@ fun PublicProfileScreen(
  */
 @Composable
 private fun ProfileHero(p: PublicProfile) {
-    val url = QuoteUi.imageUrl(p.image)
-    Box(Modifier.fillMaxWidth().height(if (url != null) 360.dp else 240.dp).background(MuyeonColors.tileIdle)) {
-        if (url != null) {
-            com.muyeon.app.ui.components.BlurFitImage(url, Modifier.matchParentSize())
-        } else {
-            Icon(
-                Icons.Filled.Person, null, tint = MuyeonColors.hint,
-                modifier = Modifier.align(Alignment.Center).size(64.dp),
-            )
-        }
-        p.genres?.firstOrNull()?.let { genre ->
-            Text(
-                "$genre 강사",
-                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 12.sp,
-                lineHeight = 14.sp, color = Color.White,
-                modifier = Modifier.align(Alignment.BottomStart).padding(12.dp)
-                    .clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.55f))
-                    .padding(horizontal = 10.dp, vertical = 5.dp),
-            )
-        }
-    }
+    ProfileHeroImage(p.image, p.genres?.firstOrNull()?.let { "$it 강사" })
 }
 
 /** 지역·전문분야 회색 칩 + 평점(탭 → 전체 후기) — iOS chipRow. */
@@ -457,17 +411,6 @@ private fun ChipRow(p: PublicProfile, onOpenReviews: () -> Unit) {
             }
         }
     }
-}
-
-@Composable
-private fun GrayChip(text: String) {
-    Text(
-        text,
-        fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 15.sp,
-        color = MuyeonColors.textSub, maxLines = 1,
-        modifier = Modifier.clip(RoundedCornerShape(50)).background(MuyeonColors.tileIdle)
-            .padding(horizontal = 10.dp, vertical = 5.dp),
-    )
 }
 
 /**
@@ -625,65 +568,6 @@ private fun BasicInfoSection(p: PublicProfile) {
 private fun quoteCategoryOf(p: PublicProfile): String? =
     p.genres?.firstNotNullOfOrNull { com.muyeon.domain.model.teacher.LessonGenres.QUOTE_CATEGORY[it] }
 
-/** 라벨 · 값 줄들 — 값이 빈 줄은 그리지 않는다(웹 ProfileRow). */
-@Composable
-private fun InfoRows(rows: List<Pair<String, String?>>) {
-    rows.forEach { (label, value) -> value?.takeIf { it.isNotBlank() }?.let { v -> InfoRow(label) { BodyText(v) } } }
-}
-
-/** 한 줄 — 왼쪽 회색 라벨(고정폭 104, 간격 12 — 웹 .dancer-profile-row·iOS 와 같음) + 오른쪽 값. */
-@Composable
-private fun InfoRow(label: String, value: @Composable () -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-        Text(
-            label, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 20.sp,
-            color = MuyeonColors.textSub, modifier = Modifier.width(104.dp),
-        )
-        Spacer(Modifier.width(12.dp))
-        Box(Modifier.weight(1f)) { value() }
-    }
-}
-
-@Composable
-private fun BodyText(text: String) {
-    Text(text, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp, color = MuyeonColors.body)
-}
-
-/**
- * 여러 줄(줄당 1건) 텍스트 — 자격증·수상(iOS lineList).
- *  ★ 2026-11-08 줄맞춤: 회원이 공백 여러 개로 칸을 맞춰 적은 글(예: "제8회          “     2010.4.25금상")은
- *   글자 폭이 다른 글꼴에서 어긋난다(웹도 공백을 줄여 같은 문제). 줄마다 [이름 | 날짜·결과] 두 칸으로 나눠
- *   오른쪽 칸을 세로로 맞춘다 — 나누는 기준: 공백 2칸 이상, 없으면 'YYYY.M.D' 날짜가 시작하는 곳. 못 나누면 한 칸 그대로.
- */
-@Composable
-private fun LineList(text: String) {
-    val lines = text.replace("\r", "").split("\n").map { it.trim() }.filter { it.isNotEmpty() }
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        lines.forEach { line ->
-            val cells = splitAligned(line)
-            if (cells == null) BodyText(line)
-            else Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                Box(Modifier.weight(1f)) { BodyText(cells.first) }
-                Spacer(Modifier.width(12.dp))
-                Text(cells.second, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp,
-                    color = MuyeonColors.body, maxLines = 1, softWrap = false)
-            }
-        }
-    }
-}
-
-private val MULTI_SPACE = Regex("\\s{2,}")
-private val DATE_AT = Regex("(?<!\\d)(19|20)\\d{2}\\.\\s?\\d{1,2}\\.\\s?\\d{1,2}\\.?")
-
-/** 한 줄 → (이름, 날짜·결과). 나눌 곳이 없으면 null. 가운데 칸(“ 같은 반복 표시)은 이름 쪽에 붙인다. */
-private fun splitAligned(line: String): Pair<String, String>? {
-    val parts = line.split(MULTI_SPACE).filter { it.isNotBlank() }
-    if (parts.size >= 2) return parts.dropLast(1).joinToString(" ") to parts.last()
-    val m = DATE_AT.find(line) ?: return null
-    if (m.range.first == 0) return null
-    return line.substring(0, m.range.first).trim() to line.substring(m.range.first).trim()
-}
-
 /** 경력 요약 — 최근 2건 + "외 N건" · "경력 X"(iOS careerSummary). */
 @Composable
 private fun CareerSummary(cs: List<CareerItem>, bucket: String?) {
@@ -707,36 +591,6 @@ private fun CareerSummary(cs: List<CareerItem>, bucket: String?) {
 @Composable
 private fun SubText(text: String) {
     Text(text, fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 16.sp, color = MuyeonColors.textSub)
-}
-
-/** 포트폴리오 — 4열 정사각 그리드 + 마지막 셀 "+N", 탭 → 풀스크린 뷰어(본인만 저장 허용). iOS portfolioGrid. */
-@Composable
-private fun PortfolioGrid(imgs: List<String>, allowSave: Boolean) {
-    val ctx = LocalContext.current
-    val visible = imgs.take(4)
-    val more = imgs.size - visible.size
-    val urls = imgs.mapNotNull { QuoteUi.imageUrl(it) }
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        visible.forEachIndexed { idx, path ->
-            Box(
-                Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(8.dp))
-                    .background(MuyeonColors.tileIdle)
-                    .clickable { ImageViewerActivity.start(ctx, JSONArray(urls).toString(), idx, allowSave) },
-                contentAlignment = Alignment.Center,
-            ) {
-                AsyncImage(QuoteUi.imageUrl(path), null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(), placeholder = com.muyeon.app.ui.components.imageLoadingPainter())
-                if (idx == visible.size - 1 && more > 0) {
-                    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)))
-                    Text(
-                        "+$more",
-                        fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
-                        lineHeight = 18.sp, color = Color.White,
-                    )
-                }
-            }
-        }
-        repeat(4 - visible.size) { Spacer(Modifier.weight(1f)) }
-    }
 }
 
 /** 연락처 — 서버가 열람 권한을 판단해 내려준 경우만(꾸민·이미지 레이아웃 공통). */
@@ -788,29 +642,7 @@ private fun ContactSection(p: PublicProfile) {
  */
 @Composable
 private fun VideoSection(p: PublicProfile) {
-    val ctx = LocalContext.current
-    val url = p.videoUrl?.trim()?.takeIf { it.startsWith("http://", true) || it.startsWith("https://", true) } ?: return
-    ProfileSection("영상") {
-        Row(
-            Modifier.fillMaxWidth().clickable {
-                runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
-            },
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                "영상 포트폴리오",
-                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
-                lineHeight = 18.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
-            )
-            Icon(Icons.Filled.Slideshow, null, tint = MuyeonColors.primary, modifier = Modifier.size(14.dp))
-            Spacer(Modifier.width(4.dp))
-            Text(
-                "영상 열기",
-                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                lineHeight = 16.sp, color = MuyeonColors.primary,
-            )
-        }
-    }
+    ProfileVideoSection(p.videoUrl)
 }
 
 /** 레슨 후기 요약 — 태그 배지(상위 4) + 최근 3개(별 5개·작성자·내용) + 전체보기. iOS reviewsSection. */
@@ -886,107 +718,12 @@ private fun ReviewsSection(reviews: ReviewList?, onOpenReviews: () -> Unit, mine
  */
 @Composable
 private fun LessonTimeGrid(p: PublicProfile) {
-    val days = p.availableDays.orEmpty().toSet()
-    val slots = p.availableTimeSlots.orEmpty().toSet()
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Spacer(Modifier.width(34.dp))
-            ResumeOptions.weekDays.forEach { d ->
-                Text(
-                    d,
-                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
-                    lineHeight = 16.sp, color = MuyeonColors.textSub, textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-        ResumeOptions.gridRows.forEach { (label, keys) ->
-            val rowOn = keys.any { it in slots } || slots.isEmpty()
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    label,
-                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
-                    lineHeight = 16.sp, color = MuyeonColors.textSub, modifier = Modifier.width(34.dp),
-                )
-                ResumeOptions.weekDays.forEach { d ->
-                    val on = rowOn && (days.isEmpty() || d in days) && !(days.isEmpty() && slots.isEmpty())
-                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        Box(Modifier.size(8.dp).clip(CircleShape).background(if (on) MuyeonColors.primary else MuyeonColors.border))
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** 섹션 — 위 구분선(F7F7F7, 위아래 14) + 제목(Bold 15) + 내용, 간격 10(iOS section). */
-@Composable
-private fun ProfileSection(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-        HorizontalDivider(Modifier.padding(vertical = 14.dp), thickness = Dp.Hairline, color = MuyeonColors.tileIdle)
-        Spacer(Modifier.height(10.dp))
-        Text(
-            title,
-            fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
-            lineHeight = 18.sp, color = MuyeonColors.textHead,
-        )
-        Spacer(Modifier.height(10.dp))
-        content()
-    }
+    ProfileLessonTimeGrid(p.availableDays.orEmpty(), p.availableTimeSlots.orEmpty())
 }
 
 @Composable
 private fun BodySection(title: String, text: String) {
     ProfileSection(title) { BodyText(text) }
-}
-
-/** 히어로 위 원형 버튼 — 검정 35% 원 + 흰 아이콘(iOS backButton/moreMenu). */
-@Composable
-private fun CircleIconButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    desc: String,
-    modifier: Modifier = Modifier,
-    iconSize: androidx.compose.ui.unit.Dp = 20.dp,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier.size(36.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.35f)).clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, desc, tint = Color.White, modifier = Modifier.size(iconSize))
-    }
-}
-
-/** 하단 CTA 버튼 — 채움: 주황 바탕 흰 글자 / 테두리: EAEAEA 선 + 검정 글자 / 비활성: 회색(iOS ctaBar). */
-@Composable
-private fun CtaButton(
-    text: String,
-    filled: Boolean,
-    enabled: Boolean = true,
-    modifier: Modifier = Modifier,
-    keepFilledWhenDisabled: Boolean = false,
-    onClick: () -> Unit,
-) {
-    val active = enabled || keepFilledWhenDisabled
-    val shape = RoundedCornerShape(12.dp)
-    Text(
-        text,
-        fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp, lineHeight = 19.sp,
-        color = when {
-            filled -> Color.White
-            active -> MuyeonColors.textHead
-            else -> MuyeonColors.hint
-        },
-        textAlign = TextAlign.Center,
-        modifier = modifier
-            .clip(shape)
-            .then(
-                if (filled) Modifier.background(if (active) MuyeonColors.primary else MuyeonColors.hint)
-                else Modifier.border(1.dp, MuyeonColors.border, shape)
-            )
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(vertical = 15.dp),
-    )
 }
 
 /** 신고 사유 선택 시트 — iOS 와 같은 사유·순서·서버 코드. */

@@ -163,7 +163,8 @@ object NativeRoutes {
             return Target.Action("openApplicantResume", mapOf("applicationKind" to kind,
                 (when (kind) { "SUB" -> "subId"; "CASTING" -> "callId"; else -> "jobId" }) to pid, "applicationId" to aid))
         }
-        DANCER.find(p)?.let { return Target.Route(Screen.DancerDetail.build(it.groupValues[1].toLong()), auth = true) }
+        // ★ 2026-11-15 무용수 상세는 비회원도 연다(서버가 소개만 준다) — 로그인 먼저 열지 않는다.
+        DANCER.find(p)?.let { return Target.Route(Screen.DancerDetail.build(it.groupValues[1].toLong())) }
         // 캐스팅 공고 상세 — 앱 캐스팅·무대 화면(지원 내역·찜에서 연다).
         CASTING.find(p)?.let { return Target.Action("openCastingStage", mapOf("castingId" to it.groupValues[1])) }
         MEMBERSHIP.find(p)?.let { return Target.Action("openMembership") }
