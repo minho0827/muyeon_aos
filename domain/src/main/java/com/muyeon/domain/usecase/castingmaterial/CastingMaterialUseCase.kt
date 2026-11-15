@@ -15,11 +15,13 @@ class CastingMaterialUseCase(private val repo: CastingMaterialRepository) {
 
     suspend fun submit(kind: CastingMaterialKind, images: List<String>, instagram: String, link: String): ApiResult<Unit> {
         if (images.isEmpty()) return ApiResult.Error(IllegalArgumentException("images"), NO_IMAGES)
+        if (kind.needsLink && instagram.isBlank() && link.isBlank()) return ApiResult.Error(IllegalArgumentException("link"), NEEDS_LINK)
         return repo.create(kind, images, instagram.trim().ifEmpty { null }, link.trim().ifEmpty { null })
     }
 
     companion object {
         const val MAX_IMAGES = 20
         const val NO_IMAGES = "캡처 사진을 1장 이상 올려 주세요."
+        const val NEEDS_LINK = "기타 소식은 원문 링크(인스타그램 또는 다른 주소)를 넣어 주세요."
     }
 }

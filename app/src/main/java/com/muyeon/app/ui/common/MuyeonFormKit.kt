@@ -84,11 +84,13 @@ fun FormCard(title: String, icon: ImageVector, content: @Composable ColumnScope.
 
 /** 칸 제목 + (필수면) 주황 *. [error] 면 제목이 빨강(필수값 확인에서 빠진 칸). */
 @Composable
-fun FormFieldHeader(text: String, required: Boolean = false, hint: String? = null, error: Boolean = false) {
+fun FormFieldHeader(text: String, required: Boolean = false, hint: String? = null, error: Boolean = false, trailing: (@Composable () -> Unit)? = null) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(text, style = Sub, color = if (error) com.muyeon.app.ui.theme.AppColors.Danger else MuyeonColors.textSub)
         if (required) Text("*", style = Sub, color = MuyeonColors.primary, modifier = Modifier.padding(start = 2.dp))
         if (hint != null) Text(hint, style = Sub.copy(fontSize = 12.sp), color = MuyeonColors.textSub, modifier = Modifier.padding(start = 4.dp))
+        // ★ 11-15 제목 옆 작은 표시(로그인 '최근 로그인' 등)
+        if (trailing != null) Box(Modifier.padding(start = 8.dp)) { trailing() }
     }
 }
 
@@ -98,14 +100,17 @@ fun FormFieldHeader(text: String, required: Boolean = false, hint: String? = nul
  *   등록·다음에서 빠졌을 때 이 칸으로 스크롤·제목 빨강·'필수 항목이에요'(RequiredForm).
  */
 @Composable
-fun FormField(label: String, required: Boolean = false, hint: String? = null, filled: Boolean? = null, content: @Composable ColumnScope.() -> Unit) {
+fun FormField(
+    label: String, required: Boolean = false, hint: String? = null, filled: Boolean? = null,
+    trailing: (@Composable () -> Unit)? = null, content: @Composable ColumnScope.() -> Unit,
+) {
     val form = LocalRequiredForm.current
     val check = form != null && required && filled != null
     Column(
         (if (check) Modifier.requiredField(form!!, label, label, filled!!) else Modifier),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        FormFieldHeader(label, required, hint, error = check && form!!.isError(label))
+        FormFieldHeader(label, required, hint, error = check && form!!.isError(label), trailing = trailing)
         content()
         if (check) RequiredHint(form!!, label)
     }

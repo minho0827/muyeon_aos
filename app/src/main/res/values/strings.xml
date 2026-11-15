@@ -725,7 +725,7 @@
     <string name="my_menu_dancers">무용수 이력서 열람</string>
     <string name="my_menu_dancer_resume">무용수 이력서 관리</string>
     <string name="my_menu_quote_request">레슨 요청하기</string>
-    <string name="my_menu_my_quotes">레슨 요청 내역</string>
+    <string name="my_menu_my_quotes">내 레슨 요청</string>
     <string name="my_menu_recommend_blocks">추천 제외한 강사</string>
     <string name="my_menu_credentials">경력·자격 확인</string>
     <string name="my_menu_space_bookings">공간 예약 내역</string>
@@ -734,6 +734,7 @@
     <string name="my_menu_pending_postings">내 공고 (비공개 %1$d건)</string>
     <string name="my_menu_casting_materials">캐스팅 자료 업로드</string>
     <string name="my_menu_performance_materials">공연 자료 업로드</string>
+    <string name="my_menu_etc_materials">기타 소식 업로드</string>
     <string name="my_desc_lesson_hub">수강생 상담 · 수강생 찾기 · 레슨 소개</string>
     <string name="my_desc_academy_hub">수업 소개 · 수강생 상담 · 수강생 찾기</string>
     <string name="my_desc_my_postings">공고 등록 · 지원자 확인</string>
@@ -748,6 +749,7 @@
     <string name="my_desc_pending_verify">%1$s 인증을 마치면 공개돼요</string>
     <string name="my_desc_casting_materials">인스타 캡처를 올리면 AI가 바로 캐스팅 공고로 등록해요</string>
     <string name="my_desc_performance_materials">인스타 캡처를 올리면 AI가 바로 공연으로 등록해요</string>
+    <string name="my_desc_etc_materials">인스타 캡처를 올리면 AI가 캐스팅 탭 기타 소식으로 등록해요</string>
     <string name="pending_role_teacher">강사</string>
     <string name="pending_role_academy">학원</string>
     <string name="pending_role_team">공연팀</string>

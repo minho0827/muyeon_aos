@@ -49,8 +49,9 @@ fun CastingMaterialsScreen(viewModel: CastingMaterialsViewModel, onBack: () -> U
     val s by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val form = rememberRequiredForm()
-    val casting = viewModel.kind == CastingMaterialKind.CASTING
-    val doneText = stringResource(if (casting) R.string.casting_mat_done_casting else R.string.casting_mat_done_performance)
+    val kind = viewModel.kind
+    fun pick(casting: Int, performance: Int, etc: Int) = when (kind) { CastingMaterialKind.CASTING -> casting; CastingMaterialKind.PERFORMANCE -> performance; CastingMaterialKind.ETC -> etc }
+    val doneText = stringResource(pick(R.string.casting_mat_done_casting, R.string.casting_mat_done_performance, R.string.casting_mat_done_etc))
     val failText = stringResource(R.string.casting_mat_failed)
     val uploadFail = stringResource(R.string.casting_mat_upload_failed)
     LaunchedEffect(viewModel) {
@@ -74,7 +75,7 @@ fun CastingMaterialsScreen(viewModel: CastingMaterialsViewModel, onBack: () -> U
 
     Column(Modifier.fillMaxSize().background(AppColors.Surface).navigationBarsPadding().imePadding()) {
         MainTopBar(
-            title = stringResource(if (casting) R.string.casting_mat_title_casting else R.string.casting_mat_title_performance),
+            title = stringResource(pick(R.string.casting_mat_title_casting, R.string.casting_mat_title_performance, R.string.casting_mat_title_etc)),
             primary = false, onBack = onBack,
         )
         when (s.allowed) {
@@ -86,7 +87,7 @@ fun CastingMaterialsScreen(viewModel: CastingMaterialsViewModel, onBack: () -> U
                     verticalArrangement = Arrangement.spacedBy(Dimensions.spacingXL),
                 ) {
                     Text(
-                        stringResource(if (casting) R.string.casting_mat_intro_casting else R.string.casting_mat_intro_performance),
+                        stringResource(pick(R.string.casting_mat_intro_casting, R.string.casting_mat_intro_performance, R.string.casting_mat_intro_etc)),
                         style = AppTypography.Body14, color = AppColors.TextSub,
                     )
                     val label = stringResource(R.string.casting_mat_images)
@@ -97,10 +98,10 @@ fun CastingMaterialsScreen(viewModel: CastingMaterialsViewModel, onBack: () -> U
                         )
                         RequiredHint(form, KEY_IMAGES)
                     }
-                    FormField(stringResource(R.string.casting_mat_insta)) {
+                    FormField(stringResource(if (kind.needsLink) R.string.casting_mat_insta_required else R.string.casting_mat_insta)) {
                         FormTextField(s.instagram, viewModel::onInstagram, stringResource(R.string.casting_mat_insta_ph), max = 500, tag = "castingMat.insta")
                     }
-                    FormField(stringResource(R.string.casting_mat_link)) {
+                    FormField(stringResource(if (kind.needsLink) R.string.casting_mat_link_required else R.string.casting_mat_link)) {
                         FormTextField(s.link, viewModel::onLink, stringResource(R.string.casting_mat_link_ph), max = 500, tag = "castingMat.link")
                     }
                     s.message?.let { Text(it, style = AppTypography.Body14, color = AppColors.Danger) }
@@ -109,8 +110,7 @@ fun CastingMaterialsScreen(viewModel: CastingMaterialsViewModel, onBack: () -> U
                             when {
                                 s.uploading -> R.string.casting_mat_uploading
                                 s.saving -> R.string.casting_mat_saving
-                                casting -> R.string.casting_mat_submit_casting
-                                else -> R.string.casting_mat_submit_performance
+                                else -> pick(R.string.casting_mat_submit_casting, R.string.casting_mat_submit_performance, R.string.casting_mat_submit_etc)
                             },
                         ),
                         onClick = { if (form.validate(context)) viewModel.submit(failText) },

@@ -90,6 +90,8 @@ fun MemberMyHome(
                 val items = listOf(
                     MyMenuItem(stringResource(R.string.my_menu_casting_materials), "camera", "/my/castingMaterials", desc = stringResource(R.string.my_desc_casting_materials)),
                     MyMenuItem(stringResource(R.string.my_menu_performance_materials), "camera", "/my/performanceMaterials", desc = stringResource(R.string.my_desc_performance_materials)),
+                    // ★ 11-15 캐스팅 탭 '기타 소식' 칸(워크숍·특강·세미나·공모 등)
+                    MyMenuItem(stringResource(R.string.my_menu_etc_materials), "camera", "/my/etcMaterials", desc = stringResource(R.string.my_desc_etc_materials)),
                 )
                 MyMenuList(items.map { MyMenuRow(it.path!!, it.title, MyIcons.of(it.icon), it.desc) }, onClick = { r -> items.first { it.path == r.key }.let(onMenu) }, topPadding = false)
             }

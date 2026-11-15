@@ -13,7 +13,7 @@ class StageCategoryTest {
     private fun n(id: Int) = StageNewsItem(id, "t$id", "", null, "https://x", null, null, null)
 
     @Test fun `실패·빈 목록이면 기본 목록(국내소식·콩쿠르 없음)`() {
-        val codes = listOf("CASTING", "PERFORMANCE", "ADMISSION", "SCHOOL")
+        val codes = listOf("CASTING", "PERFORMANCE", "ADMISSION", "ETC")
         assertEquals(codes, StageCategory.resolve(null).map { it.code })
         assertEquals(codes, StageCategory.resolve(emptyList()).map { it.code })
         assertEquals("캐스팅 공고", StageCategory.resolve(null).first().label)

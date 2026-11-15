@@ -465,8 +465,7 @@ fun AppNavHost(
             )
         }
         composable(Screen.CastingMaterials.route, arguments = listOf(navArgument(Screen.CastingMaterials.ARG_KIND) { type = NavType.StringType })) { e ->
-            val kind = if (e.arguments?.getString(Screen.CastingMaterials.ARG_KIND) == "PERFORMANCE")
-                com.muyeon.domain.model.castingmaterial.CastingMaterialKind.PERFORMANCE else com.muyeon.domain.model.castingmaterial.CastingMaterialKind.CASTING
+            val kind = com.muyeon.domain.model.castingmaterial.CastingMaterialKind.of(e.arguments?.getString(Screen.CastingMaterials.ARG_KIND))
             com.muyeon.app.ui.castingmaterial.CastingMaterialsScreen(
                 viewModel = org.koin.androidx.compose.koinViewModel(key = kind.code, parameters = { org.koin.core.parameter.parametersOf(kind) }),
                 onBack = { navController.popBackStack() },

@@ -70,7 +70,8 @@ data class StageCategory(val code: String, val label: String, val kind: String) 
             StageCategory(CASTING_CODE, "캐스팅 공고", KIND_CASTING),
             StageCategory("PERFORMANCE", "공연·축제", KIND_NEWS),
             StageCategory("ADMISSION", "무용입시", KIND_NEWS),
-            StageCategory("SCHOOL", "학교·교육과정", KIND_NEWS),
+            // ★ 11-15 학교·교육과정 → 업로드로 채우는 기타 소식
+            StageCategory("ETC", "기타 소식", KIND_NEWS),
         )
 
         /** 서버 목록 정리 — 빈 코드·모르는 kind·겹친 코드는 뺀다. null(실패)·빈 목록이면 [FALLBACK]. */

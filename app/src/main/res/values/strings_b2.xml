@@ -71,6 +71,12 @@
     <!-- 캐스팅·공연 자료 업로드(/my/castingMaterials · /my/performanceMaterials) -->
     <string name="casting_mat_title_casting">캐스팅 자료 업로드</string>
     <string name="casting_mat_title_performance">공연 자료 업로드</string>
+    <string name="casting_mat_title_etc">기타 소식 업로드</string>
+    <string name="casting_mat_intro_etc">워크숍·특강·세미나·공모처럼 캐스팅·공연이 아닌 무용 소식을 캡처해서 올려 주세요. AI가 바로 내용을 읽고 포스터만 잘라(아이콘·좋아요 줄 제외) 캐스팅 탭 기타 소식으로 등록해요. 누르면 원문으로 가니 링크를 꼭 넣어 주세요.</string>
+    <string name="casting_mat_submit_etc">AI로 기타 소식 등록하기</string>
+    <string name="casting_mat_done_etc">올렸어요. AI가 바로 읽어서 기타 소식으로 등록해요. 보통 1분 안에 끝나요.</string>
+    <string name="casting_mat_insta_required">인스타그램 링크 (둘 중 하나 필수)</string>
+    <string name="casting_mat_link_required">그 밖의 링크 (둘 중 하나 필수)</string>
     <string name="casting_mat_denied">무용연 운영 계정만 이용할 수 있어요.</string>
     <string name="casting_mat_intro_casting">인스타그램 캐스팅 게시물을 캡처해서 올려 주세요. AI가 바로 내용을 읽고 포스터만 잘라(아이콘·좋아요 줄 제외) 캐스팅 공고(으)로 등록해요. 같은 게시물의 여러 장은 한 번에 함께 올리면 하나로 합쳐요.</string>
     <string name="casting_mat_intro_performance">인스타그램 공연 게시물을 캡처해서 올려 주세요. AI가 바로 내용을 읽고 포스터만 잘라(아이콘·좋아요 줄 제외) 공연(으)로 등록해요. 같은 게시물의 여러 장은 한 번에 함께 올리면 하나로 합쳐요.</string>

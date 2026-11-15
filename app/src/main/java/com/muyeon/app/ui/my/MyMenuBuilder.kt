@@ -29,7 +29,7 @@ object MyMenuBuilder {
         val m = Menus(str)
 
         // 1) 서버 또는 기본
-        val groups: MutableList<MutableList<MyMenuItem>> = if (!server.isNullOrEmpty()) {
+        var groups: MutableList<MutableList<MyMenuItem>> = if (!server.isNullOrEmpty()) {
             val items = if (isDancer) server.map { it.dancerOrder() }.sortedWith(compareBy({ it.groupNo ?: 0 }, { it.order ?: 0 })) else server
             val out = mutableListOf<MutableList<MyMenuItem>>()
             var prev: Int? = Int.MIN_VALUE
@@ -43,8 +43,11 @@ object MyMenuBuilder {
             m.base(type).map { g -> g.flatMap { if (it.bridge == B_NOTIFICATIONS) listOf(it) + m.support else listOf(it) }.toMutableList() }.toMutableList()
         }
 
-        // ★ 2026-11-14 '받은 견적'(서버 옛 이름) → 여는 화면 제목과 같은 '레슨 요청 내역'.
+        // ★ 2026-11-14 '받은 견적'(서버 옛 이름) → 여는 화면 제목과 같은 '내 레슨 요청'(11-15 이름 맞춤).
         groups.forEach { g -> g.replaceAll { if (it.bridge == B_MY_QUOTES) it.copy(title = str(R.string.my_menu_my_quotes)) else it } }
+        // ★ 11-15 '레슨 요청하기'·'레슨 요청 내역'이 나란히 있어 같은 메뉴가 두 번인 것처럼 보였다 →
+        //  '내 레슨 요청' 하나만 둔다(여는 화면 '내 레슨 요청'에 [레슨 요청하기]가 이미 있다, iOS·웹 같음).
+        groups = dropQuoteRequestBesideMyQuotes(groups)
 
         // 2) 강사·원장·무용수 보정
         var final = groups.map { group ->
@@ -128,6 +131,13 @@ object MyMenuBuilder {
      *  탈퇴 후 재가입하던 문제. 개인정보 관리는 주황 머리를 누르면 열린다(목록엔 중복으로 두지 않는다).
      *  서버 메뉴 순서·이름과 상관없이 여기서 맞춘다(iOS memberTypeOnTop 1:1).
      */
+    /** 회원 '내 레슨 요청'(myQuotes)이 있으면 옆의 '레슨 요청하기'(quoteRequest)를 뺀다 — 같은 화면 안에 있다. */
+    fun dropQuoteRequestBesideMyQuotes(groups: List<List<MyMenuItem>>): MutableList<MutableList<MyMenuItem>> {
+        val hasMyQuotes = groups.any { g -> g.any { it.bridge == B_MY_QUOTES } }
+        return groups.map { g -> g.filter { !(hasMyQuotes && it.bridge == "quoteRequest") }.toMutableList() }
+            .filter { it.isNotEmpty() }.toMutableList()
+    }
+
     fun memberTypeOnTop(groups: List<List<MyMenuItem>>, title: String): List<List<MyMenuItem>> {
         val row = MyMenuItem(title, "myinfo", bridge = MyActions.MEMBER_TYPE)
         val out = groups.map { g -> g.filter { it.bridge != MyActions.MEMBER_TYPE }.toMutableList() }.toMutableList()

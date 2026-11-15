@@ -76,7 +76,11 @@ fun LoginScreen(
                 textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
             )
             Column(Modifier.fillMaxWidth().padding(top = Dimensions.spacing3XL), verticalArrangement = Arrangement.spacedBy(Dimensions.spacingM)) {
-                FormField(stringResource(R.string.auth_login_email), required = true) {
+                // ★ 11-15 이메일로 마지막 로그인했으면 '이메일*' 옆에(로그인 버튼 위에 붙어 버튼 표시처럼 보였다, 웹·iOS 같음).
+                val recentTag: (@Composable () -> Unit)? = if (recent == LoginProvider.EMAIL) {
+                    { LevelBadge(stringResource(R.string.auth_login_recent), CategoryColors.Level.End) }
+                } else null
+                FormField(stringResource(R.string.auth_login_email), required = true, trailing = recentTag) {
                     FormTextField(s.email, viewModel::onEmail, stringResource(R.string.auth_login_email_placeholder), 50, "login.email", KeyboardType.Email)
                 }
                 FormField(stringResource(R.string.auth_login_password), required = true) {
@@ -93,7 +97,6 @@ fun LoginScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(Dimensions.spacingL),
             ) {
-                if (recent == LoginProvider.EMAIL) LevelBadge(stringResource(R.string.auth_login_recent), CategoryColors.Level.End)
                 MdButton(stringResource(R.string.auth_login_submit), viewModel::submit, loading = s.loading, tag = "login.submit")
                 MdButton(stringResource(R.string.auth_login_signup), viewModel::openSignup, filled = false, tag = "login.signup")
             }

@@ -8,7 +8,7 @@ import com.squareup.moshi.JsonClass
 
 /** ★ 2026-11-08 묶음 2 — casting-materials.service list() 의 items. result 는 AI 처리 결과(created · skipped). */
 @JsonClass(generateAdapter = true)
-data class CastingMaterialCreatedDto(val title: String? = null, val castingId: Long? = null, val performanceId: Long? = null)
+data class CastingMaterialCreatedDto(val title: String? = null, val castingId: Long? = null, val performanceId: Long? = null, val newsId: Long? = null)
 
 @JsonClass(generateAdapter = true)
 data class CastingMaterialSkippedDto(val title: String? = null, val image: Int? = null, val reason: String? = null)
@@ -25,7 +25,7 @@ data class CastingMaterialBatchDto(
     fun toDomain(): CastingMaterialBatch? = id?.let {
         CastingMaterialBatch(
             it, status.orEmpty(), imageCount ?: 0, instagramUrl?.takeIf { s -> s.isNotBlank() }, linkUrl?.takeIf { s -> s.isNotBlank() }, createdAt,
-            result?.created.orEmpty().mapNotNull { c -> if (c.castingId == null && c.performanceId == null) null else CastingMaterialCreated(c.title.orEmpty(), c.castingId, c.performanceId) },
+            result?.created.orEmpty().mapNotNull { c -> if (c.castingId == null && c.performanceId == null && c.newsId == null) null else CastingMaterialCreated(c.title.orEmpty(), c.castingId, c.performanceId, c.newsId) },
             result?.skipped.orEmpty().map { s -> CastingMaterialSkipped(s.title?.takeIf { t -> t.isNotBlank() }, s.image, s.reason) },
             errorMessage?.takeIf { s -> s.isNotBlank() },
         )
@@ -40,7 +40,7 @@ data class CastingMaterialListDto(val items: List<CastingMaterialBatchDto>? = nu
 data class CastingMaterialDeleteDto(val ok: Boolean? = null, val id: Long? = null, val keptCreated: List<CastingMaterialCreatedDto>? = null) {
     fun toDomain(fallbackId: Long) = CastingMaterialDeleted(
         id ?: fallbackId,
-        keptCreated.orEmpty().map { c -> CastingMaterialCreated(c.title.orEmpty(), c.castingId, c.performanceId) },
+        keptCreated.orEmpty().map { c -> CastingMaterialCreated(c.title.orEmpty(), c.castingId, c.performanceId, c.newsId) },
     )
 }
 

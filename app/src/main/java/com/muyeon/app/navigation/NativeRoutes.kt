@@ -136,6 +136,7 @@ object NativeRoutes {
             "/academyProfile" -> return Target.Route(Screen.AcademyEdit.build(query["aiDraft"]?.let(android.net.Uri::decode)), auth = true)
             "/my/castingMaterials" -> return Target.Route(Screen.CastingMaterials.build("CASTING"), auth = true)
             "/my/performanceMaterials" -> return Target.Route(Screen.CastingMaterials.build("PERFORMANCE"), auth = true)
+            "/my/etcMaterials" -> return Target.Route(Screen.CastingMaterials.build("ETC"), auth = true)
             // ★ 2026-11-08 [b1] 가입(약관 가입 모드 · 이메일 가입 · 소셜 추가정보) · 학원 인증 차단 · 점검 — 앱 화면(LoginActivity · GateActivity).
             "/signupTerms" -> if (query["mode"] != "gate") return Target.Action("openSignup", mapOf("path" to clean))
             "/register", "/social-signup" -> return Target.Action("openSignup", mapOf("path" to clean))
