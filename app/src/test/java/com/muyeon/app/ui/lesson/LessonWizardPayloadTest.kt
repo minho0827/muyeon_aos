@@ -51,12 +51,20 @@ class LessonWizardPayloadTest {
 
     @Test
     fun 체험은_학원_수업에만_보인다() {
-        val teacher = LessonWizardDraft().kindOptions(isAcademy = false, isEdit = false).map { it.first }
-        val academy = LessonWizardDraft().kindOptions(isAcademy = true, isEdit = false).map { it.first }
-        val teacherAtAcademy = LessonWizardDraft(bylinePartyId = 7).kindOptions(isAcademy = false, isEdit = false).map { it.first }
+        val teacher = LessonWizardDraft().kindOptions(com.muyeon.domain.model.member.LessonOwnerMode.PERSONAL, isEdit = false).map { it.first }
+        val academy = LessonWizardDraft().kindOptions(com.muyeon.domain.model.member.LessonOwnerMode.ACADEMY, isEdit = false).map { it.first }
+        val teacherAtAcademy = LessonWizardDraft(bylinePartyId = 7).kindOptions(com.muyeon.domain.model.member.LessonOwnerMode.PERSONAL, isEdit = false).map { it.first }
         assertEquals(listOf("REGULAR", "ONEDAY"), teacher)
         assertEquals(listOf("REGULAR", "ONEDAY", "EXPERIENCE"), academy)
         assertTrue("EXPERIENCE" in teacherAtAcademy)
+    }
+
+    @Test
+    fun 명의_칸은_주체_모드가_정한다() {
+        val d = LessonWizardDraft(bylinePartyId = 7)
+        assertEquals(7, d.toCreatePayload(com.muyeon.domain.model.member.LessonOwnerMode.ACADEMY).getInt("asTeacherId"))
+        assertEquals(7, d.toCreatePayload(com.muyeon.domain.model.member.LessonOwnerMode.PERSONAL).getInt("atAcademyId"))
+        assertFalse(LessonWizardDraft().toCreatePayload(com.muyeon.domain.model.member.LessonOwnerMode.ACADEMY).has("asTeacherId"))
     }
 
     @Test

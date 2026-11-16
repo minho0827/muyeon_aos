@@ -292,7 +292,7 @@ class MainActivity : ComponentActivity(), ResultHost {
     private fun showTypeSheet() {
         val s = viewModel.state.value
         if (!s.isLoggedIn || s.switchableTypes.isEmpty()) return
-        val rows = s.switchableTypes.map { it to getString(typeSheetLabel(it)) }
+        val rows = s.switchableTypes.map { it to typeSheetLabel(it) }
         ActiveTypeSheet.showNative(this, rows, s.activeType, emptySet(), viewModel::onTypePicked)
     }
 
@@ -310,13 +310,8 @@ class MainActivity : ComponentActivity(), ResultHost {
         @Volatile private var liveCount = 0
         val isAlive: Boolean get() = liveCount > 0
 
-        fun typeSheetLabel(type: String): Int = when (type) {
-            ActiveType.TEACHER -> R.string.type_sheet_teacher
-            ActiveType.ACADEMY -> R.string.type_sheet_academy
-            ActiveType.DANCER -> R.string.type_sheet_dancer
-            ActiveType.TEAM -> R.string.type_sheet_team
-            else -> R.string.type_sheet_general
-        }
+        /** 유형 시트 한 줄 이름 — 유형 정보 표의 긴 이름(학원·원장 · 공연팀·기획자). */
+        fun typeSheetLabel(type: String): String = com.muyeon.domain.model.member.ActiveTypeInfos.of(type).long
 
         private fun intent(context: Context) = Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)

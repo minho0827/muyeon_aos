@@ -107,7 +107,7 @@ class QuoteDashboardActivity : ResultActivity() {
                     PersonalLessonManagementScreen(
                         quoteApi = api,
                         productApi = productApi,
-                        roleLabel = if (role == "ACADEMY") "학원" else ActiveRole.label(role), // 강사·무용수
+                        roleLabel = com.muyeon.domain.model.member.LessonProviderCopy.roleLabel(role), // 학원 · 강사·무용수
                         onClose = { finish() },
                         onOpenSent = { sentDetail = it },
                         onAutoReply = { autoLauncher.launch(QuoteAutoTemplatesActivity.intent(this)) },
@@ -115,8 +115,8 @@ class QuoteDashboardActivity : ResultActivity() {
                         onEditLesson = { id -> lessonLauncher.launch(LessonActivity.editIntent(this, id)) },
                         onSlots = { id -> lessonLauncher.launch(LessonActivity.slotsIntent(this, id)) },
                         onGoGenreSettings = { openWebAndFinish("/lessonGenres") },
-                        // 레슨 설정(노출·장르)은 강사 전용 — 학원에겐 효과가 없는 화면이다.
-                        onGoLessonSettings = if (role == "ACADEMY") null else {
+                        // 레슨 설정(노출·장르)은 개인 레슨 전용 — 학원에겐 효과가 없는 화면이다(LessonOwnerMode).
+                        onGoLessonSettings = if (!com.muyeon.domain.model.member.LessonOwnerMode.of(role).hasLessonSettings) null else {
                             { lessonLauncher.launch(LessonActivity.settingsIntent(this)) }
                         },
                         lessonReload = lessonReload,
@@ -156,14 +156,13 @@ class QuoteDashboardActivity : ResultActivity() {
     }
 
     /** 일반회원 — iOS presentCustomerQuoteDashboard functions 동일(그룹 없음 = 리스트). */
-    //  무용수 유형은 '레슨 요청하기'를 숨긴다(지난 요청 내역·예약 내역 조회는 허용).
+    //  ★ 2026-11-16 '레슨 요청하기'는 지금 유형과 상관없이 보인다(고객 쪽 유형 관문 제거).
     //  launch = 결과 런처 — 돌아오면 대시보드가 다시 읽는다.
     private fun customerFunctions(launch: (Intent) -> Unit): List<QuoteDashFunction> = listOfNotNull(
         QuoteDashFunction(Icons.Filled.Inbox, "레슨 요청 내역", "받은 제안 확인·채택", activityKey = "receivedQuotes") {
             launch(QuoteHubActivity.intent(this, isPro = false, initialTab = 0))
         },
-        if (ActiveRole.isDancer(this)) null
-        else QuoteDashFunction(Icons.Filled.EditNote, "레슨 요청하기", "새 견적 문진 작성") {
+        QuoteDashFunction(Icons.Filled.EditNote, "레슨 요청하기", "새 견적 문진 작성") {
             launch(QuoteWizardActivity.intent(this, null, null))
         },
         QuoteDashFunction(Icons.Filled.CalendarMonth, "예약 내역", "공간·레슨·취소 내역") {

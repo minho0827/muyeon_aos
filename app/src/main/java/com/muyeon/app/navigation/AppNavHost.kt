@@ -506,8 +506,8 @@ private fun PostingDetailRoute(kind: String, id: Int, onBack: () -> Unit, onOpen
         // 삭제 — 공고 목록(웹·탭)이 다시 읽게 결과 키를 싣고 닫는다.
         onDeleted = { AppResults.publish(setOf(com.muyeon.app.result.ResultKeys.JOB_POSTINGS)); onBack() },
         onWriteResume = {
-            val dancer = com.muyeon.app.webview.ActiveRole.current(context) == "DANCER"
-            com.muyeon.app.ui.resume.ResumeActivity.startEdit(context, null, if (dancer) "dancer" else null)
+            val mode = com.muyeon.app.ui.resume.ResumeMode.forActiveType(com.muyeon.app.webview.ActiveRole.current(context))
+            com.muyeon.app.ui.resume.ResumeActivity.startEdit(context, null, if (mode.isDancer) mode.raw else null)
         },
     )
 }

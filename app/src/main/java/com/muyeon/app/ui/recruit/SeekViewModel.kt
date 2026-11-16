@@ -9,6 +9,7 @@ import com.muyeon.domain.common.fetchCursorPages
 import com.muyeon.domain.common.mergeCursorPage
 import com.muyeon.domain.model.member.ActiveType
 import com.muyeon.domain.model.recruit.SeekFilter
+import com.muyeon.domain.model.recruit.SeekFilterSpec
 import com.muyeon.domain.model.recruit.SeekerCard
 import com.muyeon.domain.model.scrap.ScrapTarget
 import com.muyeon.domain.usecase.recruit.SeekerListUseCase
@@ -29,8 +30,8 @@ import com.muyeon.app.auth.onAccountChanged
 data class SeekUiState(
     val list: PagedList<SeekerCard> = PagedList(),
     val filter: SeekFilter = SeekFilter(),
-    /** 강사 유형이면 필터가 [유형·분야], 그 밖은 [분야·대상·경력](웹 JobBoard seek). */
-    val teacherView: Boolean = false,
+    /** 필터 칸 규칙 — 강사 유형이면 [유형·분야], 그 밖은 [분야·대상·경력](웹 JobBoard seek). 유형이 바뀌면 새로 만든다. */
+    val spec: SeekFilterSpec = SeekFilterSpec.forType(null),
     val likedTeachers: Set<Long> = emptySet(),
     val likedDancers: Set<Long> = emptySet(),
     val isRefreshing: Boolean = false,
@@ -44,7 +45,8 @@ class SeekViewModel(
     private val tokens: TokenStore,
     activeType: ActiveTypeStore,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(SeekUiState(teacherView = ActiveType.visible(activeType.current()) == ActiveType.TEACHER))
+    private var seenType: String = ActiveType.visible(activeType.current())
+    private val _state = MutableStateFlow(SeekUiState(spec = SeekFilterSpec.forType(seenType)))
     val state: StateFlow<SeekUiState> = _state.asStateFlow()
     private val _events = MutableSharedFlow<RecruitEvent>(extraBufferCapacity = 4)
     val events: SharedFlow<RecruitEvent> = _events.asSharedFlow()
@@ -59,7 +61,20 @@ class SeekViewModel(
     }
     private var loadedAt: Long? = null
 
-    fun applyFilter(f: SeekFilter) { _state.update { it.copy(filter = f, list = PagedList()) }; refresh() }
+    fun applyFilter(f: SeekFilter) { _state.update { it.copy(filter = it.spec.clean(f), list = PagedList()) }; refresh() }
+
+    /**
+     * ★ 2026-11-16 유형이 바뀌었다(MY 두 번 누르기 등) — 필터 칸을 새 유형으로 바꾸고, 안 보이는 칸 값을 지운 뒤 다시 받는다.
+     *  같은 유형이면 아무것도 하지 않는다.
+     */
+    fun onTypeChanged(type: String) {
+        val t = ActiveType.visible(type)
+        if (t == seenType) return
+        seenType = t
+        val spec = SeekFilterSpec.forType(t)
+        _state.update { it.copy(spec = spec, filter = spec.clean(it.filter), list = PagedList()) }
+        refresh()
+    }
 
     fun refresh(pull: Boolean = false) {
         job?.cancel()

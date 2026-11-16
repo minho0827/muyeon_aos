@@ -207,10 +207,16 @@ private fun PublicBody(state: QuoteRespondState, data: PublicQuoteDetail, action
             })
             listOf(SheetAction(stringResource(R.string.quote_respond_public_switch, role), true) { if (!state.busy) actions.onSwitch(switchTo) })
         }
-        else -> listOf(
-            SheetAction(stringResource(R.string.quote_respond_public_add_teacher), true) { actions.onAddRole("TEACHER") },
-            SheetAction(stringResource(R.string.quote_respond_public_add_academy), false) { actions.onAddRole("ACADEMY") },
-        )
+        // ★ 2026-11-16 선택지는 레슨 제공 유형표에서 만든다(강사·학원 고정 대신). 첫째가 주 버튼.
+        else -> QuoteRespondRoles.addRoleOptions().mapIndexedNotNull { i, o ->
+            val label = when (o.type) {
+                "TEACHER" -> R.string.quote_respond_public_add_teacher
+                "ACADEMY" -> R.string.quote_respond_public_add_academy
+                "DANCER" -> R.string.quote_respond_public_add_dancer
+                else -> null
+            } ?: return@mapIndexedNotNull null
+            SheetAction(stringResource(label), i == 0) { actions.onAddRole(o.type) }
+        }
     }
     QuoteRespondButtons(
         main + SheetAction(stringResource(R.string.quote_respond_public_browse), false, actions.onHome),

@@ -164,8 +164,10 @@ class CompleteRoleOnboardingUseCase(private val repo: AuthRepository) {
         const val ACADEMY = "ACADEMY"
         const val MYPAGE = "/mypage"
         const val MAIN = "/main"
-        val IDENTITY_ROLES = setOf("TEACHER", "DANCER")
-        val VERIFICATION_REQUIRED_ROLES = setOf("ACADEMY", "TEAM")
+        /** 본인 인증만으로 생기는 유형(강사·무용수) — 유형 정보 표([com.muyeon.domain.model.member.ActiveTypeInfos])에서 읽는다. */
+        val IDENTITY_ROLES: Set<String> get() = com.muyeon.domain.model.member.ActiveTypeInfos.IDENTITY_ROLES
+        /** 서류 심사를 받는 전문 유형(학원·공연팀). */
+        val VERIFICATION_REQUIRED_ROLES: Set<String> get() = com.muyeon.domain.model.member.ActiveTypeInfos.DOCUMENT_ROLES
         val ROLE_LANDING = mapOf("HOBBY" to "/lessons", "SPACE" to "/home", "ACADEMY" to "/jobs", "TEAM" to "/jobs", "TEACHER" to "/jobs", "DANCER" to "/jobs")
     }
 }

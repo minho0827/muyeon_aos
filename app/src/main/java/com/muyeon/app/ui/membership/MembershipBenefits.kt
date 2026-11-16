@@ -10,7 +10,14 @@ package com.muyeon.app.ui.membership
 object MembershipBenefits {
     private val postingKinds = listOf("JOB" to "채용", "SUB" to "대타", "CASTING" to "캐스팅")
 
-    /** isDancer: 무용수 활동 중에는 레슨 활동이 없다(2026-09-26) — 레슨·자동견적 줄을 뺀다. */
+    /**
+     * ★ 2026-11-16 레슨·자동견적 줄을 뺄 유형 — 전문 유형인데 레슨 제공 유형표([com.muyeon.domain.model.member.LessonProviders])에 없는 유형.
+     *  (명부에 무용수가 없으면 무용수, 공연기획.) 일반 회원은 예전처럼 다 보인다.
+     */
+    fun hidesLessonLines(activeType: String?): Boolean =
+        com.muyeon.domain.model.member.ActiveType.isPro(activeType) && !com.muyeon.domain.model.member.LessonProviders.canProvide(activeType)
+
+    /** isDancer: 레슨 활동이 없는 유형([hidesLessonLines]) — 레슨·자동견적 줄을 뺀다. */
     fun lines(l: MembershipLimits?, isDancer: Boolean = false): List<String> {
         if (l == null) return emptyList()
         val out = mutableListOf<String>()

@@ -12,12 +12,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Apartment
-import androidx.compose.material.icons.filled.DirectionsRun
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.TheaterComedy
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -25,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -75,16 +68,10 @@ fun TypeAvatars(types: List<String>, active: String, images: Map<String, String>
             ) {
                 val url = images[t]
                 if (url != null) AsyncImage(QuoteUi.imageUrl(url), null, contentScale = ContentScale.Crop, modifier = Modifier.size(size), placeholder = com.muyeon.app.ui.components.imageLoadingPainter())
-                else Icon(typeIcon(t), null, tint = if (on && selected) AppColors.TextHead else AppColors.TextHint, modifier = Modifier.size(size * 0.62f))
+                else Icon(com.muyeon.app.ui.common.TypeIcons.of(t), null, tint = if (on && selected) AppColors.TextHead else AppColors.TextHint, modifier = Modifier.size(size * 0.62f))
             }
         }
     }
 }
 
-private fun typeIcon(t: String): ImageVector = when (t) {
-    "TEACHER" -> Icons.Filled.School
-    "DANCER" -> Icons.Filled.DirectionsRun
-    "ACADEMY" -> Icons.Filled.Apartment
-    "TEAM" -> Icons.Filled.TheaterComedy
-    else -> Icons.Filled.Person
-}
+

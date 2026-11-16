@@ -50,15 +50,7 @@ fun MemberMyHome(
     val summary = membershipSummary(state.info?.membership, str)
     val noti = state.info?.notiUnread ?: 0
     val quote = state.info?.quoteUnread ?: 0
-    val typeLabel = stringResource(
-        when (type) {
-            ActiveType.TEACHER -> R.string.member_type_teacher
-            ActiveType.ACADEMY -> R.string.member_type_academy
-            ActiveType.DANCER -> R.string.member_type_dancer
-            ActiveType.TEAM -> R.string.member_type_team
-            else -> R.string.member_type_general
-        },
-    )
+    val typeLabel = com.muyeon.domain.model.member.ActiveTypeInfos.of(type).title
     val name = state.info?.name ?: stringResource(R.string.my_default_name)
 
     // 가운데 바로가기 — 무용수 '활동일정' · 공연팀 '일정'(캐스팅) · 그 밖 '레슨 일정'(웹 HomeShortcuts).

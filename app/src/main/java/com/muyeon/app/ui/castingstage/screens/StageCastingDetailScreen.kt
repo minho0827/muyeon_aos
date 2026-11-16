@@ -43,7 +43,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.muyeon.app.BuildConfig
 import com.muyeon.app.ui.common.MuyeonColors
-import com.muyeon.app.webview.ActiveRole
 import kotlinx.coroutines.launch
 import com.muyeon.app.ui.castingstage.model.*
 import com.muyeon.app.ui.castingstage.data.*
@@ -68,7 +67,8 @@ fun StageCastingDetailScreen(
     var resumeId by remember { mutableStateOf<Int?>(null) }
     var showApply by remember { mutableStateOf(false) }
     var showNoResume by remember { mutableStateOf(false) }
-    var showSwitch by remember { mutableStateOf(false) }
+    // ★ 2026-11-16 캐스팅 지원은 필요 유형표(CASTING_APPLY = 무용수) + 공통 관문. "강사면 무용수로 전환" 특별 규칙은 없앴다.
+    val gate = com.muyeon.app.ui.common.rememberTypeGate()
     var toast by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(id, com.muyeon.app.auth.accountEpoch()) {
@@ -166,28 +166,13 @@ fun StageCastingDetailScreen(
                 onDelete = { ownerActions.requestDelete(ref) }, onClose = { ownerActions.requestClose(ref) },
                 onEdit = onEdit,
             )
-            else StageCastingApplyButton(detail, closed, applied, applying, onOpenUrl,
-                onSwitch = { showSwitch = true }, onApply = { scope.launch { startApply() } })
+            else StageCastingApplyButton(detail, closed, applied, applying, loggedIn = myId != null, onOpenUrl,
+                onApply = { gate.require(com.muyeon.domain.model.member.TypeFeature.CASTING_APPLY) { scope.launch { startApply() } } })
         },
     )
 
     ownerActions.Dialogs()
-    if (showSwitch) AlertDialog(
-        onDismissRequest = { showSwitch = false },
-        title = { Text("무용수 유형으로 전환해 주세요", style = Bold) },
-        text = { Text("캐스팅 공고 지원은 무용수 유형에서 이용할 수 있어요. 무용수 유형으로 전환할까요?", style = Regular) },
-        confirmButton = {
-            TextButton({
-                showSwitch = false
-                scope.launch {
-                    // ★ 2026-11-16 셸 단일 전환 함수로(탭바·MY·글쓰기 메뉴가 같이 바뀐다).
-                    if (com.muyeon.app.ui.common.ShellTypeSwitch.switchTo(ctx, "DANCER")) startApply()
-                    else toast = "유형을 바꾸지 못했어요. 잠시 후 다시 시도해 주세요."
-                }
-            }) { Text("전환하기", color = Brand) }
-        },
-        dismissButton = { TextButton({ showSwitch = false }) { Text("취소", color = MuyeonColors.textSub) } },
-    )
+    com.muyeon.app.ui.common.TypeGateHost(gate)
     if (showNoResume) AlertDialog(
         onDismissRequest = { showNoResume = false },
         title = { Text("저장된 이력서가 없어요. 작성할까요?", style = Bold) },
@@ -233,13 +218,12 @@ fun StageCastingDetailScreen(
     }
 }
 
-/** 지원자 하단 버튼 — 마감 / 원문 공고(웹 수집) / 지원함 / 이력서로 지원 / 무용수만. */
+/** 지원자 하단 버튼 — 마감 / 원문 공고(웹 수집) / 지원함 / 이력서로 지원(로그인 회원, 유형은 관문이 본다) / 비회원 안내. */
 @Composable
 private fun StageCastingApplyButton(
-    detail: CastingDetail, closed: Boolean, applied: Boolean, applying: Boolean,
-    onOpenUrl: (String) -> Unit, onSwitch: () -> Unit, onApply: () -> Unit,
+    detail: CastingDetail, closed: Boolean, applied: Boolean, applying: Boolean, loggedIn: Boolean,
+    onOpenUrl: (String) -> Unit, onApply: () -> Unit,
 ) {
-    val type = ActiveRole.current(LocalContext.current)
     when {
         closed -> StageBottomButton("마감된 공고예요", enabled = false) {}
         detail.isExternal -> {
@@ -247,9 +231,7 @@ private fun StageCastingApplyButton(
             StageBottomButton(if (detail.d("applyUrl") != null) "원문에서 지원하기" else "원문 공고 보러 가기", enabled = url != null) { url?.let(onOpenUrl) }
         }
         applied -> StageBottomButton("지원한 공고예요", enabled = false) {}
-        type == "DANCER" || type == "TEACHER" -> StageBottomButton("이력서로 지원하기", busy = applying) {
-            if (type == "TEACHER") onSwitch() else onApply()
-        }
+        loggedIn -> StageBottomButton("이력서로 지원하기", busy = applying) { onApply() }
         else -> StageBottomButton("무용수 회원만 지원할 수 있어요", enabled = false) {}
     }
 }

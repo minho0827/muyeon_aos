@@ -63,7 +63,8 @@ class MyMenuMemberTypeTest {
         val items = build("DANCER", dancerServer)
         val bridges = items.mapNotNull { it.bridge }
         assertFalse(MyMenuBuilder.B_LESSON_HUB in bridges)
-        assertFalse(MyMenuBuilder.B_MY_QUOTES in bridges)
+        // ★ 2026-11-16 고객 쪽 '내 레슨 요청'은 남긴다(유형과 상관없이 레슨을 요청할 수 있다).
+        assertTrue(MyMenuBuilder.B_MY_QUOTES in bridges)
         assertFalse("lessonSlotManage" in bridges)
         assertFalse("quoteBrowse" in bridges)
     }
@@ -86,5 +87,23 @@ class MyMenuMemberTypeTest {
         val before = build("TEACHER")
         LessonProviders.update(listOf("TEACHER", "ACADEMY", "DANCER"))
         assertEquals(before, build("TEACHER"))
+    }
+}
+
+/** ★ 2026-11-16 고객 쪽(레슨 요청)은 유형으로 막지 않는다 — 서버가 넣은 '내 레슨 요청'을 어떤 유형에서도 남긴다. */
+class MyMenuCustomerSideTest {
+    @After fun resetProviders() = LessonProviders.reset()
+
+    private val str: (Int) -> String = { it.toString() }
+    private val server = listOf(
+        AppMenuItem("my.0", "/myQuotes", "filled-note", "내 레슨 요청", bridge = MyMenuBuilder.B_MY_QUOTES, groupNo = 0, order = 0),
+        AppMenuItem("my.1", "/faq", "faq", "FAQ", groupNo = 1, order = 0),
+    )
+
+    @Test fun keepsServerMyQuotesForEveryType() {
+        for (t in listOf("GENERAL", "TEACHER", "ACADEMY", "DANCER", "TEAM")) {
+            val bridges = MyMenuBuilder.build(t, server, null, str).flatten().mapNotNull { it.bridge }
+            assertTrue("$t 에서 내 레슨 요청이 빠졌어요", MyMenuBuilder.B_MY_QUOTES in bridges)
+        }
     }
 }

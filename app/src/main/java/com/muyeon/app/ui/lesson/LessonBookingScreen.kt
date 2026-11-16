@@ -44,7 +44,6 @@ import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.common.MuyeonDialog
 import com.muyeon.app.ui.common.MuyeonDialogAction
 import com.muyeon.app.ui.common.MuyeonDialogKind
-import com.muyeon.app.webview.ActiveRole
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Date
@@ -73,9 +72,6 @@ private data class BookingDay(
     val hasOpen: Boolean,   // 예약 가능한 회차 있음(주황 점)
     val isPast: Boolean,
 )
-
-/** 무용수 유형 예약 차단 문구 — iOS `RoleGate.dancerLessonCustomerGate` 와 같은 문구. */
-private const val DANCER_GATE_MESSAGE = "무용수 유형에서는 레슨을 요청하거나 예약할 수 없어요. 일반 유형으로 전환하면 계속할 수 있어요."
 
 /**
  * 레슨 예약 — iOS `LessonBookingSheet.swift` 와 1:1(2026-10-24 다시 맞춤).
@@ -112,7 +108,6 @@ fun LessonBookingScreen(
     var doneMessage by remember { mutableStateOf<String?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var notice by remember { mutableStateOf<String?>(null) }
-    var showGate by remember { mutableStateOf(false) }
     // 지금 적용 중인 환불 규정(관리자 관리) — 예약 순간 이 규정이 예약에 찍힌다.
     var refundPolicy by remember { mutableStateOf(LessonRefundPolicyRepo.current()) }
     LaunchedEffect(Unit) { refundPolicy = LessonRefundPolicyRepo.get() }
@@ -252,10 +247,8 @@ fun LessonBookingScreen(
                 color = Color.White, textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
                     .background(if (selected == null || notBookable) IosGray.gray3 else MuyeonColors.primary)
-                    .clickable(enabled = enabled) {
-                        // 무용수 유형은 레슨 예약 불가(변경 모드는 기존 예약이라 제외) — 일반 전환 후 이어서.
-                        if (!isReschedule && ActiveRole.isDancer(context)) showGate = true else openConfirm()
-                    }
+                    // ★ 2026-11-16 지금 유형과 상관없이 예약한다(고객 쪽 유형 관문 제거 — 서버도 막지 않는다).
+                    .clickable(enabled = enabled) { openConfirm() }
                     .padding(vertical = 15.dp),
             )
         }
@@ -299,25 +292,6 @@ fun LessonBookingScreen(
             title = "안내", message = msg,
             actions = listOf(MuyeonDialogAction("확인", MuyeonDialogKind.PRIMARY) { notice = null }),
             onDismiss = { notice = null },
-        )
-    }
-    if (showGate) {
-        // iOS roleGateAlert — '일반 유형으로 전환하고 계속' 이면 서버에 저장하고 예약 확인을 이어서 연다.
-        MuyeonDialog(
-            title = "회원유형 안내", message = DANCER_GATE_MESSAGE,
-            actions = listOf(
-                MuyeonDialogAction("${ActiveRole.label("GENERAL")} 유형으로 전환하고 계속", MuyeonDialogKind.PRIMARY) {
-                    showGate = false
-                    scope.launch {
-                        // ★ 2026-11-16 셸 단일 전환 함수로(탭바·MY·글쓰기 메뉴가 같이 바뀐다).
-                        if (com.muyeon.app.ui.common.ShellTypeSwitch.switchTo(context, "GENERAL")) {
-                            openConfirm()
-                        } else errorMessage = "회원유형을 바꾸지 못했어요. 잠시 후 다시 시도해 주세요."
-                    }
-                },
-                MuyeonDialogAction("취소", MuyeonDialogKind.CANCEL) { showGate = false },
-            ),
-            onDismiss = { showGate = false },
         )
     }
 }

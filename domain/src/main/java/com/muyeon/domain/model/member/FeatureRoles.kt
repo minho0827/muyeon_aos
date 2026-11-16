@@ -23,6 +23,12 @@ enum class TypeFeature(
     SPACE_CREATE(listOf(ActiveType.ACADEMY, ActiveType.TEACHER, ActiveType.DANCER), "작성"),
     /** 양도양수 글 — 원장·강사. */
     TRANSFER_CREATE(listOf(ActiveType.ACADEMY, ActiveType.TEACHER), "작성"),
+    /** 캐스팅(공연) 공고 지원 — 무용수. */
+    CASTING_APPLY(listOf(ActiveType.DANCER), "지원"),
+    /** 무용수에게 캐스팅 제안 — 공연기획. */
+    CASTING_OFFER(listOf(ActiveType.TEAM), "제안"),
+    /** 채용 채팅(이력서·무용수 프로필을 보고 먼저 연락) — 원장·공연기획·강사. 무용수 상세 열람 유형과 같다. */
+    RECRUIT_CHAT(listOf(ActiveType.ACADEMY, ActiveType.TEAM, ActiveType.TEACHER), "이용"),
     /** 레슨 개설·운영·견적 응답 — 레슨 제공 유형 명부([LessonProviders]). */
     LESSON_PROVIDE(emptyList(), "이용"),
     ;
@@ -35,13 +41,8 @@ enum class TypeFeature(
 }
 
 object FeatureRoles {
-    /** 화면에 쓰는 짧은 유형 이름(탭바 MY 칸 이름과 같은 말). */
-    private val SHORT = mapOf(
-        ActiveType.GENERAL to "일반", ActiveType.TEACHER to "강사", ActiveType.DANCER to "무용수",
-        ActiveType.ACADEMY to "원장", ActiveType.TEAM to "공연기획",
-    )
-
-    fun label(type: String): String = SHORT[ActiveType.visible(type)] ?: type
+    /** 화면에 쓰는 짧은 유형 이름(탭바 MY 칸 이름과 같은 말) — 유형 정보 표([ActiveTypeInfos]). */
+    fun label(type: String): String = ActiveTypeInfos.find(ActiveType.visible(type))?.short ?: type
 
     fun required(feature: TypeFeature): List<String> = feature.required
 

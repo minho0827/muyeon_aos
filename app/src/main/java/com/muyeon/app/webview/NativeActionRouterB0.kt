@@ -20,8 +20,8 @@ import org.koin.java.KoinJavaComponent
  *   이미 있는 앱 화면만 연다(새 화면 없음). 로그인이 필요한 화면은 비회원이면 앱 로그인부터(돌아오면 그 주소로).
  */
 object NativeActionRouterB0 {
-    /** 웹 IDENTITY_ROLES — 서류 없이 본인 인증만으로 부여되는 유형(인증 화면 대신 유형 관리에서 추가). */
-    private val IDENTITY_ROLES = setOf("TEACHER", "DANCER")
+    /** 웹 IDENTITY_ROLES — 서류 없이 본인 인증만으로 부여되는 유형(인증 화면 대신 유형 관리에서 추가). 유형 정보 표 기준. */
+    private val IDENTITY_ROLES: Set<String> get() = com.muyeon.domain.usecase.auth.CompleteRoleOnboardingUseCase.IDENTITY_ROLES
 
     fun open(activity: Activity, action: String, d: JSONObject): Boolean {
         when (action) {
@@ -79,12 +79,9 @@ object NativeActionRouterB0 {
         return true
     }
 
-    /** 웹 nativeLink resumeMode — as=dancer|teacher 가 우선, 없으면 지금 유형. */
-    private fun resumeMode(activity: Activity, asQuery: String): String = when (asQuery) {
-        "dancer" -> "dancer"
-        "teacher" -> "teacher"
-        else -> if (ActiveRole.isDancer(activity)) "dancer" else "teacher"
-    }
+    /** 웹 nativeLink resumeMode — as=dancer|teacher 가 우선, 없으면 지금 유형(ResumeMode.forLink). */
+    private fun resumeMode(activity: Activity, asQuery: String): String =
+        com.muyeon.app.ui.resume.ResumeMode.forLink(asQuery, ActiveRole.current(activity)).raw
 
     private inline fun loginFirst(activity: Activity, redirect: String, open: () -> Unit) {
         if (TokenManager.getAccessToken(activity).isNullOrEmpty()) {

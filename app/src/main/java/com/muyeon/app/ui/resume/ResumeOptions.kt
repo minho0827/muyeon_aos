@@ -101,5 +101,19 @@ enum class ResumeMode(val raw: String) {
 
     companion object {
         fun from(s: String?) = if (s == "dancer") DANCER else TEACHER
+
+        /**
+         * ★ 2026-11-16 지금 활성유형으로 고르는 이력서 종류 — 무용수면 무용수 이력서, 그 밖은 강사 이력서.
+         *  화면마다 `ActiveRole.isDancer(ctx)` 로 고르던 곳(MY·글쓰기 메뉴·공고 보기·웹 브릿지)이 모두 여기를 읽는다.
+         */
+        fun forActiveType(type: String?): ResumeMode =
+            if (com.muyeon.domain.model.member.ActiveType.visible(type) == com.muyeon.domain.model.member.ActiveType.DANCER) DANCER else TEACHER
+
+        /** 웹 링크의 as=dancer|teacher 가 먼저, 없으면 지금 유형. */
+        fun forLink(asQuery: String?, activeType: String?): ResumeMode = when (asQuery) {
+            "dancer" -> DANCER
+            "teacher" -> TEACHER
+            else -> forActiveType(activeType)
+        }
     }
 }

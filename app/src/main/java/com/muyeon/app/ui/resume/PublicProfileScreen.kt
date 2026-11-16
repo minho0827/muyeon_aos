@@ -47,7 +47,6 @@ import com.muyeon.app.ui.quote.QuoteUi
 import com.muyeon.app.ui.review.ReviewApi
 import com.muyeon.app.ui.review.ReviewList
 import com.muyeon.app.ui.review.ReviewOptions
-import com.muyeon.app.webview.ActiveRole
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -98,7 +97,6 @@ fun PublicProfileScreen(
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
     // 무용수 활동유형은 레슨(견적) 요청 불가(2026-09-26 정책) — 버튼은 보이고, 누르면 안내 후 일반 전환 시 이어서 진행(iOS attemptQuote).
-    var dancerGate by remember { mutableStateOf(false) }
 
     // 본인 프로필 → [수정하기](별도 액티비티)에서 돌아오면 다시 읽는다(결과 키 RESUME/PROFILE).
     var reloadTick by rememberSaveable { mutableIntStateOf(0) }
@@ -255,7 +253,6 @@ fun PublicProfileScreen(
                             // 이미 이 강사에게 견적요청한 상태 → 받은 견적 확인으로 분기(iOS·웹 TeacherDetail 과 동일 규칙)
                             when {
                                 receivedId != null -> onOpenReceivedQuotes(receivedId)
-                                ActiveRole.isDancer(ctx) -> dancerGate = true
                                 else -> onRequestQuote(quoteCategoryOf(p))
                             }
                         }
@@ -331,14 +328,6 @@ fun PublicProfileScreen(
                 }
             },
             onDismiss = { reportOpen = false },
-        )
-    }
-    // 무용수 활동유형 → 레슨 문의 차단 안내. 일반 전환에 성공하면 이어서 견적 요청(공용 부품 — 무용수 상세와 같다).
-    if (dancerGate) {
-        com.muyeon.app.ui.quote.DancerCustomerGateDialog(
-            scope = scope,
-            onSwitched = { onRequestQuote(profile?.let(::quoteCategoryOf)) },
-            onDismiss = { dancerGate = false },
         )
     }
     toast?.let { msg ->

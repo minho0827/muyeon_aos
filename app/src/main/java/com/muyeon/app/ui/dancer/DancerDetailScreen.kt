@@ -98,7 +98,10 @@ fun DancerDetailScreen(
     val context = LocalContext.current
     var limit by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
-    var dancerGate by remember { mutableStateOf(false) }
+    // ★ 2026-11-16 유형이 바뀌면(MY 두 번 누르기 등) 버튼·공개 범위를 다시 맞춘다 — 한 번만 읽던 잔상 제거.
+    val activeType = com.muyeon.app.ui.common.rememberActiveType()
+    LaunchedEffect(activeType) { viewModel.onTypeChanged(activeType) }
+    val gate = com.muyeon.app.ui.common.rememberTypeGate()
     val scope = rememberCoroutineScope()
     LaunchedEffect(viewModel) {
         viewModel.events.collect { e ->
@@ -149,7 +152,11 @@ fun DancerDetailScreen(
                         CtaButton(
                             stringResource(if (s.isTeam) R.string.dancer_offer else R.string.dancer_chat),
                             filled = true, enabled = !s.busy, keepFilledWhenDisabled = true, modifier = Modifier.weight(1f),
-                        ) { if (s.isTeam) viewModel.startOffer() else viewModel.askChat(true) }
+                        ) {
+                            // 필요 유형표 + 공통 관문 — 버튼은 지금 유형 기준으로 그려졌으므로 보통 바로 지난다.
+                            if (s.isTeam) gate.require(com.muyeon.domain.model.member.TypeFeature.CASTING_OFFER) { viewModel.startOffer() }
+                            else gate.require(com.muyeon.domain.model.member.TypeFeature.RECRUIT_CHAT) { viewModel.askChat(true) }
+                        }
                     }
                 } else if (lessonCta != null) {
                     // ★ 2026-11-16 레슨 받는 무용수 — 강사 상세와 같은 [문의하기]·[레슨 문의]/[받은 견적 보기](소개만 보는 회원·비회원도).
@@ -157,9 +164,9 @@ fun DancerDetailScreen(
                         lessonCta,
                         onChat = { rid -> onOpenChat(rid, d.name) },
                         onReceived = { qid -> com.muyeon.app.ui.quote.LessonInquiry.openReceived(context, qid.toInt()) },
+                        // ★ 2026-11-16 지금 유형과 상관없이 문의한다(고객 쪽 유형 관문 제거).
                         onRequest = {
-                            if (com.muyeon.app.webview.ActiveRole.isDancer(context)) dancerGate = true
-                            else scope.launch { com.muyeon.app.ui.quote.LessonInquiry.start(context, d.id.toInt(), com.muyeon.app.ui.quote.LessonInquiry.categoryOf(d.genres)) }
+                            scope.launch { com.muyeon.app.ui.quote.LessonInquiry.start(context, d.id.toInt(), com.muyeon.app.ui.quote.LessonInquiry.categoryOf(d.genres)) }
                         },
                     )
                 }
@@ -216,14 +223,7 @@ fun DancerDetailScreen(
             buttonCount = 1, alignment = ContentAlignment.Middle, onDismiss = viewModel::dismissDone, onRightButtonClick = viewModel::dismissDone, showPopup = true,
         )
     }
-    if (dancerGate) {
-        val p = s.profile
-        com.muyeon.app.ui.quote.DancerCustomerGateDialog(
-            scope = scope,
-            onSwitched = { p?.let { scope.launch { com.muyeon.app.ui.quote.LessonInquiry.start(context, it.id.toInt(), com.muyeon.app.ui.quote.LessonInquiry.categoryOf(it.genres)) } } },
-            onDismiss = { dancerGate = false },
-        )
-    }
+    com.muyeon.app.ui.common.TypeGateHost(gate)
     if (limit) RecruitChatLimitDialog(RecruitChatLimitException(null, null, null, null), onUpgrade = { limit = false; onMembership() }, onDismiss = { limit = false })
 }
 

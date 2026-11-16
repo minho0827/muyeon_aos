@@ -19,12 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Apartment
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.TheaterComedy
-import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -98,13 +93,6 @@ object ActiveTypeSheet {
         root.addView(host, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
     }
 
-    private fun iconOf(type: String): ImageVector = when (type) {
-        "TEACHER" -> Icons.Filled.School
-        "DANCER" -> Icons.Filled.DirectionsRun
-        "ACADEMY" -> Icons.Filled.Apartment
-        "TEAM" -> Icons.Filled.TheaterComedy
-        else -> Icons.Filled.Person
-    }
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
@@ -120,7 +108,7 @@ object ActiveTypeSheet {
                     .border(1.dp, MuyeonColors.border, RoundedCornerShape(16.dp)),
             ) {
                 rows.forEachIndexed { i, (type, label) ->
-                    TypeRow(label, iconOf(type), filled = type == current, checked = type == current,
+                    TypeRow(label, com.muyeon.app.ui.common.TypeIcons.of(type), filled = type == current, checked = type == current,
                         dot = type != current && type in newTypes) { onPick(type) }
                     if (i < rows.size - 1) HorizontalDivider(Modifier.padding(start = 74.dp), color = MuyeonColors.border)
                 }

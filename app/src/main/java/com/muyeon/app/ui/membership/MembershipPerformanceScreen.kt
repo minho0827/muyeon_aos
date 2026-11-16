@@ -55,7 +55,8 @@ fun MembershipPerformanceScreen(
     var failedMessage by remember { mutableStateOf<String?>(null) }
     var selectedMetric by remember { mutableStateOf(PerfMetric.IMPRESSIONS) }
 
-    val isAcademy = memberType == "ACADEMY"
+    // ★ 2026-11-16 문구는 성과 문구 표(학원 / 강사 / 무용수 제공자).
+    val copy = com.muyeon.domain.model.member.PerformanceCopy.of(memberType)
 
     LaunchedEffect(memberType) {
         loading = true
@@ -66,7 +67,7 @@ fun MembershipPerformanceScreen(
     }
 
     Column(Modifier.fillMaxSize().background(com.muyeon.app.ui.common.MuyeonList.pageBg)) {
-        QuoteNavBar(title = if (isAcademy) "학원 성과" else "강사 성과", onBack = onClose)
+        QuoteNavBar(title = copy.screenTitle, onBack = onClose)
 
         when {
             loading -> Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
@@ -81,7 +82,7 @@ fun MembershipPerformanceScreen(
                 )
             }
             else -> PerformanceContent(
-                d = data!!, isAcademy = isAcademy,
+                d = data!!, copy = copy,
                 selectedMetric = selectedMetric, onSelectMetric = { selectedMetric = it },
                 modifier = Modifier.weight(1f),
             )
@@ -93,10 +94,10 @@ fun MembershipPerformanceScreen(
 enum class PerfMetric {
     IMPRESSIONS, DETAIL_VIEWS, LEADS;
 
-    fun title(isAcademy: Boolean) = when (this) {
+    fun title(copy: com.muyeon.domain.model.member.PerformanceCopy) = when (this) {
         IMPRESSIONS -> "노출"
         DETAIL_VIEWS -> "프로필 열람"
-        LEADS -> if (isAcademy) "상담·예약" else "견적요청·채팅"
+        LEADS -> copy.leadMetric
     }
 
     val color: Color
@@ -125,7 +126,7 @@ private val LEAD_EVENTS = listOf(
 @Composable
 private fun PerformanceContent(
     d: MembershipPerformance,
-    isAcademy: Boolean,
+    copy: com.muyeon.domain.model.member.PerformanceCopy,
     selectedMetric: PerfMetric,
     onSelectMetric: (PerfMetric) -> Unit,
     modifier: Modifier = Modifier,
@@ -136,14 +137,14 @@ private fun PerformanceContent(
 
     /** 단계 이름 = 회원이 실제로 거치는 화면·버튼 이름. */
     val discovery = listOf(
-        (if (isAcademy) "학원 목록 노출" else "강사 목록 노출") to (d.discovery["IMPRESSION"] ?: 0),
+        copy.impressionStep to (d.discovery["IMPRESSION"] ?: 0),
         "카드 클릭" to (d.discovery["CARD_CLICK"] ?: 0),
         "프로필 열람" to (d.discovery["DETAIL_OPEN"] ?: 0),
-        (if (isAcademy) "상담문의·예약" else "레슨 견적요청·채팅") to LEAD_EVENTS.sumOf { d.discovery[it] ?: 0 },
+        copy.leadStep to LEAD_EVENTS.sumOf { d.discovery[it] ?: 0 },
     )
 
     val f = d.funnel
-    val funnelRows = if (isAcademy) {
+    val funnelRows = if (copy.isAcademy) {
         listOf(
             "상담문의" to f.classInquiries, "예약" to f.reservations, "출석" to f.attended,
             "노쇼" to f.noShows, "받은 지원" to f.jobApplications, "재예약 고객" to f.repeatCustomers,
@@ -164,19 +165,19 @@ private fun PerformanceContent(
         // 헤더
         Column(Modifier.padding(top = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                if (isAcademy) "학원을 찾은 회원의 반응이에요" else "회원들이 강사님을 찾고 있어요",
+                copy.headline,
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp,
                 lineHeight = 30.sp, color = MuyeonColors.textHead,
             )
             Text(
-                "${MembershipBenefits.performancePeriod(d.days)} 동안 노출된 횟수부터 실제 ${if (isAcademy) "문의와 예약" else "견적과 레슨"}으로 이어진 흐름을 확인해보세요.",
+                "${MembershipBenefits.performancePeriod(d.days)} 동안 노출된 횟수부터 실제 ${copy.flowTail}으로 이어진 흐름을 확인해보세요.",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
                 lineHeight = 20.sp, color = MuyeonColors.textSub,
             )
         }
 
         d.impact?.let { impact ->
-            MembershipImpactCard(impact, isAcademy)
+            MembershipImpactCard(impact, copy)
             val b = impact.before
             val a = impact.after
             if (impact.ready && b != null && a != null) {
@@ -237,7 +238,7 @@ private fun PerformanceContent(
         CardShell(spacing = 18.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    "최근 14일 ${selectedMetric.title(isAcademy)}",
+                    "최근 14일 ${selectedMetric.title(copy)}",
                     fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
                     lineHeight = 17.sp, color = MuyeonColors.textSub,
                 )
@@ -251,7 +252,7 @@ private fun PerformanceContent(
                 PerfMetric.entries.forEach { m ->
                     val on = selectedMetric == m
                     Text(
-                        m.title(isAcademy),
+                        m.title(copy),
                         fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 12.sp,
                         lineHeight = 15.sp,
                         color = if (on) MuyeonColors.textHead else MuyeonColors.textSub,
@@ -269,9 +270,8 @@ private fun PerformanceContent(
         // 퍼널
         CardShell {
             CardTitle(
-                if (isAcademy) "상담문의까지 오는 과정" else "레슨 견적요청까지 오는 과정",
-                if (isAcademy) "학원 목록에 뜨고 → 카드를 누르고 → 학원 프로필을 보고 → 상담문의·예약까지 간 횟수예요."
-                else "강사 목록에 뜨고 → 카드를 누르고 → 강사프로필을 보고 → 레슨 견적요청·채팅까지 간 횟수예요.",
+                copy.funnelTitle,
+                copy.funnelDesc,
             )
             MembershipFunnelChart(
                 steps = discovery.map { FunnelStep(it.first, it.second.toDouble()) },
@@ -281,7 +281,7 @@ private fun PerformanceContent(
         }
 
         // 비율 도넛 — 분모가 0 이면 빈 원이 되어 오해를 부른다. 아예 카드를 감춘다.
-        ratioData(f, isAcademy)?.let { ratio ->
+        ratioData(f, copy.isAcademy)?.let { ratio ->
             CardShell {
                 CardTitle(ratio.title, ratio.subtitle)
                 Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -301,7 +301,7 @@ private fun PerformanceContent(
         // 지표 표
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(
-                if (isAcademy) "문의·예약·채용" else "견적부터 재레슨까지",
+                copy.tableTitle,
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp,
                 lineHeight = 24.sp, color = MuyeonColors.textHead,
             )

@@ -70,25 +70,12 @@ private const val MAX_DOCS = 5
 private const val MAX_DIMENSION = 1600
 private const val JPEG_QUALITY = 70
 
-/** 역할 코드 → 화면 표기. iOS `roleLabel` 과 같은 문구를 쓴다. */
-private fun roleLabel(code: String): String = when (code) {
-    "ACADEMY" -> "학원·원장"
-    "SPACE" -> "공간 보유자"
-    "TEAM" -> "공연팀·기획자"
-    "TEACHER" -> "강사"
-    "DANCER" -> "무용수"
-    else -> "회원"
-}
+/** 역할 코드 → 화면 표기(유형 정보 표의 긴 이름, iOS `roleLabel` 과 같은 문구). 일반은 "회원". */
+private fun roleLabel(code: String): String =
+    com.muyeon.domain.model.member.ActiveTypeInfos.find(code)?.takeIf { it.type != com.muyeon.domain.model.member.ActiveType.GENERAL }?.long ?: "회원"
 
-/** 역할별 제출 서류 안내. iOS `documentGuide` 와 같은 문구를 쓴다. */
-private fun documentGuide(code: String): String = when (code) {
-    "TEACHER" -> "강사 경력이나 무용 전공을 확인할 수 있는 서류를 첨부해 주세요."
-    "DANCER" -> "공연 경력, 소속 또는 무용 전공을 확인할 수 있는 서류를 첨부해 주세요."
-    "ACADEMY" -> "사업자등록번호와 최근 3개월 이내 발급한 사업자등록증명원을 확인해요."
-    "SPACE" -> "사업자등록증 또는 임대차계약서를 첨부해 주세요."
-    "TEAM" -> "사업자등록증, 고유번호증 또는 공연 증빙을 첨부해 주세요."
-    else -> "회원유형을 확인할 수 있는 서류를 첨부해 주세요."
-}
+/** 역할별 제출 서류 안내(유형 정보 표, iOS `documentGuide` 와 같은 문구). */
+private fun documentGuide(code: String): String = (com.muyeon.domain.model.member.ActiveTypeInfos.find(code) ?: com.muyeon.domain.model.member.ActiveTypeInfos.GENERAL).docGuide
 
 class RoleVerificationApi(private val token: String?) {
     private val client = OkHttpClient()

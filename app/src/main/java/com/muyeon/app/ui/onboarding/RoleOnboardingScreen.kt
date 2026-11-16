@@ -75,18 +75,21 @@ fun RoleOnboardingScreen(onSelect: (String) -> Unit) {
 
 internal data class OnboardingRoleOption(val code: String, val emoji: String, val title: String, val desc: String)
 
+private fun onboardingOption(i: com.muyeon.domain.model.member.ActiveTypeInfo, desc: String) = OnboardingRoleOption(i.type, i.emoji, i.long, desc)
+
 /** 공간보유자 유형은 회원 기반 확대 후 이 위치에서 재오픈한다(iOS 주석과 동일). */
 internal val ONBOARDING_ROLE_OPTIONS = listOf(
-    OnboardingRoleOption("TEACHER", "🩰", "강사", "강사 채용 공고를 보고 지원하고 싶어요."),
-    OnboardingRoleOption("ACADEMY", "🏫", "학원·원장", "강사를 채용하거나 학원 공고를 등록하고 싶어요."),
-    OnboardingRoleOption("DANCER", "💃", "무용수", "오디션 및 캐스팅 공고를 보고 지원하고 싶어요."),
-    OnboardingRoleOption("TEAM", "🎭", "공연팀·기획자", "공연 및 오디션 공고를 등록하고 무용수를 모집하고 싶어요."),
+    // ★ 2026-11-16 그림 글자·이름은 유형 정보 표(com.muyeon.domain.model.member.ActiveTypeInfos).
+    onboardingOption(com.muyeon.domain.model.member.ActiveTypeInfos.TEACHER, "강사 채용 공고를 보고 지원하고 싶어요."),
+    onboardingOption(com.muyeon.domain.model.member.ActiveTypeInfos.ACADEMY, "강사를 채용하거나 학원 공고를 등록하고 싶어요."),
+    onboardingOption(com.muyeon.domain.model.member.ActiveTypeInfos.DANCER, "오디션 및 캐스팅 공고를 보고 지원하고 싶어요."),
+    onboardingOption(com.muyeon.domain.model.member.ActiveTypeInfos.TEAM, "공연 및 오디션 공고를 등록하고 무용수를 모집하고 싶어요."),
     OnboardingRoleOption("HOBBY", "✨", "일반회원", "커뮤니티와 개인레슨 등 무용 관련 서비스를 이용하고 싶어요."),
 )
 
 /** 일반회원(HOBBY)만 인증 없이 바로 시작한다 — 나머지는 서류 인증이 필요하다. */
 // ★ 2026-10-12 서류 인증은 사업자 확인이 필요한 학원·공연팀(·공간)만. 강사·무용수는 본인 인증(가입 시 완료)으로 바로 부여된다.
-internal fun roleRequiresVerification(code: String) = code == "ACADEMY" || code == "TEAM" || code == "SPACE"
+internal fun roleRequiresVerification(code: String) = com.muyeon.domain.model.member.ActiveTypeInfos.needsDocuments(code)
 
 @Composable
 private fun RoleCard(opt: OnboardingRoleOption, isSelected: Boolean, onClick: () -> Unit) {

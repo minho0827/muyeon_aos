@@ -104,7 +104,7 @@ fun ReceivedQuoteDetailScreen(
     var crossPosts by remember { mutableStateOf<Pair<List<QuoteCrossPost>, Int>?>(null) }
     val scope = rememberCoroutineScope()
     // ★ 11-10 학원 등 일반이 아닌 신청자의 요청 — 채택 = 채용 확정(일정·예약금·후기 없음), '견적' 대신 '제안'.
-    val isAcademyReq = quote?.requesterType.let { !it.isNullOrEmpty() && it != "GENERAL" }
+    val isAcademyReq = quote?.isAcademyRequest == true
 
     // 채택 완료 판정 — 서버가 quote.status 를 MATCHED 로 안 내려도 방어적으로 감지(iOS hasAccepted).
     val matched = quote?.status == "MATCHED"

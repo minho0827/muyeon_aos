@@ -74,17 +74,7 @@
     <string name="interim_tab_desc">이 화면은 앱 화면으로 옮기는 중이에요.</string>
     <string name="interim_tab_open">%1$s 열기</string>
     <!-- MY 탭 이름(로그인 후 활성유형) — 웹 ActiveTypeSheet TYPE_TAB_LABEL -->
-    <string name="tab_my_general">일반</string>
-    <string name="tab_my_teacher">강사</string>
-    <string name="tab_my_academy">원장</string>
-    <string name="tab_my_dancer">무용수</string>
-    <string name="tab_my_team">공연/기획</string>
     <!-- 유형 시트 줄 이름 — 웹 TYPE_SHEET_LABEL -->
-    <string name="type_sheet_general">일반</string>
-    <string name="type_sheet_teacher">강사</string>
-    <string name="type_sheet_academy">학원/원장</string>
-    <string name="type_sheet_dancer">무용수</string>
-    <string name="type_sheet_team">공연/기획</string>
     <string name="main_type_switched">%1$s 유형으로 전환됐어요</string>
     <string name="main_type_switch_failed">유형 전환을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.</string>
     <string name="main_exit_title">앱을 종료할까요?</string>
@@ -691,11 +681,6 @@
     <!-- ★ 2026-11-07 회원 MY(웹 MyHome·HomeShortcuts 와 같은 말) -->
     <string name="my_header">%1$s님\n%2$s 활동 중</string>
     <string name="my_default_name">무용연</string>
-    <string name="member_type_general">일반회원</string>
-    <string name="member_type_teacher">강사</string>
-    <string name="member_type_academy">학원·원장</string>
-    <string name="member_type_dancer">무용수</string>
-    <string name="member_type_team">공연팀·기획자</string>
     <string name="shortcut_lesson_schedule">레슨 일정</string>
     <string name="shortcut_activity_schedule">활동일정</string>
     <string name="shortcut_schedule">일정</string>

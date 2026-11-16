@@ -20,7 +20,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -29,7 +28,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
-import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.ui.quote.QuoteDialog
 import com.muyeon.app.ui.quote.QuoteNavBar
 import kotlinx.coroutines.launch
@@ -53,9 +51,8 @@ fun LessonSlotManageScreen(
 ) {
     var products by remember { mutableStateOf<List<MyLessonProduct>>(emptyList()) }
     var selected by remember { mutableStateOf<MyLessonProduct?>(null) }
-    // 시간표 편성 권한 판정 — 웹이 syncActiveType 으로 넘겨준 활성유형(ActiveRole).
-    val slotCtx = LocalContext.current
-    val isAcademy = remember { ActiveRole.isAcademy(slotCtx) }
+    // 시간표 편성 권한 판정 — 주체 모드(학원 / 개인). 유형이 바뀌면 다시 읽는다.
+    val ownerMode = com.muyeon.domain.model.member.LessonOwnerMode.of(com.muyeon.app.ui.common.rememberActiveType())
     var templates by remember { mutableStateOf<List<LessonSlotTemplate>>(emptyList()) }
     var slots by remember { mutableStateOf<List<LessonSlot>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
@@ -152,7 +149,7 @@ fun LessonSlotManageScreen(
 
             // 학원이 관리하는 레슨은 시간 추가·삭제를 감춘다. 버튼을 남겨두면 눌러야만 403 을 보게 돼서,
             //  왜 안 되는지 모른 채 반복해서 누르게 된다.
-            val readOnly = selected?.slotsReadOnly(isAcademy) == true
+            val readOnly = selected?.slotsReadOnly(ownerMode) == true
             if (readOnly) {
                 Column(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))

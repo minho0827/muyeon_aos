@@ -117,8 +117,21 @@ object QuoteRespondRoles {
     fun attachmentRole(activeType: String?): String = LessonProviders.attachmentType(activeType)
 
     /** 일반 유형으로 활동 중일 때 '○○ 유형으로 전환하고 견적 보내기' 대상 — 강사 → 학원 → 그 밖 제공 유형 순. */
-    fun switchTarget(held: List<String>): String? {
-        val order = listOf("TEACHER", "ACADEMY") + LessonProviders.types.sorted()
-        return order.distinct().firstOrNull { it in held && LessonProviders.canProvide(it) }
-    }
+    fun switchTarget(held: List<String>): String? =
+        com.muyeon.domain.model.member.TypeFeature.LESSON_PROVIDE.required.firstOrNull { it in held }
+
+    /** '유형 추가' 선택지 하나 — [direct] 면 본인 인증만으로 바로 추가, 아니면 서류 인증 화면. */
+    data class AddRoleOption(val type: String, val direct: Boolean)
+
+    /**
+     * ★ 2026-11-16 보유 제공 유형이 없을 때의 '○○로 시작하고 견적 보내기' 선택지 — 레슨 제공 유형표(강사 → 학원 → 명부 순)에서 만든다.
+     *  바로 추가할지(본인 인증)·서류 인증을 거칠지는 [com.muyeon.domain.usecase.auth.CompleteRoleOnboardingUseCase.IDENTITY_ROLES].
+     */
+    fun addRoleOptions(): List<AddRoleOption> =
+        com.muyeon.domain.model.member.TypeFeature.LESSON_PROVIDE.required.map {
+            AddRoleOption(it, it in com.muyeon.domain.usecase.auth.CompleteRoleOnboardingUseCase.IDENTITY_ROLES)
+        }
+
+    /** 바로 추가할 수 있는 유형인가(본인 인증만). */
+    fun addsDirectly(type: String): Boolean = type in com.muyeon.domain.usecase.auth.CompleteRoleOnboardingUseCase.IDENTITY_ROLES
 }

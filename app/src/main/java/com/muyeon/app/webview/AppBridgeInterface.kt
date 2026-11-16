@@ -258,9 +258,10 @@ object NativeActionRouter {
             //  2026-11-08 사용자 결정 — 이미 등록한 강사프로필/무용수 이력서가 있으면 이력서 관리, 없으면 등록(SeekProfileEntry).
             "openSeekProfile" -> {
                 val scope = (activity as? androidx.activity.ComponentActivity)?.lifecycleScope
-                if (scope != null) com.muyeon.app.ui.resume.SeekProfileEntry.open(activity, scope, ActiveRole.isDancer(activity))
+                val mode = com.muyeon.app.ui.resume.ResumeMode.forActiveType(ActiveRole.current(activity))
+                if (scope != null) com.muyeon.app.ui.resume.SeekProfileEntry.open(activity, scope, mode.isDancer)
                 else com.muyeon.app.ui.resume.ResumeActivity.startEdit(
-                    activity, null, if (ActiveRole.isDancer(activity)) "dancer" else "", seekProfile = true,
+                    activity, null, if (mode.isDancer) mode.raw else "", seekProfile = true,
                 )
             }
 

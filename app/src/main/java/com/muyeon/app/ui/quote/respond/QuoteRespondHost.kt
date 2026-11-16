@@ -55,11 +55,11 @@ fun QuoteRespondHost(activity: Activity, quoteId: Int, compose: Boolean, reloadS
                 }
             },
             onAddRole = { role ->
-                if (role != "TEACHER") {
+                if (!QuoteRespondRoles.addsDirectly(role)) {
                     // 학원 — 사업자 인증 서류(앱 역할 인증 화면, 웹 openRoleVerification 과 같다). 돌아오면 다시 읽는다.
                     NativeActionRouter.open(activity, "openRoleVerification", JSONObject().put("role", role))
                 } else scope.launch {
-                    // 강사 — 서류 없이 본인 인증만으로 바로 부여(웹 goRoleVerification → callAddRole).
+                    // 강사·무용수 — 서류 없이 본인 인증만으로 바로 부여(웹 goRoleVerification → callAddRole).
                     when (val r = ActiveRole.addRole(activity, role)) {
                         is ActiveRole.AddResult.Added -> {
                             com.muyeon.app.ui.common.ShellTypeSwitch.switchTo(activity, role)

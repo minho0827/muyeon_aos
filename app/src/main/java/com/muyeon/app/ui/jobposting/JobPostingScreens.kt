@@ -643,7 +643,10 @@ class JobPostingActivity : com.muyeon.app.result.ResultActivity() {
             // 공연팀은 채용 공고와 공연(캐스팅) 공고를 둘 다 올린다(웹 job.create·casting.create) → 고르게 한다.
             var teamChoice by remember { mutableStateOf(false) }
             fun openCreate() {
-                if (com.muyeon.app.webview.ActiveRole.current(this@JobPostingActivity) == "TEAM") teamChoice = true
+                // ★ 2026-11-16 필요 유형표 — 채용 공고와 공연 공고를 둘 다 쓸 수 있는 유형이면 고르게 한다.
+                val t = com.muyeon.app.webview.ActiveRole.current(this@JobPostingActivity)
+                if (com.muyeon.domain.model.member.FeatureRoles.allows(com.muyeon.domain.model.member.TypeFeature.JOB_CREATE, t) &&
+                    com.muyeon.domain.model.member.FeatureRoles.allows(com.muyeon.domain.model.member.TypeFeature.CASTING_CREATE, t)) teamChoice = true
                 else nav.navigate("form/0")
             }
             if (teamChoice) {
