@@ -209,6 +209,17 @@ class ChatActivity : ResultActivity() {
                         onBack = { if (!nav.popBackStack()) finish() },
                         initialSurveyDispatchId = deepDispatchId.takeIf { isDeepRoom },
                         initialProposalId = deepProposalId.takeIf { isDeepRoom },
+                        onOpenSubPosting = { pid -> nav.navigate("subPosting/$pid") },
+                    )
+                }
+                // ★ 2026-11-16 대타 카드 [공고 보기] — 채팅 창을 닫지 않고 같은 공고 화면(PostingViewScreen)을 연다. 뒤로 가면 방으로.
+                composable("subPosting/{id}") { entry ->
+                    val pid = entry.arguments?.getString("id")?.toIntOrNull() ?: 0
+                    com.muyeon.app.navigation.PostingDetailRoute(
+                        "SUB", pid,
+                        onBack = { if (!nav.popBackStack()) finish() },
+                        onOpenWeb = { path -> com.muyeon.app.webview.NativeWebRoute.openWebAndFinish(this@ChatActivity, path) },
+                        onEdit = { com.muyeon.app.ui.main.MainActivity.openPath(this@ChatActivity, "/subs/$pid/edit") },
                     )
                 }
                 composable("room/{roomId}?title={title}") { entry ->
@@ -217,7 +228,10 @@ class ChatActivity : ResultActivity() {
                     val t = entry.arguments?.getString("title").orEmpty()
                     val vm: ChatRoomViewModel = viewModel(key = "room-$rid") { ChatRoomViewModel(rid, t, api, token) }
                     ActiveRoomEffect(listState, rid)
-                    ChatRoomScreen(vm = vm, onBack = { if (!nav.popBackStack()) finish() })
+                    ChatRoomScreen(
+                        vm = vm, onBack = { if (!nav.popBackStack()) finish() },
+                        onOpenSubPosting = { pid -> nav.navigate("subPosting/$pid") },
+                    )
                 }
             }
         }

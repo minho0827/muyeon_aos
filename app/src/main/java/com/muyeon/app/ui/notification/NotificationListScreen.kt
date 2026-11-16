@@ -265,6 +265,8 @@ class NotificationActivity : ResultActivity() {
         val quoteId = n.data["quoteId"]?.toIntOrNull()
         when {
             n.data["type"] == "chat_message" && roomId != null -> ChatActivity.startRoom(this, roomId)
+            // ★ 2026-11-16 대타 지원 알림 — 서버가 연 지원자와의 채팅방으로 바로(방이 없으면 아래 linkUrl).
+            n.type == "SUB_APPLY" && roomId != null -> ChatActivity.startRoom(this, roomId)
             quoteId != null -> QuoteHubActivity.start(
                 this, isPro = false, initialTab = 0, quoteId = quoteId,
                 responseId = n.data["r"]?.toIntOrNull(),

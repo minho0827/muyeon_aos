@@ -26,12 +26,31 @@ fun ChatDealBarArea(
     onOpenCycles: () -> Unit,
     onProposalChanged: () -> Unit,
     onOpenProposalPayment: (Int) -> Unit,
+    onSubAction: (SubAction, SubCardItem) -> Unit = { _, _ -> },
 ) {
+    val cards = ChatTopCards.resolve(vm.topInput())
     Column(Modifier.fillMaxWidth()) {
         vm.lockDaysLeft()?.let { LockCountdownLine(it) }
-        ChatDealBarResolver.resolve(vm.dealBarInput())?.let { ChatDealBar(it, onAction, onOpenCycles) }
+        // ★ 2026-11-16 방 맥락 → 카드 표(ChatTopCards). 레슨 바와 대타 카드가 함께 걸리면 둘 다 보인다.
+        cards.forEach { card ->
+            when (card) {
+                is ChatTopCard.Lesson -> ChatDealBar(card.model, onAction, onOpenCycles)
+                is ChatTopCard.Sub -> {
+                    SubContextCard(card.model, onSubAction)
+                    SubNoticeOnce(vm.roomId)
+                }
+            }
+        }
         vm.pendingProposal?.let { PinnedProposalCard(it, vm, onProposalChanged, onOpenProposalPayment) }
     }
+}
+
+/** 대타 카드 아래 안내 — 방마다 처음 연 그 화면에서만 보인다(다시 열면 안 보임). */
+@Composable
+private fun SubNoticeOnce(roomId: Int) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val show = androidx.compose.runtime.remember(roomId) { SubChatNotice.consume(ctx, roomId) }
+    if (show) SubChatNoticeLine()
 }
 
 /** 재입장(나가기)으로 대화에서 숨은 대기 중 약속 제안 — 바 아래 고정(바의 [약속 확인하기]가 가리킬 카드가 대화에 없을 때). */

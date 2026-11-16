@@ -257,7 +257,7 @@ private fun subClassStarted(d: JSONObject): Boolean {
 
 /** 확정된 대타 취소 — 쌓일 벌점 안내 · 사유(선택) · [닫기][취소하기]. 웹 SubCancelModal(강사 쪽)과 같은 문구. */
 @Composable
-private fun SubCancelDialog(api: JobPostingApi, applicationId: Int, onDismiss: () -> Unit, onDone: (String) -> Unit) {
+internal fun SubCancelDialog(api: JobPostingApi, applicationId: Int, onDismiss: () -> Unit, onDone: (String) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var points by remember { mutableStateOf<Int?>(null) }

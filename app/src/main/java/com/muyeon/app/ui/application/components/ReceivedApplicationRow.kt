@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
@@ -19,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,7 +43,11 @@ import com.muyeon.domain.model.application.ReceivedApplication
  *   끝: 휴지통이면 [복원], 지원 취소된 건 '열람 불가', 아니면 (새 지원 파란 점) + 화살표.
  */
 @Composable
-fun ReceivedApplicationRow(a: ReceivedApplication, trash: Boolean, onClick: (() -> Unit)?, onRestore: () -> Unit, showDivider: Boolean = true) {
+fun ReceivedApplicationRow(
+    a: ReceivedApplication, trash: Boolean, onClick: (() -> Unit)?, onRestore: () -> Unit, showDivider: Boolean = true,
+    /** ★ 2026-11-16 지원자와의 채팅방 바로 열기(roomId 가 있을 때만 버튼이 보인다). */
+    onChat: (() -> Unit)? = null,
+) {
     val (status, level) = ApplicationLabels.received(a)
     Column(Modifier.fillMaxWidth()) {
         Row(
@@ -84,6 +90,11 @@ fun ReceivedApplicationRow(a: ReceivedApplication, trash: Boolean, onClick: (() 
                 a.locked -> Icon(painterResource(R.drawable.ic_web_arrow), null, tint = AppColors.TextHead, modifier = Modifier.size(18.dp).rotate(-90f))
                 a.withdrawn -> Text(stringResource(R.string.received_unavailable), style = AppTypography.Sub13, color = AppColors.TextSub)
                 else -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Dimensions.spacingS)) {
+                    if (onChat != null && a.canOpenChat) OutlinedButton(
+                        onClick = onChat, shape = CircleShape,
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                        modifier = Modifier.height(32.dp).testTag("received.chat"),
+                    ) { Text(stringResource(R.string.received_chat), style = AppTypography.Body14SemiBold, color = AppColors.TextBody) }
                     if (a.isNew) Box(Modifier.size(8.dp).background(AppColors.NewDot, CircleShape))
                     Icon(painterResource(R.drawable.ic_web_arrow), null, tint = AppColors.TextHead, modifier = Modifier.size(18.dp).rotate(-90f))
                 }

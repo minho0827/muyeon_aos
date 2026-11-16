@@ -101,8 +101,13 @@ data class ReceivedApplication(
     val resumeGenres: List<String> = emptyList(),
     /** 경력 버킷(NEW/Y1_3/…). */
     val resumeCareer: String? = null,
+    /** ★ 2026-11-16 지원자와의 채팅방 번호(대타 지원 때 서버가 연 방). 없으면 null — [채팅] 버튼을 숨긴다. */
+    val roomId: Int? = null,
 ) {
     val key: String get() = "$kind-$id"
+
+    /** 목록 줄의 [채팅] — 방이 있고, 지원 취소·잠김·휴지통이 아닐 때만. */
+    val canOpenChat: Boolean get() = roomId != null && !withdrawn && !locked
     /** 지원자가 거둔 지원 — 열람 불가. */
     val withdrawn: Boolean get() = status == "CANCELED" && canceledBy == "WITHDRAW"
     val isNew: Boolean get() = !withdrawn && viewedAt == null
