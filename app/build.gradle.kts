@@ -51,7 +51,7 @@ android {
         applicationId = "com.muyeon.app"
         minSdk = rootProject.extra["minSdkVersion"] as Int
         targetSdk = rootProject.extra["targetSdkVersion"] as Int
-        versionCode = 67
+        versionCode = 68
         versionName = "1.1.39"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
