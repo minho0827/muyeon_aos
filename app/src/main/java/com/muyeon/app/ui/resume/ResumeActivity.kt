@@ -215,6 +215,8 @@ class ResumeActivity : ResultActivity() {
                 composable("profile") {
                     val scope = androidx.compose.runtime.rememberCoroutineScope()
                     var chatLimit by remember { androidx.compose.runtime.mutableStateOf<RecruitChatLimitException?>(null) }
+                    // ★ 2026-11-16 채용 채팅은 필요 유형표(RECRUIT_CHAT = 원장·공연기획·강사) + 공통 관문.
+                    val gate = com.muyeon.app.ui.common.rememberTypeGate()
                     PublicProfileScreen(
                         api = api, reviewApi = reviewApi, userId = userId, src = src,
                         recruitMode = recruit,
@@ -224,10 +226,12 @@ class ResumeActivity : ResultActivity() {
                         onOpenChat = { arg ->
                             if (recruit) {
                                 // 학원·공연팀 무료 [채팅하기] — arg 는 강사 userId. 다이렉트 방을 만들고 연다(iOS presentPublicProfile).
-                                scope.launch {
-                                    api.directRoom(arg)
-                                        .onSuccess { rid -> if (rid > 0) ChatActivity.startRoom(this@ResumeActivity, rid) }
-                                        .onFailure { if (it is RecruitChatLimitException) chatLimit = it }
+                                gate.require(com.muyeon.domain.model.member.TypeFeature.RECRUIT_CHAT) {
+                                    scope.launch {
+                                        api.directRoom(arg)
+                                            .onSuccess { rid -> if (rid > 0) ChatActivity.startRoom(this@ResumeActivity, rid) }
+                                            .onFailure { if (it is RecruitChatLimitException) chatLimit = it }
+                                    }
                                 }
                             } else {
                                 ChatActivity.startRoom(this@ResumeActivity, arg)
@@ -246,6 +250,7 @@ class ResumeActivity : ResultActivity() {
                         // 이미 요청·응답 존재 → 받은 견적 상세(iOS presentReceivedQuotes)
                         onOpenReceivedQuotes = { qid -> com.muyeon.app.ui.quote.LessonInquiry.openReceived(this@ResumeActivity, qid) },
                     )
+                    com.muyeon.app.ui.common.TypeGateHost(gate)
                     chatLimit?.let { e ->
                         RecruitChatLimitDialog(
                             e,

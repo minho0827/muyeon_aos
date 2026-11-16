@@ -119,7 +119,9 @@ class MainViewModel(
         val loggedIn = tokens.isLoggedIn
         val s = _state.value
         if (type != s.activeType || loggedIn != s.isLoggedIn) {
-            _state.update { it.copy(activeType = type, isLoggedIn = loggedIn, switchableTypes = if (loggedIn) it.switchableTypes else emptyList()) }
+            // ★ 2026-11-16 다른 길(웹 창 등)에서 유형이 바뀌었다 — 탭 화면도 새로 그리게 typeEpoch 를 올린다.
+            _state.update { it.copy(activeType = type, isLoggedIn = loggedIn, switchableTypes = if (loggedIn) it.switchableTypes else emptyList(),
+                typeEpoch = if (type != it.activeType) it.typeEpoch + 1 else it.typeEpoch) }
         }
         refreshRoles()
     }
@@ -148,7 +150,8 @@ class MainViewModel(
                 val type = ActiveType.visible(r.data.activeType)
                 val changed = type != _state.value.activeType
                 if (changed) activeTypeStore.save(type)
-                _state.update { it.copy(switchableTypes = r.data.switchable, activeType = type, typeImages = r.data.images) }
+                _state.update { it.copy(switchableTypes = r.data.switchable, activeType = type, typeImages = r.data.images,
+                    typeEpoch = if (changed) it.typeEpoch + 1 else it.typeEpoch) }
             }
         }
     }

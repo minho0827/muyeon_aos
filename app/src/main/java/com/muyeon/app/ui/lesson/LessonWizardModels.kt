@@ -226,15 +226,16 @@ data class LessonWizardDraft(
      * '체험 가능' 은 학원 수업에만 의미가 있다 — 홈 '체험 가능한 학원' 칸이 학원 수업만 보여서(2026-10-22, iOS 와 같음).
      *  학원 본인, 학원 수업으로 올리는 강사(명의 선택), 이미 체험으로 켜 둔 레슨 수정(끌 수 있게)만 보인다.
      */
-    fun experienceVisible(isAcademy: Boolean, isEdit: Boolean): Boolean =
-        isAcademy || bylinePartyId != null || (isEdit && isExperience)
+    fun experienceVisible(mode: com.muyeon.domain.model.member.LessonOwnerMode, isEdit: Boolean): Boolean =
+        mode.experienceVisible(hasByline = bylinePartyId != null, isEdit = isEdit, isExperience = isExperience)
 
     /** 고를 수 있는 유형 — 체험은 학원 수업만. */
-    fun kindOptions(isAcademy: Boolean, isEdit: Boolean): List<Pair<String, String>> =
-        LessonOptions.lessonKinds.filter { it.first != "EXPERIENCE" || experienceVisible(isAcademy, isEdit) }
+    fun kindOptions(mode: com.muyeon.domain.model.member.LessonOwnerMode, isEdit: Boolean): List<Pair<String, String>> =
+        LessonOptions.lessonKinds.filter { it.first != "EXPERIENCE" || experienceVisible(mode, isEdit) }
 
-    fun toCreatePayload(isAcademy: Boolean): JSONObject = toPayload().apply {
-        bylinePartyId?.let { put(if (isAcademy) "asTeacherId" else "atAcademyId", it) }
+    /** 명의 칸 이름은 주체 모드가 정한다(학원 asTeacherId · 개인 atAcademyId). */
+    fun toCreatePayload(mode: com.muyeon.domain.model.member.LessonOwnerMode): JSONObject = toPayload().apply {
+        bylinePartyId?.let { put(mode.bylineField, it) }
     }
 }
 
@@ -360,8 +361,8 @@ class LessonWizardApi(internal val token: String?) {
      * 소속(ACTIVE) 목록 — 학원이면 소속 강사, 강사면 소속 학원.
      *  명의는 선택 항목이라 실패해도 폼은 그대로 쓸 수 있어야 한다 → 빈 목록으로 흘린다.
      */
-    suspend fun affiliations(isAcademy: Boolean): List<LessonByline> = withContext(Dispatchers.IO) {
-        val path = if (isAcademy) "/academy-teachers/mine" else "/academy-teachers/invites"
+    suspend fun affiliations(mode: com.muyeon.domain.model.member.LessonOwnerMode): List<LessonByline> = withContext(Dispatchers.IO) {
+        val path = mode.affiliationPath
         runCatching {
             val req = Request.Builder().url("$apiBase$path?status=ACTIVE")
                 .apply { token?.let { header("Authorization", "Bearer $it") } }.withActiveType().build()

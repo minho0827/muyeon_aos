@@ -32,8 +32,6 @@ object ActiveRole {
     const val TEACHER = "TEACHER"
     const val DANCER = "DANCER"
 
-    /** 무용수 유형 고객측 차단 문구(레슨 요청·예약) — iOS RoleGate 와 동일 문구. */
-    const val DANCER_CUSTOMER_BLOCK = "무용수 유형에서는 레슨을 요청·예약할 수 없어요. 일반 유형으로 전환한 뒤 이용해 주세요."
     /** 무용수 유형 제공측 차단 문구(레슨 운영·견적 응답) — iOS RoleGate 와 동일 문구. */
     const val DANCER_PROVIDER_BLOCK = "레슨은 강사·학원 유형에서만 운영할 수 있어요. 강사 유형으로 전환해 주세요. 강사 유형이 없다면 MY > 회원유형에서 추가할 수 있어요."
 
@@ -43,11 +41,22 @@ object ActiveRole {
      */
     @Volatile private var appContext: Context? = null
 
+    /**
+     * ★ 2026-11-16 지금 유형 알림 — 화면이 유형을 한 번만 읽고 잔상을 남기지 않게, 저장(store)·지우기(clear) 때마다 새 값이 흐른다.
+     *  셸 밖 화면(채팅방·무용수 상세·캐스팅 상세·견적)은 [rememberActiveType] 또는 이 흐름을 구독한다.
+     *  값은 화면용 유형(취미·공간은 일반).
+     */
+    private val _type = kotlinx.coroutines.flow.MutableStateFlow(com.muyeon.domain.model.member.ActiveType.GENERAL)
+    val type: kotlinx.coroutines.flow.StateFlow<String> = _type
+
+    private fun publish(raw: String?) { _type.value = com.muyeon.domain.model.member.ActiveType.visible(raw) }
+
     fun bind(context: Context) {
         if (appContext == null) {
             val app = context.applicationContext
             appContext = app
             val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            publish(prefs.getString(KEY, null))
             // 지난번 서버가 알려 준 레슨 제공 유형 — 스플래시를 건너뛰고 복원된 화면에서도 같은 규칙을 쓴다.
             prefs.getString(KEY_PROVIDERS, null)?.let { LessonProviders.update(it.split(',')) }
             LessonProviders.onChanged = { now -> prefs.edit().putString(KEY_PROVIDERS, now.joinToString(",")).apply() }
@@ -80,6 +89,7 @@ object ActiveRole {
         val v = (type ?: "").trim().uppercase().ifEmpty { "GENERAL" }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putString(KEY, v).apply()
+        publish(v)
     }
 
     /** 로그아웃 — 다음 계정이 앞 계정의 유형을 X-Active-Type 으로 물려받지 않게 지운다. */
@@ -87,6 +97,7 @@ object ActiveRole {
         bind(context)
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().remove(KEY).apply()
+        publish(null)
     }
 
     private val syncClient = OkHttpClient.Builder()
@@ -228,12 +239,7 @@ object ActiveRole {
     fun providerSwitchOrder(): List<String> =
         (listOf(TEACHER, ACADEMY) + LessonProviders.types.sorted()).distinct().filter { LessonProviders.canProvide(it) }
 
-    /** 고객측(레슨 요청·예약) 게이트 — 무용수면 안내 토스트 후 false. */
-    fun allowLessonCustomer(context: Context): Boolean {
-        if (!isDancer(context)) return true
-        Toast.makeText(context, DANCER_CUSTOMER_BLOCK, Toast.LENGTH_LONG).show()
-        return false
-    }
+    // ★ 2026-11-16 고객측(레슨 요청·예약·후기)은 지금 유형으로 막지 않는다(사용자 결정) — 위저드 첫 단계(수강생 / 학원)가 요청 종류를 정한다.
 
     /**
      * 제공측(레슨 운영·견적 응답) 게이트 — 무용수인데 명부에 무용수가 없으면 안내 토스트 후 false.
@@ -245,13 +251,8 @@ object ActiveRole {
         return false
     }
 
-    /** iOS `RoleGate.roleLabels` 와 동일 — 전환 토스트 문구에 쓴다. */
-    val labels = mapOf(
-        "TEACHER" to "강사", "DANCER" to "무용수", "ACADEMY" to "학원·원장",
-        "TEAM" to "공연팀·기획자", "SPACE" to "공간 보유자", "GENERAL" to "일반",
-    )
-
-    fun label(type: String): String = labels[type.uppercase()] ?: type
+    /** 긴 유형 이름(전환 토스트) — 유형 정보 표([com.muyeon.domain.model.member.ActiveTypeInfos]). */
+    fun label(type: String): String = com.muyeon.domain.model.member.ActiveTypeInfos.find(type)?.long ?: type
 }
 
 /**

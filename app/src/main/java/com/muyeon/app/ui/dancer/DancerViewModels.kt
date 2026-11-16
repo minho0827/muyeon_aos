@@ -208,18 +208,37 @@ class DancerDetailViewModel(
         load()
         viewModelScope.launch { _state.update { it.copy(liked = id in getLikedIds(ScrapTarget.DANCER)) } }
         onAccountChanged { _state.update { s -> s.copy(liked = false) }; load(); viewModelScope.launch { _state.update { it.copy(liked = id in getLikedIds(ScrapTarget.DANCER)) } } }
+        loadCastingCalls()
+    }
+
+    private var seenType: String? = com.muyeon.domain.model.member.ActiveType.visible(activeType.current())
+
+    private fun loadCastingCalls() {
         if (_state.value.isTeam) viewModelScope.launch {
             (dancers.myOpenCastingCalls() as? ApiResult.Success)?.let { r -> _state.update { it.copy(castingCalls = r.data) } }
         }
     }
 
-    /** 보는 사람 기준 값(유형·로그인·본인) — 계정이 바뀌면 다시 맞춘다. */
+    /**
+     * ★ 2026-11-16 화면 안에서 유형이 바뀌었다(MY 두 번 누르기·관문 전환) — 버튼(제안/채팅)과 서버가 주는 공개 범위를 다시 맞춘다.
+     *  같은 유형이면 아무것도 하지 않는다(처음 그릴 때).
+     */
+    fun onTypeChanged(type: String) {
+        val t = com.muyeon.domain.model.member.ActiveType.visible(type)
+        if (t == seenType) return
+        seenType = t
+        _state.update { it.copy(castingCalls = emptyList(), pickCall = false, confirmChat = false) }
+        load()
+        loadCastingCalls()
+    }
+
+    /** 보는 사람 기준 값(유형·로그인·본인) — 계정·유형이 바뀌면 다시 맞춘다. 판정은 필요 유형표(FeatureRoles). */
     private fun viewerState(s: DancerDetailUiState): DancerDetailUiState {
         val type = activeType.current()
         val me = tokens.myUserId()
         return s.copy(
-            isTeam = type == "TEAM",
-            canContact = type in DancersUseCase.READ_TYPES,
+            isTeam = com.muyeon.domain.model.member.FeatureRoles.allows(com.muyeon.domain.model.member.TypeFeature.CASTING_OFFER, type),
+            canContact = com.muyeon.domain.model.member.FeatureRoles.allows(com.muyeon.domain.model.member.TypeFeature.RECRUIT_CHAT, type),
             loggedIn = tokens.isLoggedIn,
             isSelf = s.profile?.self == true || (me != null && me == id),
         )

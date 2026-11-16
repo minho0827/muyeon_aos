@@ -59,6 +59,7 @@
     <string name="quote_respond_public_join_send">강사·학원으로 가입하고 견적 보내기</string>
     <string name="quote_respond_public_switch">%1$s 유형으로 전환하고 견적 보내기</string>
     <string name="quote_respond_public_add_teacher">강사로 시작하고 견적 보내기</string>
+    <string name="quote_respond_public_add_dancer">무용수로 시작하고 견적 보내기</string>
     <string name="quote_respond_public_add_academy">학원으로 시작하기 (사업자 인증 필요)</string>
     <string name="quote_respond_public_browse">무용연 둘러보기</string>
     <string name="quote_respond_role_teacher">강사</string>

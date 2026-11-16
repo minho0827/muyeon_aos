@@ -6,7 +6,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
-import com.muyeon.app.webview.ActiveRole
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
@@ -123,7 +122,6 @@ fun ChatRoomScreen(
     var timelineCycle by remember { mutableStateOf<ChatLessonCycle?>(null) }   // 사이클별 타임라인
     var showQuoteSummary by remember { mutableStateOf(false) }
     var showAcceptConfirm by remember { mutableStateOf(false) }
-    var showReviewSwitch by remember { mutableStateOf(false) }
     var teacherReviewInfo by remember { mutableStateOf(false) }
     var showLessonComplete by remember { mutableStateOf(false) }   // ★ 11-14 강사 [레슨 완료] 확인창
 
@@ -210,10 +208,8 @@ fun ChatRoomScreen(
         )
     }
 
-    /** 후기 진입 — 활성유형이 일반이 아니면 전환 안내를 먼저 띄운다. */
-    fun startReviewFlow() {
-        if (ActiveRole.current(context) == "GENERAL") openReviewPage() else showReviewSwitch = true
-    }
+    /** 후기 진입 — ★ 2026-11-16 지금 유형과 상관없이 바로 연다(후기 자격은 서버가 "그 요청을 한 사람"으로 판단). */
+    fun startReviewFlow() = openReviewPage()
 
     fun handleProgressPrimary(prog: ChatLessonProgress, isTeacher: Boolean) {
         when (prog.step) {
@@ -342,10 +338,11 @@ fun ChatRoomScreen(
     // 강사 쪽 견적 채팅방은 레슨 제공 유형(강사·학원, 명부의 무용수)에서만 연다(알림·채팅 목록 어디서 들어오든 — 웹·iOS 와 같은 규칙).
     //  ★ 2026-11-14 예전엔 전환 버튼이 웹 /chat/:id 로 넘겼는데, 그 주소가 다시 이 네이티브 방을 열어
     //   유형은 그대로인 채 같은 안내만 반복됐다. 이제 이 자리에서 서버에 강사 유형을 저장하고 바로 방을 보여 준다.
-    var roleEpoch by remember { mutableIntStateOf(0) }
+    //  ★ 2026-11-16 지금 유형은 유형 알림(ActiveRole.type)을 구독한다 — 전환하면 바로 다시 그려진다(예전 roleEpoch 우회 제거).
+    val activeType = com.muyeon.app.ui.common.rememberActiveType()
     var switching by remember { mutableStateOf(false) }
     if (vm.quoteContext?.isTeacher == true &&
-        roleEpoch >= 0 && !ActiveRole.isLessonProvider(context)
+        !com.muyeon.domain.model.member.LessonProviders.canProvide(activeType)
     ) {
         ProviderSwitchGate(
             onBack = onBack,
@@ -359,7 +356,6 @@ fun ChatRoomScreen(
                     val type = held?.takeIf { com.muyeon.app.ui.common.ShellTypeSwitch.switchTo(context, it) }
                     switching = false
                     if (type != null) {
-                        roleEpoch++
                         vm.reloadMessagesAndContext()
                     } else {
                         android.widget.Toast.makeText(context, "강사 유형으로 바꾸지 못했어요. MY에서 강사 유형을 먼저 추가해 주세요.", android.widget.Toast.LENGTH_LONG).show()
@@ -642,7 +638,7 @@ fun ChatRoomScreen(
             //  최종 검증은 서버가 한다.
             //  ★ 11-10 학원 채용 방(HIRE)은 레슨 약속을 잡지 않는다(서버도 400).
             showProposal = !vm.isHire && (vm.isQuoteMatched || vm.quoteContext?.isTeacher == true ||
-                ActiveRole.isLessonProvider(context)),
+                com.muyeon.domain.model.member.LessonProviders.canProvide(activeType)),
             onPickImages = { uris -> vm.sendImages(context, uris) },
             onPickVideo = { uri -> vm.sendVideo(context, uri) },
             onSurvey = { showSurveyPicker = true },
@@ -798,17 +794,6 @@ fun ChatRoomScreen(
             quoteId = quoteId, posts = posts,
             onMessage = { vm.toast = it },
             onDone = { crossPosts = null },
-        )
-    }
-    // 후기 — 활성유형이 일반이 아니면 전환 안내.
-    //  AOS 에는 네이티브 유형 전환 API 가 없어, 확인 시 웹 후기 화면으로 이동하고 유형 확인은 웹이 처리한다.
-    if (showReviewSwitch) {
-        com.muyeon.app.ui.quote.QuoteDialog(
-            title = "후기는 일반 회원 화면에서 작성해요",
-            message = "일반 유형으로 전환한 뒤 후기 작성 화면으로 이동합니다.",
-            confirmText = "일반 유형으로 전환하고 후기 쓰기",
-            onConfirm = { showReviewSwitch = false; openReviewPage() },
-            onDismiss = { showReviewSwitch = false },
         )
     }
     // 강사 방향 레슨 — 후기 대상 아님 안내(확인 버튼 하나).

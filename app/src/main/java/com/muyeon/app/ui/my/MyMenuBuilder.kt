@@ -182,9 +182,13 @@ object MyMenuBuilder {
         else -> this
     }
 
-    /** 레슨 제공 유형 명부에 없는 무용수에게서 빼는 레슨 메뉴(명부에 있으면 강사와 같다). */
-    private val DANCER_BLOCKED_BRIDGES = setOf("quoteRequest", "myQuotes", "quoteBrowse", B_LESSON_HUB, "lessonSlotManage")
-    private val DANCER_BLOCKED_PATHS = Regex("^/(quoteRequest|availableQuotes|quoteSettings|lessonHub|myLessons|lessonSettings|lessonGenres|lessonSlots)(/|\\?|$)")
+    /**
+     * 레슨 제공 유형 명부에 없는 무용수에게서 빼는 레슨 운영 메뉴(명부에 있으면 강사와 같다).
+     *  ★ 2026-11-16 고객 쪽(레슨 요청하기·내 레슨 요청 myQuotes)은 빼지 않는다 — 유형과 상관없이 레슨을 요청할 수 있고,
+     *   서버가 요청 이력이 있는 회원에게 '내 레슨 요청'을 넣어 준다(GET /app-menus?surface=MY).
+     */
+    private val DANCER_BLOCKED_BRIDGES = setOf("quoteBrowse", B_LESSON_HUB, "lessonSlotManage")
+    private val DANCER_BLOCKED_PATHS = Regex("^/(availableQuotes|quoteSettings|lessonHub|myLessons|lessonSettings|lessonGenres|lessonSlots)(/|\\?|$)")
     private fun MyMenuItem.dancerBlocked() = bridge in DANCER_BLOCKED_BRIDGES || DANCER_BLOCKED_PATHS.containsMatchIn(path.orEmpty())
 
     const val B_NOTIFICATIONS = "notifications"

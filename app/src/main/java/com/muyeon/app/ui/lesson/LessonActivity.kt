@@ -87,12 +87,10 @@ class LessonActivity : ResultActivity() {
         val id = intent.getIntExtra(EXTRA_ID, 0)
         val reservationId = intent.getIntExtra(EXTRA_RESERVATION_ID, 0)
 
-        // 무용수 유형은 레슨 활동 전면 차단(2026-09-26 정책) — 모든 진입점을 여기서 한 번에 막는다.
-        //  운영(관리·개설·수정·예약시간·레슨 설정)은 강사·학원 전용, 예약은 일반 유형으로 전환 안내.
-        //  캘린더·예약 상세·변경은 이미 잡힌 약속 확인이라 열어 둔다.
+        // 운영(관리·개설·수정·예약시간·레슨 설정)은 레슨 제공 유형 전용 — 모든 진입점을 여기서 한 번에 막는다.
+        //  ★ 2026-11-16 예약(고객 쪽)은 지금 유형과 상관없이 연다(사용자 결정). 캘린더·예약 상세·변경도 열어 둔다.
         val allowed = when (route) {
             "manage", "create", "edit", "slots", "settings" -> ActiveRole.allowLessonProvider(this)
-            "booking" -> ActiveRole.allowLessonCustomer(this)
             else -> true
         }
         if (!allowed) { finish(); return }

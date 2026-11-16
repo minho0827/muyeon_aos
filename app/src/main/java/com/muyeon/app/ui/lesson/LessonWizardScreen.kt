@@ -43,7 +43,6 @@ import coil3.compose.AsyncImage
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.common.WheelField
-import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.ui.quote.QuoteDialog
 import com.muyeon.app.ui.quote.QuoteNavBar
 import com.muyeon.app.ui.quote.QuoteUi
@@ -90,13 +89,15 @@ fun LessonWizardScreen(
     val scope = rememberCoroutineScope()
     // 명의 후보(소속) — 개설 모드에서만 채운다. 활성유형은 웹이 syncActiveType 으로 넘겨준 값.
     var bylines by remember { mutableStateOf<List<LessonByline>>(emptyList()) }
-    val isAcademy = remember { ActiveRole.isAcademy(context) }
+    // ★ 2026-11-16 주체(학원 / 개인)와 문구는 표(LessonOwnerMode · LessonProviderCopy)로 — 유형이 바뀌면 다시 읽는다.
+    val ownerMode = com.muyeon.domain.model.member.LessonOwnerMode.of(com.muyeon.app.ui.common.rememberActiveType())
+    val copy = com.muyeon.domain.model.member.LessonProviderCopy.of(ownerMode)
 
     var recentPlaces by remember { mutableStateOf<List<LessonWizardDraft>>(emptyList()) }
     LaunchedEffect(lessonId) {
         if (lessonId == null) recentPlaces = api.recentPlaces()
         hasDetailImageEnt = api.hasDetailImage()
-        if (lessonId == null) bylines = api.affiliations(isAcademy)
+        if (lessonId == null) bylines = api.affiliations(ownerMode)
         if (lessonId != null) {
             api.getProduct(lessonId).onSuccess { d ->
                 draft = d.toDraft() // 온라인 판정은 LessonFormat.isOnline(formats·장소명)
@@ -155,7 +156,7 @@ fun LessonWizardScreen(
     androidx.compose.runtime.CompositionLocalProvider(com.muyeon.app.ui.common.LocalRequiredForm provides required) {
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         QuoteNavBar(
-            title = if (isAcademy) (if (lessonId != null) "수업 수정" else "수업 등록") else (if (lessonId != null) "레슨 수정" else "레슨 개설"),
+            title = if (lessonId != null) copy.editTitle else copy.createTitle,
             onClose = { showExit = true },
         )
 
@@ -190,7 +191,7 @@ fun LessonWizardScreen(
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             when (step) {
-                0 -> StepBasic(draft, bylines, isAcademy, lessonId != null) { draft = it }
+                0 -> StepBasic(draft, bylines, ownerMode, lessonId != null) { draft = it }
                 1 -> StepIntro(draft, hasDetailImageEnt, uploading, { draft = it },
                     onPickPhotos = { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                     onPickDetail = { detailPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
@@ -230,10 +231,10 @@ fun LessonWizardScreen(
                 scope.launch {
                     // 명의 키는 개설에만 붙인다(수정은 서버가 명의를 바꾸지 않는다).
                     // 체험을 고를 수 없는 경우(강사 개인 레슨)엔 체험으로 보내지 않는다 — 명의를 바꾸기 전 값이 남아 있을 수 있다.
-                    val sendDraft = if (draft.lessonKind != "EXPERIENCE" || draft.experienceVisible(isAcademy, lessonId != null)) draft
+                    val sendDraft = if (draft.lessonKind != "EXPERIENCE" || draft.experienceVisible(ownerMode, lessonId != null)) draft
                     else draft.copy(lessonKind = "REGULAR")
                     val result = if (lessonId != null) api.updateProduct(lessonId, sendDraft.toPayload())
-                    else api.createProduct(sendDraft.toCreatePayload(isAcademy))
+                    else api.createProduct(sendDraft.toCreatePayload(ownerMode))
                     result.onSuccess { id ->
                         if (lessonId == null) com.muyeon.app.ui.assistant.AssistantDraft.saved(context, aiDraftId, "LESSON", id, draft.intro) // AI 초안 채택 기록
                         onCreated(if (id > 0) id else (lessonId ?: 0))
@@ -277,32 +278,32 @@ fun LessonWizardScreen(
 private fun StepBasic(
     d: LessonWizardDraft,
     bylines: List<LessonByline>,
-    isAcademy: Boolean,
+    mode: com.muyeon.domain.model.member.LessonOwnerMode,
     isEdit: Boolean,
     onChange: (LessonWizardDraft) -> Unit,
 ) {
+    val copy = com.muyeon.domain.model.member.LessonProviderCopy.of(mode)
     // 명의 — 소속이 있을 때만, 그리고 개설 모드에서만.
     //  수정에서는 서버가 명의를 바꾸지 않으므로 보이면 "바꿨는데 안 바뀌는" 칸이 된다.
     if (!isEdit && bylines.isNotEmpty()) {
-        val selfLabel = if (isAcademy) "우리 학원 이름으로" else "개인 레슨"
-        val labels = listOf(selfLabel) + bylines.map { if (isAcademy) "${it.partyName} 강사" else it.partyName }
+        val selfLabel = copy.selfByline
+        val labels = listOf(selfLabel) + bylines.map { copy.partyLabel(mode, it.partyName) }
         val current = d.bylinePartyId?.let { id ->
             bylines.firstOrNull { it.partyId == id }
-                ?.let { if (isAcademy) "${it.partyName} 강사" else it.partyName }
+                ?.let { copy.partyLabel(mode, it.partyName) }
         } ?: selfLabel
-        WizardField(if (isAcademy) "누구 이름으로 낼까요?" else "어느 학원 수업인가요?") {
+        WizardField(copy.bylineQuestion) {
             WizardMenu(current, selfLabel, labels) { picked ->
                 val idx = labels.indexOf(picked)
                 onChange(d.copy(bylinePartyId = if (idx <= 0) null else bylines[idx - 1].partyId))
             }
             Text(
-                if (isAcademy) "회원에게는 선택한 강사가 보이고, 후기도 그 강사에게 쌓여요. 관리는 학원이 합니다."
-                else "학원을 고르면 관리는 학원이 함께 해요. 레슨은 그대로 내 이름으로 보여요.",
+                copy.bylineHint,
                 fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 17.sp, color = MuyeonColors.textSub,
             )
         }
     }
-    WizardField(if (isAcademy) "수업명" else "레슨명", required = true, filled = d.title.trim().isNotEmpty()) {
+    WizardField(copy.nameField, required = true, filled = d.title.trim().isNotEmpty()) {
         WizardTextField(d.title, "예: 성인 취미 발레 (초급)") { onChange(d.copy(title = it)) }
     }
     WizardField("장르", required = true, filled = d.genre.isNotEmpty()) {
@@ -313,7 +314,7 @@ private fun StepBasic(
     }
     // 수업 유형 — 홈은 유형별 한 칸(정규→추천 레슨, 원데이→원데이 클래스, 체험→체험 클래스).
     //  ★ 2026-10-23 '체험 가능' 토글 대신 유형으로 고른다. 체험은 학원 수업만 보인다(iOS 와 같음).
-    val kinds = d.kindOptions(isAcademy, isEdit)
+    val kinds = d.kindOptions(mode, isEdit)
     LaunchedEffect(kinds) { if (kinds.none { it.first == d.lessonKind }) onChange(d.copy(lessonKind = "REGULAR")) }
     WizardField("수업 유형", required = true) {
         WizardChips(kinds, d.lessonKind) { onChange(d.copy(lessonKind = it)) }

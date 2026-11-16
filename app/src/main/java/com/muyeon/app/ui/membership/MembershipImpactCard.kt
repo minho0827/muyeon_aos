@@ -27,7 +27,7 @@ import kotlin.math.roundToInt
  *  숫자는 0 에서 카운트업한다 — 정지된 숫자보다 '늘었다'가 읽힌다.
  */
 @Composable
-fun MembershipImpactCard(impact: MembershipImpact, isAcademy: Boolean) {
+fun MembershipImpactCard(impact: MembershipImpact, copy: com.muyeon.domain.model.member.PerformanceCopy) {
     Column(
         Modifier.fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
@@ -49,12 +49,12 @@ fun MembershipImpactCard(impact: MembershipImpact, isAcademy: Boolean) {
         val before = impact.before
         val after = impact.after
         if (impact.ready && before != null && after != null) {
-            Headline(before, after, isAcademy)
+            Headline(before, after, copy)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 RatePill("노출", before.impressions.toDouble(), after.impressions.toDouble())
                 RatePill("프로필 열람", before.detailViews.toDouble(), after.detailViews.toDouble())
                 RatePill(
-                    if (isAcademy) "상담문의·예약" else "견적요청·채팅",
+                    copy.leadPill,
                     before.leads.toDouble(), after.leads.toDouble(),
                 )
             }
@@ -85,14 +85,14 @@ fun MembershipImpactCard(impact: MembershipImpact, isAcademy: Boolean) {
 private fun Headline(
     before: MembershipImpactMetrics,
     after: MembershipImpactMetrics,
-    isAcademy: Boolean,
+    copy: com.muyeon.domain.model.member.PerformanceCopy,
 ) {
     val money = after.revenue - before.revenue
     val title = when {
         money > 0 -> "결제 전 같은 기간보다 예상 금액이 이만큼 늘었어요"
-        else -> topGrowth(before, after, isAcademy)
+        else -> topGrowth(before, after, copy)
             ?.let { "결제 전 같은 기간보다 ${withIGa(it.first)} ${it.second} 늘었어요" }
-            ?: "결제 후 ${if (isAcademy) "학원" else "강사님"}을 이만큼 찾아봤어요"
+            ?: "결제 후 ${copy.foundWho}을 이만큼 찾아봤어요"
     }
     val target = if (money > 0) money
     else max(after.leads, max(after.detailViews, after.impressions)).toDouble()
@@ -159,10 +159,10 @@ private fun withIGa(name: String): String {
 private fun topGrowth(
     before: MembershipImpactMetrics,
     after: MembershipImpactMetrics,
-    isAcademy: Boolean,
+    copy: com.muyeon.domain.model.member.PerformanceCopy,
 ): Pair<String, String>? {
     val candidates = listOf(
-        Triple(if (isAcademy) "상담문의" else "견적요청·채팅", before.leads.toDouble(), after.leads.toDouble()),
+        Triple(copy.leadGrowth, before.leads.toDouble(), after.leads.toDouble()),
         Triple("프로필 열람", before.detailViews.toDouble(), after.detailViews.toDouble()),
         Triple("노출", before.impressions.toDouble(), after.impressions.toDouble()),
     )

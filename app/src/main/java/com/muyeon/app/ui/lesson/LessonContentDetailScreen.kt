@@ -318,8 +318,6 @@ fun LessonContentDetailScreen(
             fun request() {
                 if (requesting) return
                 if (myUserId == null) { onLogin(); return }
-                // 무용수 유형은 레슨(견적) 요청 불가 — 프리필 조회 전에 안내(2026-09-26 정책, 리뷰 상세와 같다).
-                if (!com.muyeon.app.webview.ActiveRole.allowLessonCustomer(ctx)) return
                 requesting = true
                 scope.launch {
                     api.quotePrefill(lessonProductId)?.let(onRequestQuote)

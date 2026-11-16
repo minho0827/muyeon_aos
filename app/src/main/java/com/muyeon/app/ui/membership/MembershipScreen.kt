@@ -369,7 +369,10 @@ fun MembershipScreen(api: MembershipApi, onClose: () -> Unit) {
     // 무용수 활동 중에는 레슨 활동 불가(2026-09-26) — 레슨·자동견적 혜택 줄은 뺀다.
     //  ★ 2026-11-16 레슨 제공 유형 명부에 무용수가 있으면 강사와 같이 보인다.
     val context = androidx.compose.ui.platform.LocalContext.current
-    val isDancer = remember { com.muyeon.app.webview.ActiveRole.isDancer(context) && !com.muyeon.app.webview.ActiveRole.isLessonProvider(context) }
+    // ★ 2026-11-16 레슨·자동 견적 줄은 레슨 제공 유형표로 — 전문 유형인데 레슨을 못 여는 유형(명부에 없는 무용수·공연기획)만 뺀다.
+    //  remember 로 한 번만 읽지 않는다(유형이 바뀌면 다시 그린다).
+    val activeType = com.muyeon.app.ui.common.rememberActiveType()
+    val isDancer = MembershipBenefits.hidesLessonLines(activeType)
     val isLoggedIn = remember { !TokenManager.getAccessToken(context).isNullOrEmpty() }
 
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {

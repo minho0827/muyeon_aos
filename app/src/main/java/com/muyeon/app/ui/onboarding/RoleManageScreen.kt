@@ -67,12 +67,15 @@ import org.json.JSONObject
  */
 data class RoleOption(val code: String, val emoji: String, val title: String, val business: Boolean)
 
+private fun roleOption(i: com.muyeon.domain.model.member.ActiveTypeInfo) = RoleOption(i.type, i.emoji, i.long, i.documentVerification)
+
 private val ROLE_OPTIONS = listOf(
     // ★ 2026-10-12 강사·무용수는 본인 인증으로 바로 부여(서버 IDENTITY_REQUIRED_ROLES) — 서류 인증 대상 아님(iOS 와 같은 값).
-    RoleOption("TEACHER", "🩰", "강사", false),
-    RoleOption("DANCER", "💃", "무용수", false),
-    RoleOption("ACADEMY", "🏫", "학원·원장", true),
-    RoleOption("TEAM", "🎭", "공연팀·기획자", true),
+    //  ★ 2026-11-16 그림 글자·이름·서류 인증 여부는 유형 정보 표(com.muyeon.domain.model.member.ActiveTypeInfos)에서 읽는다.
+    roleOption(com.muyeon.domain.model.member.ActiveTypeInfos.TEACHER),
+    roleOption(com.muyeon.domain.model.member.ActiveTypeInfos.DANCER),
+    roleOption(com.muyeon.domain.model.member.ActiveTypeInfos.ACADEMY),
+    roleOption(com.muyeon.domain.model.member.ActiveTypeInfos.TEAM),
     // 공간보유자 유형은 회원 기반 확대 후 이 위치에서 재오픈한다(iOS `RoleManageView.options` 와 같다 — 2026-11-04 AOS 에만 남아 있던 것 제거).
     RoleOption("HOBBY", "✨", "일반회원", false),
 )
@@ -534,14 +537,14 @@ private fun RoleActionSheet(
 private fun sheetDesc(opt: RoleOption, isGranted: Boolean, st: String): String {
     if (isGranted) return "지금 가지고 있는 회원유형이에요."
     // ★ 2026-10-12 강사·무용수 — 본인 인증 회원은 서류 없이 바로 추가(전공·경력 확인은 선택)
-    if (opt.code == "TEACHER" || opt.code == "DANCER") return "본인인증을 마쳤다면 서류 없이 바로 추가할 수 있어요. 전공·경력 확인은 나중에 원할 때 신청하면 돼요."
+    if (opt.code in com.muyeon.domain.usecase.auth.CompleteRoleOnboardingUseCase.IDENTITY_ROLES) return "본인인증을 마쳤다면 서류 없이 바로 추가할 수 있어요. 전공·경력 확인은 나중에 원할 때 신청하면 돼요."
     if (!opt.business) return "바로 추가할 수 있는 회원유형이에요."
     return when (st) {
         "APPROVED" -> "이미 인증을 마쳐서 다시 인증하지 않고 바로 바꿀 수 있어요."
         "PENDING" -> "인증 심사 중이에요. 서류를 다시 제출할 수 있어요."
         "REJECTED" -> "인증이 반려됐어요. 서류를 다시 제출해 주세요."
         // ★ 2026-10-22 학원은 사업자등록번호가 국세청에서 확인되면 바로 승인된다.
-        else -> if (opt.code == "ACADEMY") "사업자등록번호가 확인되면 바로 추가되는 회원유형이에요."
+        else -> if (opt.code == com.muyeon.domain.model.member.ActiveType.ACADEMY) "사업자등록번호가 확인되면 바로 추가되는 회원유형이에요."
             else "서류를 내고 승인을 받으면 추가되는 회원유형이에요."
     }
 }

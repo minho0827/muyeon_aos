@@ -47,8 +47,9 @@ class TransferActivity : ResultActivity() {
         /** ★ 2026-11-08 양도 글이 바뀌었다(등록·수정·상태·삭제) — 앱 안 알림(AppResults). 공간 탭 양도양수 목록이 다시 읽는다. */
         const val RESULT_TRANSFERS = "STUDIO_TRANSFERS"
 
-        /** 등록은 학원·강사 활동유형만(서버 ActiveRoleGuard 와 같은 기준 — 화면은 막는 쪽으로). */
-        fun canPost(context: Context): Boolean = ActiveRole.current(context) in setOf(ActiveRole.ACADEMY, ActiveRole.TEACHER)
+        /** 등록은 학원·강사 활동유형만(서버 ActiveRoleGuard 와 같은 기준) — 필요 유형표(FeatureRoles.TRANSFER_CREATE). */
+        fun canPost(context: Context): Boolean =
+            com.muyeon.domain.model.member.FeatureRoles.allows(com.muyeon.domain.model.member.TypeFeature.TRANSFER_CREATE, ActiveRole.current(context))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

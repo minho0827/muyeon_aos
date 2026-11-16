@@ -1,6 +1,5 @@
 package com.muyeon.app.ui.main
 
-import com.muyeon.domain.model.member.ActiveType as ActiveTypeK
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -17,7 +16,6 @@ import com.muyeon.app.R
 import com.muyeon.app.ui.main.bar.BarItem
 import com.muyeon.app.ui.main.bar.BarMode
 import com.muyeon.app.ui.main.bar.MorphingTabBar
-import com.muyeon.domain.model.member.ActiveType
 import com.muyeon.domain.model.member.TypeFeature
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.navigationBars
@@ -104,8 +102,8 @@ fun MainScreen(
                 //   상세·목록은 바깥 NavHost(탭 위 화면, StageRoutes.SHELL)로 밀려 들어온다.
                 composable(Screen.TabCasting.route) {
                     val r = com.muyeon.app.ui.castingstage.StageRoutes.SHELL
-                    // 계정이 바뀌면 새로 그린다(찜·공연팀 여부가 계정마다 다르다).
-                    androidx.compose.runtime.key(com.muyeon.app.auth.accountEpoch()) {
+                    // 계정·유형이 바뀌면 새로 그린다(찜·공연팀 여부가 계정·유형마다 다르다).
+                    androidx.compose.runtime.key(com.muyeon.app.auth.accountEpoch(), state.typeEpoch) {
                     com.muyeon.app.ui.castingstage.CastingHomeScreen(
                         api = com.muyeon.app.ui.castingstage.rememberStageApi(),
                         onSearch = { onOpenDetail(Screen.Search.build(com.muyeon.app.ui.search.SearchDomainKeys.CASTING)) },
@@ -157,17 +155,19 @@ fun MainScreen(
                 }
                 // 구인구직·공간 — 앱 화면을 만드는 동안 지금 쓰던 화면을 연다(개편 계획 3·4단계).
                 // 채용 2계층 — 구인 · 구직 · 대타 목록(앱). 상세는 아직 웹 창.
-                composable(Screen.TabJobs.route) { com.muyeon.app.ui.recruit.HireScreen(recruitActions) }
-                composable(Screen.TabSeek.route) { com.muyeon.app.ui.recruit.SeekScreen(recruitActions) }
-                composable(Screen.TabSubs.route) { com.muyeon.app.ui.recruit.SubsScreen(recruitActions) }
-                // ★ 2026-11-09 공간·양도 탭은 화면 안(remember)에 찜·내 번호를 쥔다 — 계정이 바뀌면 통째로 새로 그린다.
+                // ★ 2026-11-16 유형이 바뀌면(typeEpoch) 화면을 새로 그린다 — 처음 한 번 읽은 유형 잔상을 남기지 않는다.
+                //   목록 ViewModel 은 화면 칸에 남으므로, 유형에 따라 달라지는 값(구직 필터 등)은 ViewModel 이 유형 알림으로 다시 맞춘다.
+                composable(Screen.TabJobs.route) { androidx.compose.runtime.key(state.typeEpoch) { com.muyeon.app.ui.recruit.HireScreen(recruitActions) } }
+                composable(Screen.TabSeek.route) { androidx.compose.runtime.key(state.typeEpoch) { com.muyeon.app.ui.recruit.SeekScreen(recruitActions) } }
+                composable(Screen.TabSubs.route) { androidx.compose.runtime.key(state.typeEpoch) { com.muyeon.app.ui.recruit.SubsScreen(recruitActions) } }
+                // ★ 2026-11-09 공간·양도 탭은 화면 안(remember)에 찜·내 번호를 쥔다 — 계정·유형이 바뀌면 통째로 새로 그린다.
                 composable(Screen.TabSpaces.route) {
-                    androidx.compose.runtime.key(com.muyeon.app.auth.accountEpoch()) {
+                    androidx.compose.runtime.key(com.muyeon.app.auth.accountEpoch(), state.typeEpoch) {
                         SpaceRentTab(header = { actions -> TabSectionHeader(spaceTitle(), SPACE_SECTIONS, MainTab.SPACES, viewModel::selectTab, actions) })
                     }
                 }
                 composable(Screen.TabTransfers.route) {
-                    androidx.compose.runtime.key(com.muyeon.app.auth.accountEpoch()) {
+                    androidx.compose.runtime.key(com.muyeon.app.auth.accountEpoch(), state.typeEpoch) {
                         TransferTab(header = { actions -> TabSectionHeader(spaceTitle(), SPACE_SECTIONS, MainTab.TRANSFERS, viewModel::selectTab, actions) })
                     }
                 }
@@ -223,12 +223,16 @@ fun MainScreen(
                         gate.require(e.feature) { onOpenPath("/jobs/create") }
                     }
                     TypeFeature.SEEK_PROFILE -> com.muyeon.app.ui.components.WriteMenuItem(
-                        stringResource(when (t) { ActiveTypeK.DANCER -> R.string.write_seek_dancer; ActiveTypeK.TEACHER -> R.string.write_seek; else -> R.string.write_seek_any }),
+                        stringResource(when {
+                            !com.muyeon.domain.model.member.FeatureRoles.allows(TypeFeature.SEEK_PROFILE, t) -> R.string.write_seek_any
+                            com.muyeon.app.ui.resume.ResumeMode.forActiveType(t).isDancer -> R.string.write_seek_dancer
+                            else -> R.string.write_seek
+                        }),
                         painterResource(R.drawable.ic_tab_my), androidx.compose.ui.graphics.Color(0xFF2E7DFF), "seek", e.caption,
                     ) {
                         gate.require(e.feature) {
                             // 이미 등록한 강사프로필이 있으면 이력서 관리, 없으면 등록(SeekProfileEntry). 전환 뒤 유형으로 고른다.
-                            val dancer = com.muyeon.app.webview.ActiveRole.current(writeContext) == ActiveTypeK.DANCER
+                            val dancer = com.muyeon.app.ui.resume.ResumeMode.forActiveType(com.muyeon.app.webview.ActiveRole.current(writeContext)).isDancer
                             (writeContext as? android.app.Activity)?.let { com.muyeon.app.ui.resume.SeekProfileEntry.open(it, writeScope, dancer) }
                         }
                     }
@@ -300,25 +304,21 @@ private fun MyTypeHintBubble(text: String, onOpen: () -> Unit, onClose: () -> Un
     }
 }
 
-/** 칸 이름 — MY 는 로그인 회원이면 활성유형 이름(웹 Footer TYPE_TAB_LABEL). */
+/** 칸 이름 — MY 는 로그인 회원이면 활성유형 짧은 이름(유형 정보 표 ActiveTypeInfos, 웹 Footer TYPE_TAB_LABEL). */
 @Composable
-private fun barLabel(item: BarItem, mode: BarMode, loggedIn: Boolean, activeType: String): String = stringResource(
-    when (item) {
-        BarItem.HOME -> R.string.tab_home
-        BarItem.PERFORMANCE -> R.string.tab_performance
-        BarItem.SPACE -> R.string.tab_space
-        BarItem.JOBS -> R.string.tab_recruit
-        BarItem.SUBS -> R.string.tab_subs
-        BarItem.BACK -> R.string.tab_back
-        BarItem.MY -> if (!loggedIn) R.string.tab_my else when (activeType) {
-            ActiveType.TEACHER -> R.string.tab_my_teacher
-            ActiveType.ACADEMY -> R.string.tab_my_academy
-            ActiveType.DANCER -> R.string.tab_my_dancer
-            ActiveType.TEAM -> R.string.tab_my_team
-            else -> R.string.tab_my_general
-        }
-    },
-)
+private fun barLabel(item: BarItem, mode: BarMode, loggedIn: Boolean, activeType: String): String = when (item) {
+    BarItem.MY -> if (!loggedIn) stringResource(R.string.tab_my) else com.muyeon.domain.model.member.ActiveTypeInfos.of(activeType).short
+    else -> stringResource(
+        when (item) {
+            BarItem.HOME -> R.string.tab_home
+            BarItem.PERFORMANCE -> R.string.tab_performance
+            BarItem.SPACE -> R.string.tab_space
+            BarItem.JOBS -> R.string.tab_recruit
+            BarItem.SUBS -> R.string.tab_subs
+            else -> R.string.tab_back
+        },
+    )
+}
 
 /** 칸 그림 — 웹에서 옮긴 탭 아이콘(ic_tab_*), 없는 것(공간·캐스팅)은 머티리얼 둥근 아이콘. */
 @Composable

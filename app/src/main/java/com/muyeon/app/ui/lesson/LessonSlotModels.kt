@@ -75,7 +75,7 @@ data class MyLessonProduct(
      * /lesson-products/mine 은 '내가 만든 것' 또는 '우리 학원이 관리하는 것'만 주므로,
      * 학원 유형이 아닌데 ownerAcademyId 가 있으면 나는 소속 강사 쪽이다.
      */
-    fun slotsReadOnly(isAcademy: Boolean): Boolean = ownerAcademyId != null && !isAcademy
+    fun slotsReadOnly(mode: com.muyeon.domain.model.member.LessonOwnerMode): Boolean = mode.slotsReadOnly(ownerAcademyId)
 
     val academyName: String get() = ownerAcademyName ?: "학원"
 

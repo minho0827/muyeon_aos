@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.sp
 import com.muyeon.app.theme.customFontFamily
 import androidx.lifecycle.lifecycleScope
 import com.muyeon.app.utils.TokenManager
-import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.webview.NativeWebRoute
 import com.muyeon.app.webview.WebCallbacks
 import kotlinx.coroutines.launch
@@ -80,8 +79,7 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // 무용수 유형은 레슨 요청 불가(2026-09-26 정책) — 모든 진입점을 여기서 한 번에 막는다.
-        if (!ActiveRole.allowLessonCustomer(this)) { finish(); return }
+        // ★ 2026-11-16 지금 유형으로 막지 않는다 — 첫 단계 "수강생 / 학원" 질문이 요청 종류를 정한다.
         val categoryId = intent.getStringExtra(EXTRA_CATEGORY).orEmpty()
         val targetTeacherId = intent.getStringExtra(EXTRA_TARGET_TEACHER).orEmpty()
         val seed = seedAnswersOf(

@@ -4,13 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.muyeon.app.navigation.collectAppResults
 import com.muyeon.app.result.ResultKeys
-import com.muyeon.domain.common.ActiveTypeStore
 import com.muyeon.domain.common.CursorState
 import com.muyeon.domain.common.KeyValueStore
 import com.muyeon.domain.common.TokenStore
 import com.muyeon.domain.common.fetchCursorPages
 import com.muyeon.domain.common.mergeCursorPage
-import com.muyeon.domain.model.member.ActiveType
 import com.muyeon.domain.model.region.ActiveRegion
 import com.muyeon.domain.model.scrap.ScrapTarget
 import com.muyeon.domain.model.teacher.LessonGenres
@@ -54,7 +52,7 @@ data class LessonTabUiState(
     val errorMessage: String? = null,
     val moreError: String? = null,
     val likedIds: Set<Long> = emptySet(),
-    /** 레슨 문의(DM) 버튼 — 일반 유형 회원에게만(웹 강사 탭: activeType === GENERAL, 비회원은 안 보임). */
+    /** 레슨 문의(DM) 버튼 — 로그인 회원이면 유형과 상관없이(★ 2026-11-16 고객 쪽 유형 관문 제거, 비회원은 안 보임). */
     val showDm: Boolean = false,
     val showGuide: Boolean = false,
     val showTutorial: Boolean = false,
@@ -88,7 +86,6 @@ class LessonTabViewModel(
     private val markGuideSeen: MarkGuideSeenUseCase,
     private val prefs: KeyValueStore,
     private val tokens: TokenStore,
-    private val activeType: ActiveTypeStore,
 ) : ViewModel() {
     val genres: List<String> = listOf(ALL) + LessonGenres.ALL
     val sidoOptions: List<String> = LessonGenres.SIDO
@@ -130,7 +127,7 @@ class LessonTabViewModel(
         onAccountChanged { wasLoggedIn = it.loggedIn; _state.update { s -> s.copy(likedIds = emptySet(), showDm = dmVisible()) }; loadLikes() }
     }
 
-    private fun dmVisible(): Boolean = tokens.isLoggedIn && ActiveType.visible(activeType.current()) == ActiveType.GENERAL
+    private fun dmVisible(): Boolean = tokens.isLoggedIn
 
     fun onResume() {
         _state.update { it.copy(showDm = dmVisible()) }

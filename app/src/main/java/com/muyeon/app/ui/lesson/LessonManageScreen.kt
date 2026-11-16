@@ -18,7 +18,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -31,7 +30,6 @@ import coil3.compose.AsyncImage
 import com.muyeon.app.BuildConfig
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
-import com.muyeon.app.webview.ActiveRole
 import com.muyeon.app.ui.quote.QuoteDialog
 import com.muyeon.app.ui.quote.QuoteNavBar
 import com.muyeon.app.ui.quote.QuoteUi
@@ -166,9 +164,9 @@ fun LessonManageScreen(
     var toast by remember { mutableStateOf<String?>(null) }
     var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    // 명의 배지 판정 — 웹이 syncActiveType 으로 넘겨준 활성유형(ActiveRole).
-    val ctx = LocalContext.current
-    val isAcademyViewer = remember { ActiveRole.isAcademy(ctx) }
+    // 명의 배지·버튼 문구 — 주체 모드(학원 / 개인) 표. 유형이 바뀌면 다시 읽는다.
+    val ownerMode = com.muyeon.domain.model.member.LessonOwnerMode.of(com.muyeon.app.ui.common.rememberActiveType())
+    val isAcademyViewer = ownerMode.isAcademy
 
     suspend fun load() {
         rows = api.myLessons().getOrDefault(emptyList())
@@ -223,7 +221,7 @@ fun LessonManageScreen(
         }
 
         Text(
-            if (isAcademyViewer) "새 수업 등록" else "새 레슨 개설",
+            com.muyeon.domain.model.member.LessonProviderCopy.of(ownerMode).createButton,
             fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
             lineHeight = 19.sp, color = Color.White, textAlign = TextAlign.Center,
             modifier = Modifier

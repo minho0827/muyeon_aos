@@ -129,7 +129,7 @@ fun MyScreen(
             // 인증하러 가기 — 비공개 공고의 유형 인증(앱 온보딩 인증 화면), 유형을 모르면 내 공고(웹).
             //  강사·무용수는 서류 없이 본인 인증으로 부여 — 그 흐름은 웹(내 공고)이 맡는다(웹 goRoleVerification).
             val role = pending?.roles?.firstOrNull()?.role
-            if (role == "ACADEMY" || role == "TEAM") onNativeAction("openRoleVerification", mapOf("role" to role)) else onOpenWeb("/myPostings")
+            if (role != null && role in com.muyeon.domain.usecase.auth.CompleteRoleOnboardingUseCase.VERIFICATION_REQUIRED_ROLES) onNativeAction("openRoleVerification", mapOf("role" to role)) else onOpenWeb("/myPostings")
         },
         showPopup = state.pendingNotice,
     )

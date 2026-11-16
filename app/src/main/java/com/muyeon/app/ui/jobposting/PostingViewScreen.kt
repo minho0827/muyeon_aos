@@ -139,7 +139,7 @@ fun PostingViewScreen(
                         if (!loggedIn) { onLogin(); return@PostingApplicantBar }
                         busy = true
                         scope.launch {
-                            val mode = if (ActiveRole.current(context) == "DANCER") ResumeMode.DANCER else ResumeMode.TEACHER
+                            val mode = ResumeMode.forActiveType(ActiveRole.current(context))
                             resumes = ResumeApi(token).list(mode).getOrNull().orEmpty()
                             busy = false; picking = true
                         }

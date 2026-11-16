@@ -12,7 +12,7 @@ class DancersUseCase(private val repo: DancerRepository) {
     suspend fun myOpenCastingCalls() = repo.myOpenCastingCalls()
 
     companion object {
-        /** 상세를 볼 수 있는 유형(웹 permissions dancer.read). */
-        val READ_TYPES = setOf("TEAM", "ACADEMY", "TEACHER")
+        /** 상세를 볼 수 있는 유형(웹 permissions dancer.read) — 채용 채팅 필요 유형표와 같다. */
+        val READ_TYPES: Set<String> get() = com.muyeon.domain.model.member.TypeFeature.RECRUIT_CHAT.required.toSet()
     }
 }

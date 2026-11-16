@@ -29,14 +29,8 @@ import com.muyeon.app.ui.common.MuyeonColors
  */
 @Composable
 fun VerificationCompleteScreen(role: String, onStart: () -> Unit) {
-    val roleLabel = when (role) {
-        "TEACHER" -> "강사"
-        "DANCER" -> "무용수"
-        "ACADEMY" -> "학원·원장"
-        "SPACE" -> "공간 보유자"
-        "TEAM" -> "공연팀·기획자"
-        else -> "회원"
-    }
+    // 유형 이름은 유형 정보 표의 긴 이름(일반·모르는 값은 "회원").
+    val roleLabel = com.muyeon.domain.model.member.ActiveTypeInfos.find(role)?.takeIf { it.type != com.muyeon.domain.model.member.ActiveType.GENERAL }?.long ?: "회원"
     val features = when (role) {
         "TEACHER" -> listOf("강사 이력서 등록", "레슨 프로필 등록", "채용·대타 공고 지원")
         "DANCER" -> listOf("무용수 이력서 등록", "프로필·포트폴리오 등록", "캐스팅 공고 지원")

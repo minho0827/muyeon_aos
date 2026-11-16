@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +42,7 @@ import com.muyeon.app.ui.recruit.components.SeekerCardView
 import com.muyeon.app.ui.theme.AppColors
 import com.muyeon.domain.model.member.ActiveType
 import com.muyeon.domain.model.recruit.SeekFilter
+import com.muyeon.domain.model.recruit.SeekFilterField
 import com.muyeon.domain.model.teacher.LessonGenres
 import org.koin.androidx.compose.koinViewModel
 
@@ -50,6 +52,9 @@ import org.koin.androidx.compose.koinViewModel
 fun SeekScreen(actions: RecruitActions, vm: SeekViewModel = koinViewModel()) {
     val s by vm.state.collectAsStateWithLifecycle()
     LifecycleResumeEffect(Unit) { vm.onResume(); onPauseOrDispose { } }
+    // ★ 2026-11-16 유형이 바뀌면 필터 칸·목록을 새 유형으로(처음 한 번만 읽던 잔상 제거).
+    val activeType = com.muyeon.app.ui.common.rememberActiveType()
+    LaunchedEffect(activeType) { vm.onTypeChanged(activeType) }
     RecruitEventsEffect(vm.events, actions)
     val grid = rememberLazyGridState()
     // ★ 2026-11-16 내려가 있으면 맨 위로, 맨 위면 구인으로.
@@ -95,17 +100,18 @@ fun SeekScreen(actions: RecruitActions, vm: SeekViewModel = koinViewModel()) {
     }
     if (sheet) {
         val genres = LessonGenres.ALL.map { ChipOption(it, it) }
-        val groups = if (s.teacherView) listOf(
-            FilterGroup("types", stringResource(R.string.recruit_f_type), RecruitLabels.SEEK_TYPES.map { ChipOption(it, stringResource(RecruitLabels.seekType(it))) }, true),
-            FilterGroup("fields", stringResource(R.string.recruit_f_genre), genres, true),
-        ) else listOf(
-            FilterGroup("fields", stringResource(R.string.recruit_f_genre), genres, true),
-            FilterGroup("targets", stringResource(R.string.recruit_f_target), RecruitLabels.TARGETS.map { ChipOption(it, RecruitLabels.target(it)?.let { r -> stringResource(r) } ?: it) }, true),
-            FilterGroup("careers", stringResource(R.string.recruit_f_career), RecruitLabels.CAREERS.map { ChipOption(it, LessonLabels.career(it)?.let { r -> stringResource(r) } ?: it) }, true),
-        )
+        // 칸 순서·종류는 필터 규칙(SeekFilterSpec)이 정한다.
+        val groups = s.spec.fields.map { field ->
+            when (field) {
+                SeekFilterField.TYPES -> FilterGroup(field.key, stringResource(R.string.recruit_f_type), RecruitLabels.SEEK_TYPES.map { ChipOption(it, stringResource(RecruitLabels.seekType(it))) }, true)
+                SeekFilterField.FIELDS -> FilterGroup(field.key, stringResource(R.string.recruit_f_genre), genres, true)
+                SeekFilterField.TARGETS -> FilterGroup(field.key, stringResource(R.string.recruit_f_target), RecruitLabels.TARGETS.map { ChipOption(it, RecruitLabels.target(it)?.let { r -> stringResource(r) } ?: it) }, true)
+                SeekFilterField.CAREERS -> FilterGroup(field.key, stringResource(R.string.recruit_f_career), RecruitLabels.CAREERS.map { ChipOption(it, LessonLabels.career(it)?.let { r -> stringResource(r) } ?: it) }, true)
+            }
+        }
         RecruitFilterSheet(
-            groups, mapOf("types" to s.filter.types, "fields" to s.filter.fields, "targets" to s.filter.targets, "careers" to s.filter.careers),
-            onApply = { m -> sheet = false; vm.applyFilter(SeekFilter(m["types"].orEmpty(), m["fields"].orEmpty(), m["targets"].orEmpty(), m["careers"].orEmpty())) },
+            groups, s.spec.selection(s.filter),
+            onApply = { m -> sheet = false; vm.applyFilter(s.spec.fromSelection(m)) },
             onDismiss = { sheet = false },
         )
     }

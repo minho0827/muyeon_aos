@@ -116,7 +116,7 @@ val viewModelModule = module {
     // MY
     viewModel { com.muyeon.app.ui.my.MyViewModel(get(), get(), get(), get(), get(), get(), get()) }
     // 강사
-    viewModel { com.muyeon.app.ui.lessons.LessonTabViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { com.muyeon.app.ui.lessons.LessonTabViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     // 커뮤니티
     viewModel { com.muyeon.app.ui.community.CommunityListViewModel(get(), get(), get()) }
     viewModel { com.muyeon.app.ui.community.CommunityPostViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }

@@ -45,8 +45,9 @@ class SpaceHubActivity : ResultActivity() {
         fun startHosting(context: Context) = context.launchScreen(intent(context, "hosting"))
         fun startBookings(context: Context) = context.launchScreen(intent(context, "bookings"))
 
-        /** 공간 등록 = 학원·강사·무용수 활동유형(서버 POST /spaces RequireActiveRole 와 같다 — SPACE 유형은 쓰지 않는다). */
-        fun canHost(context: Context): Boolean = ActiveRole.current(context) in setOf(ActiveRole.ACADEMY, ActiveRole.TEACHER, ActiveRole.DANCER) // 공간 등록 = 학원원장·강사·무용수(11-03)
+        /** 공간 등록 = 학원·강사·무용수 활동유형(서버 POST /spaces RequireActiveRole 와 같다) — 필요 유형표(FeatureRoles.SPACE_CREATE). */
+        fun canHost(context: Context): Boolean =
+            com.muyeon.domain.model.member.FeatureRoles.allows(com.muyeon.domain.model.member.TypeFeature.SPACE_CREATE, ActiveRole.current(context))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

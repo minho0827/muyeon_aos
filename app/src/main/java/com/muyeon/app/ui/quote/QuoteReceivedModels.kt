@@ -154,7 +154,7 @@ data class QuoteFull(
     val isDirect: Boolean get() = targetTeacherId != null
 
     /** ★ 11-10 학원 등 일반이 아닌 신청자 요청(iOS isAcademyRequest 같은 규칙) — 거절 사유 '급여' 표기. */
-    val isAcademyRequest: Boolean get() = requesterType != null && requesterType != "GENERAL"
+    val isAcademyRequest: Boolean get() = !requesterType.isNullOrEmpty() && requesterType != "GENERAL"
 
     /** ★ 2026-11-10 학원 요청의 학원명 — 배지 옆에 따로 보여 준다(목록 제목 '첫 답'에서는 뺀다). */
     val academyName: String?
