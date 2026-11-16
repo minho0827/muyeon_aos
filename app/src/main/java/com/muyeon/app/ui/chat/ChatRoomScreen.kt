@@ -79,6 +79,8 @@ fun ChatRoomScreen(
     onBack: () -> Unit,
     initialSurveyDispatchId: Int? = null,   // 설문 응답 푸시 진입 — 이 설문 카드로 스크롤·강조
     initialProposalId: Int? = null,         // 약속 제안 푸시·웹 진입 — 이 제안 카드로 스크롤·강조
+    /** ★ 2026-11-16 대타 카드 [공고 보기] — 채팅 창 안에서 공고 화면을 연다(부모가 고른다). */
+    onOpenSubPosting: (Int) -> Unit = {},
 ) {
     // 채팅방에선 AI 버튼을 숨긴다 — 보내기 버튼과 겹친다(10-23 요청, iOS ChatRoomView 와 같음).
     androidx.compose.runtime.DisposableEffect(Unit) {
@@ -144,7 +146,11 @@ fun ChatRoomScreen(
     val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) vm.onResume()
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                vm.onResume()
+                // ★ 2026-11-16 대타 방 — 지원서·공고 화면에서 확정·취소하고 돌아오면 카드 상태가 바뀐다.
+                if (vm.subContexts.isNotEmpty()) vm.reloadContext()
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -384,6 +390,9 @@ fun ChatRoomScreen(
         }
     }
 
+    // ★ 2026-11-16 대타 카드 버튼(확정·지원 취소·확정 취소·보기) — 확인창도 여기서 뜬다.
+    val onSubAction = com.muyeon.app.ui.chat.dealbar.rememberSubActionHost(vm, onOpenSubPosting)
+
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         RoomNavBar(
             vm, onBack,
@@ -404,6 +413,7 @@ fun ChatRoomScreen(
             onOpenCycles = { showCyclesSheet = true },
             onProposalChanged = { vm.reloadContext() },
             onOpenProposalPayment = openProposalPayment,
+            onSubAction = onSubAction,
         )
 
         // 메시지 목록 빈 곳을 누르면 키보드를 내린다(iOS 와 같다, PACERA c5611acf).

@@ -237,7 +237,7 @@ fun ChatRoomRow(room: ChatRoomSummary, onClick: () -> Unit) {
                     Icon(Icons.Filled.NotificationsOff, null, tint = MuyeonColors.secondary, modifier = Modifier.size(11.dp))
                 }
                 room.roleBadge?.let { badge ->
-                    val isPro = room.myQuoteRole == "pro"
+                    val isPro = room.myQuoteRole == "pro" || room.isSub
                     Text(
                         badge,
                         fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 10.sp,
@@ -277,6 +277,15 @@ fun ChatRoomRow(room: ChatRoomSummary, onClick: () -> Unit) {
                     chatListTime(room.lastMessageAt),
                     fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 14.sp,
                     color = MuyeonColors.secondary, maxLines = 1,
+                )
+            }
+            // ★ 2026-11-16 대타 방 — 어떤 공고 이야기인지 한 줄(원장님은 지원자마다 방이 따로 생긴다).
+            room.contextLine?.let { line ->
+                Text(
+                    line,
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 16.sp,
+                    color = MuyeonColors.textSub, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.testTag("chat.row.contextTitle"),
                 )
             }
             // 인스타그램식 — 안읽음이면 미리보기 진하게

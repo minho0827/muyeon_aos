@@ -41,6 +41,8 @@ data class ReceivedApplicationDto(
     val viaDispatch: Boolean? = null, val applicantCancels90d: Int? = null,
     // ★ 2026-11-10 잠긴 지원자(학원 인증 전) — 없으면 종전 그대로. resume.id·title 은 null 일 수 있어 data 만 본다.
     val locked: Boolean? = null, val verification: Map<String, Any?>? = null, val resume: Map<String, Any?>? = null,
+    // ★ 2026-11-16 지원자와의 채팅방 번호(서버 roomId) — 예전 서버는 null.
+    val roomId: Long? = null,
 ) {
     fun toDomain() = if (id == null || kind == null) null else ReceivedApplication(
         id, kind, postingId, postingTitle?.takeIf { it.isNotBlank() }, applicantName?.takeIf { it.isNotBlank() },
@@ -51,6 +53,7 @@ data class ReceivedApplicationDto(
         resumeGenres = ((resume?.get("data") as? Map<*, *>)?.get("genres") as? List<*>).orEmpty()
             .mapNotNull { (it as? String)?.takeIf { g -> g.isNotBlank() } },
         resumeCareer = ((resume?.get("data") as? Map<*, *>)?.get("career") as? String)?.takeIf { it.isNotBlank() },
+        roomId = roomId?.toInt()?.takeIf { it > 0 },
     )
 }
 

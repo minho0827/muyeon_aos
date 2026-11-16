@@ -352,6 +352,7 @@
     <string name="received_effective_pay">확정 시 %1$s원</string>
     <string name="received_cancels_90d">최근 90일 대타 취소 %1$d회</string>
     <string name="received_restore">복원</string>
+    <string name="received_chat">채팅</string>
     <string name="received_unavailable">열람 불가</string>
     <string name="received_reviewing">검토중</string>
     <string name="received_hired">채용 완료</string>

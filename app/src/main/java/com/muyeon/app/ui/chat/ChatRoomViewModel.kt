@@ -76,13 +76,18 @@ class ChatRoomViewModel(
     var pair by mutableStateOf<String?>(null)
     var myRole by mutableStateOf<String?>(null)
     var contact by mutableStateOf(ChatContact.HIDDEN)
+    // ★ 2026-11-16 이 방에 걸린 대타 건(지원 번호 단위) — 상단 대타 카드
+    var subContexts by mutableStateOf<List<ChatSubContext>>(emptyList())
+
+    /** 대타만 걸린 방(레슨·견적 없음) — 잠금 문구를 대타 말로. */
+    val isSubOnlyRoom: Boolean get() = subContexts.isNotEmpty() && lessonCycles.isEmpty() && quoteContext == null
 
     /** 상단 'D-N 후 대화 종료' 일수 — 열린 방이고 locksAt 이 있을 때만(잠긴 방은 안내 띠가 대신한다). */
     fun lockDaysLeft(nowMillis: Long = System.currentTimeMillis()): Int? =
         if (locked) null else ChatLockCountdown.daysLeft(locksAt, nowMillis)
 
     /** 잠긴 방 안내 띠 문구. */
-    val lockNotice: String get() = ChatRoomDetail.lockNotice(lockReason)
+    val lockNotice: String get() = ChatRoomDetail.lockNotice(lockReason, subRoom = isSubOnlyRoom)
 
     /**
      * 응답 대기 중인 약속 제안이 있어 회원 '일정 잡기'를 숨겨야 하는지(서버가 방당 대기 제안 1건만 받는다).
@@ -340,6 +345,7 @@ class ChatRoomViewModel(
             pair = d.pair
             myRole = d.myRole
             contact = d.contact
+            subContexts = d.subContexts
         }
     }
 
@@ -390,6 +396,10 @@ class ChatRoomViewModel(
     val dealLessonLine: String
         get() = listOfNotNull(dealCycle?.title ?: contextCategory ?: "레슨", shortWhen(dealCycle?.lessonSchedule?.startAt ?: progress?.scheduleStartAt))
             .joinToString(" ")
+
+    /** 상단 카드 표(ChatTopCards) 입력 — 레슨 바 값 + 대타 건. */
+    fun topInput(): com.muyeon.app.ui.chat.dealbar.ChatTopInput =
+        com.muyeon.app.ui.chat.dealbar.ChatTopInput(deal = dealBarInput(), subContexts = subContexts, locked = locked)
 
     fun dealBarInput(): com.muyeon.app.ui.chat.dealbar.DealBarInput {
         val c = dealCycle

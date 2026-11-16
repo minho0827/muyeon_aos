@@ -37,7 +37,20 @@ data class ChatRoomSummary(
     val locked: Boolean = false,  // 대화 종료(요청 취소·다른 강사 채택·만료) — 구버전 서버는 false
     val lockReason: String? = null,   // CANCELED | MATCHED_OTHER | EXPIRED
     val locksAt: String? = null,      // 이대로면 대화가 끝나는 시각(ISO UTC, 2026-11 서버부터). null = 예정 없음
+    // ★ 2026-11-16 대타 방 — 서버 contextKind 'sub' + 공고 제목 한 줄(예전 서버는 null).
+    val contextKind: String? = null,
+    val contextTitle: String? = null,
+    val pair: String? = null,         // 서버 room-pair(목록에도 실리면). RECRUIT 면 채용·대타 칩
 ) {
+    /** 대타 건이 걸린 방(원장님은 지원자 수만큼 방이 생겨 배지·공고 제목으로 구분한다). */
+    val isSub: Boolean get() = contextKind == "sub"
+
+    /** 채용·대타 칩 대상 — 웹 ChatList 의 recruit 필터와 같은 규칙(contextKind=sub 또는 pair=RECRUIT). */
+    val isRecruit: Boolean get() = isSub || pair == "RECRUIT"
+
+    /** 목록 셀 두 번째 줄 앞 공고 제목 — 대타 방만. */
+    val contextLine: String? get() = contextTitle?.takeIf { isSub && it.isNotBlank() }
+
     val displayTitle: String get() = opponent?.nickname ?: opponent?.name ?: "채팅"
     val isQuoteExpired: Boolean get() = quoteStatus == "EXPIRED"
 
@@ -63,6 +76,7 @@ data class ChatRoomSummary(
             kind == "quote" && myQuoteRole == "customer" -> "내 요청"
             kind == "quote" && myQuoteRole == "pro" -> "보낸 제안"
             kind == "space" -> "공간 문의"
+            isSub -> "대타"
             else -> null
         }
 
@@ -83,6 +97,9 @@ data class ChatRoomSummary(
             locked = o.optBoolean("locked", false),
             lockReason = o.stringOrNull("lockReason"),
             locksAt = o.stringOrNull("locksAt"),
+            contextKind = o.stringOrNull("contextKind"),
+            contextTitle = o.stringOrNull("contextTitle"),
+            pair = o.stringOrNull("pair"),
         )
     }
 }
@@ -160,6 +177,9 @@ enum class ChatRoomFilter(val title: String) {
     RESPONDED("보낸 제안"),
     INQUIRY("일반·문의"),
 
+    /** ★ 2026-11-16 채용·대타 방(contextKind=sub 또는 pair=RECRUIT, 웹 필터 키 recruit). 위 세 칩에서 빼고 여기로 모은다. */
+    RECRUIT("채용·대타"),
+
     /** ★ 2026-11-07 '상담'(무용연 고객센터) — 채팅 방이 아니라 support-chat 방. 보일 때만 칩에 넣는다(ChatListScreen). */
     SUPPORT("상담");
 
@@ -169,9 +189,10 @@ enum class ChatRoomFilter(val title: String) {
      */
     fun matches(room: ChatRoomSummary): Boolean = when (this) {
         ALL -> true
-        REQUESTED -> (room.kind == "quote" && room.myQuoteRole == "customer") || room.kind == "direct"
-        RESPONDED -> (room.kind == "quote" && room.myQuoteRole == "pro") || room.kind == "direct"
-        INQUIRY -> room.kind != "quote"
+        REQUESTED -> (room.kind == "quote" && room.myQuoteRole == "customer") || (room.kind == "direct" && !room.isRecruit)
+        RESPONDED -> (room.kind == "quote" && room.myQuoteRole == "pro") || (room.kind == "direct" && !room.isRecruit)
+        INQUIRY -> room.kind != "quote" && !room.isRecruit
+        RECRUIT -> room.isRecruit
         SUPPORT -> false
     }
 
@@ -181,6 +202,7 @@ enum class ChatRoomFilter(val title: String) {
             "requested" -> REQUESTED
             "responded" -> RESPONDED
             "inquiry" -> INQUIRY
+            "recruit" -> RECRUIT
             else -> ALL
         }
     }
@@ -404,10 +426,24 @@ data class ChatRoomDetail(
     val pair: String? = null,                  // MEMBER_TEACHER | ACADEMY_TEACHER | PROPOSAL | RECRUIT | SPACE | TRANSFER | DIRECT
     val myRole: String? = null,                // customer | pro | null
     val contact: ChatContact = ChatContact.HIDDEN,
+    // ★ 2026-11-16 이 방에 걸린 대타 건(지원 번호 단위). 예전 서버는 빈 목록.
+    val subContexts: List<ChatSubContext> = emptyList(),
 ) {
     companion object {
-        /** 잠긴 방 안내 띠 문구. */
-        fun lockNotice(reason: String?): String = when (reason) {
+        /**
+         * 잠긴 방 안내 띠 문구. 대타만 걸린 방([subRoom])은 같은 사유도 대타 말로 바꾼다(서버가 사유 코드를 같이 쓸 수 있다).
+         */
+        fun lockNotice(reason: String?, subRoom: Boolean = false): String = if (subRoom) subLockNotice(reason) else lessonLockNotice(reason)
+
+        private fun subLockNotice(reason: String?): String = when (reason) {
+            "SUB_MATCHED_OTHER", "MATCHED_OTHER" -> "다른 강사님으로 대타가 확정돼 대화가 끝났어요."
+            "SUB_CLOSED", "SUB_DELETED", "CLOSED", "EXPIRED" -> "공고가 마감돼 대화가 끝났어요."
+            "SUB_WITHDRAWN", "WITHDRAWN" -> "지원을 취소해 대화가 끝났어요."
+            "SUB_CANCELED", "CANCELED" -> "대타 확정이 취소돼 대화가 끝났어요."
+            else -> "대화가 종료된 채팅방이에요."
+        }
+
+        private fun lessonLockNotice(reason: String?): String = when (reason) {
             "CANCELED" -> "레슨 요청이 취소되어 대화가 종료됐어요."
             "MATCHED_OTHER" -> "다른 강사님으로 레슨이 정해져 대화가 종료됐어요."
             "EXPIRED" -> "레슨 요청 기간이 끝나 대화가 종료됐어요."
@@ -435,6 +471,7 @@ data class ChatRoomDetail(
             pair = o.stringOrNull("pair"),
             myRole = o.stringOrNull("myRole"),
             contact = ChatContact.from(o.optJSONObject("contact")),
+            subContexts = ChatSubContext.listFrom(o),
         )
     }
 }

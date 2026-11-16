@@ -51,6 +51,8 @@ fun ReceivedApplicationsScreen(
     onManagePostings: () -> Unit,
     /** ★ 2026-11-10 잠긴 지원자 — 학원 인증 화면 경로로(돌아오면 다시 읽는다). */
     onVerify: (String) -> Unit = {},
+    /** ★ 2026-11-16 지원자 줄의 [채팅] — 그 지원자와의 방(roomId)을 연다. */
+    onOpenChat: (Int) -> Unit = {},
 ) {
     val s by viewModel.state.collectAsStateWithLifecycle()
     var lockedTarget by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<ReceivedApplication?>(null) }
@@ -127,6 +129,7 @@ fun ReceivedApplicationsScreen(
                                 },
                                 onRestore = { viewModel.restore(a) },
                                 showDivider = i < s.items.lastIndex,
+                                onChat = a.roomId?.takeIf { !s.trash }?.let { rid -> { onOpenChat(rid) } },
                             )
                         }
                     }

@@ -255,6 +255,7 @@ fun AppNavHost(
                 // ★ 2026-11-10 잠긴 지원자 — 학원 인증(견적 완료·요청 응답과 같은 길: MainActivity.openPath → /my/memberType?verify=ACADEMY).
                 //  돌아오면 이 화면이 다시 읽는다(복귀 시 refresh · PROFILE 결과 키).
                 onVerify = { path -> context.findActivity()?.let { act -> com.muyeon.app.ui.main.MainActivity.openPath(act, path) } },
+                onOpenChat = { rid -> com.muyeon.app.ui.chat.ChatActivity.startRoom(context, rid) },
             )
         }
         // ★ 2026-11-08 설정(웹 /setting) — 로그아웃은 MY 와 같은 길(LogoutUseCase → 셸 onLoggedOut), 차단한 사용자는 앱 화면.
@@ -479,7 +480,7 @@ fun AppNavHost(
 
 /** 공고 상세 + 찜(채용·대타) — 찜 상태는 저장소에서 읽고 바꾼다. */
 @Composable
-private fun PostingDetailRoute(kind: String, id: Int, onBack: () -> Unit, onOpenWeb: (String) -> Unit, onEdit: () -> Unit) {
+internal fun PostingDetailRoute(kind: String, id: Int, onBack: () -> Unit, onOpenWeb: (String) -> Unit, onEdit: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val target = if (kind == "SUB") com.muyeon.domain.model.scrap.ScrapTarget.SUB else com.muyeon.domain.model.scrap.ScrapTarget.JOB
     val getLiked = org.koin.compose.koinInject<com.muyeon.domain.usecase.scrap.GetLikedIdsUseCase>()
