@@ -51,7 +51,12 @@ import com.muyeon.app.ui.theme.AppColors
 import com.muyeon.app.ui.theme.AppTypography
 
 /** 글쓰기 메뉴 한 줄. */
-data class WriteMenuItem(val label: String, val icon: Painter, val tint: Color, val tag: String, val onClick: () -> Unit)
+data class WriteMenuItem(
+    val label: String, val icon: Painter, val tint: Color, val tag: String,
+    /** ★ 2026-11-16 지금 유형으로 못 쓰면 필요 유형("강사·무용수") — 회색 작은 글씨. 눌러도 관문이 안내한다. */
+    val caption: String? = null,
+    val onClick: () -> Unit,
+)
 
 /**
  * ★ 2026-11-08 [+ 글쓰기] 떠 있는 버튼 — PaceERA 런커 BoardWriteMenu(iOS·AOS 같은 모양)를 가져왔다(사용자 요청).
@@ -59,7 +64,11 @@ data class WriteMenuItem(val label: String, val icon: Painter, val tint: Color, 
  *   채용 2계층(채용·대타공고·캐스팅)이 함께 쓴다 — 위 바 연필 버튼 대신.
  */
 @Composable
-fun BoxScope.WriteMenu(items: List<WriteMenuItem>, bottom: Dp, modifier: Modifier = Modifier) {
+fun BoxScope.WriteMenu(
+    items: List<WriteMenuItem>, bottom: Dp, modifier: Modifier = Modifier,
+    /** ★ 2026-11-16 메뉴 맨 위 한 줄 — "지금 ○○ 유형이에요". */
+    header: String? = null,
+) {
     var open by remember { mutableStateOf(false) }
     // AI 돋보기 버튼은 막 위에 떠서 메뉴를 가린다 — 열려 있는 동안 숨긴다.
     androidx.compose.runtime.LaunchedEffect(open) { com.muyeon.app.ui.assistant.AssistantOverlay.writeMenuOpen = open }
@@ -84,6 +93,10 @@ fun BoxScope.WriteMenu(items: List<WriteMenuItem>, bottom: Dp, modifier: Modifie
                 Modifier.padding(bottom = 12.dp).width(212.dp).clip(RoundedCornerShape(16.dp))
                     .background(AppColors.Surface).padding(vertical = 8.dp).testTag("writeMenu"),
             ) {
+                if (header != null) Text(
+                    header, style = AppTypography.Caption12, color = AppColors.TextHint,
+                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp).testTag("writeMenu_header"),
+                )
                 items.forEach { item ->
                     Row(
                         Modifier.clickable { open = false; item.onClick() }.padding(horizontal = 18.dp, vertical = 12.dp).testTag("writeMenu_${item.tag}"),
@@ -91,7 +104,11 @@ fun BoxScope.WriteMenu(items: List<WriteMenuItem>, bottom: Dp, modifier: Modifie
                     ) {
                         Icon(item.icon, null, tint = item.tint, modifier = Modifier.size(22.dp))
                         Spacer(Modifier.width(14.dp))
-                        Text(item.label, style = AppTypography.Body15Medium.copy(fontSize = AppTypography.Body15Medium.fontSize * 17 / 15), color = AppColors.TextHead)
+                        Column {
+                            Text(item.label, style = AppTypography.Body15Medium.copy(fontSize = AppTypography.Body15Medium.fontSize * 17 / 15), color = AppColors.TextHead)
+                            if (item.caption != null) Text(item.caption, style = AppTypography.Caption12, color = AppColors.TextHint,
+                                modifier = Modifier.testTag("writeMenu_${item.tag}_caption"))
+                        }
                     }
                 }
             }

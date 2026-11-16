@@ -45,9 +45,8 @@ fun QuoteRespondHost(activity: Activity, quoteId: Int, compose: Boolean, reloadS
             onSwitch = { type ->
                 scope.launch {
                     state.busy = true
-                    if (ActiveRole.saveOnServer(activity, type)) {
-                        ActiveRole.store(activity, type)
-                        Toast.makeText(activity, activity.getString(R.string.quote_respond_switched, ActiveRole.label(type)), Toast.LENGTH_SHORT).show()
+                    // ★ 2026-11-16 셸 단일 전환 함수로 — 전환 토스트는 셸이 띄운다(두 번 뜨지 않게 여기 토스트는 뺐다).
+                    if (com.muyeon.app.ui.common.ShellTypeSwitch.switchTo(activity, type)) {
                         state.load()
                     } else {
                         state.toast = activity.getString(R.string.quote_respond_switch_failed)
@@ -63,7 +62,7 @@ fun QuoteRespondHost(activity: Activity, quoteId: Int, compose: Boolean, reloadS
                     // 강사 — 서류 없이 본인 인증만으로 바로 부여(웹 goRoleVerification → callAddRole).
                     when (val r = ActiveRole.addRole(activity, role)) {
                         is ActiveRole.AddResult.Added -> {
-                            if (ActiveRole.saveOnServer(activity, role)) ActiveRole.store(activity, role)
+                            com.muyeon.app.ui.common.ShellTypeSwitch.switchTo(activity, role)
                             state.load()
                         }
                         // 본인인증 전 — 웹 회원유형 화면의 본인확인(NICE)으로(그 단계만 웹). 끝나면 이 요청으로 돌아온다.

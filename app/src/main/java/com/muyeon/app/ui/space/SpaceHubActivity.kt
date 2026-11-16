@@ -53,10 +53,14 @@ class SpaceHubActivity : ResultActivity() {
         super.onCreate(savedInstanceState)
         val route = intent.getStringExtra(EXTRA_ROUTE) ?: "list"
         val startId = intent.getIntExtra(EXTRA_ID, 0)
+        val gateOnStart = route == "editor" && startId == 0 &&
+            !com.muyeon.app.utils.TokenManager.getAccessToken(this).isNullOrEmpty() && !canHost(this)
         val start = when (route) {
             // ★ startDestination 은 경로 '패턴'이어야 한다 — "editor/14" 처럼 값을 넣으면 인자가 안 넘어가 새 등록으로 열렸다(실기기 11-03).
             //   값은 navArgument 기본값(startId)으로 넘긴다.
-            "editor" -> "editor/{id}"
+            // ★ 2026-11-16 새 글 등록을 바로 열었는데(웹 브리지·공간 탭 [+ 글쓰기]) 지금 유형으로 못 쓰면 목록부터 열고 관문을 띄운다 —
+            //   예전엔 등록 화면이 유형 검사를 건너뛰고 열려 저장 때 서버 403 이 났다.
+            "editor" -> if (startId == 0 && gateOnStart) "list" else "editor/{id}"
             "mine", "hosting", "bookings" -> route
             else -> "list"
         }
@@ -68,19 +72,20 @@ class SpaceHubActivity : ResultActivity() {
             var message by remember { mutableStateOf<String?>(null) }
             var changedTick by remember { mutableIntStateOf(0) }
 
+            val gate = com.muyeon.app.ui.common.rememberTypeGate()
             fun back() { if (!nav.popBackStack()) finish() }
             fun openSpace(id: Int, date: String? = null) = SpaceActivity.start(this, id, date, false)
             fun create() {
                 if (!api.isLoggedIn) { message = com.muyeon.app.ui.common.market.loginRequired("openSpaceEditor"); return }
-                if (!canHost(this)) { message = getString(com.muyeon.app.R.string.space_role_required); return }
-                nav.navigate("editor/0")
+                // ★ 2026-11-16 공통 관문 — 가진 유형이면 "전환하고 작성", 없으면 "유형 추가"(필요 유형표 FeatureRoles).
+                gate.require(com.muyeon.domain.model.member.TypeFeature.SPACE_CREATE) { nav.navigate("editor/0") }
             }
             fun changed() { changedTick++; addResultKeys(ResultKeys.SPACE, ResultKeys.RESERVATIONS) }
 
             NavHost(nav, startDestination = start, popEnterTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popEnter, popExitTransition = com.muyeon.app.ui.common.nav.MuyeonNav.popExit) {
                 composable("list") {
                     SpaceListScreen(
-                        api = api, canCreate = canHost(this@SpaceHubActivity), onBack = { back() },
+                        api = api, canCreate = api.isLoggedIn, onBack = { back() },
                         onOpen = { id, date -> openSpace(id, date) }, onCreate = { create() }, onMessage = { message = it },
                     )
                 }
@@ -116,6 +121,8 @@ class SpaceHubActivity : ResultActivity() {
                 }
             }
 
+            com.muyeon.app.ui.common.TypeGateHost(gate)
+            androidx.compose.runtime.LaunchedEffect(Unit) { if (gateOnStart) create() }
             message?.let { msg -> com.muyeon.app.ui.common.market.MarketMessageDialog(msg) { message = null } }
         }
     }

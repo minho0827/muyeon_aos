@@ -309,8 +309,8 @@ fun LessonBookingScreen(
                 MuyeonDialogAction("${ActiveRole.label("GENERAL")} 유형으로 전환하고 계속", MuyeonDialogKind.PRIMARY) {
                     showGate = false
                     scope.launch {
-                        if (ActiveRole.saveOnServer(context, "GENERAL")) {
-                            ActiveRole.store(context, "GENERAL")
+                        // ★ 2026-11-16 셸 단일 전환 함수로(탭바·MY·글쓰기 메뉴가 같이 바뀐다).
+                        if (com.muyeon.app.ui.common.ShellTypeSwitch.switchTo(context, "GENERAL")) {
                             openConfirm()
                         } else errorMessage = "회원유형을 바꾸지 못했어요. 잠시 후 다시 시도해 주세요."
                     }
