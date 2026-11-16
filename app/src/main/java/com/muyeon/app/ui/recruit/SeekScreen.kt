@@ -52,7 +52,8 @@ fun SeekScreen(actions: RecruitActions, vm: SeekViewModel = koinViewModel()) {
     LifecycleResumeEffect(Unit) { vm.onResume(); onPauseOrDispose { } }
     RecruitEventsEffect(vm.events, actions)
     val grid = rememberLazyGridState()
-    TabReselectEffect(MainTab.SEEK) { grid.animateScrollToItem(0) }
+    // ★ 2026-11-16 내려가 있으면 맨 위로, 맨 위면 구인으로.
+    TabReselectEffect(MainTab.SEEK) { if (grid.isAtTop()) actions.selectTab(MainTab.JOBS) else grid.animateScrollToItem(0) }
     CursorLoadMoreEffect(grid, canLoad = s.list.cursor.canAutoLoad && !s.list.isLoadingMore, onLoadMore = vm::loadMore)
     var sheet by remember { mutableStateOf(false) }
     val full: LazyGridItemSpanScope.() -> GridItemSpan = { GridItemSpan(maxLineSpan) }

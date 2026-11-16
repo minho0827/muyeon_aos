@@ -59,7 +59,8 @@ fun HireScreen(actions: RecruitActions, vm: HireViewModel = koinViewModel()) {
     RecruitEventsEffect(vm.events, actions)
     LifecycleResumeEffect(Unit) { vm.onResume(); onPauseOrDispose { } }
     val grid = rememberLazyGridState()
-    TabReselectEffect(MainTab.JOBS) { grid.animateScrollToItem(0) }
+    // ★ 2026-11-16 채용 칸 다시 누르기 — 내려가 있으면 맨 위로, 맨 위면 구직으로(PACERA 챌린지 탭·iOS 와 같은 규칙).
+    TabReselectEffect(MainTab.JOBS) { if (grid.isAtTop()) actions.selectTab(MainTab.SEEK) else grid.animateScrollToItem(0) }
     CursorLoadMoreEffect(grid, canLoad = s.list.cursor.canAutoLoad && !s.list.isLoadingMore, onLoadMore = vm::loadMore)
     var sheet by remember { mutableStateOf(false) }
     val full: LazyGridItemSpanScope.() -> GridItemSpan = { GridItemSpan(maxLineSpan) }

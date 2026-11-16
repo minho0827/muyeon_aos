@@ -61,8 +61,16 @@ fun SettingsScreen(
     }
     LaunchedEffect(viewModel) { viewModel.events.collect { if (it == SettingsEvent.LoggedOut) onLoggedOut() } }
     val openAppNotificationSettings = {
-        val i = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-        runCatching { context.startActivity(i) }
+        // 이 앱의 알림 설정 화면. 옛 제조사 설정용 값도 같이 넣고, 열리지 않으면 앱 정보 화면으로(★ 11-16).
+        val i = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            .putExtra("app_package", context.packageName)
+            .putExtra("app_uid", context.applicationInfo.uid)
+        runCatching { context.startActivity(i) }.onFailure {
+            runCatching {
+                context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${context.packageName}")))
+            }
+        }
         Unit
     }
     val open: (Intent) -> Unit = { runCatching { context.startActivity(it) } }
