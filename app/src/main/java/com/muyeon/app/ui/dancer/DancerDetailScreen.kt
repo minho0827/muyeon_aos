@@ -237,9 +237,9 @@ private fun DancerHeader(d: DancerProfile, liked: Boolean, showLike: Boolean, on
             Text(
                 d.name.ifBlank { stringResource(R.string.dancer_default_name) },
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp,
-                lineHeight = 26.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f, fill = false),
+                lineHeight = 26.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
             )
-            Spacer(Modifier.weight(1f))
+            // ★ 2026-11-16 이름(weight 1f, fill=false)과 빈칸(weight 1f)이 남는 폭을 반씩 나눠 하트가 가운데쯤 떴다 — 이름이 다 가져가게.
             if (showLike) ProfileFavoriteButton(liked, onLike)
         }
         CredentialBadgeRow(badges)
@@ -305,14 +305,14 @@ private fun DancerSections(d: DancerProfile, isSelf: Boolean, onReviews: () -> U
             ProfileSection("포트폴리오") { PortfolioGrid(imgs, allowSave = isSelf) }
         }
         ProfileVideoSection(d.videoUrl)
-        ProfileSection(stringResource(R.string.dancer_sec_reviews)) {
-            Text(
-                stringResource(R.string.dancer_reviews_all),
-                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                lineHeight = 16.sp, color = MuyeonColors.primary,
-                modifier = Modifier.clickable(onClick = onReviews),
-            )
+        // ★ 2026-11-16 강사 상세와 같은 후기 칸 — 후기가 있을 때만 '레슨 후기 N개'(예전엔 0개여도 '후기 전체 보기' 줄을 늘 그렸다).
+        val context = LocalContext.current
+        var reviews by remember(d.id) { mutableStateOf<com.muyeon.app.ui.review.ReviewList?>(null) }
+        LaunchedEffect(d.id, com.muyeon.app.auth.accountEpoch()) {
+            com.muyeon.app.ui.review.ReviewApi(com.muyeon.app.utils.TokenManager.getAccessToken(context))
+                .list(d.id.toInt()).onSuccess { reviews = it }
         }
+        com.muyeon.app.ui.resume.ReviewsSection(reviews, onReviews)
     }
 }
 
