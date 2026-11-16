@@ -405,9 +405,13 @@ class JobPostingApi(internal val token: String?) {
     suspend fun applied(kind: String, id: Int): Boolean =
         call("/${PostingKind.seg(kind)}/$id/applied").map { runCatching { JSONObject(it).optBoolean("applied", false) }.getOrDefault(false) }.getOrDefault(false)
 
-    /** 지원 — 고른 이력서로(웹 JobDetail·SubDetail 과 같은 본문). */
-    suspend fun apply(kind: String, id: Int, resumeId: Int?): Result<Unit> =
-        call("/${PostingKind.seg(kind)}/$id/apply", "POST", JSONObject().apply { resumeId?.let { put("resumeId", it) } }).map { }
+    /**
+     * 지원 — 고른 이력서로(웹 JobDetail·SubDetail 과 같은 본문).
+     *  ★ 2026-11-16 대타 지원은 서버가 원장님과의 채팅방을 바로 열고 그 번호(roomId)를 돌려준다(없으면 null).
+     */
+    suspend fun apply(kind: String, id: Int, resumeId: Int?): Result<Int?> =
+        call("/${PostingKind.seg(kind)}/$id/apply", "POST", JSONObject().apply { resumeId?.let { put("resumeId", it) } })
+            .map { body -> runCatching { JSONObject(body).optInt("roomId", 0).takeIf { it > 0 } }.getOrNull() }
 
     /** 확정된 대타 취소 — 쌓일 벌점 미리보기(GET /subs/applications/:id/cancel-preview → { points }). */
     suspend fun subCancelPreview(applicationId: Int): Int? =

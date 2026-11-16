@@ -168,7 +168,13 @@ fun PostingViewScreen(
             busy = true
             scope.launch {
                 api.apply(kind, id, resumeId)
-                    .onSuccess { applied = true; Toast.makeText(context, R.string.posting_apply_done, Toast.LENGTH_SHORT).show() }
+                    .onSuccess { roomId ->
+                        applied = true; Toast.makeText(context, R.string.posting_apply_done, Toast.LENGTH_SHORT).show()
+                        // ★ 2026-11-16 대타 지원은 원장님과의 채팅방이 바로 열린다 — 그 방으로 들어가 이어서 이야기한다.
+                        if (roomId != null) (context as? android.app.Activity)?.let {
+                            com.muyeon.app.webview.NativeActionRouter.open(it, "openChatRoom", org.json.JSONObject().put("roomId", roomId.toString()))
+                        }
+                    }
                     .onFailure { Toast.makeText(context, it.message ?: context.getString(R.string.posting_apply_failed), Toast.LENGTH_LONG).show() }
                 busy = false; picking = false
             }
