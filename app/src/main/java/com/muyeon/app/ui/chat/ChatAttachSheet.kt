@@ -1,6 +1,7 @@
 package com.muyeon.app.ui.chat
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.ui.graphics.Color
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -85,7 +86,7 @@ fun ChatAttachSheet(
         ActivityResultContracts.PickVisualMedia(),
     ) { uri -> if (uri != null) { onPickVideo(uri); onDismiss() } }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = Color.White) {
         Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
             Text(
                 "첨부",

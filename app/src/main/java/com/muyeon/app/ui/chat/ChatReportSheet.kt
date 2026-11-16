@@ -78,7 +78,7 @@ fun ChatReportSheet(
     // 기타는 상세 필수(iOS canSubmit 동일).
     val canSubmit = !sending && (reason != "ETC" || detail.trim().isNotEmpty())
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = Color.White) {
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).navigationBarsPadding().padding(horizontal = 20.dp).padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),

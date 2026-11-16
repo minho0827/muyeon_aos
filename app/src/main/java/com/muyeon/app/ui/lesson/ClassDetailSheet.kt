@@ -86,7 +86,7 @@ fun ClassDetailSheet(
     val attended = roster.count { it.attendance == SlotAttendance.ATTENDED }
     val noshow = roster.count { it.attendance == SlotAttendance.NOSHOW }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = Color.White) {
         Column(Modifier.fillMaxWidth()) {
             Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
                 Text(
@@ -329,7 +329,7 @@ private fun PassPickerSheet(
     onAuto: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color.White) {
         Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
             Text(
                 "차감할 수강권 선택",

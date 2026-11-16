@@ -781,7 +781,7 @@ fun LessonCancelReasonSheet(onDismiss: () -> Unit, onConfirm: (LessonCancelReaso
     // ★ 2026-11-09 반쯤 열린 상태를 없애고(skipPartiallyExpanded) 사유·입력칸만 스크롤, [선택 완료]는 그 아래 고정 —
     //   '기타' 입력 중 키보드가 올라오면 입력칸과 버튼이 잘려 누를 수 없었다(iOS 같은 버그와 함께 고침).
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = Color.White) {
         Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
             Text(
                 "취소 사유를 선택해 주세요.",

@@ -63,7 +63,7 @@ fun SurveyPickerSheet(
         loading = false
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = Color.White) {
         Column(Modifier.fillMaxWidth().background(MuyeonColors.groupedBg)) {
             Row(
                 Modifier.fillMaxWidth().background(MuyeonColors.surface)

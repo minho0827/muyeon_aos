@@ -113,7 +113,7 @@ fun ScheduleBlockEditor(
     val selectedCalendar = calendars.firstOrNull { it.id == calendarId } ?: UserCalendar.DEFAULT
     val canSave = title.isNotBlank() && !saving
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = Color.White) {
         Column(Modifier.fillMaxWidth()) {
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(44.dp),
@@ -428,7 +428,7 @@ fun ScheduleBlockEditor(
         ) { Box(Modifier.fillMaxWidth().padding(16.dp), Alignment.Center) { TimePicker(state) } }
     }
     if (showCalendarPicker) {
-        ModalBottomSheet(onDismissRequest = { showCalendarPicker = false }) {
+        ModalBottomSheet(onDismissRequest = { showCalendarPicker = false }, containerColor = Color.White) {
             Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
                 (listOf(UserCalendar.DEFAULT) + calendars).forEach { c ->
                     Row(

@@ -233,7 +233,7 @@ fun LessonManageScreen(
 
     // 보관함 — 복원 경로(소프트 삭제라 반드시 필요)
     if (showArchive) {
-        ModalBottomSheet(onDismissRequest = { showArchive = false }) {
+        ModalBottomSheet(onDismissRequest = { showArchive = false }, containerColor = Color.White) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp)) {
                 Text(
                     "보관함",

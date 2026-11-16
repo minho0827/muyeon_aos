@@ -169,7 +169,7 @@ fun FieldVisibilityScreen(
         }
         val selected = (if (kind == "career") flags.careerItems else flags.performanceItems) ?: labels.map { it.first }
 
-        ModalBottomSheet(onDismissRequest = { detailSheet = null }) {
+        ModalBottomSheet(onDismissRequest = { detailSheet = null }, containerColor = Color.White) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp)) {
                 Text(
                     if (kind == "career") "공개할 경력 선택" else "공개할 공연 선택",

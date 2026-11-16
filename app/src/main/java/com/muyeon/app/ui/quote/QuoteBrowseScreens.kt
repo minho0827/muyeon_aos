@@ -406,7 +406,7 @@ private fun QuoteBrowseFilterSheet(
     var draftCategory by remember { mutableStateOf(categoryId) }
     var draftRegion by remember { mutableStateOf(regionSido) }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = Color.White) {
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),

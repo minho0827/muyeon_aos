@@ -162,7 +162,7 @@ fun LessonBrowseScreen(
     }
 
     facet?.let { which ->
-        ModalBottomSheet(onDismissRequest = { facet = null }) {
+        ModalBottomSheet(onDismissRequest = { facet = null }, containerColor = Color.White) {
             Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
                 when (which) {
                     "genre" -> {

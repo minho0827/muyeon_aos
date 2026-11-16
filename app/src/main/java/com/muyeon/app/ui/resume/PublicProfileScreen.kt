@@ -713,7 +713,7 @@ private val REPORT_REASONS = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ReportReasonSheet(onPick: (String) -> Unit, onDismiss: () -> Unit) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color.White) {
         Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
             Text(
                 "신고 사유를 선택해 주세요",

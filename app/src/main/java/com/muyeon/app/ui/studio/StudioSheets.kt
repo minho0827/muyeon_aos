@@ -105,7 +105,7 @@ fun IssuePassSheet(onSubmit: (JSONObject) -> Unit, onDismiss: () -> Unit) {
         priceText.filter { it.isDigit() }.toIntOrNull()?.takeIf { it > 0 }?.let { put("price", it) }
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = Color.White) {
         Column(Modifier.fillMaxWidth()) {
             SheetHeader("수강권 발급", "발급", canSubmit, onDismiss) { onSubmit(buildBody()) }
             HorizontalDivider(color = MuyeonColors.border)
@@ -228,7 +228,7 @@ fun StudioSettingsSheet(api: StudioApi, onDismiss: () -> Unit) {
         loaded = true
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = Color.White) {
         Column(Modifier.fillMaxWidth()) {
             SheetHeader("스튜디오 설정", "완료", true, onDismiss) { onDismiss() }
             HorizontalDivider(color = MuyeonColors.border)
@@ -446,7 +446,7 @@ fun SaleEditSheet(
         put("memo", memo.trim())
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = Color.White) {
         Column(Modifier.fillMaxWidth()) {
             SheetHeader(if (sale == null) "매출 등록" else "매출 수정", "저장", canSubmit, onDismiss) { onSubmit(buildBody()) }
             HorizontalDivider(color = MuyeonColors.border)
