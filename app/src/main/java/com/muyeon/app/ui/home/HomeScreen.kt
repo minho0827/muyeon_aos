@@ -52,6 +52,7 @@ import com.muyeon.app.ui.main.MainTab
 import com.muyeon.app.ui.quotefeed.QuoteFeedLabels
 import com.muyeon.app.ui.quotefeed.components.QuoteFeedSection
 import com.muyeon.app.ui.main.TabReselectEffect
+import com.muyeon.app.ui.recruit.isAtTop
 import com.muyeon.app.ui.main.tabBarBottomPadding
 import com.muyeon.app.ui.theme.AppColors
 import com.muyeon.domain.model.home.HomeLesson
@@ -104,8 +105,12 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
     val teacherGrid = rememberLazyGridState()
     val lessonGrid = rememberLazyGridState()
     val grid = if (s.mode == HomeMode.TEACHERS) teacherGrid else lessonGrid
-    // 홈 칸을 한 번 더 누르면 강사 ↔ 레슨(컬리 홈 칸처럼 — 사용자 요청 2026-11-08).
-    TabReselectEffect(MainTab.HOME) { viewModel.setMode(if (s.mode == HomeMode.TEACHERS) HomeMode.LESSONS else HomeMode.TEACHERS) }
+    // 홈 칸 다시 누르기 — ★ 2026-11-16 PACERA 와 같은 규칙(iOS 와 같다): 지금 목록이 내려가 있으면 맨 위로,
+    //  맨 위면 반대 토글(강사 ↔ 레슨)로. 2026-11-08 처음엔 누르면 바로 토글이었다.
+    TabReselectEffect(MainTab.HOME) {
+        if (grid.isAtTop()) viewModel.setMode(if (s.mode == HomeMode.TEACHERS) HomeMode.LESSONS else HomeMode.TEACHERS)
+        else grid.animateScrollToItem(0)
+    }
     CursorLoadMoreEffect(teacherGrid, canLoad = s.mode == HomeMode.TEACHERS && s.artists.cursor.canAutoLoad && !s.artists.isLoadingMore, onLoadMore = viewModel::loadMoreArtists)
     // ★ 11-10 레슨 한 줄 목록도 끝에 다다르면 더 받는다(전체보기 레슨 목록과 같은 방식).
     CursorLoadMoreEffect(lessonGrid, canLoad = s.mode == HomeMode.LESSONS && s.lessonFeed.cursor.canAutoLoad && !s.lessonFeed.isLoadingMore, onLoadMore = viewModel::loadMoreLessons)
@@ -160,7 +165,9 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
                     // ★ 11-10 추천 탭 · 장르 탭 같은 배치 — 맨 위 '레슨을 찾는 회원들' 가로 줄(비면 안 그림) · 아래 레슨 한 줄 목록(끝없이 내려 받기).
                     //   목록 줄은 전체보기 레슨 목록 '목록 보기'(LessonListRow) 그대로. 장르 칩·보기 전환은 홈에 없다(장르는 위 탭).
                     val category = s.lessonGenre?.let { LessonGenres.QUOTE_CATEGORY[it] }
-                    item(key = "quoteFeed", span = FULL) {
+                    // ★ 11-16 비면 칸 자체를 넣지 않는다 — 높이 0 칸이 맨 앞에 있으면 목록이 그 칸을 건너뛰어
+                    //  '맨 위'를 늘 아니라고 보고, 맨 위로 올리기도 끝나지 않았다(홈 칸 다시 누르기 실기기 확인).
+                    if (s.quoteFeed.isNotEmpty()) item(key = "quoteFeed", span = FULL) {
                         QuoteFeedSection(
                             s.quoteFeed,
                             sentOf = { q -> s.quoteFeedPro && !q.isMine && !q.canRespond },
