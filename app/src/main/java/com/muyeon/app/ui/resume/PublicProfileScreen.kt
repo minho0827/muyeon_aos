@@ -621,10 +621,11 @@ private fun VideoSection(p: PublicProfile) {
     ProfileVideoSection(p.videoUrl)
 }
 
-/** 레슨 후기 요약 — 태그 배지(상위 4) + 최근 3개(별 5개·작성자·내용) + 전체보기. iOS reviewsSection. */
+/** 레슨 후기 요약 — 태그 배지(상위 4) + 최근 3개(별 5개·작성자·내용) + 전체보기. iOS reviewsSection.
+ *  ★ 2026-11-16 무용수 상세도 같은 칸을 쓴다(후기 없으면 칸 자체를 안 그림). */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ReviewsSection(reviews: ReviewList?, onOpenReviews: () -> Unit, mineActions: @Composable () -> Unit = {}) {
+internal fun ReviewsSection(reviews: ReviewList?, onOpenReviews: () -> Unit, mineActions: @Composable () -> Unit = {}) {
     reviews?.items?.takeIf { it.isNotEmpty() }?.let { items ->
         ProfileSection("레슨 후기 ${reviews.count ?: items.size}개") {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
