@@ -23,6 +23,18 @@ object RecruitLabels {
         else -> com.muyeon.app.R.drawable.job_thumb_default
     }
 
+    /** ★ 2026-11-16 사진 없는 대타 공고 — 장르별 '○○ 대타 구해요!' 그림(채용과 같은 색, 시계 아이콘). 웹 subThumb·iOS 같은 규칙. */
+    fun subThumb(genre: String?): Int = when (genre?.trim()) {
+        "발레" -> com.muyeon.app.R.drawable.sub_thumb_ballet
+        "바레" -> com.muyeon.app.R.drawable.sub_thumb_barre
+        "한국무용" -> com.muyeon.app.R.drawable.sub_thumb_korean
+        "현대무용" -> com.muyeon.app.R.drawable.sub_thumb_modern
+        "실용무용" -> com.muyeon.app.R.drawable.sub_thumb_practical
+        "발레핏" -> com.muyeon.app.R.drawable.sub_thumb_balletfit
+        "뮤지컬" -> com.muyeon.app.R.drawable.sub_thumb_musical
+        else -> com.muyeon.app.R.drawable.sub_thumb_default
+    }
+
     val CAREERS = listOf("NEW", "Y1_3", "Y3_5", "Y5_10", "Y10")
     val SALARIES = listOf("W1_2", "W2_3", "W3_4", "W4_5", "W5_6", "W6_8", "W8_UP", "NEGOTIABLE")
     val FIELDS = listOf("BASIC", "HOBBY", "MAJOR", "EXAM", "REPERTOIRE", "CONCOURS", "AUDITION", "PILATES", "STRETCH", "OTHER")

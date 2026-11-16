@@ -119,5 +119,6 @@ private fun fallback(i: LikedItem): Int = when (i.targetType) {
     "CASTING" -> R.drawable.stage_noimage_casting
     "TEACHER", "DANCER" -> R.drawable.img_noimage_teacher
     "JOB" -> com.muyeon.app.ui.recruit.RecruitLabels.jobThumb(null)
+    "SUB" -> com.muyeon.app.ui.recruit.RecruitLabels.subThumb(null)
     else -> R.drawable.img_noimage
 }
