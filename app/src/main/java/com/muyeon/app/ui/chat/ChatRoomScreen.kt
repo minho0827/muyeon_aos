@@ -353,12 +353,12 @@ fun ChatRoomScreen(
                 if (switching) return@ProviderSwitchGate
                 switching = true
                 scope.launch {
-                    val type = ActiveRole.providerSwitchOrder()
-                        .firstOrNull { ActiveRole.saveOnServer(context, it) }
+                    // ★ 2026-11-16 가진 레슨 제공 유형 중 첫째(강사 → 학원 → 명부 순)로, 셸 단일 전환 함수를 지나 바꾼다
+                    //  (탭바·MY가 같이 바뀌고 전환 토스트도 셸이 띄운다). 예전엔 순서대로 서버 저장을 시도해 셸이 몰랐다.
+                    val held = com.muyeon.app.ui.common.TypeGate.firstHeld(context, com.muyeon.domain.model.member.TypeFeature.LESSON_PROVIDE)
+                    val type = held?.takeIf { com.muyeon.app.ui.common.ShellTypeSwitch.switchTo(context, it) }
                     switching = false
                     if (type != null) {
-                        ActiveRole.store(context, type)
-                        android.widget.Toast.makeText(context, "${ActiveRole.label(type)} 유형으로 바꿨어요", android.widget.Toast.LENGTH_SHORT).show()
                         roleEpoch++
                         vm.reloadMessagesAndContext()
                     } else {

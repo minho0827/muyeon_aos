@@ -78,11 +78,25 @@ fun rememberStageApi(): CastingStageApi {
     return remember(epoch) { CastingStageApi(TokenManager.getAccessToken(context)) }
 }
 
-/** 공연팀으로 활동 중일 때만 ＋(공연 공고 등록) — 웹 canAs(activeType, "casting.create") 와 같다. */
+/** 공연팀으로 활동 중인가 — 웹 canAs(activeType, "casting.create") 와 같다(필요 유형표 FeatureRoles). */
 @Composable
 fun stageCanCreate(): Boolean {
     val context = LocalContext.current
-    return com.muyeon.app.webview.ActiveRole.current(context) == "TEAM"
+    return com.muyeon.domain.model.member.FeatureRoles.allows(
+        com.muyeon.domain.model.member.TypeFeature.CASTING_CREATE, com.muyeon.app.webview.ActiveRole.current(context))
+}
+
+/**
+ * ★ 2026-11-16 ＋(공연 공고 등록) — 로그인 회원이면 늘 보이고(비회원 null), 누르면 공통 관문(공연기획)을 지난 뒤 [onCreate].
+ *   공연기획 유형을 가졌으면 "전환하고 작성", 없으면 "유형 추가", 심사 중이면 안내.
+ */
+@Composable
+fun stageCreateAction(onCreate: () -> Unit): (() -> Unit)? {
+    val context = LocalContext.current
+    val gate = com.muyeon.app.ui.common.rememberTypeGate()
+    com.muyeon.app.ui.common.TypeGateHost(gate)
+    if (TokenManager.getAccessToken(context).isNullOrEmpty()) return null
+    return { gate.require(com.muyeon.domain.model.member.TypeFeature.CASTING_CREATE, run = onCreate) }
 }
 
 fun NavController.openStageNews(r: StageRoutes, item: StageNewsItem, cat: StageCategory) {
@@ -93,7 +107,7 @@ fun NavController.openStageNews(r: StageRoutes, item: StageNewsItem, cat: StageC
 /** 캐스팅·무대 첫 화면. [onClose] null 이면 뒤로 버튼 없이(하단 탭). */
 @Composable
 fun CastingStageHome(nav: NavController, r: StageRoutes, onClose: (() -> Unit)?) {
-    val canCreate = stageCanCreate()
+    val create = stageCreateAction { nav.navigate(r.create) }
     CastingStageScreen(
         api = rememberStageApi(),
         onClose = onClose,
@@ -103,7 +117,7 @@ fun CastingStageHome(nav: NavController, r: StageRoutes, onClose: (() -> Unit)?)
         onNewsList = { no, code -> nav.navigate(r.newsList(no, code)) },
         onIssues = { nav.navigate(r.issues) },
         onOpenIssue = { no -> nav.navigate(r.issue(no)) },
-        onCreate = if (canCreate) ({ nav.navigate(r.create) }) else null,
+        onCreate = create,
         reloadKey = CastingStageSession.reloadKey,
     )
 }
@@ -142,9 +156,9 @@ fun NavGraphBuilder.castingStageGraph(
         else LaunchedEffect(Unit) { back() }
     }
     composable(r.castingList) {
-        val canCreate = stageCanCreate()
+        val create = stageCreateAction { nav.navigate(r.create) }
         StageCastingListScreen(rememberStageApi(), onBack = back, onOpen = { nav.navigate(r.casting(it)) },
-            onCreate = if (canCreate) ({ nav.navigate(r.create) }) else null, reloadKey = CastingStageSession.reloadKey)
+            onCreate = create, reloadKey = CastingStageSession.reloadKey)
     }
     // 공연 공고 등록(공연팀) — 등록하면 방금 올린 공고 상세로 바꿔 띄운다(웹은 캐스팅 화면으로 간다).
     composable(r.create) {

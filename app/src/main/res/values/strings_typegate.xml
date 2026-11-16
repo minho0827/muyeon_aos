@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ★ 2026-11-16 공통 유형 관문(TypeGate)·글쓰기 메뉴·MY 말풍선. 관문 창 문구는 :domain TypeGateRules 에 있다(단위 테스트용). -->
+<resources>
+    <string name="type_gate_load_failed">회원유형을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.</string>
+    <string name="write_seek_any">이력서 등록</string>
+    <string name="my_type_hint_close">안내 닫기</string>
+</resources>

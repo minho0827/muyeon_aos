@@ -49,8 +49,8 @@ fun DancerCustomerGateDialog(scope: CoroutineScope, onSwitched: () -> Unit, onDi
             MuyeonDialogAction("${ActiveRole.label("GENERAL")} 유형으로 전환하고 계속", MuyeonDialogKind.PRIMARY) {
                 onDismiss()
                 scope.launch {
-                    if (ActiveRole.saveOnServer(ctx, "GENERAL")) {
-                        ActiveRole.store(ctx, "GENERAL")
+                    // ★ 2026-11-16 셸 단일 전환 함수로(탭바·MY·글쓰기 메뉴가 같이 바뀐다).
+                    if (com.muyeon.app.ui.common.ShellTypeSwitch.switchTo(ctx, "GENERAL")) {
                         onSwitched()
                     }
                 }

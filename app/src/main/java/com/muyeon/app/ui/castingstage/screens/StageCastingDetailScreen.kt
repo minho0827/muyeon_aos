@@ -180,7 +180,8 @@ fun StageCastingDetailScreen(
             TextButton({
                 showSwitch = false
                 scope.launch {
-                    if (ActiveRole.saveOnServer(ctx, "DANCER")) { ActiveRole.store(ctx, "DANCER"); startApply() }
+                    // ★ 2026-11-16 셸 단일 전환 함수로(탭바·MY·글쓰기 메뉴가 같이 바뀐다).
+                    if (com.muyeon.app.ui.common.ShellTypeSwitch.switchTo(ctx, "DANCER")) startApply()
                     else toast = "유형을 바꾸지 못했어요. 잠시 후 다시 시도해 주세요."
                 }
             }) { Text("전환하기", color = Brand) }

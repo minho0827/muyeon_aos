@@ -129,9 +129,13 @@ class MainActivity : ComponentActivity(), ResultHost {
             }
         }
 
+        // ★ 2026-11-16 셸 이벤트는 다른 화면이 위에 떠 있어도(셸 STOPPED) 받는다 — 채팅·견적 응답 등에서 공통 관문으로
+        //  유형을 바꿔도 전환 토스트가 뜨고, '유형 추가'면 회원유형 화면이 그 위에 열린다(ShellTypeSwitch).
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.CREATED) { viewModel.events.collect(::onEvent) }
+        }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch { viewModel.events.collect(::onEvent) }
                 launch {
                     viewModel.state.collect { s ->
                         // 플로팅(채팅 버튼) 표시 판정은 웹 라우트 기준이다 — 앱 탭도 같은 주소를 알린다.

@@ -51,10 +51,25 @@ object ChatSurveyHint {
 /**
  * + 버튼 위 작은 말풍선 — 누르면 설문지 고르기를 바로 연다, X 는 닫기만.
  * ★ 2026-10-20 처음엔 입력바 폭 전체 카드(아이콘·3줄)라 채팅을 너무 가렸다 → 글 2줄짜리 말풍선으로(iOS 동일).
+ * ★ 2026-11-16 문구·꼬리 자리를 인자로 — MY 탭 유형 안내 말풍선(MainScreen)이 같이 쓴다. 기본값은 채팅 설문 안내 그대로.
+ *
+ * @param tailAtEnd true 면 말풍선과 꼬리를 오른쪽에 붙인다(꼬리는 오른쪽 끝에서 [tailInset]).
+ * @param tailInset 꼬리 왼쪽(또는 오른쪽) 끝이 말풍선 칸 가장자리에서 떨어진 거리.
  */
 @Composable
-fun ChatSurveyHintBubble(onOpen: () -> Unit, onClose: () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+fun ChatSurveyHintBubble(
+    onOpen: () -> Unit,
+    onClose: () -> Unit,
+    title: String = "레슨 전 설문을 먼저 보내 보세요",
+    subtitle: String? = "회원 수준·원하는 수업을 미리 알 수 있어요 ›",
+    tailAtEnd: Boolean = false,
+    tailInset: androidx.compose.ui.unit.Dp = 17.dp,
+    closeDescription: String = "안내 닫기",
+) {
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        horizontalAlignment = if (tailAtEnd) Alignment.End else Alignment.Start,
+    ) {
         Row(
             Modifier
                 .shadow(4.dp, RoundedCornerShape(12.dp))
@@ -66,18 +81,18 @@ fun ChatSurveyHintBubble(onOpen: () -> Unit, onClose: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Text("레슨 전 설문을 먼저 보내 보세요", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Text("회원 수준·원하는 수업을 미리 알 수 있어요 ›", color = Color.White.copy(alpha = 0.9f), fontSize = 11.sp)
+                Text(title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                if (subtitle != null) Text(subtitle, color = Color.White.copy(alpha = 0.9f), fontSize = 11.sp)
             }
             Icon(
-                Icons.Filled.Close, "안내 닫기", tint = Color.White.copy(alpha = 0.85f),
+                Icons.Filled.Close, closeDescription, tint = Color.White.copy(alpha = 0.85f),
                 modifier = Modifier.size(18.dp).clip(RoundedCornerShape(50)).clickable(onClick = onClose).padding(3.dp),
             )
         }
-        // 꼬리 — + 버튼(입력바 왼쪽 끝)을 가리킨다.
+        // 꼬리 — 채팅은 + 버튼(입력바 왼쪽 끝), MY 안내는 MY 칸을 가리킨다.
         Spacer(
             Modifier
-                .padding(start = 17.dp)
+                .padding(start = if (tailAtEnd) 0.dp else tailInset, end = if (tailAtEnd) tailInset else 0.dp)
                 .size(width = 12.dp, height = 6.dp)
                 .background(MuyeonColors.primary, GenericShape { s, _ ->
                     moveTo(0f, 0f); lineTo(s.width, 0f); lineTo(s.width / 2f, s.height); close()

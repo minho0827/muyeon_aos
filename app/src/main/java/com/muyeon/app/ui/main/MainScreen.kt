@@ -18,6 +18,12 @@ import com.muyeon.app.ui.main.bar.BarItem
 import com.muyeon.app.ui.main.bar.BarMode
 import com.muyeon.app.ui.main.bar.MorphingTabBar
 import com.muyeon.domain.model.member.ActiveType
+import com.muyeon.domain.model.member.TypeFeature
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -203,54 +209,94 @@ fun MainScreen(
             )
         }
         // ★ 2026-11-08 채용 2계층(채용·대타공고·캐스팅) 공용 [+ 글쓰기] — 위 바 연필 대신. 탭바 위에 그려 어두운 막이 탭바까지 덮는다(PaceERA 런커 메뉴와 같은 모양).
+        // ★ 2026-11-16 로그인 회원이면 늘 보인다(비회원만 숨김). 항목은 모두 두고, 지금 유형으로 못 쓰는 항목은 필요 유형을 회색 작은 글씨로 붙인다.
+        //   누르면 공통 관문(TypeGate)을 지난다 — 가진 유형이면 "전환하고 작성", 없으면 "유형 추가" 안내. 필요 유형표는 :domain FeatureRoles.
+        val gate = com.muyeon.app.ui.common.rememberTypeGate()
+        val writeContext = androidx.compose.ui.platform.LocalContext.current
+        val writeScope = androidx.compose.runtime.rememberCoroutineScope()
         if (selectedTab.mode == BarMode.JOBS) {
-            val canCastingCreate = com.muyeon.app.ui.castingstage.stageCanCreate()
             val stage = com.muyeon.app.ui.castingstage.StageRoutes.SHELL
-            // ★ 2026-11-08 유형별 쓸 수 있는 글만(웹 constants/permissions.js 와 같다 — 사용자 지적: 일반 회원에게 강사프로필 등록이 보였다).
-            //   채용공고 = 학원·공연팀 · 구직 프로필 = 강사·무용수 · 대타공고 = 학원·강사·무용수·공연팀 · 공연 공고 = 공연팀(canCastingCreate).
             val t = state.activeType
-            val loggedIn = state.isLoggedIn
-            val writeContext = androidx.compose.ui.platform.LocalContext.current
-            val writeScope = androidx.compose.runtime.rememberCoroutineScope()
-            val writeItems = buildList {
-                if (loggedIn && t in setOf(ActiveTypeK.ACADEMY, ActiveTypeK.TEAM))
-                    add(com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_job), androidx.compose.ui.res.painterResource(R.drawable.ic_tab_note), com.muyeon.app.ui.theme.AppColors.Primary, "job") { onOpenPath("/jobs/create") })
-                if (loggedIn && t in setOf(ActiveTypeK.TEACHER, ActiveTypeK.DANCER))
-                    add(com.muyeon.app.ui.components.WriteMenuItem(stringResource(if (t == ActiveTypeK.DANCER) R.string.write_seek_dancer else R.string.write_seek), androidx.compose.ui.res.painterResource(R.drawable.ic_tab_my), androidx.compose.ui.graphics.Color(0xFF2E7DFF), "seek") {
-                        // 이미 등록한 강사프로필이 있으면 이력서 관리, 없으면 등록(SeekProfileEntry).
-                        (writeContext as? android.app.Activity)?.let { com.muyeon.app.ui.resume.SeekProfileEntry.open(it, writeScope, t == ActiveTypeK.DANCER) }
-                    })
-                if (loggedIn && t in setOf(ActiveTypeK.TEACHER, ActiveTypeK.ACADEMY, ActiveTypeK.DANCER, ActiveTypeK.TEAM))
-                    add(com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_sub), androidx.compose.ui.res.painterResource(R.drawable.ic_tab_paper), androidx.compose.ui.graphics.Color(0xFFD8564D), "sub") { onOpenPath("/subs/create") })
-                if (canCastingCreate) add(com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_casting), androidx.compose.ui.graphics.vector.rememberVectorPainter(androidx.compose.material.icons.Icons.Rounded.RecentActors), androidx.compose.ui.graphics.Color(0xFF7B5CC4), "casting") { onOpenDetail(stage.create) })
+            val writeItems = com.muyeon.domain.model.member.WriteMenuRules.jobs(state.isLoggedIn, t).map { e ->
+                when (e.feature) {
+                    TypeFeature.JOB_CREATE -> com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_job), painterResource(R.drawable.ic_tab_note), AppColors.Primary, "job", e.caption) {
+                        gate.require(e.feature) { onOpenPath("/jobs/create") }
+                    }
+                    TypeFeature.SEEK_PROFILE -> com.muyeon.app.ui.components.WriteMenuItem(
+                        stringResource(when (t) { ActiveTypeK.DANCER -> R.string.write_seek_dancer; ActiveTypeK.TEACHER -> R.string.write_seek; else -> R.string.write_seek_any }),
+                        painterResource(R.drawable.ic_tab_my), androidx.compose.ui.graphics.Color(0xFF2E7DFF), "seek", e.caption,
+                    ) {
+                        gate.require(e.feature) {
+                            // 이미 등록한 강사프로필이 있으면 이력서 관리, 없으면 등록(SeekProfileEntry). 전환 뒤 유형으로 고른다.
+                            val dancer = com.muyeon.app.webview.ActiveRole.current(writeContext) == ActiveTypeK.DANCER
+                            (writeContext as? android.app.Activity)?.let { com.muyeon.app.ui.resume.SeekProfileEntry.open(it, writeScope, dancer) }
+                        }
+                    }
+                    TypeFeature.SUB_CREATE -> com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_sub), painterResource(R.drawable.ic_tab_paper), androidx.compose.ui.graphics.Color(0xFFD8564D), "sub", e.caption) {
+                        gate.require(e.feature) { onOpenPath("/subs/create") }
+                    }
+                    else -> com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_casting), rememberVectorPainter(Icons.Rounded.RecentActors), androidx.compose.ui.graphics.Color(0xFF7B5CC4), "casting", e.caption) {
+                        gate.require(e.feature) { onOpenDetail(stage.create) }
+                    }
+                }
             }
-            // 쓸 수 있는 글이 없으면(일반·비회원) 버튼도 없다.
             if (writeItems.isNotEmpty()) WriteMenu(
                 items = writeItems,
                 bottom = tabBarBottomPadding() - 4.dp,
+                header = com.muyeon.domain.model.member.WriteMenuRules.header(t),
             )
         }
-        // ★ 2026-11-08 공간 탭(대관·양도양수) [+ 글쓰기] — 채용 탭과 같은 부품(위 바 ＋ 대신). 서버 등록 권한 그대로:
+        // ★ 2026-11-08 공간 탭(대관·양도양수) [+ 글쓰기] — 채용 탭과 같은 부품. 서버 등록 권한 그대로:
         //   공간 등록 POST /spaces = 학원·강사·무용수 · 양도 글 POST /studio-transfers = 학원·강사. 보고 있는 탭 항목이 먼저.
+        // ★ 2026-11-16 로그인 회원이면 늘 보이고, 누르면 관문을 지난 뒤 등록 화면을 연다(등록 화면 안 유형 검사를 건너뛰지 않게).
         if (selectedTab == MainTab.SPACES || selectedTab == MainTab.TRANSFERS) {
             val t = state.activeType
-            val loggedIn = state.isLoggedIn
-            val writeContext = androidx.compose.ui.platform.LocalContext.current
-            val space = if (loggedIn && t in setOf(ActiveTypeK.ACADEMY, ActiveTypeK.TEACHER, ActiveTypeK.DANCER))
-                com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_space), rememberVectorPainter(Icons.Rounded.MeetingRoom), com.muyeon.app.ui.theme.AppColors.Primary, "space") {
-                    com.muyeon.app.ui.space.SpaceHubActivity.startEditor(writeContext, null)
-                } else null
-            val transfer = if (loggedIn && t in setOf(ActiveTypeK.ACADEMY, ActiveTypeK.TEACHER))
-                com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_transfer), rememberVectorPainter(Icons.Filled.Apartment), androidx.compose.ui.graphics.Color(0xFF2E7DFF), "transfer") {
-                    com.muyeon.app.ui.transfer.TransferActivity.startEditor(writeContext, null)
-                } else null
-            val writeItems = (if (selectedTab == MainTab.TRANSFERS) listOf(transfer, space) else listOf(space, transfer)).filterNotNull()
-            // 쓸 수 있는 글이 없으면(일반·공간 보유자·공연팀·비회원) 버튼도 없다.
+            val writeItems = com.muyeon.domain.model.member.WriteMenuRules.spaces(state.isLoggedIn, t, transfersFirst = selectedTab == MainTab.TRANSFERS).map { e ->
+                if (e.feature == TypeFeature.SPACE_CREATE)
+                    com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_space), rememberVectorPainter(Icons.Rounded.MeetingRoom), AppColors.Primary, "space", e.caption) {
+                        gate.require(e.feature) { com.muyeon.app.ui.space.SpaceHubActivity.startEditor(writeContext, null) }
+                    }
+                else com.muyeon.app.ui.components.WriteMenuItem(stringResource(R.string.write_transfer), rememberVectorPainter(Icons.Filled.Apartment), androidx.compose.ui.graphics.Color(0xFF2E7DFF), "transfer", e.caption) {
+                    gate.require(e.feature) { com.muyeon.app.ui.transfer.TransferActivity.startEditor(writeContext, null) }
+                }
+            }
             if (writeItems.isNotEmpty()) WriteMenu(
                 items = writeItems,
                 bottom = tabBarBottomPadding() - 4.dp,
+                header = com.muyeon.domain.model.member.WriteMenuRules.header(t),
             )
         }
+        com.muyeon.app.ui.common.TypeGateHost(gate)
+        // ★ 2026-11-16 MY 말풍선 — 전문 유형을 가졌는데 지금 일반이면 MY 칸 위에. 누르면 유형 시트, X 는 이번 실행 동안 숨김.
+        //   유형이 바뀌면(일반이 아니면) 조건이 깨져 바로 사라진다. MY 칸은 1계층 탭바에만 있다.
+        val hintType = com.muyeon.domain.model.member.MyTypeHintRules.bubbleType(
+            state.isLoggedIn, state.activeType, state.switchableTypes, state.myHintDismissed,
+        )
+        if (hintType != null && selectedTab.mode == BarMode.MAIN) {
+            MyTypeHintBubble(
+                text = com.muyeon.domain.model.member.MyTypeHintRules.text(hintType),
+                onOpen = onMyLongPress,
+                onClose = viewModel::dismissMyTypeHint,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        }
+    }
+}
+
+/** MY 칸 위 말풍선 — 꼬리가 MY 칸 가운데(탭바 폭의 90% 자리)를 가리킨다. */
+@Composable
+private fun MyTypeHintBubble(text: String, onOpen: () -> Unit, onClose: () -> Unit, modifier: Modifier = Modifier) {
+    val nav = androidx.compose.foundation.layout.WindowInsets.Companion.navigationBars.asPaddingValues().calculateBottomPadding()
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth().padding(bottom = nav + 76.dp).testTag("myTypeHint")) {
+        // 탭바 안쪽 여백 6dp · 5칸 중 마지막 칸 가운데 = 오른쪽 끝에서 (폭-12)/10 + 6.
+        val fromRight = (maxWidth - 12.dp) / 10 + 6.dp
+        com.muyeon.app.ui.chat.ChatSurveyHintBubble(
+            onOpen = onOpen, onClose = onClose,
+            title = text, subtitle = null,
+            tailAtEnd = true,
+            tailInset = (fromRight - 12.dp - 6.dp).coerceAtLeast(4.dp),
+            closeDescription = stringResource(R.string.my_type_hint_close),
+        )
     }
 }
 

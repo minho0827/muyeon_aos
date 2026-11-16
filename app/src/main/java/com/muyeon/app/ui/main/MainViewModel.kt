@@ -38,6 +38,8 @@ data class MainUiState(
     val myDot: Boolean = false,
     /** ★ 2026-11-09 공연 칸 빨간 점 — 마지막으로 본 뒤 공연·캐스팅·무대 소식이 새로 올라왔다. */
     val perfDot: Boolean = false,
+    /** ★ 2026-11-16 MY 말풍선을 X 로 닫았다(이번 실행 동안). */
+    val myHintDismissed: Boolean = false,
 )
 
 /** 화면이 한 번만 처리할 일. */
@@ -68,6 +70,7 @@ class MainViewModel(
         MainUiState(
             activeType = currentType(),
             isLoggedIn = tokens.isLoggedIn,
+            myHintDismissed = myTypeHintDismissed,
         ),
     )
     val state: StateFlow<MainUiState> = _state.asStateFlow()
@@ -89,6 +92,16 @@ class MainViewModel(
 
     init {
         refreshRoles()
+        // ★ 2026-11-16 셸 밖 화면(공통 관문·채팅·견적 응답 …)의 유형 전환 요청 — 모두 이 셸의 전환 함수로 바꾼다
+        //  (탭바 MY 이름·동그라미·글쓰기 메뉴·전환 토스트가 같이 바뀐다). ShellTypeSwitch 주석.
+        viewModelScope.launch {
+            com.muyeon.app.ui.common.ShellTypeSwitch.requests.collect { r ->
+                when (r) {
+                    is com.muyeon.app.ui.common.ShellTypeSwitch.Request.Switch -> r.done.complete(switchToAwait(r.type))
+                    com.muyeon.app.ui.common.ShellTypeSwitch.Request.OpenRoleManage -> openRoleManage()
+                }
+            }
+        }
         // ★ 2026-11-09 계정 바뀜(어느 길의 로그아웃·다른 계정 로그인이든) — 앞 계정 유형·동그라미 사진·MY 점을 버리고 새 계정 것으로.
         onAccountChanged { c ->
             _state.update {
@@ -213,26 +226,43 @@ class MainViewModel(
     }
 
     private fun switchTo(type: String) {
+        viewModelScope.launch { switchToAwait(type) }
+    }
+
+    /** 단일 유형 전환 함수 — 시트·MY 두 번 누르기·공통 관문이 모두 여기를 지난다. 성공이면 true. */
+    private suspend fun switchToAwait(type: String): Boolean {
+        val target = type.trim().uppercase()
         val before = _state.value.activeType
-        if (type == before) return
+        // 이미 그 유형이고 저장소(헤더용)도 같으면 할 일이 없다.
+        if (target == before && ActiveType.visible(activeTypeStore.current()) == target) return true
         // 탭바 동그라미가 누르는 즉시 움직이게 먼저 바꾸고, 서버가 거절하면 되돌린다.
-        _state.update { it.copy(activeType = ActiveType.visible(type)) }
-        viewModelScope.launch {
-            when (switchActiveType(type)) {
-                is ApiResult.Success -> {
-                    // 저장소(헤더용 유형)는 서버 저장 뒤에 바뀐다 — MY 가 이 값을 보고 다시 읽도록 한 번 더 알린다.
-                    _state.update { it.copy(activeType = ActiveType.visible(type), typeEpoch = it.typeEpoch + 1) }
-                    _events.tryEmit(MainEvent.TypeSwitched(type))
-                }
-                is ApiResult.Error -> {
-                    _state.update { it.copy(activeType = before) }
-                    _events.tryEmit(MainEvent.TypeSwitchFailed)
-                }
+        _state.update { it.copy(activeType = ActiveType.visible(target)) }
+        return when (switchActiveType(target)) {
+            is ApiResult.Success -> {
+                // 저장소(헤더용 유형)는 서버 저장 뒤에 바뀐다 — MY 가 이 값을 보고 다시 읽도록 한 번 더 알린다.
+                _state.update { it.copy(activeType = ActiveType.visible(target), typeEpoch = it.typeEpoch + 1) }
+                _events.tryEmit(MainEvent.TypeSwitched(target))
+                // 방금 추가한 유형으로 바꾼 경우 — 보유 목록(동그라미·시트)도 새로 받는다.
+                if (target !in _state.value.switchableTypes) refreshRoles()
+                true
+            }
+            is ApiResult.Error -> {
+                _state.update { it.copy(activeType = before) }
+                _events.tryEmit(MainEvent.TypeSwitchFailed)
+                false
             }
         }
     }
 
+    /** MY 말풍선 X — 앱을 다시 켤 때까지 숨긴다. */
+    fun dismissMyTypeHint() {
+        myTypeHintDismissed = true
+        _state.update { it.copy(myHintDismissed = true) }
+    }
+
     companion object {
         const val TYPE_MANAGE = "MANAGE"
+        /** 프로세스 동안만(앱을 다시 켜면 다시 보인다). */
+        @Volatile private var myTypeHintDismissed = false
     }
 }

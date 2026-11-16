@@ -405,14 +405,16 @@ fun LessonCardBubble(json: String, onOpen: (Int) -> Unit) {
 @Composable
 fun SystemNoticeBubble(type: String, content: String) {
     val text = if (type == "QUOTE_REQUEST") quoteRequestText(content) else content
-    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+    // ★ 2026-11-16 RoundedCornerShape(50)(알약)은 여러 줄이면 반원 모서리 밖으로 글자가 삐져나갔다(레슨 예약 확정 5줄).
+    //  한 줄 높이(≈28dp)의 반인 14dp 둥근 상자 — 한 줄은 예전 알약과 같고, 여러 줄은 모서리만 둥글다(iOS 와 같다).
+    Box(Modifier.fillMaxWidth().padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
         Text(
             text,
             fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp,
             color = MuyeonColors.textSub,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            modifier = Modifier.clip(RoundedCornerShape(50)).background(Color(0xFFF2F2F7))
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+            modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(Color(0xFFF2F2F7))
+                .padding(horizontal = 14.dp, vertical = 6.dp),
         )
     }
 }
