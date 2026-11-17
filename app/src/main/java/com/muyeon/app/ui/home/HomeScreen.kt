@@ -117,7 +117,7 @@ fun HomeScreen(isLoggedIn: Boolean, actions: HomeActions, viewModel: HomeViewMod
 
     Column(Modifier.fillMaxSize().background(AppColors.Surface)) {
         HomeTopBar(
-            s.mode, viewModel::setMode, s.unread, onBell = { actions.native("openNotifications", emptyMap()) },
+            s.mode, viewModel::setMode, s.unread, onBell = { if (s.isLoggedIn) actions.native("openNotifications", emptyMap()) else actions.login() }, // ★ 11-17 비회원 → 로그인(빈 알림 화면이 열렸다)
             chatUnread = com.muyeon.app.ui.floating.FloatingState.chatUnread,
             onChat = if (s.isLoggedIn) ({ actions.native("openChatList", emptyMap()) }) else null,
         )

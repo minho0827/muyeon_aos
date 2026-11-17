@@ -134,6 +134,8 @@ fun StageCastingDetailScreen(
         shareText = "${detail.title}\n${BuildConfig.API_BASE_URL}/casting/${detail.id}",
         liked = liked,
         onLike = {
+            // ★ 11-17 비회원 — 하트가 칠해졌다가 조용히 되돌아갔다. 로그인으로 보내고 이 공고로 돌아오게.
+            if (myId == null) { com.muyeon.app.ui.auth.LoginActivity.start(ctx, "/casting/$id"); return@StageDetailScaffold }
             val next = !liked
             liked = next
             scope.launch { if (!api.setScrap(id, next)) liked = !next }
@@ -232,7 +234,8 @@ private fun StageCastingApplyButton(
         }
         applied -> StageBottomButton("지원한 공고예요", enabled = false) {}
         loggedIn -> StageBottomButton("이력서로 지원하기", busy = applying) { onApply() }
-        else -> StageBottomButton("무용수 회원만 지원할 수 있어요", enabled = false) {}
+        // ★ 11-17 비회원 — 회색 '무용수 회원만…' 대신 누를 수 있게. onApply 의 유형 관문(TypeGate)이 비회원을 로그인으로 보낸다.
+        else -> StageBottomButton("로그인하고 지원하기") { onApply() }
     }
 }
 

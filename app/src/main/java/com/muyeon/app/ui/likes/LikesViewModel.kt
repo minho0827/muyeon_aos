@@ -33,6 +33,8 @@ data class LikesUiState(
 sealed interface LikesEvent {
     data class Message(val text: String) : LikesEvent
     data object Removed : LikesEvent
+    /** ★ 11-17 로그인이 풀린 채 찜을 풀려 했다 — 로그인으로. */
+    data object LoginRequired : LikesEvent
 }
 
 /**
@@ -94,7 +96,7 @@ class LikesViewModel(
             when (val r = toggleScrap(target, item.targetId, currentlyLiked = true)) {
                 is ToggleScrapResult.Done -> _events.tryEmit(LikesEvent.Removed)
                 is ToggleScrapResult.Failed -> { _state.update { it.copy(items = before) }; _events.tryEmit(LikesEvent.Message(r.message)) }
-                ToggleScrapResult.LoginRequired -> _state.update { it.copy(items = before) }
+                ToggleScrapResult.LoginRequired -> { _state.update { it.copy(items = before) }; _events.tryEmit(LikesEvent.LoginRequired) }
             }
         }
     }

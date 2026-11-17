@@ -295,7 +295,13 @@ fun PublicProfileScreen(
                     } else {
                         DropdownMenuItem(
                             text = { Text("신고하기", fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.danger) },
-                            onClick = { menuOpen = false; reportOpen = true },
+                            // ★ 11-17 비회원 — 사유까지 고른 뒤 '신고 접수에 실패했어요'만 떴다. 로그인으로 보내고 돌아오게.
+                            onClick = {
+                                menuOpen = false
+                                if (com.muyeon.app.utils.TokenManager.getAccessToken(ctx).isNullOrBlank()) {
+                                    com.muyeon.app.ui.auth.LoginActivity.start(ctx, "/teachers/$userId")
+                                } else reportOpen = true
+                            },
                         )
                     }
                 }

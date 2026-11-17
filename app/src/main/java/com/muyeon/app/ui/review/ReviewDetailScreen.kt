@@ -55,6 +55,7 @@ fun ReviewDetailScreen(
     /** 내 후기 삭제 뒤 — 지운 후기라 보통 화면을 닫는다. */
     onDeletedMine: () -> Unit = onClose,
 ) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     var review by remember { mutableStateOf<ReviewDetail?>(null) }
     // 상세 응답엔 작성자 표시가 없다 — 강사 후기 목록의 mine 으로 내 후기인지 본다(로그인 시만 true).
     var mine by remember { mutableStateOf(false) }
@@ -276,6 +277,11 @@ fun ReviewDetailScreen(
                             .background(MuyeonColors.primary.copy(alpha = if (enabled) 1f else 0.5f))
                             .clickable(enabled = enabled) {
                                 val lid = r.prefillLessonId ?: return@clickable
+                                // ★ 11-17 비회원 — 견적 미리 채우기가 401 로 조용히 실패했다. 로그인 뒤 이 후기 화면으로 돌아온다(결과 모드).
+                                if (com.muyeon.app.utils.TokenManager.getAccessToken(ctx).isNullOrBlank()) {
+                                    ctx.startActivity(com.muyeon.app.ui.auth.LoginActivity.resultIntent(ctx))
+                                    return@clickable
+                                }
                                 requesting = true
                                 scope.launch {
                                     api.quotePrefill(lid).onSuccess(onRequestQuote)

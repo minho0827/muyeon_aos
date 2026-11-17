@@ -60,6 +60,7 @@ fun LikesScreen(onBack: () -> Unit, onOpenPath: (String) -> Unit, onBrowse: () -
             when (e) {
                 LikesEvent.Removed -> Toast.makeText(context, R.string.common_scrap_removed, Toast.LENGTH_SHORT).show()
                 is LikesEvent.Message -> Toast.makeText(context, e.text, Toast.LENGTH_SHORT).show()
+                LikesEvent.LoginRequired -> com.muyeon.app.ui.auth.LoginActivity.start(context, "/likes")
             }
         }
     }

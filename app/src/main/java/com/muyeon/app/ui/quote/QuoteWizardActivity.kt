@@ -154,14 +154,29 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                 }
             }
 
+            // ★ 2026-11-17 비회원 — 문진은 끝까지 쓸 수 있고, [보내기] 때 로그인 화면으로 보낸다(예전엔 '로그인이 필요해요' 토스트만).
+            //  로그인 화면은 결과 모드라 로그인하면 이 화면으로 돌아오고, 쓴 답을 그대로 다시 보낸다.
+            var resumeAfterLogin by remember { mutableStateOf(false) }
+            val loginForSubmit = androidx.activity.compose.rememberLauncherForActivityResult(
+                androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+            ) { res -> if (res.resultCode == RESULT_OK && !TokenManager.getAccessToken(this@QuoteWizardActivity).isNullOrEmpty()) resumeAfterLogin = true }
+
             fun startSubmit(answers: Map<String, QuoteAnswer>) {
                 lastAnswers = answers
+                if (TokenManager.getAccessToken(this@QuoteWizardActivity).isNullOrEmpty()) {
+                    loginForSubmit.launch(com.muyeon.app.ui.auth.LoginActivity.resultIntent(this@QuoteWizardActivity))
+                    return
+                }
                 submitResult = null
                 loadingDone = false
                 phase = "loading"
                 // 같이 올리기 — 마지막 단계 체크박스에서 체크된 종류만(비회원은 안 보낸다). 세트를 못 받았으면(폴백) 유형·세트 번호를 보내지 않는다.
                 val cross = if (TokenManager.getAccessToken(this@QuoteWizardActivity).isNullOrEmpty()) emptyList() else vm.checkedCrossPostKinds
                 submit(answers, category.id, targetTeacherId, recruitAnswer ?: "ASK", vm.requesterType, vm.questionSetId, cross) { r -> submitResult = r }
+            }
+
+            LaunchedEffect(resumeAfterLogin) {
+                if (resumeAfterLogin) { resumeAfterLogin = false; if (lastAnswers.isNotEmpty()) startSubmit(lastAnswers) }
             }
 
             LaunchedEffect(phase, loadingDone, submitResult) {

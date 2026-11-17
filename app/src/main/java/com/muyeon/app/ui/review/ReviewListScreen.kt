@@ -61,6 +61,7 @@ fun ReviewListScreen(
     var photoOnly by remember { mutableStateOf(false) }
     var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val ctx = androidx.compose.ui.platform.LocalContext.current
 
     suspend fun load() {
         loading = data == null
@@ -110,7 +111,15 @@ fun ReviewListScreen(
                                         )
                                     },
                                 ) { rid ->
-                                    scope.launch { api.toggleHelpful(rid); load() }
+                                    // ★ 11-17 비회원 — 눌러도 아무 일이 없었다(결과를 버림). 로그인으로 보내고 이 강사 화면으로 돌아오게.
+                                    if (com.muyeon.app.utils.TokenManager.getAccessToken(ctx).isNullOrBlank()) {
+                                        com.muyeon.app.ui.auth.LoginActivity.start(ctx, "/teachers/$teacherId")
+                                    } else scope.launch {
+                                        api.toggleHelpful(rid).onFailure { e ->
+                                            android.widget.Toast.makeText(ctx, e.message?.takeIf { it.isNotBlank() } ?: "잠시 후 다시 시도해 주세요.", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                        load()
+                                    }
                                 }
                             }
                         }
