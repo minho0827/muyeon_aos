@@ -169,6 +169,11 @@ fun PublicProfileScreen(
                         Spacer(Modifier.weight(1f))
                         if (!preview) {
                             ProfileFavoriteButton(scrapped) {
+                                // ★ 11-17 비로그인 — 하트가 칠해졌다가 서버 401 로 조용히 되돌아갔다(운영 로그 확인). 로그인으로 보내고 돌아오게.
+                                if (com.muyeon.app.utils.TokenManager.getAccessToken(ctx).isNullOrBlank()) {
+                                    com.muyeon.app.ui.auth.LoginActivity.start(ctx, "/teachers/$userId")
+                                    return@ProfileFavoriteButton
+                                }
                                 val next = !scrapped
                                 scrapped = next
                                 scope.launch { api.setScrap(userId, next).onFailure { scrapped = !next } }
