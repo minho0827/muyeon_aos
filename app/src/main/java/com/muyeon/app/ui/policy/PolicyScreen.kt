@@ -2,6 +2,11 @@ package com.muyeon.app.ui.policy
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -42,7 +47,10 @@ fun PolicyScreen(
         MainTopBar(title = stringResource(R.string.policy_title), primary = false, onBack = onBack)
         val v = s.view
         when {
-            s.isLoading -> Unit
+            // ★ 2026-11-18 불러오는 동안 빈 화면이면 '원래 글이 없는' 것처럼 보였다(공간 예약 약관 보기) — 로딩 표시.
+            s.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = AppColors.TextSub, strokeWidth = 2.dp, modifier = Modifier.size(28.dp))
+            }
             s.failed || v == null -> EmptyView(stringResource(R.string.policy_load_failed), buttonText = stringResource(R.string.common_retry), onButton = viewModel::load)
             else -> Column(
                 Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = Dimensions.gutter, vertical = Dimensions.spacingXL),
