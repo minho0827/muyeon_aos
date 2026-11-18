@@ -62,7 +62,11 @@ object NativeRoutes {
             // ★ 2026-11-08 받은/보낸 견적 — 앱 화면(openMyQuotes)이 있는데 웹으로 가던 주소(견적 요청 완료 '견적 보기' 등).
             "/myQuotes" -> return Target.Action("openMyQuotes", (query["tab"] ?: "sent".takeIf { query["sent"] == "1" })?.let { mapOf("tab" to it) } ?: emptyMap())
             // ★ 2026-11-08 링크·푸시 점검 — 받은 견적 푸시(/home?quotesPopup=1)는 받은 견적 화면, 자동견적 발송 내역은 앱 화면(iOS 와 같다).
-            "/home" -> if (query["quotesPopup"] == "1") return Target.Action("openMyQuotes")
+            // ★ 2026-11-18 isPro=1 필수 — 이 주소는 강사·학원에게 가는 '받은 요청' 알림 전용이다(웹도 받을 수 있는 유형만 팝업).
+            //  isPro 없이 openMyQuotes 를 열면 '내 레슨 요청(고객)' 대시보드로 가서, 강사가 알림을 눌러도 받은 요청을 못 봤다
+            //  (11-17 이시형 강사 — 발레위 학원 지정 요청). 서버는 11-18부터 /availableQuotes/:id(요청 상세)로 보내고,
+            //  이 줄은 그 전에 쌓인 알림을 위한 것. 받은 요청 알림을 '고객 화면'으로 보내지 말 것.
+            "/home" -> if (query["quotesPopup"] == "1") return Target.Action("openMyQuotes", mapOf("isPro" to "1"))
             "/autoQuoteHistory" -> return Target.Action("openAutoQuoteHistory")
             // ★ 2026-11-08 앱 화면(NativeActionRouter 표)이 이미 있는데 웹으로 가던 주소 — 전체 메뉴·링크·푸시.
             "/notifications" -> return Target.Action("openNotifications")

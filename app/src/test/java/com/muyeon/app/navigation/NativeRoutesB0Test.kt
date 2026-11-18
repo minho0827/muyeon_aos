@@ -60,7 +60,9 @@ class NativeRoutesB0Test {
         assertEquals(a("openMembership"), r("/pricing"))
         assertEquals(a("openQuoteBrowse"), r("/availableQuotes"))
         assertEquals(Target.Tab(MainTab.HOME), r("/home?roleApproved=TEACHER"))
-        assertEquals(a("openMyQuotes"), r("/home?quotesPopup=1"))
+        // ★ 11-18 받은 요청 알림 → 강사 화면(isPro). 고객 대시보드로 가면 안 된다.
+        assertEquals(a("openMyQuotes", "isPro" to "1"), r("/home?quotesPopup=1"))
+        assertEquals(a("openQuoteRespond", "quoteId" to "132"), r("/availableQuotes/132"))
     }
 
     @Test fun cleanup() {
