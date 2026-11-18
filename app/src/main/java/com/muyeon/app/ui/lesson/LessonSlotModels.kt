@@ -180,7 +180,7 @@ object LessonTimeFmt {
 
 class LessonSlotApi(private val token: String?) {
 
-    private val client = OkHttpClient()
+    private val client = com.muyeon.app.ui.common.AppHttp.client
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
 
     /** 내 레슨 상품 목록(슬롯 관리 대상). */

@@ -258,7 +258,7 @@ object TierInfo {
 }
 
 class MembershipApi(private val token: String?) {
-    private val client = OkHttpClient()
+    private val client = com.muyeon.app.ui.common.AppHttp.client
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
 
     // channel=PLAYSTORE — 구글 상품 id 가 연결된 상품만(앱은 구글 플레이 결제로만 판다).

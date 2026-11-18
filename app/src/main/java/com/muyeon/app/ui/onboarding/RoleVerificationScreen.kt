@@ -78,7 +78,7 @@ private fun roleLabel(code: String): String =
 private fun documentGuide(code: String): String = (com.muyeon.domain.model.member.ActiveTypeInfos.find(code) ?: com.muyeon.domain.model.member.ActiveTypeInfos.GENERAL).docGuide
 
 class RoleVerificationApi(private val token: String?) {
-    private val client = OkHttpClient()
+    private val client = com.muyeon.app.ui.common.AppHttp.client
 
     suspend fun uploadImage(bytes: ByteArray): String? = withContext(Dispatchers.IO) {
         runCatching {

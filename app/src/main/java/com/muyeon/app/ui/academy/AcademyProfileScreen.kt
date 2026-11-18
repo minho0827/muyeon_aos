@@ -88,7 +88,7 @@ private suspend fun fetchAcademy(token: String?, id: Int): AcademyProfile? = wit
         val req = Request.Builder().url("${BuildConfig.API_BASE_URL}/api/academies/$id")
             .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
             .build()
-        OkHttpClient().newCall(req).execute().use { res ->
+        com.muyeon.app.ui.common.AppHttp.client.newCall(req).execute().use { res ->
             if (!res.isSuccessful) null else AcademyProfile.from(JSONObject(res.body?.string().orEmpty()))
         }
     }.getOrNull()

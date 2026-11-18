@@ -121,7 +121,7 @@ val notiStatusOptions = listOf(com.muyeon.app.ui.common.ListStatusOption(NOTI_ST
 
 class NotificationApi(private val token: String?, private val activeType: String = "GENERAL") {
 
-    private val client = OkHttpClient()
+    private val client = com.muyeon.app.ui.common.AppHttp.client
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
 
     /** 커서 페이징 — cursor 는 직전 페이지 마지막 id.

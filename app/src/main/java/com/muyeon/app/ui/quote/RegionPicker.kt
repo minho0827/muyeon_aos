@@ -75,7 +75,7 @@ object RegionRepo {
                 .url("${BuildConfig.API_BASE_URL}/api/regions")
                 .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
                 .build()
-            OkHttpClient().newCall(req).execute().use { res ->
+            com.muyeon.app.ui.common.AppHttp.client.newCall(req).execute().use { res ->
                 val body = res.body?.string().orEmpty()
                 if (!res.isSuccessful || body.isEmpty()) return@use emptyList()
                 val arr = JSONArray(body)
@@ -98,7 +98,7 @@ object RegionRepo {
                 .url("${BuildConfig.API_BASE_URL}/api/regions/pro-counts")
                 .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
                 .build()
-            OkHttpClient().newCall(req).execute().use { res ->
+            com.muyeon.app.ui.common.AppHttp.client.newCall(req).execute().use { res ->
                 val body = res.body?.string().orEmpty()
                 if (!res.isSuccessful || body.isEmpty()) return@use emptyMap()
                 val arr = JSONArray(body)

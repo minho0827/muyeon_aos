@@ -99,7 +99,7 @@ class FloatingApi(private val tokenProvider: () -> String?) {
     private val token: String? get() = tokenProvider()
 
 
-    private val client = OkHttpClient()
+    private val client = com.muyeon.app.ui.common.AppHttp.client
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
 
     val isLoggedIn: Boolean get() = !token.isNullOrEmpty()

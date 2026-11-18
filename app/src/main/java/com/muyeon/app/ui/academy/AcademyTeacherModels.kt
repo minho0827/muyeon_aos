@@ -68,7 +68,7 @@ object AcademyTeacherStatus {
 
 class AcademyTeacherApi(private val token: String?) {
 
-    private val client = OkHttpClient()
+    private val client = com.muyeon.app.ui.common.AppHttp.client
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
     private val json = "application/json; charset=utf-8".toMediaType()
 

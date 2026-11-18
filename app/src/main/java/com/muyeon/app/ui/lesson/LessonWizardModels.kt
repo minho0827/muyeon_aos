@@ -346,7 +346,7 @@ data class LessonProductDetail(
 /** 레슨 상품(개설/수정) API — iOS LessonWizardService. */
 class LessonWizardApi(internal val token: String?) {
 
-    private val client = OkHttpClient()
+    private val client = com.muyeon.app.ui.common.AppHttp.client
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
 
     /** 개설 — POST /lesson-products (예약 슬롯 자동 생성). 성공 시 생성 id. */

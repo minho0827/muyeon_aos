@@ -21,7 +21,7 @@ import org.json.JSONObject
  */
 class LessonApi(private val token: String?) {
 
-    private val client = OkHttpClient()
+    private val client = com.muyeon.app.ui.common.AppHttp.client
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
 
     /** 기간 목록 — from/to 는 'yyyy-MM-dd'. */

@@ -276,7 +276,7 @@ fun LocationPreviewCard(place: LessonPlace, onOpenMap: () -> Unit) {
     }
 }
 
-private val placeClient = OkHttpClient()
+private val placeClient = com.muyeon.app.ui.common.AppHttp.client
 
 /**
  * 서버 장소·주소 검색(카카오 로컬) — (결과, 다음 페이지 있음).

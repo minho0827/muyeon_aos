@@ -277,6 +277,7 @@ class LoginActivity : ComponentActivity() {
 
         private fun noticeTitle(code: String?) = when (code) {
             "SESSION_REPLACED" -> R.string.auth_login_notice_session_replaced
+            "TOKEN_EXPIRED" -> R.string.auth_login_notice_token_expired
             "ACCOUNT_SUSPENDED" -> R.string.auth_login_notice_suspended
             "ACCOUNT_WITHDRAWN" -> R.string.auth_login_notice_withdrawn
             else -> R.string.auth_login_notice_default

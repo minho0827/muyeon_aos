@@ -81,7 +81,7 @@ data class QuoteCrossPost(val kind: String?, val id: Int, val title: String?) {
 
 class QuoteApi(private val token: String?) {
 
-    private val client = OkHttpClient()
+    private val client = com.muyeon.app.ui.common.AppHttp.client
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
 
     // MARK: - 요청 생성

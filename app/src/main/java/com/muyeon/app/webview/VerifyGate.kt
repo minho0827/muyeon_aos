@@ -48,7 +48,7 @@ object VerifyGate {
     private val checking = AtomicBoolean(false)
     private val main = Handler(Looper.getMainLooper())
     private var resumed: WeakReference<Activity>? = null
-    private val client = OkHttpClient.Builder().connectTimeout(8, TimeUnit.SECONDS).readTimeout(8, TimeUnit.SECONDS).build()
+    private val client = com.muyeon.app.ui.common.AppHttp.client.newBuilder().connectTimeout(8, TimeUnit.SECONDS).readTimeout(8, TimeUnit.SECONDS).build()
 
     /** MuyeonApplication.onCreate 에서 1회. */
     fun start(app: Application) {

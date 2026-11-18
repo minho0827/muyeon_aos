@@ -38,7 +38,7 @@ enum class AutoQuoteSwitchResult { OK, NO_TEMPLATE, FAILED }
 
 /** /api/chat/my/auto-quote — iOS AutoQuoteTemplatesViewModel 의 엔드포인트와 동일. */
 class AutoQuoteApi(private val token: String?) {
-    private val client = OkHttpClient()
+    private val client = com.muyeon.app.ui.common.AppHttp.client
     private val base = BuildConfig.API_BASE_URL + "/api/chat/my/auto-quote"
 
     /** 응답 코드와 본문. 네트워크 오류면 null. */

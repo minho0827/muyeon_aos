@@ -183,7 +183,7 @@ data class ReviewSubmit(
 
 class ReviewApi(private val token: String?) {
 
-    private val client = OkHttpClient()
+    private val client = com.muyeon.app.ui.common.AppHttp.client
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
 
     /** 강사 후기 목록 — 정렬(sort)·필터(lessonType/purpose/photoOnly). */

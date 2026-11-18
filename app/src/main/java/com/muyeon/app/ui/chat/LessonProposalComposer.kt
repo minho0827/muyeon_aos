@@ -35,7 +35,7 @@ internal class ProposalConflict(message: String) : Exception(message)
  */
 class LessonProposalApi(private val token: String?) {
 
-    private val client = OkHttpClient()
+    private val client = com.muyeon.app.ui.common.AppHttp.client
     private val json = "application/json; charset=utf-8".toMediaType()
 
     suspend fun create(

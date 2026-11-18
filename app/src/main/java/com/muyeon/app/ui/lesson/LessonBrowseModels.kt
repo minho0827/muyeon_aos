@@ -164,7 +164,7 @@ data class LessonContentDetail(
 
 class LessonBrowseApi(private val token: String?) {
 
-    private val client = OkHttpClient()
+    private val client = com.muyeon.app.ui.common.AppHttp.client
     private val apiBase = BuildConfig.API_BASE_URL + "/api"
 
     data class FeedPage(val items: List<BrowseFeedItem>, val hasMore: Boolean, val nextCursor: String?)

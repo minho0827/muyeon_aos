@@ -310,7 +310,7 @@ private suspend fun proposalAction(token: String?, id: Int, action: String, forc
                 .addHeader("Content-Type", "application/json")
                 .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }.withActiveType()
                 .build()
-            OkHttpClient().newCall(req).execute().use { res ->
+            com.muyeon.app.ui.common.AppHttp.client.newCall(req).execute().use { res ->
                 if (res.isSuccessful) return@use ProposalActionResult.Ok
                 val msg = runCatching { JSONObject(res.body?.string().orEmpty()).stringOrNull("message") }.getOrNull()
                 if (res.code == 409 && action == "accept") {
@@ -333,7 +333,7 @@ private suspend fun proposalCancelPreview(token: String?, id: Int): Result<Propo
                 .url(BuildConfig.API_BASE_URL + "/api/lesson-proposals/$id/cancel-preview")
                 .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }.withActiveType()
                 .build()
-            OkHttpClient().newCall(req).execute().use { res ->
+            com.muyeon.app.ui.common.AppHttp.client.newCall(req).execute().use { res ->
                 val o = runCatching { JSONObject(res.body?.string().orEmpty()) }.getOrNull() ?: JSONObject()
                 if (!res.isSuccessful) error(o.stringOrNull("message") ?: "취소 정보를 불러오지 못했어요.")
                 ProposalCancelPreview(o.optInt("paidAmount"), o.optInt("expectedRefundAmount"))
@@ -350,7 +350,7 @@ private suspend fun proposalMemberCancel(token: String?, id: Int): String? =
                 .post("{}".toRequestBody("application/json".toMediaType()))
                 .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }.withActiveType()
                 .build()
-            OkHttpClient().newCall(req).execute().use { res ->
+            com.muyeon.app.ui.common.AppHttp.client.newCall(req).execute().use { res ->
                 if (res.isSuccessful) null
                 else runCatching { JSONObject(res.body?.string().orEmpty()).stringOrNull("message") }.getOrNull()
                     ?: "취소하지 못했어요. 다시 시도해 주세요."

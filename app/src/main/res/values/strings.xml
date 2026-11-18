@@ -1218,6 +1218,7 @@
     <string name="auth_login_notice_session_replaced">다른 기기에서 로그인했어요</string>
     <string name="auth_login_notice_suspended">계정 이용이 정지됐어요</string>
     <string name="auth_login_notice_withdrawn">탈퇴한 계정이에요</string>
+    <string name="auth_login_notice_token_expired">로그인이 만료됐어요</string>
     <string name="auth_login_notice_default">로그아웃됐어요</string>
     <string name="auth_login_notice_body">다시 로그인해 주세요.</string>
 

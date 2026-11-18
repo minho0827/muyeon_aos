@@ -204,6 +204,6 @@ private suspend fun postReport(token: String?, targetType: String, targetId: Int
                 .addHeader("Content-Type", "application/json")
                 .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }
                 .build()
-            OkHttpClient().newCall(req).execute().use { it.isSuccessful }
+            com.muyeon.app.ui.common.AppHttp.client.newCall(req).execute().use { it.isSuccessful }
         }.getOrDefault(false)
     }

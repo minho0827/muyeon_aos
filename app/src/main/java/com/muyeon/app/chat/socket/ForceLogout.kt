@@ -35,6 +35,8 @@ object ForceLogout {
     private const val TAG = "ForceLogout"
     const val SESSION_REPLACED = "SESSION_REPLACED"
     const val ACCOUNT_SUSPENDED = "ACCOUNT_SUSPENDED"
+    /** ★ 2026-11-18 토큰 만료·무효 — 종전엔 code 없는 401 이라 로그아웃 없이 화면마다 'Unauthorized' 만 떴다. */
+    const val TOKEN_EXPIRED = "TOKEN_EXPIRED"
     const val EXTRA_CODE = "forceLogoutCode"
     const val EXTRA_MESSAGE = "forceLogoutMessage"
 
@@ -42,7 +44,7 @@ object ForceLogout {
     private val verifying = AtomicBoolean(false)
     private val client = OkHttpClient.Builder().connectTimeout(8, TimeUnit.SECONDS).readTimeout(8, TimeUnit.SECONDS).build()
 
-    fun isForceCode(code: String?): Boolean = code == SESSION_REPLACED || code == ACCOUNT_SUSPENDED
+    fun isForceCode(code: String?): Boolean = code == SESSION_REPLACED || code == ACCOUNT_SUSPENDED || code == TOKEN_EXPIRED
 
     /** 새 토큰 저장(로그인) — 다음 강제 로그아웃을 다시 받을 수 있게. */
     fun reset() { handled.set(false) }
@@ -85,7 +87,7 @@ object ForceLogout {
 
     /**
      * 소켓이 서버에 끊겼거나(옛 토큰 거절) 연결이 거절됐을 때 — 지금 토큰의 세션이 살아 있는지 한 번 묻는다.
-     *  401/403 + 세션 교체·정지 코드일 때만 로그아웃(네트워크 오류·토큰 만료 등은 건드리지 않는다).
+     *  401/403 + 세션 교체·정지·토큰 만료(TOKEN_EXPIRED) 코드일 때만 로그아웃(네트워크 오류 등은 건드리지 않는다).
      */
     fun verifySession(context: Context) {
         val app = context.applicationContext

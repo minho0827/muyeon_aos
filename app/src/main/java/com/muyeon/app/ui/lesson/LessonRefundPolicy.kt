@@ -97,7 +97,7 @@ object LessonRefundPolicyRepo {
         val fetched = withContext(Dispatchers.IO) {
             runCatching {
                 val req = Request.Builder().url("${BuildConfig.API_BASE_URL}/api/refund-policy/lesson").build()
-                OkHttpClient().newCall(req).execute().use { res ->
+                com.muyeon.app.ui.common.AppHttp.client.newCall(req).execute().use { res ->
                     val body = res.body?.string().orEmpty()
                     if (!res.isSuccessful || body.isEmpty()) null else LessonRefundPolicy.from(JSONObject(body))
                 }
