@@ -55,7 +55,8 @@ fun SpaceWizardScreen(
     api: SpaceApi,
     editId: Int?,
     onClose: () -> Unit,
-    onSaved: (Int) -> Unit,
+    /** (id, bizStatus) — bizStatus = 새 공간 사업자 판정(VERIFIED|PENDING), 수정이면 null. */
+    onSaved: (Int, String?) -> Unit,
 ) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -70,6 +71,10 @@ fun SpaceWizardScreen(
     var consentDocs by remember { mutableStateOf<List<SpaceConsentDoc>?>(null) }
     var consentChecking by remember { mutableStateOf(editId == null) }
     var consentSubmitting by remember { mutableStateOf(false) }
+    // ★ 2026-11-18 사업자 확인 — 새 공간만, 동의 다음·사진 단계 앞. null = 아직 안 정함(사업자 단계를 보인다).
+    val bizState = remember { SpaceBusinessState() }
+    var business by remember { mutableStateOf<SpaceBusinessInput?>(null) }
+    val needsBusiness = editId == null && business == null
 
     suspend fun loadConsent() {
         api.hostConsent().onSuccess { c -> consentDocs = if (c.agreed) null else c.docs }
@@ -105,7 +110,15 @@ fun SpaceWizardScreen(
     }
 
     fun close() { if (st.dirty) showExit = true else onClose() }
-    BackHandler { if (st.step > 0) st.step -= 1 else close() }
+    BackHandler {
+        when {
+            consentDocs != null || st.loading || consentChecking -> close()
+            needsBusiness -> if (!bizState.back()) close()
+            st.step > 0 -> st.step -= 1
+            editId == null -> business = null  // 첫 단계에서 뒤로 = 사업자 단계로
+            else -> close()
+        }
+    }
 
     fun agreeConsent() {
         consentSubmitting = true
@@ -120,11 +133,20 @@ fun SpaceWizardScreen(
         if (st.form.region.isBlank()) { st.step = 1; st.error = "지역을 선택해 주세요."; return }
         st.saving = true
         scope.launch {
-            api.save(editId, st.formForSave().toJson()).onSuccess { st.baseline = st.form; onSaved(it) }.onFailure { e ->
+            val body = st.formForSave().toJson().apply { if (editId == null) business?.let { put("business", it.toJson()) } }
+            api.save(editId, body).onSuccess { st.baseline = st.form; onSaved(it.id, it.bizStatus) }.onFailure { e ->
+                val code = (e as? ApiMessageError)?.code
                 // 동의 전 등록(403 HOST_CONSENT_REQUIRED) — 동의 단계로 되돌린다(작성한 내용은 그대로).
-                if ((e as? ApiMessageError)?.code == HOST_CONSENT_REQUIRED) {
+                if (code == HOST_CONSENT_REQUIRED) {
                     api.hostConsent().onSuccess { c -> consentDocs = c.docs }.onFailure { consentDocs = emptyList() }
-                } else st.error = e.message ?: "저장에 실패했어요."
+                } else {
+                    // 사업자 확인 실패(400 SPACE_BUSINESS_*) — 문구 그대로 보여 주고 사업자 단계로(작성한 내용·번호는 그대로).
+                    if (code in SpaceBusinessRules.RETRY_CODES) {
+                        business = null
+                        if (code == "SPACE_BUSINESS_ACADEMY_NOT_VERIFIED") bizState.asking = false
+                    }
+                    st.error = e.message ?: "저장에 실패했어요."
+                }
             }
             st.saving = false
         }
@@ -145,6 +167,11 @@ fun SpaceWizardScreen(
         if (docs != null) {
             WizardHeader(st.title, SPACE_STEPS, 0, onClose = { close() }, showProgress = false)
             SpaceStepHostConsent(docs, consentSubmitting, onAgree = { agreeConsent() })
+            return@Column
+        }
+        if (needsBusiness) {
+            WizardHeader(st.title, SPACE_STEPS, 0, onClose = { close() }, showProgress = false)
+            SpaceStepBusiness(api, bizState, submitLabel = "다음", busy = false) { input -> business = input }
             return@Column
         }
         WizardHeader(st.title, SPACE_STEPS, st.step, onClose = { close() })
@@ -171,8 +198,8 @@ fun SpaceWizardScreen(
         }
 
         WizardNavBar(
-            showPrev = st.step > 0, nextLabel = st.nextLabel, nextEnabled = !st.uploading, busy = st.saving,
-            onPrev = { st.step -= 1 },
+            showPrev = st.step > 0 || editId == null, nextLabel = st.nextLabel, nextEnabled = !st.uploading, busy = st.saving,
+            onPrev = { if (st.step > 0) st.step -= 1 else business = null },
             onNext = {
                 when {
                     !required.validate(ctx) -> Unit

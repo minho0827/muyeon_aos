@@ -94,9 +94,9 @@ class SpaceHubActivity : ResultActivity() {
                     val id = e.arguments?.getInt("id")?.takeIf { it > 0 }
                     SpaceWizardScreen(
                         api = api, editId = id, onClose = { back() },
-                        onSaved = { savedId ->
+                        onSaved = { savedId, bizStatus ->
                             changed()
-                            message = if (id != null) "수정했어요." else "공간을 등록했어요."
+                            message = com.muyeon.app.ui.space.wizard.SpaceBusinessRules.savedMessage(id != null, bizStatus)
                             // 위저드를 걷어내고 내 공간 목록으로 — 등록한 공간 상세도 바로 띄운다.
                             if (nav.previousBackStackEntry?.destination?.route == "mine") nav.popBackStack()
                             else nav.navigate("mine") { popUpTo("editor/{id}") { inclusive = true } }
@@ -108,7 +108,20 @@ class SpaceHubActivity : ResultActivity() {
                     SpaceMineScreen(
                         api = api, reloadTick = changedTick, onBack = { back() }, onOpen = { openSpace(it) },
                         onEdit = { nav.navigate("editor/$it") }, onCreate = { create() },
+                        onBusiness = { nav.navigate("business/$it") },
                         onReservations = { nav.navigate("hosting") }, onChanged = { changed() }, onMessage = { message = it },
+                    )
+                }
+                // ★ 2026-11-18 내 공간 [확인하기]·[다시 확인하기] — 사업자 확인 단계만 있는 화면 → PATCH /spaces/:id { business }.
+                composable("business/{id}", arguments = listOf(navArgument("id") { type = NavType.IntType })) { e ->
+                    val id = e.arguments?.getInt("id") ?: 0
+                    SpaceBusinessScreen(
+                        api = api, spaceId = id, onClose = { back() },
+                        onDone = { bizStatus ->
+                            changed()
+                            message = com.muyeon.app.ui.space.wizard.SpaceBusinessRules.recheckMessage(bizStatus)
+                            back()
+                        },
                     )
                 }
                 composable("hosting") {

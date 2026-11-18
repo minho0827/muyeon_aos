@@ -376,6 +376,8 @@ data class SpaceListItem(
     val minPrice: Int?,
     /** 갖춘 시설 키(SpaceFacility.key) — 필터가 서버 배포 전에도 걸러지게 화면에서도 본다. */
     val facilities: Set<String> = emptySet(),
+    /** ★ 2026-11-18 사업자 확인 상태 — GET /spaces/mine 에만 온다(그 밖의 목록은 null). */
+    val business: com.muyeon.app.ui.space.wizard.SpaceBusinessStatus? = null,
 ) {
     /** "서울 동작구 · 최대 15명" */
     val metaLine: String get() = listOfNotNull(region?.takeIf { it.isNotBlank() }, capacityMax?.let { "최대 ${it}명" }).joinToString(" · ")
@@ -393,6 +395,7 @@ data class SpaceListItem(
                 capacityMax = intOrNull("capacityMax"),
                 minPrice = intOrNull("minPrice") ?: intOrNull("pricePerHour"),
                 facilities = o.optJSONObject("facilities")?.let { f -> f.keys().asSequence().filter { f.optBoolean(it) }.toSet() } ?: emptySet(),
+                business = com.muyeon.app.ui.space.wizard.SpaceBusinessStatus.from(o.optJSONObject("business")),
             )
         }
     }
@@ -677,10 +680,31 @@ class SpaceApi(context: android.content.Context) {
             (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let(SpaceListItem::from) }
         }
 
-    /** 등록(POST, X-Active-Type — NativeHttp 가 싣는다) / 수정(PATCH) → id */
-    suspend fun save(id: Int?, body: JSONObject): Result<Int> =
+    /** 등록(POST, X-Active-Type — NativeHttp 가 싣는다) / 수정(PATCH) → (id, bizStatus) */
+    suspend fun save(id: Int?, body: JSONObject): Result<com.muyeon.app.ui.space.wizard.SpaceSaveResult> =
         call(if (id != null) "/spaces/$id" else "/spaces", if (id != null) "PATCH" else "POST", body)
-            .mapCatching { JSONObject(it.ifBlank { "{}" }).optInt("id", id ?: 0) }
+            .mapCatching { saveResult(it, id) }
+
+    private fun saveResult(body: String, id: Int?): com.muyeon.app.ui.space.wizard.SpaceSaveResult {
+        val o = JSONObject(body.ifBlank { "{}" })
+        return com.muyeon.app.ui.space.wizard.SpaceSaveResult(
+            o.optInt("id", id ?: 0), if (o.has("bizStatus") && !o.isNull("bizStatus")) o.optString("bizStatus") else null,
+        )
+    }
+
+    // ── ★ 2026-11-18 공간 사업자 확인 ──
+    /** 학원 인증 여부·학원명(첫 질문 근거) — GET /spaces/host-business */
+    suspend fun hostBusiness(): Result<com.muyeon.app.ui.space.wizard.SpaceHostAcademy> =
+        call("/spaces/host-business").mapCatching { com.muyeon.app.ui.space.wizard.SpaceHostAcademy.from(JSONObject(it.ifBlank { "{}" })) }
+
+    /** 사업자번호 자동 확인(안내용·저장 안 함) — POST /spaces/business-number/check */
+    suspend fun checkBusiness(number: String, startDate: String?): Result<com.muyeon.app.ui.space.wizard.SpaceBizCheck> =
+        call("/spaces/business-number/check", "POST", JSONObject().put("number", number).apply { startDate?.let { put("startDate", it) } })
+            .mapCatching { com.muyeon.app.ui.space.wizard.SpaceBizCheck.from(JSONObject(it.ifBlank { "{}" })) }
+
+    /** 내 공간 사업자 다시 확인 — PATCH /spaces/:id { business } → (id, bizStatus) */
+    suspend fun updateBusiness(id: Int, business: com.muyeon.app.ui.space.wizard.SpaceBusinessInput): Result<com.muyeon.app.ui.space.wizard.SpaceSaveResult> =
+        call("/spaces/$id", "PATCH", JSONObject().put("business", business.toJson())).mapCatching { saveResult(it, id) }
 
     suspend fun remove(id: Int): Result<Unit> = call("/spaces/$id", "DELETE").map { }
 

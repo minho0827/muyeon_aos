@@ -56,6 +56,8 @@ fun SpaceMineScreen(
     onOpen: (Int) -> Unit,
     onEdit: (Int) -> Unit,
     onCreate: () -> Unit,
+    /** ★ 2026-11-18 사업자 [확인하기]·[다시 확인하기] → 공간 id. */
+    onBusiness: (Int) -> Unit = {},
     onReservations: () -> Unit,
     onChanged: () -> Unit,
     onMessage: (String) -> Unit,
@@ -90,7 +92,7 @@ fun SpaceMineScreen(
                 )
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(items, key = { it.id }) { s ->
-                        MySpaceRow(s, onOpen = { onOpen(s.id) }, onEdit = { onEdit(s.id) }, onDelete = { deleteTarget = s })
+                        MySpaceRow(s, onOpen = { onOpen(s.id) }, onEdit = { onEdit(s.id) }, onDelete = { deleteTarget = s }, onBusiness = { onBusiness(s.id) })
                     }
                 }
             }
