@@ -217,14 +217,16 @@ class ResumeActivity : ResultActivity() {
                     var chatLimit by remember { androidx.compose.runtime.mutableStateOf<RecruitChatLimitException?>(null) }
                     // ★ 2026-11-16 채용 채팅은 필요 유형표(RECRUIT_CHAT = 원장·공연기획·강사) + 공통 관문.
                     val gate = com.muyeon.app.ui.common.rememberTypeGate()
+                    // ★ 2026-11-19 원장·공연팀 유형이면 넘겨받지 않아도 채용 모드(웹과 같은 규칙, RecruitMode).
+                    val recruitNow = RecruitMode.of(recruit, com.muyeon.app.ui.common.rememberActiveType())
                     PublicProfileScreen(
                         api = api, reviewApi = reviewApi, userId = userId, src = src,
-                        recruitMode = recruit,
+                        recruitMode = recruitNow,
                         // 채팅방에서 연 프로필은 열람 전용 — 하단 CTA 숨김(iOS src:"chat", hideCta:true)
                         hideCta = src == "chat",
                         onClose = { back() },
                         onOpenChat = { arg ->
-                            if (recruit) {
+                            if (recruitNow) {
                                 // 학원·공연팀 무료 [채팅하기] — arg 는 강사 userId. 다이렉트 방을 만들고 연다(iOS presentPublicProfile).
                                 gate.require(com.muyeon.domain.model.member.TypeFeature.RECRUIT_CHAT) {
                                     scope.launch {
