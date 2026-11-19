@@ -48,15 +48,17 @@
     <!-- 공개 상세(비회원·일반회원) -->
     <string name="quote_respond_public_meta">%1$s 요청 · 강사 %2$d명이 견적을 보냈어요</string>
     <string name="quote_respond_public_meta_none">%1$s 요청 · 아직 보낸 견적이 없어요</string>
+    <!-- ★ 2026-11-19 받은 견적 수는 강사에게 보여 주지 않는다(요청일만) -->
+    <string name="quote_respond_public_meta_date">%1$s 요청</string>
     <string name="quote_respond_public_photo_note">첨부 사진 %1$d장은 강사·학원 회원에게만 보여요.</string>
     <string name="quote_respond_public_closed_matched">이미 강사가 정해진 요청이에요.</string>
     <string name="quote_respond_public_closed_canceled">회원이 요청을 내렸어요.</string>
     <string name="quote_respond_public_closed_expired">견적 요청 기간이 끝났어요.</string>
-    <string name="quote_respond_public_closed_body">무용연에는 매일 새로운 레슨 요청이 올라와요. 강사·학원으로 가입하고 내 지역 요청을 받아 보세요.</string>
+    <string name="quote_respond_public_closed_body">무용연에는 매일 새로운 레슨 요청이 올라와요. 강사·학원으로 시작하고 내 지역 요청을 받아 보세요.</string>
     <string name="quote_respond_public_open_title">이 회원에게 견적을 보내 보세요</string>
     <string name="quote_respond_public_open_body">강사·학원 회원은 요청에 바로 견적을 보내고 채팅으로 상담할 수 있어요.</string>
-    <string name="quote_respond_public_join">강사·학원으로 가입하기</string>
-    <string name="quote_respond_public_join_send">강사·학원으로 가입하고 견적 보내기</string>
+    <string name="quote_respond_public_join">강사·학원으로 시작하기</string>
+    <string name="quote_respond_public_join_send">견적 보내기</string>
     <string name="quote_respond_public_switch">%1$s 유형으로 전환하고 견적 보내기</string>
     <string name="quote_respond_public_add_teacher">강사로 시작하고 견적 보내기</string>
     <string name="quote_respond_public_add_dancer">무용수로 시작하고 견적 보내기</string>

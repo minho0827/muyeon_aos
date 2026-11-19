@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -116,19 +117,22 @@ fun QuoteRespondScreen(state: QuoteRespondState, actions: QuoteRespondActions) {
                         Modifier.padding(horizontal = Dimensions.gutter),
                     )
                 }
-                is QuoteRespondPhase.Request -> RespondPage {
+                // ★ 2026-11-19 [견적 보내기]는 화면 아래 고정(웹 tab-bar-btn-group fixed 와 같음).
+                is QuoteRespondPhase.Request -> RespondPage(
+                    bottom = {
+                        // ★ 2026-11-14 다이렉트(나를 지정한) 요청이면 [죄송해요, 다음에 뵐게요] — 사유를 골라 정중히 거절.
+                        //  버튼 글자는 짧게 '죄송해요, 다음에'(나란히 두어도 한 줄).
+                        QuoteRespondButtons(
+                            listOfNotNull(
+                                if (phase.detail.quote.isDirect) SheetAction(stringResource(R.string.quote_decline_button), false) { state.declining = true } else null,
+                                SheetAction(stringResource(R.string.quote_respond_send), true) { state.composing = true },
+                            ),
+                        )
+                    },
+                ) {
                     Summary(phase.detail.quote)
                     phase.withdrawn?.let { WithdrawnSection(it) }
                     QuoteRequestDetailSection(phase.detail.quote, Modifier.padding(horizontal = Dimensions.gutter), onOpenPhoto = actions.onOpenPhoto)
-                    // ★ 2026-11-14 다이렉트(나를 지정한) 요청이면 [죄송해요, 다음에 뵐게요] — 사유를 골라 정중히 거절.
-                    //  버튼 글자는 짧게 '죄송해요, 다음에'(나란히 두어도 한 줄).
-                    QuoteRespondButtons(
-                        listOfNotNull(
-                            if (phase.detail.quote.isDirect) SheetAction(stringResource(R.string.quote_decline_button), false) { state.declining = true } else null,
-                            SheetAction(stringResource(R.string.quote_respond_send), true) { state.composing = true },
-                        ),
-                        Modifier.padding(horizontal = Dimensions.gutter),
-                    )
                 }
             }
         }
@@ -174,28 +178,12 @@ private fun WithdrawnSection(withdrawn: MyQuoteResponse) = Section {
 /** 고치기 시트를 보낸 값으로 채운다. */
 private fun MyQuoteResponse.draft() = QuoteResponseDraft.of(priceAmount, priceUnit, paymentMode, depositAmount, message)
 
-/** 공개 상세 — 요약(요청일 · 받은 견적 수) · 요청 내용(사진은 개수만) · 유도 박스 · 가입/전환/유형 추가 · 둘러보기. */
+/**
+ * 공개 상세 — 요약(요청일) · 요청 내용(사진은 개수만) · 둘러보기 + 아래 고정 [견적 보내기]/전환/유형 추가.
+ *  ★ 2026-11-19 웹과 같게: 받은 견적 수 숨김('벌써 N명' 보고 포기하는 강사), 열린 요청의 안내 상자 제거, '가입' 대신 [견적 보내기].
+ */
 @Composable
-private fun PublicBody(state: QuoteRespondState, data: PublicQuoteDetail, actions: QuoteRespondActions) = RespondPage {
-    val q = data.quote
-    val date = KstDates.dotTime(q.createdAt)
-    val meta = if (data.responseCount > 0) stringResource(R.string.quote_respond_public_meta, date, data.responseCount)
-    else stringResource(R.string.quote_respond_public_meta_none, date)
-    Summary(q, meta = meta, guest = false)
-    QuoteRequestDetailSection(
-        q, Modifier.padding(horizontal = Dimensions.gutter), showPhotos = false,
-        photoNote = data.photoCount.takeIf { it > 0 }?.let { stringResource(R.string.quote_respond_public_photo_note, it) },
-    )
-    val closedTitle = when (q.status) {
-        "MATCHED" -> R.string.quote_respond_public_closed_matched
-        "CANCELED" -> R.string.quote_respond_public_closed_canceled
-        else -> R.string.quote_respond_public_closed_expired
-    }
-    QuotePublicCta(
-        title = stringResource(if (data.closed) closedTitle else R.string.quote_respond_public_open_title),
-        body = stringResource(if (data.closed) R.string.quote_respond_public_closed_body else R.string.quote_respond_public_open_body),
-        modifier = Modifier.padding(horizontal = Dimensions.gutter),
-    )
+private fun PublicBody(state: QuoteRespondState, data: PublicQuoteDetail, actions: QuoteRespondActions) {
     val switchTo = state.switchTo
     val main = when {
         !state.isLoggedIn -> listOf(SheetAction(stringResource(if (data.closed) R.string.quote_respond_public_join else R.string.quote_respond_public_join_send), true, actions.onLogin))
@@ -218,11 +206,30 @@ private fun PublicBody(state: QuoteRespondState, data: PublicQuoteDetail, action
             SheetAction(stringResource(label), i == 0) { actions.onAddRole(o.type) }
         }
     }
-    QuoteRespondButtons(
-        main + SheetAction(stringResource(R.string.quote_respond_public_browse), false, actions.onHome),
-        Modifier.padding(horizontal = Dimensions.gutter).padding(bottom = Dimensions.spacingXXL),
-        vertical = true,
-    )
+    RespondPage(bottom = { QuoteRespondButtons(main, vertical = true) }) {
+        val q = data.quote
+        Summary(q, meta = stringResource(R.string.quote_respond_public_meta_date, KstDates.dotTime(q.createdAt)), guest = false)
+        QuoteRequestDetailSection(
+            q, Modifier.padding(horizontal = Dimensions.gutter), showPhotos = false,
+            photoNote = data.photoCount.takeIf { it > 0 }?.let { stringResource(R.string.quote_respond_public_photo_note, it) },
+        )
+        if (data.closed) {
+            val closedTitle = when (q.status) {
+                "MATCHED" -> R.string.quote_respond_public_closed_matched
+                "CANCELED" -> R.string.quote_respond_public_closed_canceled
+                else -> R.string.quote_respond_public_closed_expired
+            }
+            QuotePublicCta(
+                title = stringResource(closedTitle),
+                body = stringResource(R.string.quote_respond_public_closed_body),
+                modifier = Modifier.padding(horizontal = Dimensions.gutter),
+            )
+        }
+        QuoteRespondButtons(
+            listOf(SheetAction(stringResource(R.string.quote_respond_public_browse), false, actions.onHome)),
+            Modifier.padding(horizontal = Dimensions.gutter),
+        )
+    }
 }
 
 /** 보낸 뒤 · 마감 — 웹 EmptyView + [목록으로]. */
@@ -252,13 +259,27 @@ private fun GoneDialog(reason: QuoteRespondGone, state: QuoteRespondState, actio
     )
 }
 
-/** 웹 #quote_respond .content-wrap — 위 24 · 아래 48 · 묶음 사이 24. */
+/**
+ * 웹 #quote_respond .content-wrap — 위 24 · 아래 48 · 묶음 사이 24.
+ *  ★ 2026-11-19 bottom 이 있으면 스크롤 밖 화면 아래에 고정(흰 바탕 + 위 구분선) — 웹 tab-bar-btn-group fixed.
+ */
 @Composable
-private fun RespondPage(content: @Composable ColumnScope.() -> Unit) = Column(
-    Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = Dimensions.spacingXXL, bottom = PAGE_BOTTOM),
-    verticalArrangement = Arrangement.spacedBy(Dimensions.spacingXXL),
-    content = content,
-)
+private fun RespondPage(
+    bottom: (@Composable () -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) = Column(Modifier.fillMaxSize()) {
+    Column(
+        Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(top = Dimensions.spacingXXL, bottom = PAGE_BOTTOM),
+        verticalArrangement = Arrangement.spacedBy(Dimensions.spacingXXL),
+        content = content,
+    )
+    bottom?.let {
+        Column(Modifier.fillMaxWidth().background(AppColors.Surface)) {
+            HorizontalDivider(color = AppColors.Divider)
+            Box(Modifier.fillMaxWidth().padding(horizontal = Dimensions.gutter).padding(top = 12.dp, bottom = 12.dp)) { it() }
+        }
+    }
+}
 
 /** 웹 .form-list.prl-20 — 좌우 20 묶음. */
 @Composable
