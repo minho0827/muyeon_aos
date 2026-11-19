@@ -30,6 +30,8 @@ data class ScrapEntryDto(
             salary = it.salary,
             category = it.category,
             status = it.status,
+            // ★ 2026-11-19 탈퇴한 강사·무용수 — 서버가 이름을 '탈퇴한 회원'으로 바꿔 보낸다.
+            withdrawn = it.withdrawn == true && type in setOf("TEACHER", "DANCER"),
         )
     }
 }
@@ -40,6 +42,8 @@ data class ScrapSummaryDto(
     val genre: String? = null, val venue: String? = null, val price: Double? = null, val pricePerHour: Double? = null,
     val fields: List<String>? = null, val genres: List<String>? = null, val career: String? = null, val salary: String? = null,
     val category: String? = null, val status: String? = null,
+    /** ★ 2026-11-19 TEACHER·DANCER 대상이 탈퇴했으면 true(사진·장르·경력은 비어 온다). */
+    val withdrawn: Boolean? = null,
 )
 
 /** `GET /me/scraps` 한 줄(대상 요약이 붙지만 찜 표시는 id 만 쓴다). */

@@ -21,6 +21,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -66,6 +67,7 @@ fun LikesScreen(onBack: () -> Unit, onOpenPath: (String) -> Unit, onBrowse: () -
     }
     val chips = viewModel.tabs.map { ChipOption(it, stringResource(LikesLabels.tab(it))) }
     val closed = stringResource(R.string.likes_closed)
+    val withdrawn = stringResource(R.string.likes_withdrawn)
     val deleted = stringResource(R.string.likes_deleted_item)
     val open: (LikedItem) -> Unit = { i -> LikesLabels.path(i)?.let(onOpenPath) }
 
@@ -95,16 +97,20 @@ fun LikesScreen(onBack: () -> Unit, onOpenPath: (String) -> Unit, onBrowse: () -
                         val left = idx % 2 == 0
                         LikedCard(
                             title = i.title.ifBlank { deleted }, sub = i.region, corner = LikesLabels.corner(i, context),
-                            image = i.image, fallbackRes = fallback(i), closedLabel = closed.takeIf { i.closed },
+                            image = i.image.takeUnless { i.withdrawn }, fallbackRes = fallback(i),
+                            // ★ 2026-11-19 탈퇴한 강사·무용수는 '마감' 자리에 '탈퇴' 배지 + 흐리게
+                            closedLabel = when { i.withdrawn -> withdrawn; i.closed -> closed; else -> null },
                             onClick = { open(i) }, onUnlike = { viewModel.unlike(i) },
-                            modifier = Modifier.padding(start = if (left) 20.dp else 5.dp, end = if (left) 5.dp else 20.dp, bottom = 22.dp),
+                            modifier = Modifier.padding(start = if (left) 20.dp else 5.dp, end = if (left) 5.dp else 20.dp, bottom = 22.dp)
+                                .alpha(if (i.withdrawn) 0.5f else 1f),
                         )
                     }
                     else -> itemsIndexed(s.items, key = { _, i -> "${i.targetType}-${i.targetId}" }) { idx, i ->
                         ListRow(
                             title = i.title.ifBlank { deleted }, onClick = { open(i) },
-                            sub = listOfNotNull(i.region, LikesLabels.corner(i, context).ifBlank { null }).joinToString(" · "),
-                            thumbUrl = i.image, thumbFallbackRes = fallback(i),
+                            sub = listOfNotNull(withdrawn.takeIf { i.withdrawn }, i.region, LikesLabels.corner(i, context).ifBlank { null }).joinToString(" · "),
+                            thumbUrl = i.image.takeUnless { i.withdrawn }, thumbFallbackRes = fallback(i),
+                            modifier = Modifier.alpha(if (i.withdrawn) 0.5f else 1f),
                             trailing = { HeartButton(true, { viewModel.unlike(i) }) },
                             showDivider = idx < s.items.lastIndex,
                         )

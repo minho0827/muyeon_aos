@@ -87,6 +87,8 @@ fun PublicProfileScreen(
     var profile by remember { mutableStateOf<PublicProfile?>(null) }
     var reviews by remember { mutableStateOf<ReviewList?>(null) }
     var loading by remember { mutableStateOf(true) }
+    // ★ 2026-11-19 탈퇴한 회원(404 MEMBER_WITHDRAWN) — 안내 + 찜 목록에서 빼기
+    var withdrawn by remember { mutableStateOf(false) }
     var scrapped by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
     var reportOpen by remember { mutableStateOf(false) }
@@ -119,7 +121,7 @@ fun PublicProfileScreen(
                         myResumeId = (items.firstOrNull { r -> r.isDefault } ?: items.firstOrNull())?.id
                     }
                 }
-            }
+            }.onFailure { withdrawn = it is MemberWithdrawnException }
         }
         reviewApi.list(userId).onSuccess { reviews = it }
         loading = false
@@ -134,6 +136,18 @@ fun PublicProfileScreen(
             return@Box
         }
         val p = profile
+        if (p == null && withdrawn) {
+            com.muyeon.app.ui.components.EmptyView(
+                androidx.compose.ui.res.stringResource(com.muyeon.app.R.string.member_withdrawn_title),
+                modifier = Modifier.align(Alignment.Center),
+                content = androidx.compose.ui.res.stringResource(com.muyeon.app.R.string.member_withdrawn_desc),
+                buttonText = androidx.compose.ui.res.stringResource(com.muyeon.app.R.string.member_withdrawn_unscrap),
+                onButton = {
+                    scope.launch { api.setScrap(userId, false).onSuccess { onClose() }.onFailure { toast = it.message } }
+                },
+            )
+            return@Box
+        }
         if (p == null) {
             Text(
                 "프로필을 불러오지 못했어요",

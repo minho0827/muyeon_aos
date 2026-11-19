@@ -57,5 +57,8 @@ class ChatRoomLockTest {
         assertEquals("다른 강사님으로 레슨이 정해져 대화가 종료됐어요.", ChatRoomDetail.lockNotice("MATCHED_OTHER"))
         assertEquals("레슨 요청 기간이 끝나 대화가 종료됐어요.", ChatRoomDetail.lockNotice("EXPIRED"))
         assertEquals("대화가 종료된 채팅방이에요.", ChatRoomDetail.lockNotice(null))
+        // ★ 2026-11-19 상대 탈퇴 — 대타 방도 같은 문구
+        assertEquals("탈퇴한 회원이에요. 메시지를 보낼 수 없어요.", ChatRoomDetail.lockNotice("PEER_WITHDRAWN"))
+        assertEquals("탈퇴한 회원이에요. 메시지를 보낼 수 없어요.", ChatRoomDetail.lockNotice("PEER_WITHDRAWN", subRoom = true))
     }
 }

@@ -272,6 +272,11 @@
     <string name="likes_empty_desc">마음에 드는 레슨·강사·공연에 하트를 눌러 모아 보세요.</string>
     <string name="likes_browse">둘러보기</string>
     <string name="likes_closed">마감</string>
+    <!-- ★ 2026-11-19 탈퇴한 강사·무용수 -->
+    <string name="likes_withdrawn">탈퇴</string>
+    <string name="member_withdrawn_title">탈퇴한 회원이에요.</string>
+    <string name="member_withdrawn_desc">이 회원은 무용연을 떠나 프로필을 볼 수 없어요.</string>
+    <string name="member_withdrawn_unscrap">찜 목록에서 빼기</string>
     <string name="likes_deleted_item">(삭제된 항목)</string>
     <string name="likes_price_hour">%1$s원/시간</string>
     <!-- ★ 2026-11-08 내가 예약한 내역(웹 MyReservations) -->

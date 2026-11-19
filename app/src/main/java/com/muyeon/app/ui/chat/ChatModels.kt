@@ -419,7 +419,7 @@ data class ChatRoomDetail(
     val pendingProposal: ChatPendingProposal? = null,   // 재입장으로 카드가 숨겨진 대기 중 약속 제안(상단 고정용)
     val hasPendingProposal: Boolean? = null,   // 방에 응답 대기 중인 약속 제안이 있는지(2026-10-29 서버부터)
     val locked: Boolean = false,               // 대화 종료 — 입력창 대신 안내 띠
-    val lockReason: String? = null,            // CANCELED | MATCHED_OTHER | EXPIRED
+    val lockReason: String? = null,            // CANCELED | MATCHED_OTHER | EXPIRED | PEER_WITHDRAWN(★ 2026-11-19)
     val reRequest: ChatReRequest? = null,      // 잠긴 방 + 내가 끝난 요청의 요청자일 때만(강사 탈퇴면 null) — '다시 레슨 요청하기'
     val locksAt: String? = null,               // 이대로면 대화가 끝나는 시각(ISO UTC) — 상단 'D-N 후 대화 종료'
     // ★ 2026-11-14 상단 고정 바·첫 안내(서버 room-pair) — 예전 서버는 null.
@@ -433,7 +433,12 @@ data class ChatRoomDetail(
         /**
          * 잠긴 방 안내 띠 문구. 대타만 걸린 방([subRoom])은 같은 사유도 대타 말로 바꾼다(서버가 사유 코드를 같이 쓸 수 있다).
          */
-        fun lockNotice(reason: String?, subRoom: Boolean = false): String = if (subRoom) subLockNotice(reason) else lessonLockNotice(reason)
+        fun lockNotice(reason: String?, subRoom: Boolean = false): String = when {
+            // ★ 2026-11-19 상대가 탈퇴했다 — 레슨·대타 방 모두 같은 문구.
+            reason == "PEER_WITHDRAWN" -> "탈퇴한 회원이에요. 메시지를 보낼 수 없어요."
+            subRoom -> subLockNotice(reason)
+            else -> lessonLockNotice(reason)
+        }
 
         private fun subLockNotice(reason: String?): String = when (reason) {
             "SUB_MATCHED_OTHER", "MATCHED_OTHER" -> "다른 강사님으로 대타가 확정돼 대화가 끝났어요."

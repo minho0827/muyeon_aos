@@ -52,6 +52,8 @@ sealed interface DancerEvent {
     data class OpenChat(val roomId: Long, val title: String) : DancerEvent
     data object ChatLimit : DancerEvent
     data object Blocked : DancerEvent
+    /** ★ 2026-11-19 탈퇴한 무용수를 찜에서 뺐다 — 뒤로. */
+    data object Unscrapped : DancerEvent
 }
 
 /**
@@ -162,10 +164,15 @@ class DancerListViewModel(
     }
 }
 
+/** ★ 2026-11-19 탈퇴한 무용수 상세(404) 서버 코드. */
+private const val MEMBER_WITHDRAWN = "MEMBER_WITHDRAWN"
+
 data class DancerDetailUiState(
     val profile: DancerProfile? = null,
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
+    /** ★ 2026-11-19 탈퇴한 무용수(404 MEMBER_WITHDRAWN) — 안내 + [찜 목록에서 빼기]. */
+    val withdrawn: Boolean = false,
     val liked: Boolean = false,
     /** 공연팀이면 [캐스팅 제안 보내기], 아니면 [채팅하기]. */
     val isTeam: Boolean = false,
@@ -249,11 +256,26 @@ class DancerDetailViewModel(
      *  구직 공개 전인 무용수 등 서버가 거절하면 그 문구를 그대로 보여 준다.
      */
     fun load() {
-        _state.update { viewerState(it).copy(isLoading = true, errorMessage = null) }
+        _state.update { viewerState(it).copy(isLoading = true, errorMessage = null, withdrawn = false) }
         viewModelScope.launch {
             when (val r = dancers.detail(id)) {
                 is ApiResult.Success -> _state.update { viewerState(it.copy(profile = r.data, isLoading = false)) }
-                is ApiResult.Error -> _state.update { it.copy(isLoading = false, errorMessage = r.message) }
+                is ApiResult.Error -> _state.update {
+                    it.copy(isLoading = false, errorMessage = r.message, withdrawn = r.code == MEMBER_WITHDRAWN)
+                }
+            }
+        }
+    }
+
+    /** ★ 2026-11-19 탈퇴한 무용수 찜 빼기 — 성공하면 [DancerEvent.Unscrapped] 로 화면을 닫는다. */
+    fun unscrapWithdrawn() {
+        if (_state.value.busy) return
+        _state.update { it.copy(busy = true) }
+        viewModelScope.launch {
+            when (val r = toggleScrap(ScrapTarget.DANCER, id, true)) {
+                is ToggleScrapResult.Done -> { _state.update { it.copy(busy = false, liked = false) }; _events.tryEmit(DancerEvent.Unscrapped) }
+                is ToggleScrapResult.Failed -> { _state.update { it.copy(busy = false) }; _events.tryEmit(DancerEvent.Message(r.message)) }
+                ToggleScrapResult.LoginRequired -> { _state.update { it.copy(busy = false) }; _events.tryEmit(DancerEvent.LoginRequired) }
             }
         }
     }

@@ -24,6 +24,8 @@ data class LikedItem(
     val salary: String?,
     val category: String?,
     val status: String?,
+    /** ★ 2026-11-19 탈퇴한 강사·무용수(TEACHER·DANCER 만). 흐리게 + '탈퇴' 배지, 눌러도 상세로 간다. */
+    val withdrawn: Boolean = false,
 ) {
     val target: ScrapTarget? get() = ScrapTarget.entries.firstOrNull { it.serverType == targetType }
     /** 공고류(JOB·SUB·CASTING) 마감. */

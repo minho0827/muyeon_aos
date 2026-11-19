@@ -112,6 +112,7 @@ fun DancerDetailScreen(
                 is DancerEvent.OpenChat -> onOpenChat(e.roomId, e.title)
                 DancerEvent.ChatLimit -> limit = true
                 DancerEvent.Blocked -> { Toast.makeText(context, R.string.dancer_blocked, Toast.LENGTH_SHORT).show(); onBack() }
+                DancerEvent.Unscrapped -> { Toast.makeText(context, R.string.common_scrap_removed, Toast.LENGTH_SHORT).show(); onBack() }
                 else -> Unit
             }
         }
@@ -130,6 +131,11 @@ fun DancerDetailScreen(
     Box(Modifier.fillMaxSize().background(MuyeonColors.surface).statusBarsPadding().navigationBarsPadding()) {
         when {
             s.isLoading -> CircularProgressIndicator(color = MuyeonColors.primary, modifier = Modifier.align(Alignment.Center))
+            // ★ 2026-11-19 탈퇴한 무용수 — 다시 시도 대신 찜 빼기
+            d == null && s.withdrawn -> Column(Modifier.fillMaxSize().padding(top = 52.dp)) {
+                EmptyView(stringResource(R.string.member_withdrawn_title), content = stringResource(R.string.member_withdrawn_desc),
+                    buttonText = stringResource(R.string.member_withdrawn_unscrap), onButton = viewModel::unscrapWithdrawn)
+            }
             d == null -> Column(Modifier.fillMaxSize().padding(top = 52.dp)) {
                 EmptyView(s.errorMessage ?: stringResource(R.string.dancer_not_found),
                     buttonText = stringResource(R.string.common_retry), onButton = viewModel::load)

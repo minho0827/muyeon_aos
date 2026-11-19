@@ -34,6 +34,11 @@ class VerificationRequiredException(message: String, val path: String?) : Illega
     companion object { const val CODE = "VERIFICATION_REQUIRED" }
 }
 
+/** ★ 2026-11-19 404 MEMBER_WITHDRAWN — 탈퇴한 강사·무용수 상세. 화면은 '탈퇴한 회원' 안내 + 찜 빼기로 분기한다. */
+class MemberWithdrawnException(message: String) : IllegalStateException(message) {
+    companion object { const val CODE = "MEMBER_WITHDRAWN" }
+}
+
 class ResumeApi(internal val token: String?) {
 
     private val client = com.muyeon.app.ui.common.AppHttp.client
@@ -248,6 +253,10 @@ class ResumeApi(internal val token: String?) {
                                 serverMessage(text) ?: "학원 인증을 마치면 지원자 이력서를 볼 수 있어요.",
                                 obj.optJSONObject("data")?.optStringOrNull("path")?.takeIf { it.startsWith("/") },
                             )
+                        }
+                        // ★ 2026-11-19 탈퇴한 회원 상세(404) — 일반 실패와 구분되게 형을 나눠 던진다.
+                        if (res.code == 404 && obj?.optString("code") == MemberWithdrawnException.CODE) {
+                            throw MemberWithdrawnException(serverMessage(text) ?: "탈퇴한 회원이에요.")
                         }
                         throw IllegalStateException(serverMessage(text) ?: "요청에 실패했어요.")
                     }
