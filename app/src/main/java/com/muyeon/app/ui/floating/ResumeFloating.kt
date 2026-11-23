@@ -160,15 +160,11 @@ fun ResumeVerificationFloating(api: FloatingApi, selfRefresh: Boolean) {
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
+            // ★ 11-23 사용자 요청 — '다음: …' 줄은 빼고 이모티콘 한 줄로.
             Text(
-                "학원 인증 마무리하기",
+                "학원 인증 마무리해 주세요 🙏",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp,
                 lineHeight = 16.sp, color = MuyeonColors.primary,
-            )
-            Text(
-                resume.step.hint,
-                fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 14.sp,
-                color = MuyeonColors.textSub,
             )
         }
     }
