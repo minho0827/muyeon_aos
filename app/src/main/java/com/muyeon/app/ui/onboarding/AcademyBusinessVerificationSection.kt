@@ -41,6 +41,8 @@ fun AcademyBusinessVerificationSection(
     statusMessage: String? = null,
     /** ★ 2026-11-23 이어하기 — 첫 빈 칸이 사업자등록번호면 이 칸으로 포커스·스크롤한다(FocusRequester 등). */
     fieldModifier: Modifier = Modifier,
+    /** ★ 11-23 키보드 [다음] — 개업일자 칸으로 넘어간다. */
+    onNext: (() -> Unit)? = null,
 ) {
     var dialog by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
@@ -63,7 +65,8 @@ fun AcademyBusinessVerificationSection(
             visualTransformation = BusinessNumberTransformation,
             enabled = !verifyLater, singleLine = true,
             placeholder = { Text("사업자등록번호 입력", fontFamily = customFontFamily) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Next),
+            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onNext = { onNext?.invoke() }),
             modifier = Modifier.fillMaxWidth().then(fieldModifier),
         )
         if (!verifyLater && (isChecking || statusMessage != null)) {
@@ -71,33 +74,6 @@ fun AcademyBusinessVerificationSection(
                 if (isChecking) "사업자등록번호 확인 중…" else statusMessage.orEmpty(),
                 fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 17.sp,
                 color = if (isVerified) MuyeonColors.primary else MuyeonColors.textSub,
-            )
-        }
-        Text("학원 인증", fontFamily = customFontFamily, fontWeight = FontWeight.Bold,
-            fontSize = 15.sp, color = MuyeonColors.textHead)
-        Column(
-            Modifier.fillMaxWidth().background(MuyeonColors.groupedBg, RoundedCornerShape(12.dp)).padding(18.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text("사업자등록증명원이 있으면 첨부해 주세요 (선택)", fontFamily = customFontFamily,
-                fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MuyeonColors.textHead)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                DocumentSample("사업자등록증명원", true, Modifier.weight(1f))
-                DocumentSample("사업자등록증", false, Modifier.weight(1f))
-            }
-            Text("ⓘ 사업자등록증명원이 뭐예요?", fontFamily = customFontFamily, fontSize = 14.sp,
-                color = MuyeonColors.textSub, modifier = Modifier.clickable { dialog = "document" })
-            // ★ 2026-11-09 발급 경로가 작은 ⓘ 안 팝업에만 있어 몰랐다 — 상자 안에 바로 보이게.
-            Text(
-                "정부24에서 사업자등록증명원 발급하기 ›",
-                fontFamily = customFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
-                color = MuyeonColors.primary, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-                    .background(MuyeonColors.surface, RoundedCornerShape(10.dp))
-                    .border(1.dp, MuyeonColors.primary, RoundedCornerShape(10.dp))
-                    .clickable { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.gov.kr"))) }
-                    .padding(vertical = 12.dp),
             )
         }
         if (allowsVerifyLater) {
@@ -116,16 +92,10 @@ fun AcademyBusinessVerificationSection(
     }
 
     if (dialog != null) {
-        val isDoc = dialog == "document"
         com.muyeon.app.ui.common.MuyeonDialog(
-            title = if (isDoc) "사업자등록증명원이 뭐예요?" else "사업자등록번호가 없어요",
-            message = if (isDoc) "사업자등록증과 달리 위조 방지용 번호와 발급 일자가 표시된 서류예요. 정부24에서 발급한 최근 3개월 이내 사업자등록증명원을 제출해 주세요."
-                else noNumberMessage(allowsVerifyLater),
+            title = "사업자등록번호가 없어요",
+            message = noNumberMessage(allowsVerifyLater),
             actions = when {
-                isDoc -> listOf(
-                    com.muyeon.app.ui.common.MuyeonDialogAction("정부24에서 발급하기", com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY) { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.gov.kr"))) },
-                    com.muyeon.app.ui.common.MuyeonDialogAction("닫기", com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL),
-                )
                 // ★ 2026-10-19 안내문이 '다음에 인증할게요'를 고르라는데 건너뛰기 없는 흐름엔 그 버튼이 없었다(iOS 동일).
                 laterAction != null -> listOf(com.muyeon.app.ui.common.MuyeonDialogAction("다음에 인증할게요", com.muyeon.app.ui.common.MuyeonDialogKind.PRIMARY) { laterAction() }, com.muyeon.app.ui.common.MuyeonDialogAction("닫기", com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL))
                 else -> listOf(com.muyeon.app.ui.common.MuyeonDialogAction("확인"))

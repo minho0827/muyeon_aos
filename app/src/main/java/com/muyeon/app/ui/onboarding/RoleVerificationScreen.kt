@@ -102,8 +102,12 @@ class RoleVerificationApi(private val token: String?) {
     }
 
     /** ★ 2026-11-23 학원 인증 이어하기 정보 — verification-status 의 resume(없으면 null, 옛 서버도 null). */
-    suspend fun loadResume(): com.muyeon.app.ui.floating.VerifyResume? =
-        com.muyeon.app.ui.floating.FloatingApi { token }.verificationStatus()?.resume
+    /** 상태 조회에 실패하면(네트워크 등) 예외 — 호출부가 '불러오기 실패'와 '임시 저장 없음'을 가른다. */
+    suspend fun loadResume(): com.muyeon.app.ui.floating.VerifyResume? {
+        val st = com.muyeon.app.ui.floating.FloatingApi { token }.verificationStatus()
+            ?: throw IllegalStateException("verification-status 조회 실패")
+        return st.resume
+    }
 
     /**
      * ★ 2026-11-23 학원 인증 임시 저장 — PUT /me/roles/academy/verification/draft.
@@ -203,6 +207,17 @@ fun RoleVerificationScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
+    // ★ 2026-11-23 키보드 정리 — 앨범으로 갈 때·앨범에서 돌아올 때 닫는다.
+    //  (화면 전체가 키보드 높이만큼 밀리는 구조라, 키보드가 남으면 [제출하기]가 화면 가운데에 걸린다 — 실기기 제보)
+    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val closeKeyboard = { focusManager.clearFocus(); keyboard?.hide() }
+    // 앨범 등 다른 화면에서 돌아오면 키보드를 정리해 [제출하기]가 맨 아래로 돌아오게.
+    //  처음 열 때는 건너뛴다 — 이어하기가 첫 빈 칸에 커서·키보드를 올리는 것을 막지 않게.
+    var resumedOnce by remember { mutableStateOf(false) }
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+        if (resumedOnce) closeKeyboard() else resumedOnce = true
+        onPauseOrDispose { }
+    }
     // ★ 2026-11-07 자동 확인 받기 — 국세청 확인이 다 맞으면(바로 승인 대상) 제출 버튼을 누르지 않아도 보낸다(번호 확인만 하고 나가 '미제출'로 남던 사례)
     //  한 화면에서 한 번만 보낸다(자동·버튼 공통 가드 — 두 번 눌림·자동 직후 버튼 탭 중복 제출 방지).
     var submitted by remember { mutableStateOf(false) }
@@ -226,7 +241,10 @@ fun RoleVerificationScreen(
 
     LaunchedEffect(Unit) {
         if (role != "ACADEMY") return@LaunchedEffect
-        val draft = runCatching { api.loadResume() }.getOrNull()?.draft
+        // ★ 11-23 불러오기에 실패하면 저장을 켜지 않는다 — 빈 칸으로 저장해 서버의 학원명을 지운 일이 있었다(실기기).
+        val loaded = runCatching { api.loadResume() }
+        if (loaded.isFailure) return@LaunchedEffect
+        val draft = loaded.getOrNull()?.draft
         if (draft != null) {
             // 이미 화면에 있는 값(재제출 서류 등)은 지우지 않고, 빈 칸만 채운다.
             if (academyName.isBlank()) draft.academyName?.let { academyName = it; prefilled = true }
@@ -357,6 +375,8 @@ fun RoleVerificationScreen(
     // 확인 결과가 바뀌는 순간 — 학원명이 아직 짧으면 보내지 않고, 학원명 칸을 벗어날 때(포커스 해제·완료 키) 다시 본다.
     LaunchedEffect(verifiedBusinessNumber, ownerMatched, checkingBusinessNumber) { autoSubmitIfReady() }
 
+    // ★ 11-23 '빈 곳 누르면 닫기'·'스크롤하면 닫기'는 넣지 않는다 — 입력칸 누름·키보드가 열릴 때의 자동 스크롤까지 잡아
+    //  키보드가 열리자마자 닫혔다(실기기). 키보드는 [다음]/[완료] 키·뒤로가기로 닫는다.
     Column(Modifier.fillMaxSize().background(MuyeonColors.surface)) {
         QuoteNavBar(title = "${roleLabel(role)} 인증", onBack = onClose)
 
@@ -371,7 +391,7 @@ fun RoleVerificationScreen(
             )
             Text(
                 // ★ 2026-10-22 학원은 사업자등록번호가 국세청에서 확인되면 서버가 바로 승인한다 — 사진은 선택.
-                if (role == "ACADEMY") "사업자등록번호·개업일자가 대표자 이름까지 국세청 정보와 맞으면 바로 승인돼요. 맞지 않으면 관리자가 확인해요. 사업자등록증 사진을 올리면 더 빨라요."
+                if (role == "ACADEMY") "학원명과 사업자등록번호를 넣어 주세요. 개업일자까지 넣으면 국세청 확인 후 바로 승인되고, 비워 두면 관리자가 확인해요."
                 else "${documentGuide(role)}\n최대 ${MAX_DOCS}장까지 올릴 수 있고, 관리자 확인 후 승인되면 푸시로 알려드려요.",
                 fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 20.sp, color = MuyeonColors.textSub,
             )
@@ -387,8 +407,11 @@ fun RoleVerificationScreen(
                     OutlinedTextField(
                         value = academyName, onValueChange = { academyName = it; dirty = true }, singleLine = true,
                         // ★ 2026-11-07 자동 확인 받기 — 학원명 입력을 마치면(포커스 해제·완료 키) 조건이 맞을 때 바로 보낸다.
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus(); autoSubmitIfReady() }),
+                        // ★ 11-23 [다음] → 사업자등록번호('나중에 인증'이면 키보드 닫기). 칸을 벗어나면 자동 확인 받기를 본다(onFocusChanged).
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = {
+                            if (verifyLater) closeKeyboard() else runCatching { numberFocus.requestFocus() }
+                        }),
                         placeholder = {
                             Text(
                                 "예: 루체 발레 학원 (사업자등록증 상호)",
@@ -433,18 +456,20 @@ fun RoleVerificationScreen(
                     isVerified = verifiedBusinessNumber == businessNumber.filter(Char::isDigit).take(10) /* ★ 11-18 대표자 불일치여도 번호 확인은 완료로 */,
                     statusMessage = businessNumberMessage,
                     fieldModifier = Modifier.bringIntoViewRequester(numberBring).focusRequester(numberFocus),
+                    onNext = { runCatching { startDateFocus.requestFocus() } },
                 )
                 // 개업일자 — 대표자 이름·개업일자가 국세청 정보와 맞으면 제출 즉시 자동 승인(사진 선택).
                 if (!verifyLater) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "개업일자",
+                        "개업일자 (선택)",
                         fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
                         lineHeight = 18.sp, color = MuyeonColors.textHead,
                     )
                     OutlinedTextField(
                         value = startDate, singleLine = true,
                         onValueChange = { v -> v.filter(Char::isDigit).take(8).let { if (it != startDate) dirty = true; startDate = it } },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { closeKeyboard(); autoSubmitIfReady() }),
                         placeholder = {
                             Text(
                                 "예: 20200115 (사업자등록증의 개업연월일)",
@@ -454,7 +479,7 @@ fun RoleVerificationScreen(
                         modifier = Modifier.fillMaxWidth().bringIntoViewRequester(startDateBring).focusRequester(startDateFocus),
                     )
                     Text(
-                        "대표자 이름·개업일자가 국세청 정보와 맞으면 바로 승인돼요.",
+                        "넣으면 국세청 확인 후 바로 승인돼요. 비워 두면 관리자가 확인해요(보통 1영업일).",
                         fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp, color = MuyeonColors.textSub,
                     )
                 }
@@ -462,11 +487,26 @@ fun RoleVerificationScreen(
 
             if (role == "TEAM") TeamBusinessNumberHelp()
 
+            // ★ 11-23 무엇을 올리는지 분명하게 — 사업자등록증 사진(선택).
+            if (role == "ACADEMY" && !verifyLater) Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    "사업자등록증 사진 (선택)",
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                    lineHeight = 18.sp, color = MuyeonColors.textHead,
+                )
+                Text(
+                    "사업자등록증을 찍어 올려 주세요. 개업일자를 넣었다면 없어도 돼요.",
+                    fontFamily = customFontFamily, fontSize = 13.sp, lineHeight = 18.sp, color = MuyeonColors.textSub,
+                )
+            }
+
             if (role != "ACADEMY" || !verifyLater) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(
                     Modifier.size(96.dp).clip(RoundedCornerShape(10.dp))
                         .border(1.dp, MuyeonColors.border, RoundedCornerShape(10.dp))
                         .clickable(enabled = !uploading && images.size < MAX_DOCS) {
+                            // ★ 11-23 앨범으로 가기 전에 키보드를 닫는다 — 남아 있으면 돌아왔을 때 [제출하기]가 화면 가운데에 걸린다.
+                            closeKeyboard()
                             picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                         },
                     contentAlignment = Alignment.Center,
