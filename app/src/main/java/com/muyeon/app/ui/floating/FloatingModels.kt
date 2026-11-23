@@ -92,8 +92,68 @@ object FloatingState {
         get() = false
 }
 
-/** 인증 상태 요약 — GET /me/roles/verification-status. */
-data class VerifyStatus(val role: String?, val status: String, val acknowledged: Boolean)
+/**
+ * 인증 상태 요약 — GET /me/roles/verification-status.
+ * @param resume ★ 2026-11-23 학원 인증 이어하기 — 학원 원장을 골랐는데 아직 제출하지 않은 경우에만 온다.
+ *   심사중(PENDING)·이미 학원 보유·인증 강제 차단 중이면 서버가 null 로 보낸다. 옛 서버는 키 자체가 없다(null 로 본다).
+ */
+data class VerifyStatus(
+    val role: String?,
+    val status: String,
+    val acknowledged: Boolean,
+    val resume: VerifyResume? = null,
+)
+
+/** 이어하기 입력 단계 — 서버 step 값(NAME / BIZ_NUMBER / START_DATE / SUBMIT). */
+enum class VerifyResumeStep(val server: String, val hint: String) {
+    NAME("NAME", "다음: 학원명"),
+    BIZ_NUMBER("BIZ_NUMBER", "다음: 사업자등록번호"),
+    START_DATE("START_DATE", "다음: 개업일자"),
+    SUBMIT("SUBMIT", "제출만 남았어요");
+
+    companion object {
+        fun from(v: String?): VerifyResumeStep = entries.firstOrNull { it.server == v } ?: NAME
+    }
+}
+
+/** 이어하기 임시 저장값 — 서버 draft. 사업자등록번호는 이미 국세청 확인을 마친 10자리다. */
+data class VerifyResumeDraft(
+    val academyName: String?,
+    val businessRegistrationNumber: String?,
+    /** YYYYMMDD */
+    val businessStartDate: String?,
+    val documentUrls: List<String>,
+)
+
+/** 학원 인증 이어하기 정보 — verification-status 의 resume. */
+data class VerifyResume(
+    val role: String,
+    val step: VerifyResumeStep,
+    val draft: VerifyResumeDraft,
+) {
+    companion object {
+        fun parse(o: JSONObject?): VerifyResume? {
+            if (o == null) return null
+            val d = o.optJSONObject("draft") ?: JSONObject()
+            val docs = d.optJSONArray("documents")
+            val urls = buildList {
+                if (docs != null) for (i in 0 until docs.length()) {
+                    docs.optJSONObject(i)?.optStringOrNull("url")?.let(::add)
+                }
+            }
+            return VerifyResume(
+                role = o.optStringOrNull("role") ?: "ACADEMY",
+                step = VerifyResumeStep.from(o.optStringOrNull("step")),
+                draft = VerifyResumeDraft(
+                    academyName = d.optStringOrNull("academyName"),
+                    businessRegistrationNumber = d.optStringOrNull("businessRegistrationNumber")?.filter(Char::isDigit)?.takeIf { it.length == 10 },
+                    businessStartDate = d.optStringOrNull("businessStartDate")?.filter(Char::isDigit)?.take(8),
+                    documentUrls = urls,
+                ),
+            )
+        }
+    }
+}
 
 class FloatingApi(private val tokenProvider: () -> String?) {
     private val token: String? get() = tokenProvider()
@@ -109,6 +169,7 @@ class FloatingApi(private val tokenProvider: () -> String?) {
             it.optStringOrNull("role"),
             it.optString("status").ifEmpty { "NONE" },
             it.optBoolean("acknowledged", false),
+            VerifyResume.parse(it.optJSONObject("resume")),
         )
     }
 

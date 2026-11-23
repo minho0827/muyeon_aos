@@ -24,6 +24,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -69,6 +73,8 @@ import java.io.ByteArrayOutputStream
 private const val MAX_DOCS = 5
 private const val MAX_DIMENSION = 1600
 private const val JPEG_QUALITY = 70
+/** ★ 2026-11-23 학원 인증 임시 저장 묶음 간격 — 입력이 멈추고 이만큼 지나면 저장한다. */
+private const val DRAFT_SAVE_DEBOUNCE_MS = 800L
 
 /** 역할 코드 → 화면 표기(유형 정보 표의 긴 이름, iOS `roleLabel` 과 같은 문구). 일반은 "회원". */
 private fun roleLabel(code: String): String =
@@ -93,6 +99,48 @@ class RoleVerificationApi(private val token: String?) {
                 JSONObject(res.body?.string().orEmpty()).optStringOrNull("url")
             }
         }.getOrNull()
+    }
+
+    /** ★ 2026-11-23 학원 인증 이어하기 정보 — verification-status 의 resume(없으면 null, 옛 서버도 null). */
+    suspend fun loadResume(): com.muyeon.app.ui.floating.VerifyResume? =
+        com.muyeon.app.ui.floating.FloatingApi { token }.verificationStatus()?.resume
+
+    /**
+     * ★ 2026-11-23 학원 인증 임시 저장 — PUT /me/roles/academy/verification/draft.
+     *  사업자등록번호는 번호 확인 API 가 이미 서버에 저장하므로 보내지 않는다. 개업일자는 8자리일 때만 보낸다.
+     */
+    suspend fun saveAcademyDraft(academyName: String?, startDate: String?, documents: List<String>): Boolean =
+        withContext(Dispatchers.IO) {
+            if (token.isNullOrEmpty()) return@withContext false
+            runCatching {
+                val docs = org.json.JSONArray().apply {
+                    documents.forEach { put(JSONObject().put("type", "사업자등록증").put("url", it)) }
+                }
+                val json = JSONObject()
+                    .put("academyName", academyName?.trim()?.takeIf { it.isNotEmpty() } ?: JSONObject.NULL)
+                    .put("businessStartDate", startDate?.takeIf { it.length == 8 } ?: JSONObject.NULL)
+                    .put("documents", docs)
+                    .toString()
+                val req = Request.Builder()
+                    .url(BuildConfig.API_BASE_URL + "/api/me/roles/academy/verification/draft")
+                    .put(json.toRequestBody("application/json".toMediaType()))
+                    .addHeader("Authorization", "Bearer $token")
+                    .build()
+                client.newCall(req).execute().use { it.isSuccessful }
+            }.getOrDefault(false)
+        }
+
+    /** 화면을 닫는 순간의 임시 저장 — 화면 수명과 무관하게 끝까지 보낸다(닫히면 화면 코루틴은 취소된다). */
+    fun saveAcademyDraftDetached(academyName: String?, startDate: String?, documents: List<String>) {
+        detachedScope.launch {
+            if (saveAcademyDraft(academyName, startDate, documents)) {
+                withContext(Dispatchers.Main) { com.muyeon.app.ui.floating.FloatingState.requestRefresh() }
+            }
+        }
+    }
+
+    private companion object {
+        val detachedScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO)
     }
 
     /** ownerMatched: ★ 2026-10-22 개업일자를 함께 보냈을 때만 — 대표자(본인인증 실명)·개업일자가 국세청 정보와 맞는지. */
@@ -126,6 +174,7 @@ class RoleVerificationApi(private val token: String?) {
  *   ★ 입력받지 않는다 — 대표원장 이름은 계정의 실명 인증 결과가 정본이고, 여기서 고쳐 쓸 수 있으면
  *     서류상 대표자와 다른 이름이 공개 프로필·공고에 노출된다. (iOS RoleVerificationView 와 동일)
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun RoleVerificationScreen(
     api: RoleVerificationApi,
@@ -135,6 +184,8 @@ fun RoleVerificationScreen(
     ownerName: String = "",
     initialImages: List<String> = emptyList(),
     allowSkip: Boolean = false,
+    /** ★ 2026-11-23 '학원 인증 마무리하기' 플로팅에서 열었다 — 채운 뒤 첫 빈 칸으로 스크롤·포커스한다. */
+    resume: Boolean = false,
 ) {
     // 기존 제출 서류를 그대로 이어받는다 — 재제출인데 빈 화면이면 처음부터 다시 찍어 올려야 한다.
     var images by remember(initialImages) { mutableStateOf(initialImages) }
@@ -156,6 +207,77 @@ fun RoleVerificationScreen(
     //  한 화면에서 한 번만 보낸다(자동·버튼 공통 가드 — 두 번 눌림·자동 직후 버튼 탭 중복 제출 방지).
     var submitted by remember { mutableStateOf(false) }
     var academyNameHadFocus by remember { mutableStateOf(false) }
+
+    // ★ 2026-11-23 학원 인증 이어하기 · 임시 저장
+    //  prefillDone: 서버 임시 저장값을 채우기 전엔 저장하지 않는다(빈 값으로 덮어쓰기 방지).
+    //  dirty: 사용자가 직접 고친 게 있어야 저장한다(열어 보기만 해도 저장되면 '마무리하기'가 생겨 버린다).
+    //  prefilled: 임시 저장값으로 채웠다 — 이때는 사용자가 고치기 전까지 자동 제출을 하지 않는다(누르자마자 제출되는 일 방지).
+    var prefillDone by remember { mutableStateOf(role != "ACADEMY") }
+    var dirty by remember { mutableStateOf(false) }
+    var prefilled by remember { mutableStateOf(false) }
+    var lastSavedDraft by remember { mutableStateOf<Triple<String, String, List<String>>?>(null) }
+    val scrollState = rememberScrollState()
+    val nameFocus = remember { FocusRequester() }
+    val numberFocus = remember { FocusRequester() }
+    val startDateFocus = remember { FocusRequester() }
+    val nameBring = remember { BringIntoViewRequester() }
+    val numberBring = remember { BringIntoViewRequester() }
+    val startDateBring = remember { BringIntoViewRequester() }
+
+    LaunchedEffect(Unit) {
+        if (role != "ACADEMY") return@LaunchedEffect
+        val draft = runCatching { api.loadResume() }.getOrNull()?.draft
+        if (draft != null) {
+            // 이미 화면에 있는 값(재제출 서류 등)은 지우지 않고, 빈 칸만 채운다.
+            if (academyName.isBlank()) draft.academyName?.let { academyName = it; prefilled = true }
+            if (businessNumber.isEmpty()) draft.businessRegistrationNumber?.let { businessNumber = it; prefilled = true }
+            if (startDate.isEmpty()) draft.businessStartDate?.let { startDate = it; prefilled = true }
+            if (images.isEmpty() && draft.documentUrls.isNotEmpty()) { images = draft.documentUrls.take(MAX_DOCS); prefilled = true }
+        }
+        lastSavedDraft = Triple(academyName.trim(), startDate, images)
+        prefillDone = true
+        if (!resume) return@LaunchedEffect
+        // 첫 빈 칸으로 — 칸이 그려진 뒤에 옮겨야 포커스가 붙는다.
+        delay(250)
+        val target = when {
+            academyName.isBlank() -> nameFocus to nameBring
+            businessNumber.filter(Char::isDigit).length != 10 -> numberFocus to numberBring
+            startDate.length != 8 -> startDateFocus to startDateBring
+            else -> null
+        }
+        if (target == null) {
+            // 제출만 남았어요 — 아래 제출 버튼이 보이도록 끝까지 내린다.
+            scrollState.animateScrollTo(scrollState.maxValue)
+        } else {
+            runCatching { target.second.bringIntoView() }
+            runCatching { target.first.requestFocus() }
+        }
+    }
+
+    /** 지금 값을 임시 저장 — 마지막 저장과 같으면 보내지 않는다. */
+    suspend fun saveDraftNow() {
+        val snap = Triple(academyName.trim(), startDate, images)
+        if (snap == lastSavedDraft) return
+        if (api.saveAcademyDraft(snap.first, snap.second, snap.third)) {
+            lastSavedDraft = snap
+            com.muyeon.app.ui.floating.FloatingState.requestRefresh()
+        }
+    }
+
+    // 학원명·개업일자·서류가 바뀌면 800ms 동안 더 안 바뀔 때 저장한다.
+    LaunchedEffect(academyName, startDate, images, prefillDone) {
+        if (role != "ACADEMY" || !prefillDone || !dirty || submitted || verifyLater) return@LaunchedEffect
+        delay(DRAFT_SAVE_DEBOUNCE_MS)
+        saveDraftNow()
+    }
+    // 닫기·뒤로가기 등으로 화면을 떠날 때 — 아직 못 보낸 변경이 있으면 마저 보낸다.
+    DisposableEffect(Unit) {
+        onDispose {
+            if (role != "ACADEMY" || !prefillDone || !dirty || submitted || verifyLater) return@onDispose
+            val snap = Triple(academyName.trim(), startDate, images)
+            if (snap != lastSavedDraft) api.saveAcademyDraftDetached(snap.first, snap.second, snap.third)
+        }
+    }
 
     LaunchedEffect(businessNumber, startDate, verifyLater) {
         verifiedBusinessNumber = null
@@ -195,7 +317,7 @@ fun RoleVerificationScreen(
                 if (images.size >= MAX_DOCS) return@forEach
                 val bytes = withContext(Dispatchers.IO) { compressedJpeg(context, uri) }
                 val url = bytes?.let { api.uploadImage(it) }
-                if (url != null) images = images + url else failed++
+                if (url != null) { images = images + url; dirty = true } else failed++
             }
             uploading = false
             // 업로드 실패를 삼키면 사용자는 첨부한 줄 알고 빈 서류를 제출한다.
@@ -229,6 +351,7 @@ fun RoleVerificationScreen(
         if (role != "ACADEMY" || verifyLater || submitted || uploading || checkingBusinessNumber) return
         if (verifiedBusinessNumber != normalizedNumber || ownerMatched != true) return
         if (academyName.trim().length < 2) return
+        if (prefilled && !dirty) return
         submit()
     }
     // 확인 결과가 바뀌는 순간 — 학원명이 아직 짧으면 보내지 않고, 학원명 칸을 벗어날 때(포커스 해제·완료 키) 다시 본다.
@@ -238,7 +361,7 @@ fun RoleVerificationScreen(
         QuoteNavBar(title = "${roleLabel(role)} 인증", onBack = onClose)
 
         Column(
-            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
+            Modifier.weight(1f).verticalScroll(scrollState).padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
@@ -262,7 +385,7 @@ fun RoleVerificationScreen(
                         lineHeight = 18.sp, color = MuyeonColors.textHead,
                     )
                     OutlinedTextField(
-                        value = academyName, onValueChange = { academyName = it }, singleLine = true,
+                        value = academyName, onValueChange = { academyName = it; dirty = true }, singleLine = true,
                         // ★ 2026-11-07 자동 확인 받기 — 학원명 입력을 마치면(포커스 해제·완료 키) 조건이 맞을 때 바로 보낸다.
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus(); autoSubmitIfReady() }),
@@ -272,7 +395,7 @@ fun RoleVerificationScreen(
                                 fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.secondary,
                             )
                         },
-                        modifier = Modifier.fillMaxWidth().onFocusChanged { f ->
+                        modifier = Modifier.fillMaxWidth().bringIntoViewRequester(nameBring).focusRequester(nameFocus).onFocusChanged { f ->
                             if (academyNameHadFocus && !f.isFocused) autoSubmitIfReady()
                             academyNameHadFocus = f.isFocused
                         },
@@ -301,7 +424,7 @@ fun RoleVerificationScreen(
 
                 AcademyBusinessVerificationSection(
                     businessNumber = businessNumber,
-                    onBusinessNumberChange = { businessNumber = it },
+                    onBusinessNumberChange = { if (it != businessNumber) dirty = true; businessNumber = it },
                     verifyLater = verifyLater,
                     onVerifyLaterChange = { verifyLater = it },
                     allowsVerifyLater = allowSkip,
@@ -309,6 +432,7 @@ fun RoleVerificationScreen(
                     isChecking = checkingBusinessNumber,
                     isVerified = verifiedBusinessNumber == businessNumber.filter(Char::isDigit).take(10) /* ★ 11-18 대표자 불일치여도 번호 확인은 완료로 */,
                     statusMessage = businessNumberMessage,
+                    fieldModifier = Modifier.bringIntoViewRequester(numberBring).focusRequester(numberFocus),
                 )
                 // 개업일자 — 대표자 이름·개업일자가 국세청 정보와 맞으면 제출 즉시 자동 승인(사진 선택).
                 if (!verifyLater) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -319,7 +443,7 @@ fun RoleVerificationScreen(
                     )
                     OutlinedTextField(
                         value = startDate, singleLine = true,
-                        onValueChange = { startDate = it.filter(Char::isDigit).take(8) },
+                        onValueChange = { v -> v.filter(Char::isDigit).take(8).let { if (it != startDate) dirty = true; startDate = it } },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         placeholder = {
                             Text(
@@ -327,7 +451,7 @@ fun RoleVerificationScreen(
                                 fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.secondary,
                             )
                         },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().bringIntoViewRequester(startDateBring).focusRequester(startDateFocus),
                     )
                     Text(
                         "대표자 이름·개업일자가 국세청 정보와 맞으면 바로 승인돼요.",
@@ -360,7 +484,7 @@ fun RoleVerificationScreen(
                             Icons.Filled.Close, "삭제", tint = Color.White,
                             modifier = Modifier.align(Alignment.TopEnd).padding(2.dp).size(18.dp)
                                 .clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.5f))
-                                .clickable { images = images - url },
+                                .clickable { images = images - url; dirty = true },
                         )
                     }
                 }

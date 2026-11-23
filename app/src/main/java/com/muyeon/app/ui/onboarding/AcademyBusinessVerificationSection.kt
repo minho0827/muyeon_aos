@@ -39,6 +39,8 @@ fun AcademyBusinessVerificationSection(
     isChecking: Boolean = false,
     isVerified: Boolean = false,
     statusMessage: String? = null,
+    /** ★ 2026-11-23 이어하기 — 첫 빈 칸이 사업자등록번호면 이 칸으로 포커스·스크롤한다(FocusRequester 등). */
+    fieldModifier: Modifier = Modifier,
 ) {
     var dialog by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
@@ -62,7 +64,7 @@ fun AcademyBusinessVerificationSection(
             enabled = !verifyLater, singleLine = true,
             placeholder = { Text("사업자등록번호 입력", fontFamily = customFontFamily) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().then(fieldModifier),
         )
         if (!verifyLater && (isChecking || statusMessage != null)) {
             Text(

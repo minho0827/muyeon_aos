@@ -32,9 +32,21 @@ fun ComponentActivity.applyEdgeToEdge() {
  */
 fun ComponentActivity.setEdgeContent(background: Color = Color.White, content: @Composable () -> Unit) {
     // ★ 2026-11-14 무용연 테마를 씌운다 — 없으면 색을 안 준 시스템 부품이 안드로이드 기본 보라로 보였다.
+    //  ★ 2026-11-23 '학원 인증 마무리하기' 플로팅을 모든 앱 화면에 띄운다 — 화면 안쪽 여백 밖(맨 위 층)에 둔다.
+    //   탭 셸(MainActivity)·웹 창(WebViewActivity)은 이 함수를 쓰지 않고 FloatingOverlay 가 같은 플로팅을 그린다(화면당 하나).
+    val activity = this
     setContent {
         com.muyeon.app.theme.MuyeonTheme {
-            Box(Modifier.fillMaxSize().background(background).windowInsetsPadding(WindowInsets.safeDrawing)) { content() }
+            val suppress = androidx.compose.runtime.remember { com.muyeon.app.ui.floating.ResumeFloatingSuppress() }
+            val api = androidx.compose.runtime.remember {
+                com.muyeon.app.ui.floating.FloatingApi { com.muyeon.app.utils.TokenManager.getAccessToken(activity) }
+            }
+            androidx.compose.runtime.CompositionLocalProvider(com.muyeon.app.ui.floating.LocalResumeFloatingSuppress provides suppress) {
+                Box(Modifier.fillMaxSize().background(background)) {
+                    Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) { content() }
+                    com.muyeon.app.ui.floating.ResumeVerificationFloating(api, selfRefresh = true)
+                }
+            }
         }
     }
 }

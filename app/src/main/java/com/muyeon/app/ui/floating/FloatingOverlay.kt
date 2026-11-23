@@ -65,12 +65,15 @@ fun FloatingOverlay(
         if (!api.isLoggedIn) {
             // 로그아웃 상태면 뱃지·책갈피 즉시 리셋(옛 계정 잔상 방지).
             role = null; status = "NONE"; unread = 0
+            ResumeFloatingStore.update(null)
             return
         }
         api.verificationStatus()?.let {
             role = it.role
             status = it.status
             acknowledged = it.acknowledged
+            // ★ 2026-11-23 '학원 인증 마무리하기' 플로팅도 같은 응답을 쓴다(따로 한 번 더 묻지 않는다).
+            ResumeFloatingStore.update(it)
         }
         unread = api.unreadCount()
     }
@@ -166,6 +169,9 @@ fun FloatingOverlay(
                 }
             }
         }
+
+        // ★ 2026-11-23 학원 인증 이어하기 플로팅 — 오른쪽 위. 심사중이면 위 책갈피만 뜬다(둘이 같이 뜨지 않는다).
+        ResumeVerificationFloating(api, selfRefresh = false)
 
         // 채팅 플로팅 — 최상위 탭에서만. 스크롤 다운/웹 모달 시 밀어서 숨김.
         if (api.isLoggedIn && FloatingState.isChatFloatRoute) {

@@ -13,7 +13,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.addCallback
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -47,6 +49,8 @@ class OnboardingActivity : ComponentActivity() {
         private const val EXTRA_ACTIVE_TYPE = "activeType"
         /** ★ [b1] 앱 가입·앱 차단 화면에서 열었다 — 웹 콜백 대신 앱이 직접 API(역할 추가·서류 제출) 후 이동. */
         private const val EXTRA_IN_APP = "completeInApp"
+        /** ★ 2026-11-23 '학원 인증 마무리하기' 플로팅에서 열었다 — 임시 저장값을 채우고 첫 빈 칸으로 이동. */
+        private const val EXTRA_RESUME = "resume"
 
         /**
          * @param rolesJson 웹 data.roles — `{"held":[...],"roles":[...]}` 형태의 **JSON 문자열**
@@ -73,13 +77,17 @@ class OnboardingActivity : ComponentActivity() {
             context.go(Intent(context, OnboardingActivity::class.java).putExtra(EXTRA_ROUTE, "roleOnboarding").putExtra(EXTRA_IN_APP, completeInApp))
 
         /** ★ [b1] [completeInApp] = 앱 차단 화면(학원 인증하기) — 웹 __onRoleVerify 대신 앱이 서류를 제출하고 차단 상태를 다시 묻는다. */
-        fun startVerification(context: Context, role: String?, ownerName: String? = null, completeInApp: Boolean = false) =
+        //  ★ 2026-11-23 [resume] = 이어하기 — 입력해 둔 학원명·사업자등록번호·개업일자·서류를 채우고 첫 빈 칸으로 이동한다.
+        fun startVerification(
+            context: Context, role: String?, ownerName: String? = null, completeInApp: Boolean = false, resume: Boolean = false,
+        ) =
             context.go(
                 Intent(context, OnboardingActivity::class.java)
                     .putExtra(EXTRA_ROUTE, "verify")
                     .putExtra(EXTRA_ROLE, role ?: "")
                     .putExtra(EXTRA_OWNER_NAME, ownerName ?: "")
-                    .putExtra(EXTRA_IN_APP, completeInApp),
+                    .putExtra(EXTRA_IN_APP, completeInApp)
+                    .putExtra(EXTRA_RESUME, resume),
             )
 
         /** 약관 동의(강제 게이트) — `openSignupTerms`. */
@@ -120,11 +128,16 @@ class OnboardingActivity : ComponentActivity() {
         // 대표원장 실명 — 웹이 브릿지로 넘긴 값. 없으면 빈 문자열이라 화면이 줄을 그리지 않는다.
         val ownerName = intent.getStringExtra(EXTRA_OWNER_NAME).orEmpty()
         val activeType = intent.getStringExtra(EXTRA_ACTIVE_TYPE)?.ifEmpty { null } ?: "GENERAL"
+        val resume = intent.getBooleanExtra(EXTRA_RESUME, false)
 
         setEdgeContent {
             val nav = rememberNavController()
             com.muyeon.app.analytics.TrackNavigation("Onboarding", nav)
             navRef = nav
+            // ★ 2026-11-23 '학원 인증 마무리하기' 플로팅은 회원유형 관리 화면에서만 둔다 —
+            //  인증 화면 자신·가입 온보딩·약관·주소·알림 동의 위에는 띄우지 않는다.
+            val current by nav.currentBackStackEntryAsState()
+            if (current?.destination?.route != "manage") com.muyeon.app.ui.floating.SuppressResumeFloating()
             val token = remember { TokenManager.getAccessToken(this) }
             val api = remember { RoleVerificationApi(token) }
             val payload = remember(payloadJson, activeType) { RoleManagePayload.parse(payloadJson, activeType) }
@@ -157,6 +170,7 @@ class OnboardingActivity : ComponentActivity() {
                     RoleVerificationScreen(
                         api, role.orEmpty(),
                         ownerName = ownerName,
+                        resume = resume,
                         onClose = { finish() },
                         onDone = { r, urls, academyName, businessNumber, startDate ->
                             finisher.verified(VerifyDocs(r, urls, academyName, businessNumber, startDate))

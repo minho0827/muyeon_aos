@@ -38,6 +38,8 @@ class GateActivity : ComponentActivity() {
         if (mode == MODE_VERIFY) liveVerify = WeakReference(this)
         val errorJson = intent.getStringExtra(EXTRA_ERROR)
         setEdgeContent {
+            // ★ 2026-11-23 차단·점검 화면에는 '학원 인증 마무리하기' 플로팅을 띄우지 않는다(차단 화면에 인증 버튼이 따로 있다).
+            com.muyeon.app.ui.floating.SuppressResumeFloating()
             MuyeonTheme(darkTheme = false, dynamicColor = false) {
                 if (mode == MODE_MAINTENANCE) {
                     MaintenanceScreen(errorJson, onHome = ::goHomeFromMaintenance)
