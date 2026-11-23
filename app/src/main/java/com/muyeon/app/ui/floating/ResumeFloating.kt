@@ -1,5 +1,6 @@
 package com.muyeon.app.ui.floating
 
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -129,13 +131,23 @@ fun ResumeVerificationFloating(api: FloatingApi, selfRefresh: Boolean) {
         !com.muyeon.app.webview.VerifyGate.gated
     if (!show || resume == null) return
 
+    // ★ 11-23 사용자 요청: 위아래로 천천히 움직여 눈에 띄게(6dp, 1.2초 왕복) · 탭 줄을 가리지 않게 조금 아래로(상태바 + 140dp).
+    val bob by androidx.compose.animation.core.rememberInfiniteTransition(label = "resumeBob").animateFloat(
+        initialValue = 0f, targetValue = -6f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            androidx.compose.animation.core.tween(1200, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+            androidx.compose.animation.core.RepeatMode.Reverse,
+        ),
+        label = "resumeBobY",
+    )
     Box(Modifier.fillMaxSize()) {
         val shape = RoundedCornerShape(12.dp)
         Column(
             Modifier
                 .align(Alignment.TopEnd)
                 .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(top = 64.dp, end = 12.dp)
+                .padding(top = 140.dp, end = 12.dp)
+                .offset { androidx.compose.ui.unit.IntOffset(0, bob.dp.roundToPx()) }
                 .shadow(6.dp, shape, spotColor = Color.Black.copy(alpha = 0.18f))
                 .clip(shape)
                 .background(Color.White)
