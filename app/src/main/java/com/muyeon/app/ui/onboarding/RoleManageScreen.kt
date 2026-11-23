@@ -544,7 +544,7 @@ private fun sheetDesc(opt: RoleOption, isGranted: Boolean, st: String): String {
         "PENDING" -> "인증 심사 중이에요. 서류를 다시 제출할 수 있어요."
         "REJECTED" -> "인증이 반려됐어요. 서류를 다시 제출해 주세요."
         // ★ 2026-10-22 학원은 사업자등록번호가 국세청에서 확인되면 바로 승인된다.
-        else -> if (opt.code == com.muyeon.domain.model.member.ActiveType.ACADEMY) "사업자등록번호가 확인되면 바로 추가되는 회원유형이에요."
+        else -> if (opt.code == com.muyeon.domain.model.member.ActiveType.ACADEMY) "사업자등록번호를 넣으면 추가돼요. 개업일자까지 맞으면 바로, 아니면 관리자 확인 후 추가돼요."
             else "서류를 내고 승인을 받으면 추가되는 회원유형이에요."
     }
 }
