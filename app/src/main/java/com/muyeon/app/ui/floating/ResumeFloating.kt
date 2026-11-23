@@ -155,7 +155,7 @@ fun ResumeVerificationFloating(api: FloatingApi, selfRefresh: Boolean) {
                 .windowInsetsPadding(WindowInsets.navigationBars)
                 // 아래 탭 메뉴(약 80dp) 바로 위
                 .padding(start = 6.dp, bottom = 84.dp)
-                .size(width = 252.dp, height = 124.dp),
+                .size(width = 236.dp, height = 100.dp),
         ) {
             // 강아지 + 머리 위 '굽신'(그림 한 장) — 가만히 앉아 있다
             androidx.compose.foundation.Image(
@@ -163,7 +163,7 @@ fun ResumeVerificationFloating(api: FloatingApi, selfRefresh: Boolean) {
                 contentDescription = "학원 인증 마무리해 주세요",
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .size(width = 70.dp, height = 108.dp)
+                    .size(width = 52.dp, height = 80.dp)
                     .clickable(onClick = open),
             )
             // 말풍선 — 꼬리가 왼쪽 아래(강아지 쪽)를 가리킨다. 말풍선만 동동 떠다닌다.
@@ -171,7 +171,7 @@ fun ResumeVerificationFloating(api: FloatingApi, selfRefresh: Boolean) {
             Box(
                 Modifier
                     .align(Alignment.BottomStart)
-                    .padding(start = 62.dp, bottom = 58.dp)
+                    .padding(start = 46.dp, bottom = 42.dp)
                     .offset { androidx.compose.ui.unit.IntOffset(0, bob.dp.roundToPx()) }
                     .shadow(6.dp, bubble, spotColor = Color.Black.copy(alpha = 0.18f))
                     .clip(bubble)
