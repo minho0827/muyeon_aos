@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -142,7 +143,7 @@ fun ResumeVerificationFloating(api: FloatingApi, selfRefresh: Boolean) {
     )
     Box(Modifier.fillMaxSize()) {
         val shape = RoundedCornerShape(12.dp)
-        Column(
+        androidx.compose.foundation.layout.Row(
             Modifier
                 .align(Alignment.TopEnd)
                 .windowInsetsPadding(WindowInsets.statusBars)
@@ -157,12 +158,26 @@ fun ResumeVerificationFloating(api: FloatingApi, selfRefresh: Boolean) {
                         context, "ACADEMY", ownerName = "", completeInApp = true, resume = true,
                     )
                 }
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+                .padding(start = 4.dp, end = 12.dp, top = 2.dp, bottom = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            // ★ 11-23 사용자 요청 — '다음: …' 줄은 빼고 이모티콘 한 줄로.
+            // ★ 11-23 굽신 강아지(사용자 캐릭터) — 참고 영상 실측 박자: 고개 들기 0.27초 → 반쯤 숙임 0.13초 → 꾸벅 0.27초, 쉬지 않고 반복.
+            var frame by remember { mutableIntStateOf(0) }
+            LaunchedEffect(Unit) {
+                val hold = longArrayOf(270L, 130L, 270L)
+                while (true) { kotlinx.coroutines.delay(hold[frame]); frame = (frame + 1) % 3 }
+            }
+            androidx.compose.foundation.Image(
+                painter = androidx.compose.ui.res.painterResource(
+                    when (frame) { 0 -> com.muyeon.app.R.drawable.academy_gubsin_1; 1 -> com.muyeon.app.R.drawable.academy_gubsin_2; else -> com.muyeon.app.R.drawable.academy_gubsin_3 },
+                ),
+                contentDescription = null,
+                modifier = Modifier.size(42.dp),
+            )
+            // ★ 11-23 문구 한 줄 — 비는 몸짓은 앞의 굽신 강아지가 맡는다.
             Text(
-                "학원 인증 마무리해 주세요 🙏",
+                "학원 인증 마무리해 주세요",
                 fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp,
                 lineHeight = 16.sp, color = MuyeonColors.primary,
             )
