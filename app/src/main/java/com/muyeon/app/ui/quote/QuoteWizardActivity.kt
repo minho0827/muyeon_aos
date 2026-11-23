@@ -80,6 +80,7 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // ★ 2026-11-16 지금 유형으로 막지 않는다 — 첫 단계 "수강생 / 학원" 질문이 요청 종류를 정한다.
+        //  ★ 11-23 단, 학원 원장 회원의 '여러 강사에게'(강사 없음) 요청만은 막는다(아래 broadcastGate).
         val categoryId = intent.getStringExtra(EXTRA_CATEGORY).orEmpty()
         val targetTeacherId = intent.getStringExtra(EXTRA_TARGET_TEACHER).orEmpty()
         val seed = seedAnswersOf(
@@ -89,6 +90,20 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
         )
 
         setEdgeContent {
+            // ★ 2026-11-23 강사 없이 열면 서버 broadcastAllowed 확인 — false(학원 원장 회원)면 위저드 대신 1:1 안내.
+            //  비로그인·확인 실패(예전 서버)는 막지 않는다 — 서버가 제출 때 403 QUOTE_DIRECT_ONLY 로 막는다.
+            var broadcastGate by remember { mutableStateOf(if (targetTeacherId.isEmpty()) "checking" else "ok") }
+            LaunchedEffect(Unit) {
+                if (broadcastGate != "checking") return@LaunchedEffect
+                val token = TokenManager.getAccessToken(this@QuoteWizardActivity)
+                val allowed = token.isNullOrEmpty() || QuoteApi(token).requestQuota().getOrNull()?.broadcastAllowed != false
+                broadcastGate = if (allowed) "ok" else "blocked"
+            }
+            if (broadcastGate == "checking") return@setEdgeContent
+            if (broadcastGate == "blocked") {
+                DirectOnlyDialog(message = null, onTeachers = { openHomeTeachersAndFinish() }, onDismiss = { finish() })
+                return@setEdgeContent
+            }
             // 최초 1회 인트로("강사를 찾고 계신가요?") — 종류 선택으로 바로 떨어지는 갑작스러움 해소.
             //  강사 지정(1:1) 요청은 프로필 맥락이 있어 스킵(iOS presentQuoteWizard 규칙 동일).
             val prefs = remember { getSharedPreferences(QUOTE_PREFS, MODE_PRIVATE) }
@@ -145,6 +160,8 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
             var lastAnswers by remember { mutableStateOf<Map<String, QuoteAnswer>>(emptyMap()) }
             // ★ 2026-11-08 원장·공연팀 레슨 요청 월 횟수 — 다 썼으면 팝업(서버 문구·공고 경로), 남은 횟수는 [보내기] 위 한 줄.
             var lessonLimit by remember { mutableStateOf<ApiMessageException?>(null) }
+            // ★ 2026-11-23 학원 원장 회원의 여러 강사 요청(403 QUOTE_DIRECT_ONLY) — 서버 문구.
+            var directOnly by remember { mutableStateOf<String?>(null) }
             var quotaRemaining by remember { mutableStateOf<Int?>(null) }
             LaunchedEffect(Unit) {
                 val token = TokenManager.getAccessToken(this@QuoteWizardActivity)
@@ -194,6 +211,11 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                     return@LaunchedEffect
                 }
                 // ★ 2026-11-08 이번 달 레슨 요청을 다 씀 — 로딩을 기다리지 않고 문진으로 돌아가 팝업.
+                if (code == QUOTE_DIRECT_ONLY_CODE) {
+                    directOnly = apiErr.message
+                    phase = "wizard"
+                    return@LaunchedEffect
+                }
                 if (code == LESSON_REQUEST_LIMIT_CODE) {
                     lessonLimit = apiErr
                     quotaRemaining = 0
@@ -353,6 +375,9 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                     )
                 }
                 // ★ 2026-11-08 레슨 요청 월 횟수 소진 — 공고 경로(요청 내용 미리 채움)는 앱 화면으로(MainActivity.openPath → 앱 공고 등록).
+                directOnly?.let { m ->
+                    DirectOnlyDialog(message = m, onTeachers = { openHomeTeachersAndFinish() }, onDismiss = { directOnly = null })
+                }
                 lessonLimit?.let { e ->
                     LessonRequestLimitDialog(
                         message = e.message,
@@ -401,6 +426,13 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
 
     /** 완료 화면 CTA — 웹 화면으로 이동하고 위저드 종료. */
     private fun openWebAndFinish(path: String) = NativeWebRoute.openWebAndFinish(this, path)
+
+    /** ★ 2026-11-23 홈 강사 목록(웹 /teachers 와 같은 목록 — AppBridgeInterface openHomeTeachers 와 같다)으로 가며 위저드를 닫는다. */
+    private fun openHomeTeachersAndFinish() {
+        com.muyeon.app.ui.home.HomeModeRequests.request(com.muyeon.app.ui.home.HomeMode.TEACHERS)
+        com.muyeon.app.ui.main.MainActivity.openTab(this, com.muyeon.app.ui.main.MainTab.HOME)
+        finish()
+    }
 
     /** POST /api/quotes — iOS QuoteService.createQuote 와 동일 페이로드. */
     private fun submit(

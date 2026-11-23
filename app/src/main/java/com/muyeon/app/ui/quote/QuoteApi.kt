@@ -50,6 +50,8 @@ data class LessonRequestQuota(
     val used: Int,
     val remaining: Int,
     val chatRoomId: Int?,
+    /** ★ 2026-11-23 false = 학원 원장 회원 — 강사를 고르지 않는(여러 강사에게) 요청 불가, 1:1만. 예전 서버는 칸이 없어 true. */
+    val broadcastAllowed: Boolean = true,
 )
 
 /** ★ 11-10 채택 응답 — 구서버는 roomId 만 준다(afterAccept=null → 레슨, openCrossPosts 비어 있음). */
@@ -113,6 +115,7 @@ class QuoteApi(private val token: String?) {
                 used = o.optInt("used", 0),
                 remaining = o.optInt("remaining", -1),
                 chatRoomId = if (o.isNull("chatRoomId")) null else o.optInt("chatRoomId").takeIf { id -> id > 0 },
+                broadcastAllowed = o.optBoolean("broadcastAllowed", true),
             )
         }
 
