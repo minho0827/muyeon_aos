@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -132,7 +133,7 @@ fun ResumeVerificationFloating(api: FloatingApi, selfRefresh: Boolean) {
         !com.muyeon.app.webview.VerifyGate.gated
     if (!show || resume == null) return
 
-    // ★ 11-23 사용자 요청: 위아래로 천천히 움직여 눈에 띄게(6dp, 1.2초 왕복) · 탭 줄을 가리지 않게 조금 아래로(상태바 + 140dp).
+    // ★ 11-23 사용자 요청: 왼쪽 아래 구석에 굽신 강아지(가만히) + 머리 위 '굽신' + 말풍선(동동). 어디를 눌러도 인증 화면.
     val bob by androidx.compose.animation.core.rememberInfiniteTransition(label = "resumeBob").animateFloat(
         initialValue = 0f, targetValue = -6f,
         animationSpec = androidx.compose.animation.core.infiniteRepeatable(
@@ -141,46 +142,79 @@ fun ResumeVerificationFloating(api: FloatingApi, selfRefresh: Boolean) {
         ),
         label = "resumeBobY",
     )
+    val open = {
+        com.muyeon.app.ui.onboarding.OnboardingActivity.startVerification(
+            context, "ACADEMY", ownerName = "", completeInApp = true, resume = true,
+        )
+    }
+    val ink = Color(0xFF1E1A17)
     Box(Modifier.fillMaxSize()) {
-        val shape = RoundedCornerShape(12.dp)
-        androidx.compose.foundation.layout.Row(
+        Box(
             Modifier
-                .align(Alignment.TopEnd)
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(top = 140.dp, end = 12.dp)
-                .offset { androidx.compose.ui.unit.IntOffset(0, bob.dp.roundToPx()) }
-                .shadow(6.dp, shape, spotColor = Color.Black.copy(alpha = 0.18f))
-                .clip(shape)
-                .background(Color.White)
-                .border(1.5.dp, MuyeonColors.primary, shape)
-                .clickable {
-                    com.muyeon.app.ui.onboarding.OnboardingActivity.startVerification(
-                        context, "ACADEMY", ownerName = "", completeInApp = true, resume = true,
-                    )
-                }
-                .padding(start = 4.dp, end = 12.dp, top = 2.dp, bottom = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                .align(Alignment.BottomStart)
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                // 아래 탭 메뉴(약 80dp) 바로 위
+                .padding(start = 6.dp, bottom = 84.dp)
+                .size(width = 250.dp, height = 112.dp),
         ) {
-            // ★ 11-23 굽신 강아지(사용자 캐릭터) — 참고 영상 실측 박자: 고개 들기 0.27초 → 반쯤 숙임 0.13초 → 꾸벅 0.27초, 쉬지 않고 반복.
-            var frame by remember { mutableIntStateOf(0) }
-            LaunchedEffect(Unit) {
-                val hold = longArrayOf(270L, 130L, 270L)
-                while (true) { kotlinx.coroutines.delay(hold[frame]); frame = (frame + 1) % 3 }
-            }
+            // 강아지 + 머리 위 '굽신'(그림 한 장) — 가만히 앉아 있다
             androidx.compose.foundation.Image(
-                painter = androidx.compose.ui.res.painterResource(
-                    when (frame) { 0 -> com.muyeon.app.R.drawable.academy_gubsin_1; 1 -> com.muyeon.app.R.drawable.academy_gubsin_2; else -> com.muyeon.app.R.drawable.academy_gubsin_3 },
-                ),
-                contentDescription = null,
-                modifier = Modifier.size(42.dp),
+                painter = androidx.compose.ui.res.painterResource(com.muyeon.app.R.drawable.academy_gubsin_label),
+                contentDescription = "학원 인증 마무리해 주세요",
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .size(width = 72.dp, height = 89.dp)
+                    .clickable(onClick = open),
             )
-            // ★ 11-23 문구 한 줄 — 비는 몸짓은 앞의 굽신 강아지가 맡는다.
-            Text(
-                "학원 인증 마무리해 주세요",
-                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                lineHeight = 16.sp, color = MuyeonColors.primary,
-            )
+            // 말풍선 — 꼬리가 왼쪽 아래(강아지 쪽)를 가리킨다. 말풍선만 동동 떠다닌다.
+            val bubble = BubbleShape(radius = 14.dp, tailWidth = 12.dp, tailHeight = 9.dp, tailStart = 14.dp)
+            Box(
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 60.dp, bottom = 52.dp)
+                    .offset { androidx.compose.ui.unit.IntOffset(0, bob.dp.roundToPx()) }
+                    .shadow(6.dp, bubble, spotColor = Color.Black.copy(alpha = 0.18f))
+                    .clip(bubble)
+                    .background(Color.White)
+                    .border(1.5.dp, MuyeonColors.primary, bubble)
+                    .clickable(onClick = open)
+                    .padding(start = 14.dp, end = 14.dp, top = 9.dp, bottom = 9.dp + 9.dp),
+            ) {
+                Text(
+                    "학원 인증 마무리해 주세요",
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                    lineHeight = 16.sp, color = MuyeonColors.primary,
+                )
+            }
         }
+    }
+}
+
+/** 말풍선 모양 — 둥근 네모 + 아래 왼쪽 꼬리(아래 tailHeight 만큼은 꼬리 자리). */
+private class BubbleShape(
+    private val radius: androidx.compose.ui.unit.Dp,
+    private val tailWidth: androidx.compose.ui.unit.Dp,
+    private val tailHeight: androidx.compose.ui.unit.Dp,
+    private val tailStart: androidx.compose.ui.unit.Dp,
+) : androidx.compose.ui.graphics.Shape {
+    override fun createOutline(
+        size: androidx.compose.ui.geometry.Size,
+        layoutDirection: androidx.compose.ui.unit.LayoutDirection,
+        density: androidx.compose.ui.unit.Density,
+    ): androidx.compose.ui.graphics.Outline = with(density) {
+        val r = radius.toPx(); val tw = tailWidth.toPx(); val th = tailHeight.toPx(); val ts = tailStart.toPx()
+        val body = androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height - th)
+        val path = androidx.compose.ui.graphics.Path().apply {
+            addRoundRect(androidx.compose.ui.geometry.RoundRect(body, androidx.compose.ui.geometry.CornerRadius(r, r)))
+            // 꼬리: 몸통 아래쪽에서 왼쪽 아래로 뾰족하게
+            moveTo(ts, body.bottom - 1f)
+            lineTo(ts - tw * 0.55f, size.height)
+            lineTo(ts + tw, body.bottom - 1f)
+            close()
+        }
+        val merged = androidx.compose.ui.graphics.Path().apply {
+            op(path, androidx.compose.ui.graphics.Path(), androidx.compose.ui.graphics.PathOperation.Union)
+        }
+        androidx.compose.ui.graphics.Outline.Generic(merged)
     }
 }

@@ -371,7 +371,7 @@ fun RoleVerificationScreen(
             )
             Text(
                 // ★ 2026-10-22 학원은 사업자등록번호가 국세청에서 확인되면 서버가 바로 승인한다 — 사진은 선택.
-                if (role == "ACADEMY") "사업자등록번호·개업일자가 대표자 이름까지 국세청 정보와 맞으면 바로 승인돼요. 맞지 않으면 관리자가 확인해요. 사업자등록증 사진(최대 ${MAX_DOCS}장)을 올리면 더 빨라요."
+                if (role == "ACADEMY") "사업자등록번호·개업일자가 대표자 이름까지 국세청 정보와 맞으면 바로 승인돼요. 맞지 않으면 관리자가 확인해요. 사업자등록증 사진을 올리면 더 빨라요."
                 else "${documentGuide(role)}\n최대 ${MAX_DOCS}장까지 올릴 수 있고, 관리자 확인 후 승인되면 푸시로 알려드려요.",
                 fontFamily = customFontFamily, fontSize = 14.sp, lineHeight = 20.sp, color = MuyeonColors.textSub,
             )
