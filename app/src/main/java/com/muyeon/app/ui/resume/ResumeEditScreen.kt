@@ -185,9 +185,11 @@ fun ResumeEditScreen(
     var uploadingPortfolio by remember { mutableStateOf(false) }
     var previewOpen by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var viewAlert by remember { mutableStateOf(true) }   // 구직 프로필 — 내 프로필 열람 알림
     var awaitingNotificationSettings by remember { mutableStateOf(false) }
-    // 설정 앱에서 알림을 허용하고 돌아왔을 때 켜 줄 토글(true = 긴급 대타, false = 열람 알림)
+    // 설정 앱에서 알림을 허용하고 돌아왔을 때 켜 줄 토글(true = 긴급 대타).
+    //  ★ 2026-11-25 '내 프로필을 열람하면 알림 받기' 스위치 제거 — 서버가 11-10 부터 프로필 열람 알림을 보내지 않아
+    //   아무것도 바꾸지 못했다. 저장 때 값도 보내지 않는다(iOS·웹과 같은 결정). 지원한 공고에서 이력서를 열 때 가는
+    //   '이력서 열람' 알림은 그대로 — 알림 받기(전체) 설정만 따른다.
     var pendingDispatchAlert by remember { mutableStateOf(false) }
     var dispatch by form::dispatch
     val context = LocalContext.current
@@ -202,7 +204,6 @@ fun ResumeEditScreen(
     var seekPublished by remember { mutableStateOf(false) }
     LaunchedEffect(isSeekProfile, settingsReload) {
         if (isSeekProfile) {
-            viewAlert = api.getProfileViewAlert() && context.notificationsEnabled()
             seekPublished = api.getSeekPublished()
         }
     }
@@ -280,7 +281,7 @@ fun ResumeEditScreen(
             if (event == Lifecycle.Event.ON_RESUME && awaitingNotificationSettings) {
                 awaitingNotificationSettings = false
                 if (context.notificationsEnabled()) {
-                    if (pendingDispatchAlert) dispatch = dispatch?.copy(enabled = true) else viewAlert = true
+                    if (pendingDispatchAlert) dispatch = dispatch?.copy(enabled = true)
                 }
             }
         }
@@ -371,7 +372,6 @@ fun ResumeEditScreen(
                     if (isSeekProfile) {
                         // 구직 프로필은 기본 이력서가 원본이다(iOS ResumeEditVM.save).
                         if (resumeId == null) api.setDefault(newId)
-                        api.setProfileViewAlert(viewAlert)
                         dispatch?.let { api.setSubDispatchPrefs(it) }
                     }
                     if (mode.isDancer) {
@@ -864,10 +864,6 @@ fun ResumeEditScreen(
                     }
                     SeekProfileSettings(
                         isDancer = mode.isDancer,
-                        viewAlert = viewAlert,
-                        onViewAlert = { enabled ->
-                            if (!enabled) viewAlert = false else enableAlert(false) { viewAlert = true }
-                        },
                         onVisibility = onVisibility,
                     )
                     // ★ 2026-10-11 긴급 발송 종료 — 설정 섹션을 숨긴다(다시 열면 SUB_DISPATCH_ENABLED=true).
@@ -905,7 +901,7 @@ fun ResumeEditScreen(
 
 /** 구직 프로필 설정 — iOS `ResumeEditView.seekProfileSettingsSection` 1:1. */
 @Composable
-private fun SeekProfileSettings(isDancer: Boolean, viewAlert: Boolean, onViewAlert: (Boolean) -> Unit, onVisibility: () -> Unit) {
+private fun SeekProfileSettings(isDancer: Boolean, onVisibility: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
             Modifier
@@ -937,20 +933,6 @@ private fun SeekProfileSettings(isDancer: Boolean, viewAlert: Boolean, onViewAle
                 )
             }
             Icon(Icons.Filled.KeyboardArrowRight, null, tint = MuyeonColors.chevron, modifier = Modifier.size(16.dp))
-        }
-        Row(
-            Modifier.fillMaxWidth().clickable { onViewAlert(!viewAlert) },
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                "내 프로필을 열람하면 알림 받기",
-                fontFamily = customFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp,
-                lineHeight = 17.sp, color = MuyeonColors.textHead, modifier = Modifier.weight(1f),
-            )
-            Switch(
-                checked = viewAlert, onCheckedChange = onViewAlert,
-                colors = SwitchDefaults.colors(checkedTrackColor = MuyeonColors.primary),
-            )
         }
     }
 }
