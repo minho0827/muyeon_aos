@@ -132,7 +132,7 @@ fun FieldVisibilityScreen(
                 // ★ 2026-11-16 레슨 항목은 한 규칙(ResumeMode.showsLessonFields) — 레슨 받는 무용수도 강사와 같다.
                 if (mode.showsLessonFields) {
                     toggle("레슨 가능 시간", "lessonTime")
-                    toggle("경력 (요약)", "career", detail = if (careers.isEmpty()) null else ({ detailSheet = "career" }))
+                    toggle("경력", "career", detail = if (careers.isEmpty()) null else ({ detailSheet = "career" }))
                 }
                 toggle("학력", "education")
                 if (mode.showsLessonFields) toggle("자격증", "certificate")

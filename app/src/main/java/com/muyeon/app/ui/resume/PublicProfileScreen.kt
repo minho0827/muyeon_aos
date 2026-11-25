@@ -483,7 +483,7 @@ private fun ProfileSections(
             ProfileSection("레슨 가능 시간") { LessonTimeGrid(p) }
         }
         p.careers?.takeIf { it.isNotEmpty() }?.let { cs ->
-            ProfileSection("경력 (요약)") {
+            ProfileSection("경력") {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     verified(p, "CAREER")?.let { SectionVerifiedLine(it) }
                     CareerSummary(cs, p.career)
@@ -569,23 +569,16 @@ private fun BasicInfoSection(p: PublicProfile) {
 /** 강사 대표 장르 → 견적 종류 id(ballet·korean …). 모르는 장르면 null(종류 고르기 화면). */
 private fun quoteCategoryOf(p: PublicProfile): String? = com.muyeon.app.ui.quote.LessonInquiry.categoryOf(p.genres)
 
-/** 경력 요약 — 최근 2건 + "외 N건" · "경력 X"(iOS careerSummary). */
+/** 경력 — 전부 + "경력 X"(iOS careerSummary). ★ 2026-11-25 2건 + "외 N건"으로 접던 것을 전부 보이게(운영 요청). */
 @Composable
 private fun CareerSummary(cs: List<CareerItem>, bucket: String?) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        cs.take(2).forEach { c ->
+        cs.forEach { c ->
             val head = listOf(c.academy, c.position).filter { it.isNotEmpty() }.joinToString(" ")
             val line = listOf(head, if (c.period.isEmpty()) "" else "(${c.period})").filter { it.isNotEmpty() }.joinToString(" ")
             BodyText(line)
         }
-        val more = (cs.size - 2).takeIf { it > 0 }
-        val label = bucket?.takeIf { it.isNotEmpty() }?.let { ResumeOptions.careerLabel(it) }
-        if (more != null || label != null) {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                more?.let { SubText("외 ${it}건") }
-                label?.let { SubText("경력 $it") }
-            }
-        }
+        bucket?.takeIf { it.isNotEmpty() }?.let { SubText("경력 ${ResumeOptions.careerLabel(it)}") }
     }
 }
 
