@@ -110,7 +110,8 @@ fun StageCastingDetailScreen(
         return
     }
     val dl = StageDate.deadline(detail.d("deadline"))
-    val closed = detail.status == "CLOSED" || (detail.d("deadline") != null && dl == null)
+    // ★ 2026-11-25 마감일 없음('-'·빈 값)은 마감이 아니다 — 날짜로 읽히는데 지난 경우만 마감.
+    val closed = detail.status == "CLOSED" || (StageDate.short(detail.d("deadline")) != null && dl == null)
     val sections = buildList {
         detail.d("summary")?.let { add(StageDetailSection("summary", "공고 요약") { StageExpandableText(it) }) }
         val cond = listOf(
@@ -119,7 +120,7 @@ fun StageCastingDetailScreen(
             "영상" to (if (detail.videoRequired) "영상 제출 필수" else null), "수상 경력" to (if (detail.awardPreferred) "수상 경력 우대" else null),
         ).mapNotNull { (k, v) -> v?.let { k to it } }
         if (cond.isNotEmpty()) add(StageDetailSection("cond", "모집 조건") { StageInfoRows(cond) })
-        val how = listOf("마감" to StageDate.short(detail.d("deadline")), "지원 방법" to detail.d("applyMethod"), "문의" to detail.d("contact"))
+        val how = listOf("마감" to (StageDate.short(detail.d("deadline")) ?: "마감일 없음"), "지원 방법" to detail.d("applyMethod"), "문의" to detail.d("contact"))
             .mapNotNull { (k, v) -> v?.let { k to it } }
         if (how.isNotEmpty()) add(StageDetailSection("how", "지원 방법") { StageInfoRows(how) })
         if (detail.isExternal) add(StageDetailSection("source", "정보 출처") {
@@ -155,7 +156,7 @@ fun StageCastingDetailScreen(
                     Text(detail.title, style = Bold, fontSize = 24.sp, color = MuyeonColors.textHead)
                     detail.team?.let { Text(it, style = Regular, fontSize = 16.sp, color = MuyeonColors.textSub) }
                 }
-                val rows = listOf("일정" to detail.schedule, "장소" to (detail.place ?: detail.region), "마감" to StageDate.short(detail.d("deadline")))
+                val rows = listOf("일정" to detail.schedule, "장소" to (detail.place ?: detail.region), "마감" to (StageDate.short(detail.d("deadline")) ?: "마감일 없음"))
                     .mapNotNull { (k, v) -> v?.let { k to it } }
                 if (rows.isNotEmpty()) Box(Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp)) { StageInfoRows(rows) }
             }

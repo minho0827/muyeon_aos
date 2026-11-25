@@ -173,8 +173,7 @@ class QuoteBrowseState(private val api: QuoteApi) {
 
 /** 비회원 요청 — 웹과 같은 문구. 태그·시트 안내·발송 후 안내. */
 internal const val GUEST_REQUEST_TAG = "비회원 요청"
-internal const val GUEST_REQUEST_NOTICE = "아직 가입하지 않은 고객이에요. 고객이 견적을 보고 [문의하기]를 누르면 채팅방이 열려요."
-internal const val GUEST_QUOTE_SENT_TOAST = "고객에게 카카오톡으로 견적 도착을 알렸어요. 고객이 견적을 보고 [문의하기]를 누르면 채팅방이 열려요."
+internal const val GUEST_QUOTE_SENT_TOAST = "고객에게 카카오톡으로 견적 도착을 알렸어요."
 
 /** 안내가 긴 토스트(비회원 발송 안내)는 조금 더 오래 띄운다. */
 internal fun quoteToastMillis(text: String): Long = if (text == GUEST_QUOTE_SENT_TOAST) 3500L else 1800L
@@ -866,14 +865,8 @@ internal fun QuoteRespondSheet(
                 }
             }
             if (quote.guestRequest) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    QuotePill(GUEST_REQUEST_TAG, MuyeonColors.textSub)
-                    Text(
-                        GUEST_REQUEST_NOTICE,
-                        fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp,
-                        color = MuyeonColors.textSub,
-                    )
-                }
+                // ★ 2026-11-25 안내 문장은 빼고 배지만 둔다(운영 요청).
+                QuotePill(GUEST_REQUEST_TAG, MuyeonColors.textSub)
             }
             QuoteAmountField(amountText) { amountText = it }
             // 예약금 — 한도는 관리자 '환불 규정'(서버 quotes.service 도 같은 값으로 검사)

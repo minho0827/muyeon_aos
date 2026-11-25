@@ -7,7 +7,6 @@
     <string name="quote_respond_category_default">레슨</string>
     <string name="quote_respond_region_none">지역 미지정</string>
     <string name="quote_respond_guest_tag">비회원 요청</string>
-    <string name="quote_respond_guest_notice">아직 가입하지 않은 고객이에요. 고객이 견적을 보고 [문의하기]를 누르면 채팅방이 열려요.</string>
     <string name="quote_respond_section_request">요청 내용</string>
     <string name="quote_respond_section_photos">첨부 사진 %1$d</string>
     <string name="quote_respond_section_sent">내가 보낸 견적서</string>
@@ -31,7 +30,7 @@
 
     <!-- 보낸 뒤(채팅방이 없을 때 — 비회원 요청) -->
     <string name="quote_respond_done_title">견적서를 보냈어요</string>
-    <string name="quote_respond_done_guest">고객에게 카카오톡으로 견적 도착을 알렸어요. 고객이 견적을 보고 [문의하기]를 누르면 채팅방이 열려요.</string>
+    <string name="quote_respond_done_guest">고객에게 카카오톡으로 견적 도착을 알렸어요.</string>
     <string name="quote_respond_done_member">고객 채팅방에 견적카드가 전달됐어요. 이어서 대화해보세요.</string>
 
     <!-- 상세를 열 수 없는 사유(웹 LoadErrorModal) -->

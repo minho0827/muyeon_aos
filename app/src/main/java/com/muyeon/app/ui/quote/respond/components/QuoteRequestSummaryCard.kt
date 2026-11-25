@@ -3,6 +3,7 @@ package com.muyeon.app.ui.quote.respond.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -61,9 +62,9 @@ fun QuoteRequestSummaryCard(
         }
         // ★ 2026-11-05 비회원 레슨 요청 — 견적은 보낼 수 있고, 채팅은 고객이 가입한 뒤 열린다(웹 같은 문구).
         if (guestRequest) {
-            Column(Modifier.padding(top = Dimensions.spacingXXS), verticalArrangement = Arrangement.spacedBy(SUMMARY_GAP)) {
+            // ★ 2026-11-25 안내 문장은 빼고 배지만 둔다(운영 요청).
+            Box(Modifier.padding(top = Dimensions.spacingXXS)) {
                 LevelBadge(stringResource(R.string.quote_respond_guest_tag), CategoryColors.Level.Middle)
-                Text(stringResource(R.string.quote_respond_guest_notice), style = AppTypography.Sub13, color = AppColors.TextBody)
             }
         }
     }
