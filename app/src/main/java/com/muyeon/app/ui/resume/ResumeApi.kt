@@ -247,6 +247,10 @@ class ResumeApi(internal val token: String?) {
                         if (obj?.optString("code") == RecruitChatLimitException.CODE) {
                             throw RecruitChatLimitException.from(serverMessage(text), obj.optJSONObject("data"))
                         }
+                        // ★ 2026-11-26 원장 '레슨요청 먼저'(403 LESSON_REQUEST_REQUIRED) — 화면이 레슨요청으로 보낸다.
+                        if (obj?.optString("code") == AcademyLessonRequest.REQUIRED_CODE) {
+                            throw LessonRequestRequiredException(serverMessage(text))
+                        }
                         // ★ 2026-11-10 레슨 요청으로 인증 없이 올린 공고의 지원자 상세(403) — 학원 인증 안내로 분기.
                         if (res.code == 403 && obj?.optString("code") == VerificationRequiredException.CODE) {
                             throw VerificationRequiredException(

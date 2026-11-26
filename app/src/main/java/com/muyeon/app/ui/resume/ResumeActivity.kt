@@ -232,7 +232,14 @@ class ResumeActivity : ResultActivity() {
                                     scope.launch {
                                         api.directRoom(arg)
                                             .onSuccess { rid -> if (rid > 0) ChatActivity.startRoom(this@ResumeActivity, rid) }
-                                            .onFailure { if (it is RecruitChatLimitException) chatLimit = it }
+                                            .onFailure {
+                                                when (it) {
+                                                    is RecruitChatLimitException -> chatLimit = it
+                                                    // ★ 2026-11-26 원장 '레슨요청 먼저' → 이 강사 지정 레슨요청으로.
+                                                    is LessonRequestRequiredException ->
+                                                        com.muyeon.app.ui.quote.LessonInquiry.start(this@ResumeActivity, arg, "")
+                                                }
+                                            }
                                     }
                                 }
                             } else {

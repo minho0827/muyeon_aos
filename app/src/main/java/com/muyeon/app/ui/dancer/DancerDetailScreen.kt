@@ -153,7 +153,11 @@ fun DancerDetailScreen(
                 }
                 // 하단 CTA — 공연팀·학원·강사가 전체 프로필을 볼 때만(소개만·내 프로필이면 없음).
                 val lessonCta = d.lessonCta(s.isSelf)
-                if (!d.limited && s.canContact && !s.isSelf) {
+                // ★ 2026-11-26 원장 → 레슨 받는 무용수: [채팅하기] 대신 [레슨요청](수락되면 채팅방이 열림). 웹·iOS 와 같은 규칙.
+                //  레슨을 받지 않는 무용수는 요청을 받을 수 없어 지금처럼 [채팅하기]를 둔다.
+                val academyLessonFirst = lessonCta != null &&
+                    com.muyeon.app.ui.resume.AcademyLessonRequest.isAcademy(com.muyeon.app.ui.common.rememberActiveType())
+                if (!d.limited && s.canContact && !s.isSelf && !academyLessonFirst) {
                     ProfileCtaBar {
                         CtaButton(
                             stringResource(if (s.isTeam) R.string.dancer_offer else R.string.dancer_chat),
@@ -168,6 +172,7 @@ fun DancerDetailScreen(
                     // ★ 2026-11-16 레슨 받는 무용수 — 강사 상세와 같은 [문의하기]·[레슨 문의]/[받은 견적 보기](소개만 보는 회원·비회원도).
                     DancerLessonCtaBar(
                         lessonCta,
+                        academyLessonFirst = academyLessonFirst,
                         onChat = { rid -> onOpenChat(rid, d.name) },
                         onReceived = { qid -> com.muyeon.app.ui.quote.LessonInquiry.openReceived(context, qid.toInt()) },
                         // ★ 2026-11-16 지금 유형과 상관없이 문의한다(고객 쪽 유형 관문 제거).
@@ -345,14 +350,26 @@ fun DancerProfile.lessonCta(isSelf: Boolean): DancerLessonCta? =
 
 /** 레슨 버튼 줄 — [문의하기](방이 있을 때) + [레슨 문의] 또는 [받은 견적 보기]. */
 @Composable
-fun DancerLessonCtaBar(cta: DancerLessonCta, onChat: (Long) -> Unit, onReceived: (Long) -> Unit, onRequest: () -> Unit) {
+fun DancerLessonCtaBar(
+    cta: DancerLessonCta,
+    academyLessonFirst: Boolean = false,
+    onChat: (Long) -> Unit,
+    onReceived: (Long) -> Unit,
+    onRequest: () -> Unit,
+) {
     ProfileCtaBar {
         cta.chatRoomId?.let { rid ->
             CtaButton(stringResource(R.string.dancer_lesson_chat), filled = false, modifier = Modifier.weight(1f)) { onChat(rid) }
         }
         val received = cta.receivedQuoteId
         CtaButton(
-            stringResource(if (received != null) R.string.dancer_lesson_received else R.string.dancer_lesson_inquiry),
+            stringResource(
+                when {
+                    received != null -> R.string.dancer_lesson_received
+                    academyLessonFirst -> R.string.dancer_lesson_request
+                    else -> R.string.dancer_lesson_inquiry
+                },
+            ),
             filled = true, modifier = Modifier.weight(1f),
         ) { if (received != null) onReceived(received) else onRequest() }
     }

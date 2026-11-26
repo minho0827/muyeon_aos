@@ -64,6 +64,15 @@ object ActiveRole {
     }
 
     private const val KEY_PROVIDERS = "lessonProviderTypes"
+    private const val KEY_HELD = "heldTypes"
+
+    /**
+     * ★ 2026-11-26 보유 유형(서버 /api/me/roles 의 held). 원장 판정(AcademyLessonRequest)용.
+     *  아직 읽지 못했으면 null — 그때는 활동 유형만으로 판정한다. iOS RoleGate.heldTypes 와 같다.
+     */
+    fun heldTypes(): List<String>? =
+        appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.getString(KEY_HELD, null)
+            ?.split(',')?.filter { it.isNotBlank() }
 
     /**
      * ★ 2026-11-16 서버가 알려 준 레슨 제공 유형(/auth/me·/app-gate 의 lessonProviderTypes)을 명부에 반영한다(저장은 bind 의 onChanged).
@@ -96,7 +105,7 @@ object ActiveRole {
     fun clear(context: Context) {
         bind(context)
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().remove(KEY).apply()
+            .edit().remove(KEY).remove(KEY_HELD).apply()
         publish(null)
     }
 
@@ -131,8 +140,12 @@ object ActiveRole {
                         if (TokenManager.getAccessToken(app) == token) com.muyeon.app.chat.socket.ForceLogout.checkResponse(app, res.code, res.body?.string())
                         return@use
                     }
-                    val type = JSONObject(res.body?.string().orEmpty().ifBlank { "{}" })
-                        .optString("activeType")
+                    val body = JSONObject(res.body?.string().orEmpty().ifBlank { "{}" })
+                    val type = body.optString("activeType")
+                    body.optJSONArray("held")?.let { a ->
+                        val held = (0 until a.length()).map { a.optString(it).uppercase() }.filter { it.isNotBlank() }
+                        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_HELD, held.joinToString(",")).apply()
+                    }
                     // ★ 조회 중에 사용자가 전환했으면(웹 syncActiveType·네이티브 선택) 이 응답은 옛 값이다.
                     if (type.isNotBlank() && type != "null" && version == startedAt) store(app, type)
                 }

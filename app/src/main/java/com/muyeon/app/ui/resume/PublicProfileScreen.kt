@@ -251,11 +251,25 @@ fun PublicProfileScreen(
 
             // 하단 CTA(iOS ctaBar) — 채용 시점은 무료 [채팅하기] 하나,
             //  일반은 기존 채팅방이 있을 때만 [문의하기] + [레슨 문의](이미 받은 견적이 있으면 [받은 견적 보기]).
+            // ★ 2026-11-26 원장(ACADEMY 보유·공연팀 모드 아님)이면 채용 모드 CTA 가 [레슨요청]이다(RecruitMode.kt AcademyLessonRequest).
+            val academyLessonFirst = AcademyLessonRequest.isAcademy(com.muyeon.app.ui.common.rememberActiveType())
             if (!hideCta && !isSelf) {
                 ProfileCtaBar {
                     if (p.isDemoProfile == true && !recruitMode) {
                         CtaButton("문의하기", filled = false, enabled = false, modifier = Modifier.weight(1f)) {}
                         CtaButton("레슨 견적 요청하기", filled = true, enabled = false, modifier = Modifier.weight(1f)) {}
+                    } else if (recruitMode && academyLessonFirst) {
+                        // ★ 2026-11-26 원장 — 채팅을 바로 걸지 않는다. 방이 있으면(요청 수락·예전 대화) [채팅하기],
+                        //  없으면 [레슨요청](이 강사 지정 요청 → 강사가 수락하면 채팅방이 열린다). 웹·iOS 와 같은 규칙.
+                        if ((p.chatRoomId ?: 0) > 0) {
+                            CtaButton("채팅하기", filled = true, modifier = Modifier.weight(1f)) { onOpenChat(p.id) }
+                        } else {
+                            CtaButton(
+                                "레슨요청", filled = true, modifier = Modifier.weight(1f)
+                                    .alpha(if (p.isDemoProfile == true) 0.45f else 1f),
+                                enabled = p.isDemoProfile != true, keepFilledWhenDisabled = true,
+                            ) { onRequestQuote(quoteCategoryOf(p)) }
+                        }
                     } else if (recruitMode) {
                         CtaButton(
                             "채팅하기", filled = true, modifier = Modifier.weight(1f)

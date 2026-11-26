@@ -448,6 +448,7 @@
     <string name="dancer_chat">채팅하기</string>
     <!-- ★ 2026-11-16 무용수 레슨 제공(DancerLessonProviderAddon) — 강사 상세와 같은 문구 -->
     <string name="dancer_lesson_inquiry">레슨 문의</string>
+    <string name="dancer_lesson_request">레슨요청</string>
     <string name="dancer_lesson_received">받은 견적 보기</string>
     <string name="dancer_lesson_chat">문의하기</string>
     <string name="dancer_pick_call">제안할 캐스팅 공고 선택</string>
