@@ -15,4 +15,9 @@ interface QuoteFeedRepository {
      *   서버에 아직 없으면 404 — 부르는 쪽이 [home] 으로 돌아간다.
      */
     suspend fun homePage(categoryId: String?, cursor: String?, limit: Int): ApiResult<QuoteFeedPage>
+
+    /** ★ 2026-11-26 비회원 — GET /public/quotes/home([home] 과 같은 칸 · 토큰 없이). */
+    suspend fun publicHome(): ApiResult<List<QuoteFeedItem>>
+    /** ★ 2026-11-26 비회원 — GET /public/quotes/home/page([homePage] 와 같은 커서 · 토큰 없이). 서버 옛 버전이면 404. */
+    suspend fun publicHomePage(categoryId: String?, cursor: String?, limit: Int): ApiResult<QuoteFeedPage>
 }

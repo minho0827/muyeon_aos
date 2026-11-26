@@ -49,7 +49,28 @@ class MemberQuoteFeedSource(private val repo: QuoteFeedRepository) : QuoteFeedSo
         return repo.home().map { list -> QuoteFeedPage(list.filter { categoryId == null || it.categoryId == categoryId }, hasMore = false) }
     }
 
-    private companion object {
+    internal companion object {
         const val PAGE_SIZE = 20
+    }
+}
+
+/**
+ * ★ 2026-11-26 비회원 — /public/quotes/home/page 커서(읽기 전용, 서버가 canRespond·isMine 을 늘 false 로 준다).
+ *   공개 목록이 없는 옛 서버(404)면 /public/quotes/home 을 장르로 거르고, 그것도 없으면 빈 목록(섹션 숨김 — 예전 동작).
+ */
+class GuestQuoteFeedSource(private val repo: QuoteFeedRepository) : QuoteFeedSource {
+    override suspend fun section(categoryId: String?): ApiResult<List<QuoteFeedItem>> =
+        withFallback(categoryId, repo.publicHomePage(categoryId, null, QuoteFeedSource.SECTION_SIZE)).map { it.items }
+
+    override suspend fun page(categoryId: String?, next: String?): ApiResult<QuoteFeedPage> {
+        val r = repo.publicHomePage(categoryId, next, MemberQuoteFeedSource.PAGE_SIZE)
+        return if (next == null) withFallback(categoryId, r) else r
+    }
+
+    private suspend fun withFallback(categoryId: String?, r: ApiResult<QuoteFeedPage>): ApiResult<QuoteFeedPage> {
+        if (r !is ApiResult.Error || r.statusCode != 404) return r
+        val home = repo.publicHome()
+        if (home is ApiResult.Error && home.statusCode == 404) return ApiResult.Success(QuoteFeedPage(emptyList(), hasMore = false))
+        return home.map { list -> QuoteFeedPage(list.filter { categoryId == null || it.categoryId == categoryId }, hasMore = false) }
     }
 }

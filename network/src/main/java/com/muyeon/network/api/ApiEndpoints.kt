@@ -240,5 +240,8 @@ object ApiEndpoints {
         const val HOME = "$API/quotes/home"                   // GET → [{ id, categoryId, region, answers(days·time·format), createdAt, isDemo, isMine, canRespond }]
         const val HOME_PAGE = "$API/quotes/home/page"         // ★ 2026-11-09 GET categoryId·cursor·limit → { items(HOME 과 같은 칸), hasMore, nextCursor }
         const val AVAILABLE = "$API/quotes/available"         // GET categoryId·page → { items(Quote), hasMore, page, total }
+        // ★ 2026-11-26 비회원 공개 목록(토큰 없이) — 응답 모양은 HOME·HOME_PAGE 와 같다(canRespond·isMine 은 늘 false).
+        const val PUBLIC_HOME = "$API/public/quotes/home"           // GET → HOME 과 같은 칸 배열
+        const val PUBLIC_HOME_PAGE = "$API/public/quotes/home/page" // GET categoryId·cursor·limit → HOME_PAGE 와 같은 { items, hasMore, nextCursor }
     }
 }

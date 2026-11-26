@@ -36,7 +36,7 @@ class QuoteFeedUseCaseTest {
 
     private fun item(id: Long, cat: String) = QuoteFeedItem(id, cat, null, emptyList(), emptyList(), emptyList(), null, false, false, false)
 
-    private class Repo(val list: List<QuoteFeedItem>, val homePageMissing: Boolean = false) : QuoteFeedRepository {
+    private class Repo(val list: List<QuoteFeedItem>, val homePageMissing: Boolean = false, val publicMissing: Boolean = false) : QuoteFeedRepository {
         var homeCalls = 0
         var availableCalls = 0
         val homePageCalls = mutableListOf<Triple<String?, String?, Int>>()
@@ -48,6 +48,18 @@ class QuoteFeedUseCaseTest {
         override suspend fun homePage(categoryId: String?, cursor: String?, limit: Int): ApiResult<QuoteFeedPage> {
             homePageCalls += Triple(categoryId, cursor, limit)
             if (homePageMissing) return ApiResult.Error(RuntimeException("404"), statusCode = 404)
+            return ApiResult.Success(QuoteFeedPage(list.filter { categoryId == null || it.categoryId == categoryId }, hasMore = true, next = "c2"))
+        }
+        var publicHomeCalls = 0
+        val publicPageCalls = mutableListOf<Triple<String?, String?, Int>>()
+        override suspend fun publicHome(): ApiResult<List<QuoteFeedItem>> {
+            publicHomeCalls++
+            if (publicMissing) return ApiResult.Error(RuntimeException("404"), statusCode = 404)
+            return ApiResult.Success(list)
+        }
+        override suspend fun publicHomePage(categoryId: String?, cursor: String?, limit: Int): ApiResult<QuoteFeedPage> {
+            publicPageCalls += Triple(categoryId, cursor, limit)
+            if (homePageMissing || publicMissing) return ApiResult.Error(RuntimeException("404"), statusCode = 404)
             return ApiResult.Success(QuoteFeedPage(list.filter { categoryId == null || it.categoryId == categoryId }, hasMore = true, next = "c2"))
         }
     }
@@ -62,13 +74,30 @@ class QuoteFeedUseCaseTest {
         override fun save(type: String) = Unit
     }
 
-    @Test fun `비회원 — 서버를 부르지 않고 빈 목록(섹션 숨김)`() = runTest {
-        val repo = Repo(listOf(item(1, "ballet")))
+    // ★ 2026-11-26 비회원도 공개 목록(/public/quotes/home/page)을 읽기 전용으로 본다 — 회원용 주소는 부르지 않는다.
+    @Test fun `비회원 — 공개 목록 커서로 읽고, 회원용 주소는 안 부른다`() = runTest {
+        val repo = Repo(listOf(item(1, "ballet"), item(2, "korean")))
         val uc = QuoteFeedUseCase(repo, tokens(null), type("TEACHER"))
-        assertEquals(emptyList<QuoteFeedItem>(), uc.section(null).getOrNull())
-        assertFalse(uc.page(null, null).getOrNull()!!.hasMore)
         assertFalse(uc.canBrowseAll)
+        assertEquals(listOf(2L), uc.section("korean").getOrNull()!!.map { it.id })
+        val p = uc.page(null, null).getOrNull()!!
+        assertTrue(p.hasMore)
+        uc.page(null, p.next)
+        assertEquals(listOf(Triple("korean", null, 10), Triple(null, null, 20), Triple(null, "c2", 20)), repo.publicPageCalls)
         assertEquals(0, repo.homeCalls + repo.availableCalls + repo.homePageCalls.size)
+    }
+
+    @Test fun `비회원 — 공개 커서가 없는 서버면 공개 home 10건, 그것도 없으면 빈 목록`() = runTest {
+        val old = Repo(listOf(item(1, "ballet"), item(2, "korean")), homePageMissing = true)
+        val uc = QuoteFeedUseCase(old, tokens(null), type(null))
+        assertEquals(listOf(1L), uc.section("ballet").getOrNull()!!.map { it.id })
+        assertEquals(1, old.publicHomeCalls)
+
+        val none = Repo(listOf(item(1, "ballet")), publicMissing = true)
+        val uc2 = QuoteFeedUseCase(none, tokens(null), type(null))
+        assertEquals(emptyList<QuoteFeedItem>(), uc2.section(null).getOrNull())
+        assertFalse(uc2.page(null, null).getOrNull()!!.hasMore)
+        assertEquals(0, none.homeCalls + none.availableCalls + none.homePageCalls.size)
     }
 
     @Test fun `강사·학원 활동 — 홈 전체는 home, 전체보기는 available 페이지 번호`() = runTest {

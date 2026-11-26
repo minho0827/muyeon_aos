@@ -23,6 +23,19 @@ interface QuoteFeedApi {
         @Query("limit") limit: Int,
     ): Response<QuoteFeedHomePageDto>
 
+    /** ★ 2026-11-26 비회원 홈 칸 — [home] 과 같이 조용히. */
+    @Headers("${NetworkRetryInterceptor.SILENT_HEADER}: 1")
+    @GET(ApiEndpoints.QuoteFeed.PUBLIC_HOME)
+    suspend fun publicHome(): Response<List<QuoteFeedItemDto>>
+
+    /** ★ 2026-11-26 비회원 전체보기 — [homePage] 와 같은 커서. */
+    @GET(ApiEndpoints.QuoteFeed.PUBLIC_HOME_PAGE)
+    suspend fun publicHomePage(
+        @Query("categoryId") categoryId: String?,
+        @Query("cursor") cursor: String?,
+        @Query("limit") limit: Int,
+    ): Response<QuoteFeedHomePageDto>
+
     @GET(ApiEndpoints.QuoteFeed.AVAILABLE)
     suspend fun available(@Query("categoryId") categoryId: String?, @Query("page") page: Int): Response<QuoteFeedAvailableDto>
 }

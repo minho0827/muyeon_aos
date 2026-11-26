@@ -18,4 +18,11 @@ class QuoteFeedRepositoryImpl(private val api: QuoteFeedApi, private val moshi: 
 
     override suspend fun homePage(categoryId: String?, cursor: String?, limit: Int): ApiResult<QuoteFeedPage> =
         safeApiCall(moshi) { api.homePage(categoryId, cursor, limit) }.map { it.toDomain() }
+
+    // ★ 2026-11-26 비회원 공개 목록 — 모양이 같아 같은 변환을 쓴다.
+    override suspend fun publicHome(): ApiResult<List<QuoteFeedItem>> =
+        safeApiCall(moshi) { api.publicHome() }.map { list -> list.mapNotNull { it.toDomain() } }
+
+    override suspend fun publicHomePage(categoryId: String?, cursor: String?, limit: Int): ApiResult<QuoteFeedPage> =
+        safeApiCall(moshi) { api.publicHomePage(categoryId, cursor, limit) }.map { it.toDomain() }
 }
