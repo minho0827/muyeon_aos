@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 채팅방 ⋯ 메뉴 아이콘(세로 점 3개(더보기)) — 시안 A SVG(24, stroke 1.6, round) 그대로. 색은 사용처 tint. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="M10.4,5a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0z" android:fillColor="#FF000000" />
+    <path android:pathData="M10.4,12a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0z" android:fillColor="#FF000000" />
+    <path android:pathData="M10.4,19a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0z" android:fillColor="#FF000000" />
+</vector>

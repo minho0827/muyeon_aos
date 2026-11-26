@@ -30,9 +30,6 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.NotificationsOff
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -55,8 +52,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import com.muyeon.app.theme.customFontFamily
 import com.muyeon.app.ui.common.MuyeonColors
 import com.muyeon.app.ui.survey.SurveyPickerSheet
@@ -81,6 +76,8 @@ fun ChatRoomScreen(
     initialProposalId: Int? = null,         // 약속 제안 푸시·웹 진입 — 이 제안 카드로 스크롤·강조
     /** ★ 2026-11-16 대타 카드 [공고 보기] — 채팅 창 안에서 공고 화면을 연다(부모가 고른다). */
     onOpenSubPosting: (Int) -> Unit = {},
+    /** ★ 2026-11-26 ⋯ 메뉴에서 나가기가 **성공한 뒤** 불린다 — 부모가 목록에서 방을 빼고 방을 닫는다. */
+    onLeft: () -> Unit = onBack,
 ) {
     // 채팅방에선 AI 버튼을 숨긴다 — 보내기 버튼과 겹친다(10-23 요청, iOS ChatRoomView 와 같음).
     androidx.compose.runtime.DisposableEffect(Unit) {
@@ -115,6 +112,9 @@ fun ChatRoomScreen(
     var showReport by remember { mutableStateOf(false) }
     var reportMessage by remember { mutableStateOf<ChatMessage?>(null) }   // 상대 메시지 길게 누르기 → 메시지 신고
     var confirmBlock by remember { mutableStateOf(false) }
+    // ★ 2026-11-26 우상단 ⋯ 시트 · 나가기 확인 팝업
+    var showMenu by remember { mutableStateOf(false) }
+    var confirmLeave by remember { mutableStateOf(false) }
     // 메시지 삭제 확인 — iOS ChatMessageActionPresentations 와 같은 문구.
     var deleteTarget by remember { mutableStateOf<ChatMessage?>(null) }
     var reactionTarget by remember { mutableStateOf<ChatMessage?>(null) }
@@ -169,8 +169,6 @@ fun ChatRoomScreen(
     }
     // 받은 견적 상세(채택·재요청 등)에서 돌아오면 방 맥락(진행 카드·배너)을 다시 읽는다.
     val quoteLauncher = com.muyeon.app.result.rememberResultLauncher { vm.reloadContext() }
-    // 전체 알림 설정에서 돌아오면 방 상세(음소거 상태 등)를 다시 읽는다.
-    val notiSettingsLauncher = com.muyeon.app.result.rememberResultLauncher { vm.reloadContext() }
     // 잠긴 방 '다시 레슨 요청하기' — 문진에서 돌아오면(보냈든 닫았든) 방 상세·최신 메시지를 다시 읽는다.
     //  요청을 보내 방이 다시 열리면 서버 room-refresh 도 오지만, 복귀 직후 상태를 바로 맞추려고 한 번 더 읽는다.
     val reRequestLauncher = com.muyeon.app.result.rememberResultLauncher { vm.reloadMessagesAndContext() }
@@ -397,13 +395,8 @@ fun ChatRoomScreen(
         RoomNavBar(
             vm, onBack,
             onOpenProfile = { openOpponentProfile() },
-            onOpenNotificationSettings = {
-                notiSettingsLauncher.launch(
-                    com.muyeon.app.ui.notification.NotificationSettingsActivity.intent(context),
-                )
-            },
-            onReport = { showReport = true },
-            onBlock = { confirmBlock = true },
+            // 이미 열려 있거나 나가는 중이면 무시(연타로 시트가 두 번 열리지 않게).
+            onOpenMenu = { if (!showMenu && !vm.leaving) showMenu = true },
         )
 
         // ★ 2026-11-14 상단 고정 바(당근 거래 바) — 역할별 할 일 버튼. 판정은 ChatDealBarResolver, 동작은 onDealAction.
@@ -834,6 +827,44 @@ fun ChatRoomScreen(
         )
     }
 
+    if (showMenu) {
+        val muteFailed = androidx.compose.ui.res.stringResource(com.muyeon.app.R.string.chat_menu_mute_failed)
+        ChatRoomMenuSheet(
+            canBlock = vm.opponentId > 0,
+            muted = vm.muted,
+            muteBusy = vm.muteBusy,
+            onBlock = { showMenu = false; confirmBlock = true },
+            onReport = { showMenu = false; showReport = true },
+            onToggleMute = {
+                showMenu = false
+                vm.toggleMute(!vm.muted) { vm.toast = muteFailed }
+            },
+            onLeave = { showMenu = false; confirmLeave = true },
+            onDismiss = { showMenu = false },
+        )
+    }
+    if (confirmLeave) {
+        val leaveFailed = androidx.compose.ui.res.stringResource(com.muyeon.app.R.string.chat_leave_failed)
+        com.muyeon.app.ui.common.MuyeonDialog(
+            title = androidx.compose.ui.res.stringResource(com.muyeon.app.R.string.chat_leave_confirm_title),
+            message = androidx.compose.ui.res.stringResource(com.muyeon.app.R.string.chat_leave_confirm_body),
+            actions = listOf(
+                com.muyeon.app.ui.common.MuyeonDialogAction(
+                    androidx.compose.ui.res.stringResource(com.muyeon.app.R.string.chat_leave_confirm_ok),
+                    com.muyeon.app.ui.common.MuyeonDialogKind.DESTRUCTIVE,
+                ) {
+                    // 서버가 나가기를 받아들인 뒤에만 방을 닫는다. 실패하면 방에 남고 안내.
+                    vm.leaveRoom { ok -> if (ok) onLeft() else vm.toast = leaveFailed }
+                },
+                com.muyeon.app.ui.common.MuyeonDialogAction(
+                    androidx.compose.ui.res.stringResource(com.muyeon.app.R.string.chat_leave_confirm_cancel),
+                    com.muyeon.app.ui.common.MuyeonDialogKind.CANCEL,
+                ),
+            ),
+            onDismiss = { confirmLeave = false },
+        )
+    }
+
     if (showReport) {
         ChatReportSheet(
             roomId = vm.roomId,
@@ -919,9 +950,7 @@ private fun RoomNavBar(
     vm: ChatRoomViewModel,
     onBack: () -> Unit,
     onOpenProfile: () -> Unit,
-    onOpenNotificationSettings: () -> Unit,
-    onReport: () -> Unit,
-    onBlock: () -> Unit,
+    onOpenMenu: () -> Unit,
 ) {
     // 활동 상태 문구는 시간이 지나면 바뀐다(접속 중 → N분 전) — 1분마다 기준 시각을 갱신한다.
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -937,7 +966,7 @@ private fun RoomNavBar(
         Modifier.fillMaxWidth().height(48.dp).background(MuyeonColors.surface),
         contentAlignment = Alignment.Center,
     ) {
-        // 이름 + 부제(입력 중 / 접속·활동 상태). 탭 → 상대 공개 프로필(iOS 상단바와 같다).
+        // 이름 + 부제(입력 중 / 접속·활동 상태 · 평소 응답 시간). 탭 → 상대 공개 프로필(iOS 상단바와 같다).
         Column(
             Modifier
                 .padding(horizontal = 96.dp)
@@ -946,31 +975,30 @@ private fun RoomNavBar(
                 .padding(horizontal = 8.dp, vertical = 2.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(
-                vm.title.ifBlank { "채팅" },
-                fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
-                lineHeight = 19.sp, color = MuyeonColors.textHead, maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            )
-            if (vm.isOtherTyping) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "입력 중…",
-                    fontFamily = customFontFamily, fontSize = 11.sp, lineHeight = 13.sp,
-                    color = MuyeonColors.primary,
+                    vm.title.ifBlank { "채팅" },
+                    fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                    lineHeight = 19.sp, color = MuyeonColors.textHead, maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
                 )
-            } else if (presence != null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (presence == ChatRoomViewModel.PRESENCE_ONLINE) {
-                        Box(Modifier.size(6.dp).clip(RoundedCornerShape(50)).background(Color(0xFF34C759)))
-                        Spacer(Modifier.width(4.dp))
-                    }
-                    Text(
-                        presence,
-                        fontFamily = customFontFamily, fontSize = 11.sp, lineHeight = 13.sp,
-                        color = MuyeonColors.secondary,
+                // 음소거 중 표시(예전 종 버튼이 하던 상태 표시) — 이름 옆 작은 알림꺼짐 아이콘.
+                if (vm.muted) {
+                    Spacer(Modifier.width(3.dp))
+                    Icon(
+                        androidx.compose.ui.res.painterResource(com.muyeon.app.R.drawable.ic_chat_bell_off),
+                        androidx.compose.ui.res.stringResource(com.muyeon.app.R.string.chat_menu_muted_indicator),
+                        tint = MuyeonColors.secondary,
+                        modifier = Modifier.size(13.dp),
                     )
                 }
             }
+            ChatRoomHeaderSubtitle(
+                typing = vm.isOtherTyping,
+                presence = presence,
+                responseLabel = vm.opponentResponse?.label,
+            )
         }
         Box(
             Modifier.align(Alignment.CenterStart).padding(start = 4.dp).size(44.dp).clickable(onClick = onBack),
@@ -981,48 +1009,18 @@ private fun RoomNavBar(
         Row(Modifier.align(Alignment.CenterEnd).padding(end = 4.dp)) {
             // ★ 2026-11-14 연락처가 공개된 방(채택·일정 확정)만 전화 버튼
             vm.contact.phone?.let { com.muyeon.app.ui.chat.dealbar.ChatHeaderCallButton(it) }
-            // 방별 알림 음소거 토글
-            Box(Modifier.size(44.dp).clickable { vm.toggleMute(!vm.muted) }, contentAlignment = Alignment.Center) {
+            // ★ 2026-11-26 ⋯ 하나 → 시트(차단·신고·알림끄기·나가기). 예전 종 토글·드롭다운 대체.
+            //  App Store Guideline 1.2 는 UGC·채팅 앱에 신고와 차단을 **둘 다** 요구한다 — 시트에 둘 다 있다.
+            Box(
+                Modifier.size(44.dp).clickable(onClick = onOpenMenu).testTag("chatRoom_more"),
+                contentAlignment = Alignment.Center,
+            ) {
                 Icon(
-                    if (vm.muted) Icons.Filled.NotificationsOff else Icons.Filled.Notifications,
-                    if (vm.muted) "알림 켜기" else "알림 끄기",
-                    tint = if (vm.muted) MuyeonColors.secondary else MuyeonColors.textHead,
-                    modifier = Modifier.size(18.dp),
+                    androidx.compose.ui.res.painterResource(com.muyeon.app.R.drawable.ic_chat_more),
+                    androidx.compose.ui.res.stringResource(com.muyeon.app.R.string.chat_menu_more),
+                    tint = MuyeonColors.textHead,
+                    modifier = Modifier.size(20.dp),
                 )
-            }
-            // 신고·차단 — iOS 우상단 ⋯ 메뉴.
-            //  App Store Guideline 1.2 는 UGC·채팅 앱에 신고와 차단을 **둘 다** 요구한다.
-            var menuOpen by remember { mutableStateOf(false) }
-            Box {
-                Box(
-                    Modifier.size(44.dp).clickable { menuOpen = true },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Filled.MoreVert, "더보기", tint = MuyeonColors.textHead, modifier = Modifier.size(18.dp))
-                }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    // 전체 알림 설정 — iOS 방 설정 시트의 '전체 알림 설정'과 같은 화면.
-                    DropdownMenuItem(
-                        text = {
-                            Text("전체 알림 설정", fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.textHead)
-                        },
-                        onClick = { menuOpen = false; onOpenNotificationSettings() },
-                    )
-                    DropdownMenuItem(
-                        text = {
-                            Text("신고하기", fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.danger)
-                        },
-                        onClick = { menuOpen = false; onReport() },
-                    )
-                    if (vm.opponentId > 0) {
-                        DropdownMenuItem(
-                            text = {
-                                Text("차단하기", fontFamily = customFontFamily, fontSize = 14.sp, color = MuyeonColors.danger)
-                            },
-                            onClick = { menuOpen = false; onBlock() },
-                        )
-                    }
-                }
             }
         }
     }

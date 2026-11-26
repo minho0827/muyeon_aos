@@ -428,6 +428,8 @@ data class ChatRoomDetail(
     val contact: ChatContact = ChatContact.HIDDEN,
     // ★ 2026-11-16 이 방에 걸린 대타 건(지원 번호 단위). 예전 서버는 빈 목록.
     val subContexts: List<ChatSubContext> = emptyList(),
+    // ★ 2026-11-26 상대 평소 응답 시간(머리글 부제). 예전 서버·표본 부족이면 null — 표시하지 않는다.
+    val opponentResponse: ChatOpponentResponse? = null,
 ) {
     companion object {
         /**
@@ -477,7 +479,18 @@ data class ChatRoomDetail(
             myRole = o.stringOrNull("myRole"),
             contact = ChatContact.from(o.optJSONObject("contact")),
             subContexts = ChatSubContext.listFrom(o),
+            opponentResponse = ChatOpponentResponse.from(o.optJSONObject("opponentResponse")),
         )
+    }
+}
+
+/** ★ 2026-11-26 상대 평소 응답 시간(GET /chat/rooms/:id 의 opponentResponse). label 이 비면 null. */
+data class ChatOpponentResponse(val label: String, val minutes: Int) {
+    companion object {
+        fun from(o: JSONObject?): ChatOpponentResponse? {
+            val label = o?.stringOrNull("label")?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+            return ChatOpponentResponse(label, o.optInt("minutes", 0))
+        }
     }
 }
 

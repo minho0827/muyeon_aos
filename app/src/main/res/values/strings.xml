@@ -1289,4 +1289,29 @@
     <string name="auth_recovery_not_found">일치하는 회원 정보가 없어요.</string>
     <string name="lesson_detail_like">찜하기</string>
     <string name="lesson_detail_unlike">찜 해제</string>
+    <!-- 채팅방 ⋯ 메뉴(2026-11-26) -->
+    <string name="chat_menu_more">더보기</string>
+    <string name="chat_menu_block">차단하기</string>
+    <string name="chat_menu_report">신고하기</string>
+    <string name="chat_menu_mute">알림끄기</string>
+    <string name="chat_menu_unmute">알림켜기</string>
+    <string name="chat_menu_leave">채팅방 나가기</string>
+    <string name="chat_menu_close">닫기</string>
+    <string name="chat_menu_muted_indicator">알림 꺼짐</string>
+    <string name="chat_menu_mute_failed">알림 설정을 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.</string>
+    <string name="chat_leave_confirm_title">채팅방을 나갈까요?</string>
+    <string name="chat_leave_confirm_body">나가면 채팅 목록에서 이 방이 사라지고, 지금까지 나눈 대화도 다시 볼 수 없어요.</string>
+    <string name="chat_leave_confirm_ok">나가기</string>
+    <string name="chat_leave_confirm_cancel">취소</string>
+    <string name="chat_leave_failed">채팅방을 나가지 못했어요. 잠시 후 다시 시도해 주세요.</string>
+    <string name="chat_header_subtitle_sep">" · "</string>
+    <string name="chat_header_typing">입력 중…</string>
+    <!-- ★ 2026-11-26 iOS Shell.strings 와 같은 키(scripts/sync-shell-strings.py 가 이 파일에서 만든다) -->
+    <string name="chat_menu_a11y">채팅방 메뉴</string>
+    <string name="chat_menu_a11y_muted">채팅방 메뉴 (알림 꺼짐)</string>
+    <string name="chat_leave_q">채팅방을 나갈까요?</string>
+    <string name="chat_leave_body">나가면 채팅 목록에서 이 방이 사라지고, 지금까지 나눈 대화도 다시 볼 수 없어요.</string>
+    <string name="chat_leave_confirm">나가기</string>
+    <string name="chat_mute_failed">알림 설정을 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.</string>
+    <string name="chat_typing">입력 중…</string>
 </resources>

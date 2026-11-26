@@ -184,12 +184,13 @@ class ChatListState(private val api: ChatApi) {
         pageMutex.lock()
         try {
             if (!silent && rooms.isEmpty()) isLoading = true
+            val seq = ++requestSeq
             api.getRoomsPage().mapCatching { page ->
                 require(!page.hasMore || !page.nextCursor.isNullOrBlank())
                 page
             }.onSuccess { page ->
                 val active = activeRoomId
-                rooms = withoutLeaving(page.items.distinctBy { it.roomId })
+                rooms = withoutLeftInRoom(withoutLeaving(page.items.distinctBy { it.roomId }), seq, settle = true)
                     .map { if (it.roomId == active && it.unreadCount != 0) it.copy(unreadCount = 0) else it }
                     .sortedWith(compareByDescending<ChatRoomSummary> { it.lastMessageAt ?: "" }.thenBy { it.roomId })
                 nextCursor = page.nextCursor
@@ -212,12 +213,13 @@ class ChatListState(private val api: ChatApi) {
             if (!hasMore) return
             loadingMore = true
             pageFailed = false
+            val seq = ++requestSeq
             api.getRoomsPage(cursor).mapCatching { page ->
                 require(!page.hasMore || (!page.nextCursor.isNullOrBlank() && page.nextCursor !in seenCursors))
                 page
             }.onSuccess { page ->
                 val active = activeRoomId
-                rooms = (rooms + withoutLeaving(page.items).map { if (it.roomId == active) it.copy(unreadCount = 0) else it })
+                rooms = (rooms + withoutLeftInRoom(withoutLeaving(page.items), seq, settle = false).map { if (it.roomId == active) it.copy(unreadCount = 0) else it })
                     .distinctBy { it.roomId }.sortedWith(compareByDescending<ChatRoomSummary> { it.lastMessageAt ?: "" }.thenBy { it.roomId })
                 nextCursor = page.nextCursor
                 page.nextCursor?.let { seenCursors.add(it) }
@@ -264,6 +266,31 @@ class ChatListState(private val api: ChatApi) {
         kotlinx.coroutines.delay(LEAVE_SETTLE_MS)
         leavingRoomIds.remove(roomId)
         return true
+    }
+
+    /** 목록 요청 순번(load·loadMore 가 요청을 보낼 때마다 +1). */
+    private var requestSeq = 0
+
+    /** 방 안에서 나간 방 → 나간 시점까지 보낸 마지막 요청 순번. 그 이전에 출발한 응답에서만 뺀다. */
+    private val leftInRoom = mutableMapOf<Int, Int>()
+
+    private fun withoutLeftInRoom(items: List<ChatRoomSummary>, seq: Int, settle: Boolean): List<ChatRoomSummary> {
+        if (leftInRoom.isEmpty()) return items
+        val out = items.filterNot { r -> leftInRoom[r.roomId]?.let { seq <= it } == true }
+        // 나간 뒤에 출발한 첫 페이지 응답이 도착하면 서버가 이미 반영한 상태 — 기록을 지운다.
+        if (settle) leftInRoom.entries.removeAll { seq > it.value }
+        return out
+    }
+
+    /**
+     * ★ 2026-11-26 방 안 ⋯ 메뉴에서 나가기가 **성공한 뒤** 방 화면이 알려 준다(명시적 결과).
+     *  목록에서 즉시 빼고 다시 읽는다. 나가기 전에 출발한 목록 응답이 늦게 와도 되살아나지 않게
+     *  요청 순번으로 거른다(타이머 없음). 소켓으로 오는 새 메시지(상대가 다시 보냄)는 막지 않는다.
+     */
+    fun onRoomLeft(roomId: Int) {
+        leftInRoom[roomId] = requestSeq
+        rooms = rooms.filterNot { it.roomId == roomId }
+        requestReload(immediate = true)
     }
 
     private fun upsert(room: ChatRoomSummary) {

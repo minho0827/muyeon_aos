@@ -60,6 +60,14 @@ class ChatRoomViewModel(
     var opponentLastReadAt by mutableStateOf<Long?>(null)   // 내 메시지 '읽음' 판정 기준
     var isOtherTyping by mutableStateOf(false)
     var muted by mutableStateOf(false)
+    /** ★ 2026-11-26 알림 끄기/켜기 요청 중 — ⋯ 시트 버튼 비활성·연타 방지. */
+    var muteBusy by mutableStateOf(false)
+        private set
+    /** ★ 2026-11-26 채팅방 나가기 요청 중 — 확인 팝업 연타 방지. */
+    var leaving by mutableStateOf(false)
+        private set
+    /** ★ 2026-11-26 상대 평소 응답 시간(머리글 부제). 예전 서버는 null. */
+    var opponentResponse by mutableStateOf<ChatOpponentResponse?>(null)
     var opponentImage by mutableStateOf<String?>(null)
     var opponentId by mutableStateOf(0)
     var quoteContext by mutableStateOf<ChatQuoteContext?>(null)
@@ -331,7 +339,8 @@ class ChatRoomViewModel(
                 if (title.isBlank()) title = it.nickname ?: it.name ?: "채팅"
             }
             opponentLastReadAt = com.muyeon.app.ui.quote.QuoteUi.parseDate(d.opponentLastReadAt)
-            muted = d.muted == true
+            if (!muteBusy) muted = d.muted == true   // 토글 요청 중이면 화면 값을 덮지 않는다
+            opponentResponse = d.opponentResponse
             quoteContext = d.quoteContext
             lessonSchedule = d.lessonSchedule
             lessonCycles = d.lessonCycles ?: emptyList()
@@ -973,9 +982,29 @@ class ChatRoomViewModel(
         }
     }
 
-    fun toggleMute(value: Boolean) {
+    /** 방별 알림 음소거 — 낙관 반영 후 실패하면 되돌리고 [onFailure]. 요청 중 다시 부르면 무시한다. */
+    fun toggleMute(value: Boolean, onFailure: () -> Unit = {}) {
+        if (muteBusy) return
+        muteBusy = true
         muted = value
-        viewModelScope.launch { api.setRoomMute(roomId, value).onFailure { muted = !value } }
+        viewModelScope.launch {
+            api.setRoomMute(roomId, value).onFailure { muted = !value; onFailure() }
+            muteBusy = false
+        }
+    }
+
+    /**
+     * ★ 2026-11-26 방 안에서 나가기(DELETE /chat/rooms/:id/leave). 성공·실패를 [onResult] 로 돌려준다 —
+     *  화면은 성공 결과를 받은 뒤에만 방을 닫는다. 요청 중 다시 부르면 무시한다.
+     */
+    fun leaveRoom(onResult: (Boolean) -> Unit) {
+        if (leaving) return
+        leaving = true
+        viewModelScope.launch {
+            val ok = api.leaveRoom(roomId).isSuccess
+            leaving = false
+            onResult(ok)
+        }
     }
 
     /**
