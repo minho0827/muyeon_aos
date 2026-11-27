@@ -155,10 +155,11 @@ class QuoteBrowseState(private val api: QuoteApi) {
         depositAmount: Int?,
         message: String,
         attachmentType: String,
+        terms: com.muyeon.app.ui.quote.respond.QuoteLessonTermsInput? = null,
     ): Boolean {
         var ok = false
         val guest = items.firstOrNull { it.id == quoteId }?.guestRequest == true
-        api.sendQuoteResponse(quoteId, priceAmount, depositAmount, message, attachmentType)
+        api.sendQuoteResponse(quoteId, priceAmount, depositAmount, message, attachmentType, terms)
             .onSuccess {
                 items = items.filterNot { it.id == quoteId }
                 // 비회원 요청은 보낼 때 채팅방이 없다 — 카카오톡 알림 안내(웹과 같은 문구).
@@ -674,8 +675,8 @@ private fun QuoteDeckScreen(state: QuoteBrowseState, initialIndex: Int, onClose:
                 state.toast = declinedToast
                 scope.launch { state.load() }
             },
-            onSend = { amount, deposit, message, attachmentType ->
-                val sent = state.respond(quote.id, amount, deposit, message, attachmentType)
+            onSend = { amount, deposit, message, attachmentType, terms ->
+                val sent = state.respond(quote.id, amount, deposit, message, attachmentType, terms)
                 if (sent) {
                     respondFor = null
                     if (state.filtered.isEmpty()) onClose()
@@ -815,11 +816,15 @@ internal fun QuoteRespondSheet(
     initialMessage: String = "",
     /** ★ 2026-11-14 다이렉트 요청이면 아래에 "죄송해요, 다음에 뵐게요"(사유 골라 정중히 거절). null 이면 안 보인다. */
     onDeclined: (() -> Unit)? = null,
-    // (금액, 예약금, 메시지, attachmentType) → 발송 성공 여부. 실패면 시트를 열어둔 채 버튼을 되살린다.
-    onSend: suspend (Int?, Int?, String, String) -> Boolean,
+    // (금액, 예약금, 메시지, attachmentType, 수업 조건) → 발송 성공 여부. 실패면 시트를 열어둔 채 버튼을 되살린다.
+    onSend: suspend (Int?, Int?, String, String, com.muyeon.app.ui.quote.respond.QuoteLessonTermsInput) -> Boolean,
 ) {
     val scope = rememberCoroutineScope()
     var amountText by remember { mutableStateOf("") }
+    // ★ 2026-11-27 회당 수업 길이(필수) · 장소(장소 주인이 강사일 때만) — 회원 약속잡기가 이 값으로 고정된다.
+    var durationMin by remember { mutableStateOf<Int?>(null) }
+    var place by remember { mutableStateOf("") }
+    val asksPlace = com.muyeon.app.ui.quote.respond.QuoteLessonTermsInput.asksPlace(quote.placeOwner)
     var message by remember { mutableStateOf(initialMessage) }
     var takesDeposit by remember { mutableStateOf(false) }
     var depositAmount by remember { mutableIntStateOf(10_000) }
@@ -833,7 +838,7 @@ internal fun QuoteRespondSheet(
     val attachmentType = if (!includeProfile) "NONE" else attachmentRole
     // 금액을 비우면(협의) 비율 검사는 서버에 맡긴다.
     val depositProblem = if (takesDeposit) amountText.trim().toIntOrNull()?.let { refundPolicy.depositError(depositAmount, it) } else null
-    val canSend = message.trim().isNotEmpty() && !sending && depositProblem == null
+    val canSend = message.trim().isNotEmpty() && !sending && depositProblem == null && durationMin != null
 
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         // ★ 2026-11-09 입력부만 스크롤하고 [제안 보내기]는 그 아래 고정 — 예전엔 버튼이 스크롤 맨 끝이라
@@ -869,6 +874,14 @@ internal fun QuoteRespondSheet(
                 QuotePill(GUEST_REQUEST_TAG, MuyeonColors.textSub)
             }
             QuoteAmountField(amountText) { amountText = it }
+            com.muyeon.app.ui.chat.proposal.ProposalDurationChips(
+                durationMin, label = stringResource(com.muyeon.app.R.string.quote_respond_duration_label), required = true,
+            ) { durationMin = it }
+            if (asksPlace) {
+                com.muyeon.app.ui.chat.proposal.ProposalPlaceField(
+                    place, label = stringResource(com.muyeon.app.R.string.quote_respond_place_label),
+                ) { place = it }
+            }
             // 예약금 — 한도는 관리자 '환불 규정'(서버 quotes.service 도 같은 값으로 검사)
             QuoteDepositField(takesDeposit, { takesDeposit = it }, depositAmount, { depositAmount = it }, refundPolicy, depositProblem)
             QuoteMessageField(message) { message = it }
@@ -940,6 +953,7 @@ internal fun QuoteRespondSheet(
                         if (takesDeposit) depositAmount else null,
                         message.trim(),
                         attachmentType,
+                        com.muyeon.app.ui.quote.respond.QuoteLessonTermsInput(durationMin ?: 60, place.takeIf { asksPlace }),
                     )
                     if (!sent) sending = false   // iOS `if !sent { sending = false }`
                 }

@@ -159,8 +159,8 @@ fun QuoteRespondScreen(state: QuoteRespondState, actions: QuoteRespondActions) {
             quote = request.quote,
             attachmentRole = QuoteRespondRoles.attachmentRole(com.muyeon.app.webview.ActiveRole.current(context)),
             onDismiss = { state.composing = false },
-            onSend = { amount, deposit, message, attachmentType ->
-                state.send(amount, deposit, message, attachmentType, fallback) { rid -> actions.onOpenChat(rid, true) }
+            onSend = { amount, deposit, message, attachmentType, terms ->
+                state.send(amount, deposit, message, attachmentType, terms, fallback) { rid -> actions.onOpenChat(rid, true) }
             },
             initialMessage = state.autoMessage,
         )

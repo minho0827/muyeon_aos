@@ -46,6 +46,8 @@ object SessionResets {
                 app.getSharedPreferences("muyeon.calendar", Context.MODE_PRIVATE).edit().clear().apply()
                 com.muyeon.app.webview.WebCallbackQueue.clear(app)
                 com.muyeon.app.ui.assistant.AssistantRecent.clearAll(app)
+                // 마지막으로 보낸 기기 상태 — 다음 로그인은 꼭 다시 보낸다(DeviceSync).
+                runCatching { org.koin.java.KoinJavaComponent.get<com.muyeon.app.auth.DeviceSync>(com.muyeon.app.auth.DeviceSync::class.java).clear() }
             }
             main.post {
                 if (previous != null) {

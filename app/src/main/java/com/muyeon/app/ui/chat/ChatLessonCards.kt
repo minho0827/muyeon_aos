@@ -1,5 +1,7 @@
 package com.muyeon.app.ui.chat
 
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.platform.testTag
 import com.muyeon.app.webview.withActiveType
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -376,6 +378,7 @@ fun LessonProposalBubble(
     var confirmAccept by remember { mutableStateOf(false) }
     var confirmDecline by remember { mutableStateOf(false) }
     var acceptConflict by remember { mutableStateOf<String?>(null) }   // 내 일정 겹침(409) → "그래도 수락"
+    var counterOpen by remember { mutableStateOf(false) }   // ★ 2026-11-27 [다른 시간 제안] 시트
 
     var cancelMessage by remember { mutableStateOf<String?>(null) }   // 회원 취소 확인(예상 환불액)
     var errorText by remember { mutableStateOf<String?>(null) }
@@ -464,6 +467,14 @@ fun LessonProposalBubble(
                     ) { confirmAccept = true }
                 }
             }
+            // ★ 2026-11-27 받은 쪽 — 날짜·시간만 바꿔 되묻기(길이·장소는 그대로).
+            if (!isProposer) {
+                ProposalButton(
+                    androidx.compose.ui.res.stringResource(com.muyeon.app.R.string.proposal_counter_button),
+                    filled = false, enabled = !busy && !counterOpen,
+                    modifier = Modifier.fillMaxWidth().then(Modifier.testTag("proposal.counter")),
+                ) { counterOpen = true }
+            }
         }
         // 확정 후 회원 본인 취소 — 수업 시작 전에만. 환불은 약속에 찍힌 규정대로 서버가 계산한다.
         val startMs = QuoteUi.parseDate(card.startAt)
@@ -519,6 +530,24 @@ fun LessonProposalBubble(
                 }
             },
             onDismiss = { cancelMessage = null },
+        )
+    }
+    if (counterOpen) {
+        val api = remember(token) { LessonProposalApi(token) }
+        val sentToast = androidx.compose.ui.res.stringResource(com.muyeon.app.R.string.proposal_counter_sent)
+        val context = androidx.compose.ui.platform.LocalContext.current
+        com.muyeon.app.ui.chat.proposal.ProposalCounterSheet(
+            initialStartAt = QuoteUi.parseDate(card.startAt)?.takeIf { it > System.currentTimeMillis() }
+                ?: com.muyeon.app.ui.chat.proposal.ProposalTime.defaultStart(),
+            durationMin = card.durationMin,
+            place = card.place,
+            send = { startAt, memo -> api.counter(card.proposalId, startAt, memo) },
+            onSent = {
+                counterOpen = false
+                android.widget.Toast.makeText(context, sentToast, android.widget.Toast.LENGTH_SHORT).show()
+                onChanged()   // 새 제안 카드·거절된 원래 카드는 서버 message-updated 로도 갱신된다.
+            },
+            onDismiss = { counterOpen = false },
         )
     }
     if (confirmAccept) {

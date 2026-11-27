@@ -72,6 +72,8 @@ class WebViewActivity : ComponentActivity(), com.muyeon.app.result.ResultHost {
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         notificationViewModel.updatePermissionStatus(isGranted)
+        // ★ 2026-11-27 알림 허용 결과를 바로 서버에(DeviceSync).
+        org.koin.java.KoinJavaComponent.get<com.muyeon.app.auth.DeviceSync>(com.muyeon.app.auth.DeviceSync::class.java).sync()
     }
 
     @Suppress("unused")

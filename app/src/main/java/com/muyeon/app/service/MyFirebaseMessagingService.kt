@@ -94,7 +94,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         Log.d(tag, "🔑 FCM 새 토큰 발급: $token")
-        prefs.edit { putString(com.muyeon.app.utils.Constants.KEY_FCM_TOKEN, token) }
+        // commit — 바로 아래 동기화가 이 캐시에서 새 토큰을 읽는다.
+        prefs.edit(commit = true) { putString(com.muyeon.app.utils.Constants.KEY_FCM_TOKEN, token) }
+        // ★ 2026-11-27 새 토큰을 서버에(비로그인이면 DeviceSync 가 건너뛴다 — 다음 로그인 때 보낸다).
+        runCatching { org.koin.java.KoinJavaComponent.get<com.muyeon.app.auth.DeviceSync>(com.muyeon.app.auth.DeviceSync::class.java).sync() }
     }
 
     private fun createNotificationChannel() {

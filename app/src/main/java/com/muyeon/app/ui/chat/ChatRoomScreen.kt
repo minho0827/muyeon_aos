@@ -668,6 +668,7 @@ fun ChatRoomScreen(
             // 금액·예약금은 회원 쪽 견적 맥락에서 가져온다(회원 화면의 예약금 안내에만 쓰인다).
             totalPrice = vm.memberBookingContext?.priceAmount ?: 0,
             depositAmount = vm.memberBookingContext?.takeIf { it.paymentMode == "DEPOSIT" }?.depositAmount ?: 0,
+            terms = vm.quoteContext?.lessonTerms,
             onSent = { showProposal = false; vm.toast = "약속을 제안했어요."; vm.reloadContext() },
             onDismiss = { showProposal = false; vm.reloadContext() },
         )

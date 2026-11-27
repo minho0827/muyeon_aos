@@ -34,6 +34,8 @@ class MuyeonApplication : Application() {
         // ★ 2026-11-09 계정 바뀜 신호 — 지금 회원을 적고, 로그아웃 때 지울 기억값 지우개를 건다(auth/SessionResets).
         com.muyeon.domain.common.SessionEvents.start(com.muyeon.app.utils.TokenManager.accountKey(com.muyeon.app.utils.TokenManager.getAccessToken(this)))
         com.muyeon.app.auth.SessionResets.install(this, org.koin.java.KoinJavaComponent.get(com.muyeon.domain.common.KeyValueStore::class.java))
+        // ★ 2026-11-27 앞으로 나올 때마다 푸시 토큰·알림 허용 상태를 서버와 맞춘다(전엔 로그인 때만 보냈다).
+        com.muyeon.app.auth.DeviceSyncLifecycleObserver.install(org.koin.java.KoinJavaComponent.get(com.muyeon.app.auth.DeviceSync::class.java))
         MembershipBilling.start(this)
         Analytics.start(this)
         // AI 도우미 플로팅 — 모든 화면 위에 버튼을 붙인다(ui/assistant/AssistantOverlay).

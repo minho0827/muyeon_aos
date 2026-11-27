@@ -72,6 +72,28 @@ class LessonProposalApi(private val token: String?) {
         }
     }
 
+    /**
+     * ★ 2026-11-27 받은 제안에 다른 시간으로 되묻기 — POST /lesson-proposals/:id/counter { startAt, memo? }.
+     *  서버가 원래 제안을 거절로 닫고 같은 길이·장소로 새 제안(제안자 = 나)을 만든다. 실패면 서버 문장(403·400).
+     */
+    suspend fun counter(proposalId: Int, startAtMillis: Long, memo: String): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val body = JSONObject().put("startAt", ISO.format(Date(startAtMillis)))
+            memo.trim().takeIf { it.isNotEmpty() }?.let { body.put("memo", it) }
+            val req = Request.Builder()
+                .url(BuildConfig.API_BASE_URL + "/api/lesson-proposals/$proposalId/counter")
+                .post(body.toString().toRequestBody(json))
+                .apply { if (!token.isNullOrEmpty()) addHeader("Authorization", "Bearer $token") }.withActiveType()
+                .build()
+            client.newCall(req).execute().use { res ->
+                if (!res.isSuccessful) {
+                    val msg = runCatching { JSONObject(res.body?.string().orEmpty()).optString("message") }.getOrNull()
+                    error(msg?.ifEmpty { null } ?: "제안을 보내지 못했어요. 다시 시도해 주세요.")
+                }
+            }
+        }
+    }
+
     companion object {
         private val ISO = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("UTC")
@@ -99,6 +121,8 @@ fun LessonProposalComposer(
     initialPlace: String = "",
     initialMemo: String = "",
     initialCalendarId: Int? = null,
+    /** ★ 2026-11-27 견적에 적힌 수업 조건(quoteContext.lessonTerms) — 강사는 미리 채움, 회원은 있으면 고정. */
+    terms: com.muyeon.app.ui.chat.proposal.LessonTerms? = null,
     onSent: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -107,7 +131,7 @@ fun LessonProposalComposer(
         ProposalFormState(
             api, roomId, isTeacher, totalPrice, depositAmount,
             initialStartAt, initialDurationMin, initialPlace, initialMemo, initialCalendarId,
-            LessonRefundPolicyRepo.current(),
+            LessonRefundPolicyRepo.current(), terms,
         )
     }
     LaunchedEffect(Unit) { state.refundPolicy = LessonRefundPolicyRepo.get() }

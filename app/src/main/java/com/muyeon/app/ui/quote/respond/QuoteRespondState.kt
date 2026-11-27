@@ -97,11 +97,11 @@ class QuoteRespondState(
      */
     suspend fun send(
         priceAmount: Int?, depositAmount: Int?, message: String, attachmentType: String,
-        fallbackError: String, onRoom: (Int) -> Unit,
+        terms: QuoteLessonTermsInput?, fallbackError: String, onRoom: (Int) -> Unit,
     ): Boolean {
         val detail = (phase as? QuoteRespondPhase.Request)?.detail ?: return false
         var ok = false
-        api.sendResponse(quoteId, priceAmount, depositAmount, message, attachmentType)
+        api.sendResponse(quoteId, priceAmount, depositAmount, message, attachmentType, terms)
             .onSuccess { roomId ->
                 ok = true
                 composing = false

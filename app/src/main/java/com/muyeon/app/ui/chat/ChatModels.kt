@@ -284,6 +284,8 @@ data class ChatQuoteContext(
     val requesterType: String? = null,     // ACADEMY | GENERAL | null
     val requesterBadge: String? = null,    // "학원 요청" 등
     val afterAccept: String? = null,       // HIRE | LESSON
+    // ★ 2026-11-27 견적에 적힌 수업 길이·장소(약속잡기 미리 채움·고정). 구서버·예전 견적은 null.
+    val lessonTerms: com.muyeon.app.ui.chat.proposal.LessonTerms? = null,
 ) {
     /** ★ 11-10 학원 채용(채택 = 채용 확정) — 일정 잡기·약속 제안·후기가 없다. */
     val isHire: Boolean get() = afterAccept == "HIRE"
@@ -316,6 +318,7 @@ data class ChatQuoteContext(
                 requesterType = it.stringOrNull("requesterType"),
                 requesterBadge = it.stringOrNull("requesterBadge"),
                 afterAccept = it.stringOrNull("afterAccept"),
+                lessonTerms = com.muyeon.app.ui.chat.proposal.LessonTerms.from(it.optJSONObject("lessonTerms")),
             )
         }
     }

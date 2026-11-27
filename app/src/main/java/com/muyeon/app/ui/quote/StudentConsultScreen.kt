@@ -213,8 +213,8 @@ fun StudentConsultScreen(
                 toast = declinedToast
                 scope.launch { load() }
             },
-        ) { amount, deposit, message, attachmentType ->
-            val ok = api.sendQuoteResponse(quote.id, amount, deposit, message, attachmentType).isSuccess
+        ) { amount, deposit, message, attachmentType, terms ->
+            val ok = api.sendQuoteResponse(quote.id, amount, deposit, message, attachmentType, terms).isSuccess
             if (ok) {
                 respondFor = null
                 toast = if (quote.guestRequest) GUEST_QUOTE_SENT_TOAST else "제안을 보냈어요. 수강생이 확인하면 알림으로 알려드릴게요."

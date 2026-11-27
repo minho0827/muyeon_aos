@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ★ 2026-11-27 약속잡기 개편 — 견적의 수업 길이·장소 고정 · 다른 시간 제안 -->
+    <string name="proposal_fixed_duration_label">수업 길이</string>
+    <string name="proposal_fixed_place_label">장소</string>
+    <string name="proposal_fixed_duration_value">%1$d분</string>
+    <string name="proposal_fixed_source_teacher_quote">강사님 견적</string>
+    <string name="proposal_counter_button">다른 시간 제안</string>
+    <string name="proposal_counter_title">다른 시간 제안</string>
+    <string name="proposal_counter_intro">날짜·시간만 바꿔 다시 제안해요. 수업 길이·장소는 그대로예요.</string>
+    <string name="proposal_counter_sent">다른 시간을 제안했어요.</string>
+    <string name="proposal_counter_failed">제안을 보내지 못했어요. 다시 시도해 주세요.</string>
+    <string name="quote_respond_duration_label">회당 수업 길이</string>
+    <string name="quote_respond_place_label">수업 장소</string>
+    <!-- ★ 2026-11-27 iOS Shell.strings 와 같은 키(scripts/sync-shell-strings.py 가 이 폴더 strings*.xml 에서 만든다) -->
+    <string name="proposal_terms_duration_title">수업 길이</string>
+    <string name="proposal_terms_place_title">장소</string>
+    <string name="proposal_terms_duration_value">%1$d분</string>
+    <string name="proposal_terms_from_quote">강사님 견적</string>
+    <string name="proposal_counter_send">보내기</string>
+    <string name="quote_terms_duration_title">회당 수업 길이</string>
+    <string name="quote_terms_required">(필수)</string>
+    <string name="quote_terms_place_hint">회원이 약속을 잡을 때 이 장소로 정해져요.</string>
+</resources>

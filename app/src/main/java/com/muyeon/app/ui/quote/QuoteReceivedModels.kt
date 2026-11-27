@@ -150,6 +150,8 @@ data class QuoteFull(
     val describedAnswers: List<QuoteDescribedAnswer> = emptyList(),
     /** ★ 2026-11-14 지정 강사가 정중히 거절 — 요청자 본인에게만 사유 문장(서버가 정중한 말로 만든다). */
     val decline: QuoteDeclineNotice? = null,
+    /** ★ 2026-11-27 수업 장소 주인 — MEMBER(회원이 있는 곳) | TEACHER(강사가 견적서에 적음). 구서버 null. */
+    val placeOwner: String? = null,
 ) {
     val isDirect: Boolean get() = targetTeacherId != null
 
@@ -181,6 +183,7 @@ data class QuoteFull(
             decline = o.optJSONObject("decline")?.let { d ->
                 QuoteDeclineNotice(d.stringOrNull("reasonCode"), d.stringOrNull("message"))
             },
+            placeOwner = o.stringOrNull("placeOwner"),
         )
     }
 }

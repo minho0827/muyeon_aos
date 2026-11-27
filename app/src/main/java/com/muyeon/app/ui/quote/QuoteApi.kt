@@ -240,8 +240,10 @@ class QuoteApi(private val token: String?) {
         depositAmount: Int?,
         message: String,
         attachmentType: String,
+        terms: com.muyeon.app.ui.quote.respond.QuoteLessonTermsInput? = null,
     ): Result<Unit> {
         val body = JSONObject().put("message", message).put("attachmentType", attachmentType)
+        terms?.putInto(body)
         if (priceAmount != null) body.put("priceAmount", priceAmount).put("priceUnit", "PER_SESSION")
         body.put("paymentMode", if (depositAmount == null) "NONE" else "DEPOSIT")
         body.put("depositAmount", depositAmount ?: 0)

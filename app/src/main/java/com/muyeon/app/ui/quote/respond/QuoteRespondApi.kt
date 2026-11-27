@@ -44,8 +44,10 @@ class QuoteRespondApi(context: Context) {
      */
     suspend fun sendResponse(
         quoteId: Int, priceAmount: Int?, depositAmount: Int?, message: String, attachmentType: String,
+        terms: QuoteLessonTermsInput? = null,
     ): Result<Int?> {
         val body = JSONObject().put("message", message).put("attachmentType", attachmentType)
+        terms?.putInto(body)
         if (priceAmount != null) body.put("priceAmount", priceAmount).put("priceUnit", "PER_SESSION")
         body.put("paymentMode", if (depositAmount == null) "NONE" else "DEPOSIT")
         body.put("depositAmount", depositAmount ?: 0)

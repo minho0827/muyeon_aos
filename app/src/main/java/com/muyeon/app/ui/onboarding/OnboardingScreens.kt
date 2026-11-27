@@ -212,6 +212,7 @@ fun NotificationConsentSheet(onFinish: (Boolean) -> Unit) {
     LaunchedEffect(Unit) { shown = true }
 
     val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        syncDeviceAfterConsent()
         onFinish(granted)
     }
 
@@ -241,6 +242,7 @@ fun NotificationConsentSheet(onFinish: (Boolean) -> Unit) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         permLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                     } else {
+                        syncDeviceAfterConsent()
                         onFinish(true)   // 13 미만은 매니페스트 권한만으로 발송 가능
                     }
                 }
@@ -347,4 +349,10 @@ fun AddressSetupScreen(
             }
         }
     }
+}
+
+
+/** ★ 2026-11-27 알림 허용 결과를 바로 서버에(saveDeviceInfo) — 로그인 때 '꺼짐'으로 저장된 기기를 켠다. */
+private fun syncDeviceAfterConsent() {
+    runCatching { org.koin.java.KoinJavaComponent.get<com.muyeon.app.auth.DeviceSync>(com.muyeon.app.auth.DeviceSync::class.java).sync() }
 }

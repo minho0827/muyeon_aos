@@ -39,6 +39,8 @@ fun ProposalSheetScaffold(
     canSend: Boolean,
     onCancel: () -> Unit,
     onSend: () -> Unit,
+    /** ★ 2026-11-27 다른 시간 제안 시트도 같은 틀 — 제목만 바꾼다. */
+    title: String = "레슨 약속잡기",
     content: @Composable ColumnScope.() -> Unit,
 ) {
     ModalBottomSheet(
@@ -58,7 +60,7 @@ fun ProposalSheetScaffold(
                     modifier = Modifier.clickable(onClick = onCancel),
                 )
                 Text(
-                    "레슨 약속잡기", fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp,
+                    title, fontFamily = customFontFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp,
                     color = MuyeonColors.textHead, textAlign = TextAlign.Center, modifier = Modifier.weight(1f),
                 )
                 Text(

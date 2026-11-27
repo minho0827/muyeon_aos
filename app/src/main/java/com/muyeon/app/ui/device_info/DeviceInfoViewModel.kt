@@ -199,13 +199,11 @@ open class DeviceInfoViewModel(
     }
 
     private fun getPushNotificationPermissionStatus(): String {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            when (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)) {
-                PackageManager.PERMISSION_GRANTED -> com.muyeon.app.utils.Constants.AUTHORIZED
-                else -> com.muyeon.app.utils.Constants.REJECTED
-            }
-        } else {
+        // ★ 2026-11-27 13 미만도 설정에서 앱 알림을 끌 수 있다 — 권한 대신 실제 알림 켜짐 여부(모든 버전 정확).
+        return if (androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()) {
             com.muyeon.app.utils.Constants.AUTHORIZED
+        } else {
+            com.muyeon.app.utils.Constants.REJECTED
         }
     }
 

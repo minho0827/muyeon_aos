@@ -26,10 +26,16 @@ class ProposalFormState(
     initialMemo: String,
     initialCalendarId: Int?,
     initialPolicy: LessonRefundPolicy,
+    /** ★ 2026-11-27 견적에 적힌 수업 조건 — 강사는 미리 채움(수정 가능), 회원은 있으면 고정. */
+    terms: LessonTerms? = null,
 ) {
+    /** 회원 화면에서 바꿀 수 없는 길이·장소(강사님 견적). 강사는 언제나 null(수정 가능). */
+    val fixedDurationMin: Int? = if (isTeacher) null else terms?.memberFixedDuration
+    val fixedPlace: String? = if (isTeacher) null else terms?.memberFixedPlace
+
     var startAt by mutableLongStateOf(initialStartAt ?: ProposalTime.defaultStart())
-    var durationMin by mutableIntStateOf(initialDurationMin ?: 60)
-    var place by mutableStateOf(initialPlace)
+    var durationMin by mutableIntStateOf(fixedDurationMin ?: initialDurationMin ?: terms?.durationMin?.takeIf { it > 0 } ?: 60)
+    var place by mutableStateOf(fixedPlace ?: initialPlace.ifBlank { terms?.place.orEmpty() })
     var memo by mutableStateOf(initialMemo)
     var calendars by mutableStateOf<List<UserCalendar>>(emptyList())
     var calendarId by mutableStateOf(initialCalendarId)
@@ -52,7 +58,8 @@ class ProposalFormState(
         sending = true
         errorText = null
         val r = api.create(
-            roomId, startAt, durationMin, place.ifBlank { null }, memo,
+            // 고정값은 서버도 견적 값으로 덮어쓴다 — 같은 값을 보낸다.
+            roomId, startAt, fixedDurationMin ?: durationMin, (fixedPlace ?: place).ifBlank { null }, memo,
             if (isTeacher) calendarId else null, force,
         )
         sending = false
@@ -64,7 +71,7 @@ class ProposalFormState(
 
     companion object {
         const val PLACE_MAX = 100
-        const val MEMO_MAX = 500
+        const val MEMO_MAX = 300   // ★ 2026-11-27 서버·웹·iOS 와 같게(300자 초과는 서버 400)
         val DURATIONS = listOf(30, 60, 90, 120)
     }
 }

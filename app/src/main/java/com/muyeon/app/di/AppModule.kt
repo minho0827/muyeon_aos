@@ -46,6 +46,9 @@ val appModule = module {
         }
     }
     single { com.muyeon.app.auth.LoginRememberStore(androidContext()) }
+    // ★ 2026-11-27 기기·푸시 상태 서버 동기화(로그인·앞으로 나옴·알림 허용 결과·새 토큰).
+    single<com.muyeon.app.auth.DeviceSyncStore> { com.muyeon.app.auth.PrefsDeviceSyncStore(androidContext()) }
+    single { com.muyeon.app.auth.DeviceSync(androidContext(), get()) }
     single<com.muyeon.domain.common.NetworkRetryPrompt> { com.muyeon.app.ui.main.NetworkRetryHost }
     single<ForceLogoutTrigger> {
         val ctx: Context = androidContext()

@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.asSharedFlow
  *   ④ 네이티브 소켓을 새 토큰으로(ChatSocketLifecycleObserver · ChatSocketManager)
  *   ⑤ 서버 활성유형으로 X-Active-Type 맞춤(ActiveRole.syncFromServer)
  *   ⑥ 로그아웃 상태에서 결제했거나 못 보낸 구글 구매 보내기(MembershipBilling.flushUnfinished)
- *   ⑦ 기기·푸시 토큰을 회원으로 저장(웹 setDeviceInfoSvc)                            ← 앱 로그인만(웹은 웹이 보낸다)
+ *   ⑦ 기기·푸시 토큰을 회원으로 저장(웹 setDeviceInfoSvc — DeviceSync force)
  *  그다음(부르는 쪽): 약관 동의 게이트 → 로그인 후 이어서 할 일(LoginResume) 또는 redirect 주소.
  */
 object AuthSession {
@@ -40,7 +40,7 @@ object AuthSession {
         LoginProvider.save(app, provider)
         WebLogin.save(app, session.sessionId, session.userJson, provider)
         afterTokenSaved(app)
-        DeviceRegistration.register(app)
+        deviceSync().sync(force = true)
     }
 
     /** 웹이 토큰을 넘겼다(AndroidToken.saveToken — 토큰 저장은 이미 했다). */
@@ -48,8 +48,12 @@ object AuthSession {
         // 웹 창이 자기 저장소에 로그인을 이미 넣었다 — 앱 로그인 화면이 넣어 둔 옛 값은 버린다.
         WebLogin.clear(context)
         afterTokenSaved(context)
+        // 웹도 자기 기기 정보를 보내지만, 네이티브가 정확한 알림 허용값으로 한 번 더 맞추고 기억해 둔다.
+        deviceSync().sync(force = true)
         _webLoggedIn.tryEmit(Unit)
     }
+
+    private fun deviceSync(): DeviceSync = org.koin.java.KoinJavaComponent.get(DeviceSync::class.java)
 
     private fun afterTokenSaved(context: Context) {
         ForceLogout.reset()
