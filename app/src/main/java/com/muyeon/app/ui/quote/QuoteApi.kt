@@ -36,6 +36,8 @@ class ApiMessageException(
     // ★ 2026-11-08 거절 본문의 data 전체 — QUOTE_CHAT_EXISTS 의 roomId, LESSON_REQUEST_LIMIT 의 limit·used·tier.
     val data: JSONObject? = null,
 ) : Exception(message) {
+    /** ★ 2026-11-27 403 LESSON_REQUEST_LIMIT 가 일반 회원 한도(월 2회)로 막힌 것 — 공고 버튼을 띄우지 않는다. */
+    val generalLessonLimit: Boolean get() = data?.optString("audience") == "GENERAL"
     /** 409 QUOTE_CHAT_EXISTS — 이어서 이야기할 채팅방. */
     val roomId: Int? get() = data?.optInt("roomId")?.takeIf { it > 0 }
 }

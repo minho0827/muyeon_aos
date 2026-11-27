@@ -388,6 +388,7 @@ class QuoteWizardActivity : com.muyeon.app.result.ResultActivity() {
                             com.muyeon.app.ui.membership.MembershipActivity.start(this@QuoteWizardActivity)
                         },
                         onDismiss = { lessonLimit = null },
+                        showPostings = !e.generalLessonLimit,
                     )
                 }
                 // ★ 2026-11-07 강사는 공고로 — 보내지 않고 위저드를 닫으며 웹 공고 작성 화면으로 보낸다

@@ -1,6 +1,10 @@
 package com.muyeon.app.ui.quote
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import com.muyeon.app.R
 import com.muyeon.app.ui.common.MuyeonDialog
@@ -46,16 +50,27 @@ internal fun LessonRequestLimitDialog(
     onSub: () -> Unit,
     onMembership: () -> Unit,
     onDismiss: () -> Unit,
+    // ★ 2026-11-27 일반 회원(서버 audience GENERAL)은 공고 길이 없다 — 채용·대타 공고 버튼을 뺀다.
+    showPostings: Boolean = true,
 ) {
+    // ★ 11-27 연타 방지 — 첫 탭만 받는다(멤버십 화면이 두 번 열리던 길). 다이얼로그가 닫히면 상태도 같이 사라진다.
+    var handled by remember { mutableStateOf(false) }
+    val once: (() -> Unit) -> () -> Unit = { action -> { if (!handled) { handled = true; action() } } }
+    val onJob = once(onJob)
+    val onSub = once(onSub)
+    val onMembership = once(onMembership)
+    val onDismiss = once(onDismiss)
     MuyeonDialog(
         title = stringResource(R.string.lrq_limit_title),
         message = message?.takeIf { it.isNotBlank() } ?: stringResource(R.string.lrq_limit_message_default),
-        actions = listOf(
-            MuyeonDialogAction(stringResource(R.string.lrq_action_membership), MuyeonDialogKind.PRIMARY, onMembership),
-            MuyeonDialogAction(stringResource(R.string.lrq_action_job), MuyeonDialogKind.CANCEL, onJob),
-            MuyeonDialogAction(stringResource(R.string.lrq_action_sub), MuyeonDialogKind.CANCEL, onSub),
-            MuyeonDialogAction(stringResource(R.string.lrq_action_close), MuyeonDialogKind.CANCEL, onDismiss),
-        ),
+        actions = buildList {
+            add(MuyeonDialogAction(stringResource(R.string.lrq_action_membership), MuyeonDialogKind.PRIMARY, onMembership))
+            if (showPostings) {
+                add(MuyeonDialogAction(stringResource(R.string.lrq_action_job), MuyeonDialogKind.CANCEL, onJob))
+                add(MuyeonDialogAction(stringResource(R.string.lrq_action_sub), MuyeonDialogKind.CANCEL, onSub))
+            }
+            add(MuyeonDialogAction(stringResource(R.string.lrq_action_close), MuyeonDialogKind.CANCEL, onDismiss))
+        },
         dismissOnAction = false,
         onDismiss = onDismiss,
     )
