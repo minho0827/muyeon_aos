@@ -58,7 +58,7 @@ fun SentQuoteDetailScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             RequestSummaryCard(current, request)
-            MyQuoteCard(current, badgeText, badgeColor) { u -> current = current.applied(u) }
+            MyQuoteCard(current, request, badgeText, badgeColor) { u -> current = current.applied(u) }
             ChatSection(current, onOpenChat)
         }
     }
@@ -109,7 +109,7 @@ private fun RequestSummaryCard(item: SentQuoteItem, request: QuoteFull?) {
 
 /** 내가 보낸 견적 — 금액 + 메시지 + 내 상태. */
 @Composable
-private fun MyQuoteCard(item: SentQuoteItem, badgeText: String, badgeColor: Color, onChanged: (QuoteResponseUpdate) -> Unit) {
+private fun MyQuoteCard(item: SentQuoteItem, request: QuoteFull?, badgeText: String, badgeColor: Color, onChanged: (QuoteResponseUpdate) -> Unit) {
     val msg = (item.message ?: "").trim()
     SentCard {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -139,6 +139,8 @@ private fun MyQuoteCard(item: SentQuoteItem, badgeText: String, badgeColor: Colo
                 modifier = Modifier.padding(top = 4.dp),
             )
         }
+        // ★ 2026-11-27 견적서에 적은 회당 수업 길이·장소.
+        com.muyeon.app.ui.quote.owner.QuoteTermsLines(item.terms, Modifier.padding(top = 6.dp))
         if (msg.isNotEmpty()) {
             Text(
                 msg,
@@ -157,7 +159,9 @@ private fun MyQuoteCard(item: SentQuoteItem, badgeText: String, badgeColor: Colo
                 quoteId = item.quoteId,
                 responseId = item.id,
                 categoryLabel = QuoteUi.categoryLabel(item.categoryId),
-                sent = QuoteResponseDraft.of(item.priceAmount, item.priceUnit, item.paymentMode, item.depositAmount, item.message),
+                sent = QuoteResponseDraft.of(item.priceAmount, item.priceUnit, item.paymentMode, item.depositAmount, item.message, item.terms),
+                askPlace = com.muyeon.app.ui.quote.respond.QuoteLessonTermsInput.asksPlace(item.terms.placeOwner ?: request?.placeOwner),
+                durationRequired = com.muyeon.app.ui.quote.respond.QuoteLessonTermsInput.durationRequired(request?.isAcademyRequest == true),
                 onChanged = onChanged,
                 modifier = Modifier.padding(top = 14.dp),
             )
@@ -177,6 +181,7 @@ internal fun SentQuoteItem.applied(u: QuoteResponseUpdate): SentQuoteItem = if (
     editedAt = u.editedAt ?: editedAt,
     withdrawnAt = u.withdrawnAt,
     withdrawReason = u.withdrawReason,
+    terms = u.terms?.let { t -> t.copy(placeOwner = t.placeOwner ?: terms.placeOwner) } ?: terms,
 )
 
 /** 채팅 — 방이 이미 있으면 이어가기, 없으면 안내(채팅 시작은 고객 권한). */

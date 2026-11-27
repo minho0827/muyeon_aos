@@ -58,6 +58,8 @@ fun QuoteSentResponseCard(mine: MyQuoteResponse, modifier: Modifier = Modifier) 
             Text(stringResource(R.string.quote_respond_deposit, String.format(Locale.KOREA, "%,d", mine.depositAmount)), style = AppTypography.Sub13, color = AppColors.TextSub)
         }
         if (memo != null) Text(memo, style = AppTypography.Sub13, color = AppColors.TextSub)
+        // ★ 2026-11-27 견적서에 적은 회당 수업 길이·장소.
+        com.muyeon.app.ui.quote.owner.QuoteTermsLines(mine.terms)
         val message = mine.message?.takeIf { it.isNotBlank() }
         if (message != null) {
             HorizontalDivider(Modifier.padding(top = Dimensions.spacingXS), color = AppColors.Divider)

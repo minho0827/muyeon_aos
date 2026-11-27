@@ -44,6 +44,9 @@ import kotlinx.coroutines.launch
 fun QuoteResponseEditSheet(
     categoryLabel: String,
     sent: QuoteResponseDraft,
+    /** ★ 2026-11-27 장소 칸(장소 주인이 강사일 때만) · 회당 수업 길이 필수 여부(학원 요청이 아니면). */
+    askPlace: Boolean = false,
+    durationRequired: Boolean = false,
     onDismiss: () -> Unit,
     onSave: suspend (QuoteResponseDraft) -> Boolean,
 ) {
@@ -52,11 +55,13 @@ fun QuoteResponseEditSheet(
     var takesDeposit by remember { mutableStateOf(sent.depositAmount != null) }
     var depositAmount by remember { mutableIntStateOf(sent.depositAmount ?: 10_000) }
     var message by remember { mutableStateOf(sent.message) }
+    var durationMin by remember { mutableStateOf(sent.durationMin) }
+    var place by remember { mutableStateOf(sent.place.orEmpty()) }
     var policy by remember { mutableStateOf(LessonRefundPolicyRepo.current()) }
     LaunchedEffect(Unit) { policy = LessonRefundPolicyRepo.get() }
     var saving by remember { mutableStateOf(false) }
     val problem = if (takesDeposit) amountText.trim().toIntOrNull()?.let { policy.depositError(depositAmount, it) } else null
-    val canSave = message.trim().isNotEmpty() && !saving && problem == null
+    val canSave = message.trim().isNotEmpty() && !saving && problem == null && (!durationRequired || durationMin != null)
 
     androidx.compose.ui.window.Dialog(onDismissRequest = { if (!saving) onDismiss() }) {
         Column(Modifier.clip(RoundedCornerShape(16.dp)).background(MuyeonColors.surface).testTag("quoteResponse.editSheet")) {
@@ -71,6 +76,12 @@ fun QuoteResponseEditSheet(
                 )
                 Text(stringResource(R.string.quote_owner_edit_note), fontFamily = customFontFamily, fontSize = 12.sp, lineHeight = 16.sp, color = MuyeonColors.textSub)
                 QuoteAmountField(amountText) { amountText = it }
+                com.muyeon.app.ui.chat.proposal.ProposalDurationChips(
+                    durationMin, label = stringResource(R.string.quote_respond_duration_label), required = durationRequired,
+                ) { durationMin = it }
+                if (askPlace) {
+                    com.muyeon.app.ui.chat.proposal.ProposalPlaceField(place, label = stringResource(R.string.quote_respond_place_label)) { place = it }
+                }
                 QuoteDepositField(takesDeposit, { takesDeposit = it }, depositAmount, { depositAmount = it }, policy, problem)
                 QuoteMessageField(message) { message = it }
             }
@@ -88,6 +99,9 @@ fun QuoteResponseEditSheet(
                         val draft = QuoteResponseDraft(
                             priceAmount = amountText.toIntOrNull(), priceUnit = sent.priceUnit,
                             depositAmount = if (takesDeposit) depositAmount else null, message = message.trim(),
+                            durationMin = durationMin,
+                            // 장소 칸이 없으면(장소 주인이 회원) 보낸 값 그대로 — 바뀐 칸에 안 들어간다.
+                            place = if (askPlace) place.trim().ifEmpty { null } else sent.place,
                         )
                         scope.launch { if (!onSave(draft)) saving = false }
                     }

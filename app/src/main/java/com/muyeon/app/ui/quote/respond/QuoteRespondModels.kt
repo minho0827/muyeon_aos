@@ -31,6 +31,8 @@ data class MyQuoteResponse(
     val editedAt: String? = null,
     val withdrawnAt: String? = null,
     val withdrawReason: String? = null,
+    /** ★ 2026-11-27 견적서에 적은 수업 길이·장소(+장소 주인). */
+    val terms: com.muyeon.app.ui.chat.proposal.LessonTerms = com.muyeon.app.ui.chat.proposal.LessonTerms(),
 ) {
     companion object {
         fun from(o: JSONObject) = MyQuoteResponse(
@@ -47,6 +49,7 @@ data class MyQuoteResponse(
             editedAt = o.jStr("editedAt"),
             withdrawnAt = o.jStr("withdrawnAt"),
             withdrawReason = o.jStr("withdrawReason"),
+            terms = com.muyeon.app.ui.chat.proposal.LessonTerms.from(o) ?: com.muyeon.app.ui.chat.proposal.LessonTerms(),
         )
     }
 }

@@ -21,4 +21,8 @@
     <string name="quote_terms_duration_title">회당 수업 길이</string>
     <string name="quote_terms_required">(필수)</string>
     <string name="quote_terms_place_hint">회원이 약속을 잡을 때 이 장소로 정해져요.</string>
+    <!-- ★ 2026-11-27 보낸 제안 — 수업 길이·장소 보기·고치기 -->
+    <string name="quote_terms_line_duration">회당 수업 %1$d분</string>
+    <string name="quote_terms_line_place">장소 %1$s</string>
+    <string name="quote_terms_summary_duration">회당 %1$d분 수업</string>
 </resources>

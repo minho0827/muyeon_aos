@@ -41,6 +41,10 @@ fun QuoteResponseOwnerActions(
     sent: QuoteResponseDraft,
     onChanged: (QuoteResponseUpdate) -> Unit,
     modifier: Modifier = Modifier,
+    /** ★ 2026-11-27 장소 칸 — 장소 주인이 강사일 때만. */
+    askPlace: Boolean = false,
+    /** ★ 2026-11-27 회당 수업 길이 필수 — 학원 요청이 아니면(보내기와 같은 규칙). */
+    durationRequired: Boolean = false,
 ) {
     val context = LocalContext.current
     val api = remember { QuoteResponseOwnerApi(context) }
@@ -64,6 +68,8 @@ fun QuoteResponseOwnerActions(
         QuoteResponseEditSheet(
             categoryLabel = categoryLabel,
             sent = sent,
+            askPlace = askPlace,
+            durationRequired = durationRequired,
             onDismiss = { editing = false },
             onSave = save@{ draft ->
                 val patch = draft.patchFrom(sent) ?: run { error = noChange; return@save false }

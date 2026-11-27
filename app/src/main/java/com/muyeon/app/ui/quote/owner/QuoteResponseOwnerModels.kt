@@ -18,6 +18,9 @@ data class QuoteResponseDraft(
     val priceUnit: String?,
     val depositAmount: Int?,
     val message: String,
+    /** ★ 2026-11-27 회당 수업 길이 · 장소(장소 주인이 강사일 때만 고친다). null = 없음(PATCH 에선 지움). */
+    val durationMin: Int? = null,
+    val place: String? = null,
 ) {
     /** 바뀐 칸만 담은 PATCH 본문 — 바뀐 게 없으면 null(서버도 400 '바뀐 내용이 없어요.'). */
     fun patchFrom(before: QuoteResponseDraft): JSONObject? {
@@ -31,14 +34,22 @@ data class QuoteResponseDraft(
             o.put("depositAmount", depositAmount ?: 0)
         }
         if (message.trim() != before.message.trim()) o.put("message", message.trim())
+        if (durationMin != before.durationMin) o.put("durationMin", durationMin ?: JSONObject.NULL)
+        val p = place?.trim()?.ifEmpty { null }
+        if (p != before.place?.trim()?.ifEmpty { null }) o.put("place", p ?: JSONObject.NULL)
         return o.takeIf { it.length() > 0 }
     }
 
     companion object {
-        fun of(priceAmount: Int?, priceUnit: String?, paymentMode: String?, depositAmount: Int?, message: String?) = QuoteResponseDraft(
+        fun of(
+            priceAmount: Int?, priceUnit: String?, paymentMode: String?, depositAmount: Int?, message: String?,
+            terms: com.muyeon.app.ui.chat.proposal.LessonTerms? = null,
+        ) = QuoteResponseDraft(
             priceAmount, priceUnit,
             depositAmount?.takeIf { paymentMode == "DEPOSIT" && it > 0 },
             message.orEmpty(),
+            durationMin = terms?.durationMin?.takeIf { it > 0 },
+            place = terms?.place,
         )
     }
 }
@@ -56,6 +67,8 @@ data class QuoteResponseUpdate(
     val editedAt: String?,
     val withdrawnAt: String?,
     val withdrawReason: String?,
+    /** ★ 2026-11-27 고친 뒤 수업 길이·장소. 서버가 칸을 안 주면 null(화면 값 유지). */
+    val terms: com.muyeon.app.ui.chat.proposal.LessonTerms? = null,
 ) {
     companion object {
         fun from(o: JSONObject) = QuoteResponseUpdate(
@@ -70,6 +83,7 @@ data class QuoteResponseUpdate(
             editedAt = o.jStr("editedAt"),
             withdrawnAt = o.jStr("withdrawnAt"),
             withdrawReason = o.jStr("withdrawReason"),
+            terms = o.takeIf { it.has("durationMin") || it.has("place") }?.let { com.muyeon.app.ui.chat.proposal.LessonTerms.from(it) },
         )
     }
 }

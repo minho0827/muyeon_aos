@@ -344,6 +344,8 @@ data class SentQuoteItem(
     val editedAt: String? = null,
     val withdrawnAt: String? = null,
     val withdrawReason: String? = null,
+    /** ★ 2026-11-27 견적서에 적은 수업 길이·장소(+장소 주인). 구서버·예전 제안은 칸이 비어 있다. */
+    val terms: com.muyeon.app.ui.chat.proposal.LessonTerms = com.muyeon.app.ui.chat.proposal.LessonTerms(),
 ) {
     companion object {
         fun from(o: JSONObject) = SentQuoteItem(
@@ -357,6 +359,7 @@ data class SentQuoteItem(
             paymentMode = o.stringOrNull("paymentMode"), depositAmount = o.intOrNull("depositAmount"),
             editedAt = o.stringOrNull("editedAt"), withdrawnAt = o.stringOrNull("withdrawnAt"),
             withdrawReason = o.stringOrNull("withdrawReason"),
+            terms = com.muyeon.app.ui.chat.proposal.LessonTerms.from(o) ?: com.muyeon.app.ui.chat.proposal.LessonTerms(),
         )
     }
 }

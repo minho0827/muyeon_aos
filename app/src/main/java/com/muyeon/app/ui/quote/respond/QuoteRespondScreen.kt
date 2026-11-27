@@ -104,6 +104,8 @@ fun QuoteRespondScreen(state: QuoteRespondState, actions: QuoteRespondActions) {
                                 responseId = phase.mine.id,
                                 categoryLabel = QuoteUi.categoryLabel(phase.detail.quote.categoryId),
                                 sent = phase.mine.draft(),
+                                askPlace = QuoteLessonTermsInput.asksPlace(phase.mine.terms.placeOwner ?: phase.detail.quote.placeOwner),
+                                durationRequired = QuoteLessonTermsInput.durationRequired(phase.detail.quote.isAcademyRequest),
                                 onChanged = { reload() },
                             )
                         }
@@ -176,7 +178,7 @@ private fun WithdrawnSection(withdrawn: MyQuoteResponse) = Section {
 }
 
 /** 고치기 시트를 보낸 값으로 채운다. */
-private fun MyQuoteResponse.draft() = QuoteResponseDraft.of(priceAmount, priceUnit, paymentMode, depositAmount, message)
+private fun MyQuoteResponse.draft() = QuoteResponseDraft.of(priceAmount, priceUnit, paymentMode, depositAmount, message, terms)
 
 /**
  * 공개 상세 — 요약(요청일) · 요청 내용(사진은 개수만) · 둘러보기 + 아래 고정 [견적 보내기]/전환/유형 추가.

@@ -825,6 +825,7 @@ internal fun QuoteRespondSheet(
     var durationMin by remember { mutableStateOf<Int?>(null) }
     var place by remember { mutableStateOf("") }
     val asksPlace = com.muyeon.app.ui.quote.respond.QuoteLessonTermsInput.asksPlace(quote.placeOwner)
+    val durationRequired = com.muyeon.app.ui.quote.respond.QuoteLessonTermsInput.durationRequired(quote.isAcademyRequest)
     var message by remember { mutableStateOf(initialMessage) }
     var takesDeposit by remember { mutableStateOf(false) }
     var depositAmount by remember { mutableIntStateOf(10_000) }
@@ -838,7 +839,7 @@ internal fun QuoteRespondSheet(
     val attachmentType = if (!includeProfile) "NONE" else attachmentRole
     // 금액을 비우면(협의) 비율 검사는 서버에 맡긴다.
     val depositProblem = if (takesDeposit) amountText.trim().toIntOrNull()?.let { refundPolicy.depositError(depositAmount, it) } else null
-    val canSend = message.trim().isNotEmpty() && !sending && depositProblem == null && durationMin != null
+    val canSend = message.trim().isNotEmpty() && !sending && depositProblem == null && (!durationRequired || durationMin != null)
 
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         // ★ 2026-11-09 입력부만 스크롤하고 [제안 보내기]는 그 아래 고정 — 예전엔 버튼이 스크롤 맨 끝이라
@@ -875,7 +876,7 @@ internal fun QuoteRespondSheet(
             }
             QuoteAmountField(amountText) { amountText = it }
             com.muyeon.app.ui.chat.proposal.ProposalDurationChips(
-                durationMin, label = stringResource(com.muyeon.app.R.string.quote_respond_duration_label), required = true,
+                durationMin, label = stringResource(com.muyeon.app.R.string.quote_respond_duration_label), required = durationRequired,
             ) { durationMin = it }
             if (asksPlace) {
                 com.muyeon.app.ui.chat.proposal.ProposalPlaceField(
@@ -953,7 +954,7 @@ internal fun QuoteRespondSheet(
                         if (takesDeposit) depositAmount else null,
                         message.trim(),
                         attachmentType,
-                        com.muyeon.app.ui.quote.respond.QuoteLessonTermsInput(durationMin ?: 60, place.takeIf { asksPlace }),
+                        com.muyeon.app.ui.quote.respond.QuoteLessonTermsInput(durationMin, place.takeIf { asksPlace }),
                     )
                     if (!sent) sending = false   // iOS `if !sent { sending = false }`
                 }
